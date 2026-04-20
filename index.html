@@ -463,14 +463,19 @@ self.addEventListener('fetch',e=>{
   // ─── SAVE USER + SHOP TO FIRESTORE ─────────────────────────────
   async function saveUserToFirestore(user) {
     const userRef = doc(db, 'users', user.uid);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) {
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
       await setDoc(userRef, {
         phone: user.phoneNumber,
         createdAt: serverTimestamp()
       });
-      // Create default shop for new user
-      const shopRef = doc(db, 'shops', user.uid);
+    }
+    // Ensure shop doc exists — check independently of user doc so stuck
+    // users (whose /users/ doc exists but /shops/ doc doesn't due to a
+    // past rule-denial) get their shop created on next login
+    const shopRef = doc(db, 'shops', user.uid);
+    const shopSnap = await getDoc(shopRef);
+    if (!shopSnap.exists()) {
       await setDoc(shopRef, {
         ownerId: user.uid,
         name: 'My Shop',
