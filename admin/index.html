@@ -272,6 +272,208 @@
   .cell-phone:hover { text-decoration: underline; }
   .cell-muted { color: #9ca3af; font-size: 12px; }
 
+  /* ── SESSION 2: AI INSIGHTS ────────────────────────── */
+  .ai-insight-box {
+    background: linear-gradient(135deg, #fff7ed, #ffedd5);
+    border-left: 4px solid #FF6B35;
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #3f2e1e;
+  }
+  .ai-insight-box .meta {
+    font-size: 11px;
+    color: #9a6640;
+    margin-top: 10px;
+    font-style: italic;
+  }
+  .ai-insight-box .stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(194, 65, 12, 0.3);
+  }
+  .ai-insight-box .stat-mini {
+    font-size: 12px;
+    color: #7c2d12;
+  }
+  .ai-insight-box .stat-mini b {
+    font-weight: 800;
+    color: #9a3412;
+  }
+
+  /* ── CHIP BUTTONS (time range toggle) ────────────────── */
+  .chip-btn {
+    background: #f3f4f6;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #6b7280;
+    font-family: inherit;
+  }
+  .chip-btn.active {
+    background: #2A0800;
+    color: #fff;
+  }
+  .chip-btn:hover:not(.active) {
+    background: #e5e7eb;
+  }
+
+  /* ── FUNNEL ────────────────────────────────────── */
+  .funnel-step {
+    display: grid;
+    grid-template-columns: 180px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed #edece7;
+  }
+  .funnel-step:last-child { border-bottom: none; }
+  .funnel-label { font-size: 13px; font-weight: 700; color: #1f2937; }
+  .funnel-bar-track {
+    background: #f3f4f6;
+    border-radius: 8px;
+    height: 28px;
+    overflow: hidden;
+    position: relative;
+  }
+  .funnel-bar-fill {
+    background: linear-gradient(90deg, #FF6B35, #EA580C);
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.4s;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 10px;
+    color: #fff;
+    font-weight: 800;
+    font-size: 12px;
+    min-width: 40px;
+  }
+  .funnel-stats {
+    text-align: right;
+    font-size: 12px;
+    color: #6b7280;
+    min-width: 80px;
+  }
+  .funnel-stats b {
+    font-size: 16px;
+    color: #1f2937;
+    display: block;
+  }
+  .funnel-drop-flag {
+    background: #fef2f2;
+    color: #991b1b;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+    margin-left: 6px;
+  }
+
+  /* ── SHOP LIST ITEMS (Top/At-Risk/Upgrade) ───────── */
+  .shop-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1eee7;
+    transition: background 0.15s;
+  }
+  .shop-item:last-child { border-bottom: none; }
+  .shop-item:hover { background: #fdfcf8; }
+  .shop-rank {
+    width: 24px;
+    height: 24px;
+    background: #FF6B35;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .shop-rank.muted { background: #e5e7eb; color: #6b7280; }
+  .shop-info { flex: 1; min-width: 0; }
+  .shop-info-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shop-info-meta {
+    font-size: 11px;
+    color: #9ca3af;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shop-stat {
+    text-align: right;
+    font-size: 12px;
+    color: #6b7280;
+    flex-shrink: 0;
+  }
+  .shop-stat b {
+    font-size: 14px;
+    font-weight: 800;
+    color: #1f2937;
+    display: block;
+  }
+  .risk-high {
+    background: #fef2f2;
+    color: #991b1b;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .risk-medium {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* ── TIMELINE CHART (SVG) ────────────────────── */
+  .timeline-summary-tile {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 14px;
+    background: #faf9f5;
+    border-radius: 10px;
+    border-left: 3px solid #FF6B35;
+  }
+  .timeline-summary-tile .lbl {
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .timeline-summary-tile .val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #2A0800;
+    margin-top: 2px;
+  }
+  .timeline-summary-tile.green { border-left-color: #16a34a; }
+  .timeline-summary-tile.blue  { border-left-color: #0891b2; }
+
   .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.45);
@@ -347,11 +549,77 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" id="tab-users" onclick="switchTab('users')">👥 All Users</button>
+      <button class="tab-btn active" id="tab-insights" onclick="switchTab('insights')">📊 Insights</button>
+      <button class="tab-btn" id="tab-users" onclick="switchTab('users')">👥 All Users</button>
       <button class="tab-btn" id="tab-pending" onclick="switchTab('pending')">⏳ Pending Activations</button>
     </div>
 
-    <div id="view-users">
+    <!-- INSIGHTS TAB (default active) -->
+    <div id="view-insights">
+      <!-- AI Business Summary -->
+      <div class="panel-card">
+        <h3>
+          <span>🧠 AI Business Insight</span>
+          <button class="refresh-btn" id="ai-regen-btn" onclick="loadInsights(true)">✨ Regenerate</button>
+        </h3>
+        <div id="ai-insight-box" class="ai-insight-box">
+          <div class="loading">Analyzing your business...</div>
+        </div>
+      </div>
+
+      <!-- Revenue Timeline -->
+      <div class="panel-card">
+        <h3>
+          <span>💰 Revenue Timeline</span>
+          <div style="display:flex;gap:6px">
+            <button class="chip-btn" data-days="7" onclick="loadTimeline(7)">7d</button>
+            <button class="chip-btn active" data-days="30" onclick="loadTimeline(30)">30d</button>
+            <button class="chip-btn" data-days="90" onclick="loadTimeline(90)">90d</button>
+          </div>
+        </h3>
+        <div id="timeline-summary" style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap"></div>
+        <div id="timeline-chart" style="min-height:200px"><div class="loading">Loading chart...</div></div>
+      </div>
+
+      <!-- Conversion Funnel -->
+      <div class="panel-card">
+        <h3>
+          <span>🎯 Conversion Funnel</span>
+          <button class="refresh-btn" onclick="loadFunnel()">🔄 Refresh</button>
+        </h3>
+        <div id="funnel-box"><div class="loading">Building funnel...</div></div>
+      </div>
+
+      <!-- Top Shops + At-Risk side by side -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:14px">
+        <div class="panel-card" style="margin-bottom:0">
+          <h3>
+            <span>🏆 Top Shops</span>
+            <select id="top-sort" onchange="loadTopShops()" style="margin:0;padding:6px 10px;width:auto;font-size:12px">
+              <option value="bills">By Bills</option>
+              <option value="revenue">By Revenue</option>
+            </select>
+          </h3>
+          <div id="top-shops-list"><div class="loading">Loading...</div></div>
+        </div>
+
+        <div class="panel-card" style="margin-bottom:0">
+          <h3><span>⚠️ At-Risk Shops</span></h3>
+          <div id="at-risk-list"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- Upgrade Candidates -->
+      <div class="panel-card" style="margin-top:14px">
+        <h3>
+          <span>💎 Upgrade Candidates</span>
+          <span style="font-weight:500;color:#9ca3af;font-size:13px" id="candidates-count">(0)</span>
+        </h3>
+        <div id="upgrade-candidates-list"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="view-users" style="display:none">
       <div class="panel-card">
         <h3>
           <span>All Users <span style="font-weight:500;color:#9ca3af;font-size:13px" id="users-count">(0)</span></span>
@@ -541,6 +809,11 @@
 
   async function loadDashboard() {
     await Promise.all([loadStats(), loadAll(), loadPending()]);
+    // Auto-load insights tab data since it's the default tab
+    if (!window._insightsLoaded) {
+      loadInsightsAll();
+      window._insightsLoaded = true;
+    }
   }
   window.loadDashboard = loadDashboard;
 
@@ -733,8 +1006,14 @@
   window.switchTab = function(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('view-insights').style.display = tab === 'insights' ? 'block' : 'none';
     document.getElementById('view-users').style.display = tab === 'users' ? 'block' : 'none';
     document.getElementById('view-pending').style.display = tab === 'pending' ? 'block' : 'none';
+    // Lazy load insights data on first switch
+    if (tab === 'insights' && !window._insightsLoaded) {
+      loadInsightsAll();
+      window._insightsLoaded = true;
+    }
   };
 
   let _activateCtx = null;
@@ -813,6 +1092,305 @@
     if (months < 12) return months + 'mo ago';
     return Math.floor(months / 12) + 'y ago';
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ── SESSION 2: INSIGHTS / CHARTS / FUNNEL / SHOPS ──────────────
+  // ═══════════════════════════════════════════════════════════════
+
+  function fmtINR(n) {
+    const num = Number(n) || 0;
+    return '₹' + num.toLocaleString('en-IN');
+  }
+
+  function loadInsightsAll() {
+    loadInsights(false);
+    loadTimeline(30);
+    loadFunnel();
+    loadTopShops();
+    loadAtRisk();
+    loadUpgradeCandidates();
+  }
+  window.loadInsightsAll = loadInsightsAll;
+
+  // ── AI Business Insight ─────────────────────────────────────
+  window.loadInsights = async function(force) {
+    const box = document.getElementById('ai-insight-box');
+    const btn = document.getElementById('ai-regen-btn');
+    box.innerHTML = '<div class="loading">Analyzing your business...</div>';
+    if (btn) btn.disabled = true;
+    try {
+      const fn = httpsCallable(functions, 'adminBusinessInsights');
+      const result = await fn({ force: !!force });
+      const { insight, generatedAt, cached, stats } = result.data;
+
+      const generated = new Date(generatedAt);
+      const ago = timeAgo(generated);
+      let statsHtml = '';
+      if (stats) {
+        statsHtml = `
+          <div class="stats-row">
+            <span class="stat-mini">Signups: <b>${stats.totalSignups}</b></span>
+            <span class="stat-mini">Active 7d: <b>${stats.activeWeek}</b></span>
+            <span class="stat-mini">Paid: <b>${stats.paidUsers}</b> (<b>${stats.conversionRate}%</b>)</span>
+            <span class="stat-mini">MRR: <b>${fmtINR(stats.mrr)}</b></span>
+            <span class="stat-mini">Bills: <b>${stats.totalBills}</b></span>
+            <span class="stat-mini">This-week activations: <b>${stats.activationsThisWeek}</b></span>
+          </div>
+        `;
+      }
+      box.innerHTML = `
+        <div>${escapeHtml(insight).replace(/\n/g, '<br>')}</div>
+        ${statsHtml}
+        <div class="meta">Generated ${ago}${cached ? ' (cached · click Regenerate for fresh)' : ''}</div>
+      `;
+    } catch (err) {
+      console.error('loadInsights:', err);
+      box.innerHTML = `<div style="color:#dc2626;font-size:13px">Failed to load: ${escapeHtml(err.message)}</div>`;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  // ── Revenue Timeline ─────────────────────────────────────────
+  let _currentTimelineDays = 30;
+  window.loadTimeline = async function(days) {
+    _currentTimelineDays = days;
+    document.querySelectorAll('.chip-btn[data-days]').forEach(b => {
+      b.classList.toggle('active', Number(b.dataset.days) === days);
+    });
+    const chart = document.getElementById('timeline-chart');
+    const summary = document.getElementById('timeline-summary');
+    chart.innerHTML = '<div class="loading">Loading chart...</div>';
+    try {
+      const fn = httpsCallable(functions, 'adminRevenueTimeline');
+      const result = await fn({ days });
+      const { timeline, summary: sum, windowDays } = result.data;
+
+      summary.innerHTML = `
+        <div class="timeline-summary-tile">
+          <div class="lbl">Total Revenue</div>
+          <div class="val">${fmtINR(sum.totalRevenue)}</div>
+        </div>
+        <div class="timeline-summary-tile green">
+          <div class="lbl">Activations</div>
+          <div class="val">${sum.totalActivations}</div>
+        </div>
+        <div class="timeline-summary-tile blue">
+          <div class="lbl">New Signups</div>
+          <div class="val">${sum.totalNewSignups}</div>
+        </div>
+      `;
+
+      chart.innerHTML = renderTimelineSVG(timeline);
+    } catch (err) {
+      console.error('loadTimeline:', err);
+      chart.innerHTML = `<div style="color:#dc2626;padding:20px;font-size:13px">Failed: ${escapeHtml(err.message)}</div>`;
+    }
+  };
+
+  // Render SVG bar chart for timeline
+  function renderTimelineSVG(timeline) {
+    if (!timeline || !timeline.length) return '<div class="empty">No data</div>';
+    const W = 900, H = 180, PAD_L = 40, PAD_R = 10, PAD_T = 14, PAD_B = 30;
+    const chartW = W - PAD_L - PAD_R;
+    const chartH = H - PAD_T - PAD_B;
+    const maxRev = Math.max(1, ...timeline.map(d => d.revenue));
+    const maxSignups = Math.max(1, ...timeline.map(d => d.newSignups));
+    const barW = chartW / timeline.length;
+    const gap = Math.min(2, barW * 0.15);
+
+    // Y-axis ticks (4 levels)
+    let yTicks = '';
+    for (let i = 0; i <= 4; i++) {
+      const y = PAD_T + (chartH * (1 - i / 4));
+      const val = Math.round((maxRev * i / 4));
+      yTicks += `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="#f0f0f0" stroke-width="1"/>`;
+      yTicks += `<text x="${PAD_L - 5}" y="${y + 3}" text-anchor="end" font-size="9" fill="#9ca3af">${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}</text>`;
+    }
+
+    // Bars for revenue
+    let bars = '';
+    timeline.forEach((d, i) => {
+      const x = PAD_L + i * barW + gap / 2;
+      const w = barW - gap;
+      const h = (d.revenue / maxRev) * chartH;
+      const y = PAD_T + chartH - h;
+      if (d.revenue > 0) {
+        bars += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#FF6B35" rx="2"/>`;
+      }
+      // Dot for signups (overlay)
+      if (d.newSignups > 0) {
+        const dy = PAD_T + chartH - (d.newSignups / maxSignups) * chartH * 0.8;
+        bars += `<circle cx="${x + w / 2}" cy="${dy}" r="3" fill="#0891b2" stroke="#fff" stroke-width="1.5"/>`;
+      }
+    });
+
+    // X-axis labels (first, middle, last)
+    const indices = [0, Math.floor(timeline.length / 2), timeline.length - 1];
+    let xLabels = '';
+    indices.forEach(i => {
+      if (i < 0 || i >= timeline.length) return;
+      const x = PAD_L + i * barW + barW / 2;
+      const dateStr = new Date(timeline[i].date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      xLabels += `<text x="${x}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#6b7280">${dateStr}</text>`;
+    });
+
+    // Legend
+    const legend = `
+      <rect x="${W - 180}" y="4" width="10" height="10" fill="#FF6B35" rx="2"/>
+      <text x="${W - 165}" y="13" font-size="10" fill="#374151">Revenue</text>
+      <circle cx="${W - 115}" cy="9" r="3" fill="#0891b2" stroke="#fff" stroke-width="1.5"/>
+      <text x="${W - 107}" y="13" font-size="10" fill="#374151">New signups</text>
+    `;
+
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:inherit">${yTicks}${bars}${xLabels}${legend}</svg>`;
+  }
+
+  // ── Conversion Funnel ────────────────────────────────────────
+  window.loadFunnel = async function() {
+    const box = document.getElementById('funnel-box');
+    box.innerHTML = '<div class="loading">Building funnel...</div>';
+    try {
+      const fn = httpsCallable(functions, 'adminConversionFunnel');
+      const result = await fn({});
+      const { steps, biggestDropIdx, biggestDropCount, biggestDropLabel } = result.data;
+      if (!steps || !steps.length || steps[0].count === 0) {
+        box.innerHTML = '<div class="empty"><div class="emoji">📊</div>No users yet</div>';
+        return;
+      }
+      const maxCount = steps[0].count;
+      box.innerHTML = steps.map((s, i) => {
+        const pct = maxCount > 0 ? Math.round((s.count / maxCount) * 100) : 0;
+        const isBiggestDrop = i === biggestDropIdx;
+        const dropFlag = isBiggestDrop && biggestDropCount > 0
+          ? `<span class="funnel-drop-flag">⚠️ ${biggestDropCount} drop</span>`
+          : '';
+        const prevPct = s.pctOfPrev !== null ? ` <span style="color:#9ca3af;font-size:11px">(${s.pctOfPrev}% of prev)</span>` : '';
+        return `
+          <div class="funnel-step">
+            <div class="funnel-label">${escapeHtml(s.label)}${prevPct}</div>
+            <div class="funnel-bar-track">
+              <div class="funnel-bar-fill" style="width:${Math.max(5, pct)}%">${pct}%</div>
+            </div>
+            <div class="funnel-stats">
+              <b>${s.count}</b>
+              ${dropFlag || `<span style="font-size:11px">${s.pctOfTotal}% of top</span>`}
+            </div>
+          </div>
+        `;
+      }).join('');
+      if (biggestDropLabel) {
+        box.innerHTML += `<div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:8px;font-size:12px;color:#991b1b"><b>Biggest drop-off:</b> ${escapeHtml(biggestDropLabel)} — lost ${biggestDropCount} users. Consider improving this step.</div>`;
+      }
+    } catch (err) {
+      console.error('loadFunnel:', err);
+      box.innerHTML = `<div style="color:#dc2626;font-size:13px;padding:16px">Failed: ${escapeHtml(err.message)}</div>`;
+    }
+  };
+
+  // ── Top Shops ────────────────────────────────────────────────
+  window.loadTopShops = async function() {
+    const list = document.getElementById('top-shops-list');
+    const sortBy = document.getElementById('top-sort').value;
+    list.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+      const fn = httpsCallable(functions, 'adminTopShops');
+      const result = await fn({ limit: 10, sortBy });
+      const { shops } = result.data;
+      if (!shops || !shops.length) {
+        list.innerHTML = '<div class="empty"><div class="emoji">🏆</div>No active shops yet</div>';
+        return;
+      }
+      list.innerHTML = shops.map((s, i) => {
+        const val = sortBy === 'revenue' ? fmtINR(s.revenue) : `${s.bills} bills`;
+        const sub = sortBy === 'revenue' ? `${s.bills} bills` : fmtINR(s.revenue);
+        return `
+          <div class="shop-item">
+            <div class="shop-rank${i >= 3 ? ' muted' : ''}">${i + 1}</div>
+            <div class="shop-info">
+              <div class="shop-info-name">${escapeHtml(s.shopName)}</div>
+              <div class="shop-info-meta">${escapeHtml(s.ownerName || s.phone || '—')} · ${escapeHtml(capitalize(s.profession || ''))}</div>
+            </div>
+            <div class="shop-stat">
+              <b>${val}</b>
+              <span style="font-size:10px">${sub}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) {
+      console.error('loadTopShops:', err);
+      list.innerHTML = `<div style="color:#dc2626;font-size:13px;padding:16px">Failed: ${escapeHtml(err.message)}</div>`;
+    }
+  };
+
+  // ── At-Risk Shops ────────────────────────────────────────────
+  window.loadAtRisk = async function() {
+    const list = document.getElementById('at-risk-list');
+    list.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+      const fn = httpsCallable(functions, 'adminAtRiskShops');
+      const result = await fn({});
+      const { shops } = result.data;
+      if (!shops || !shops.length) {
+        list.innerHTML = '<div class="empty" style="padding:20px"><div class="emoji">✅</div>No at-risk shops — everyone\'s active!</div>';
+        return;
+      }
+      list.innerHTML = shops.slice(0, 10).map(s => `
+        <div class="shop-item">
+          <div class="shop-rank ${s.riskLevel === 'high' ? '' : 'muted'}" style="background:${s.riskLevel === 'high' ? '#dc2626' : '#d97706'}">!</div>
+          <div class="shop-info">
+            <div class="shop-info-name">${escapeHtml(s.shopName)}</div>
+            <div class="shop-info-meta">${escapeHtml(s.riskReason)} · ${s.billsTotal} bills total</div>
+          </div>
+          <div class="shop-stat">
+            <a href="https://wa.me/${(s.phone || '').replace(/[^0-9]/g, '')}" target="_blank" style="color:#25d366;font-weight:700;font-size:12px;text-decoration:none">📱 WhatsApp</a>
+          </div>
+        </div>
+      `).join('');
+      if (shops.length > 10) {
+        list.innerHTML += `<div style="text-align:center;padding:10px;font-size:12px;color:#9ca3af">+${shops.length - 10} more at risk</div>`;
+      }
+    } catch (err) {
+      console.error('loadAtRisk:', err);
+      list.innerHTML = `<div style="color:#dc2626;font-size:13px;padding:16px">Failed: ${escapeHtml(err.message)}</div>`;
+    }
+  };
+
+  // ── Upgrade Candidates ───────────────────────────────────────
+  window.loadUpgradeCandidates = async function() {
+    const list = document.getElementById('upgrade-candidates-list');
+    list.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+      const fn = httpsCallable(functions, 'adminUpgradeCandidates');
+      const result = await fn({});
+      const { candidates } = result.data;
+      document.getElementById('candidates-count').textContent = `(${candidates.length})`;
+      if (!candidates || !candidates.length) {
+        list.innerHTML = '<div class="empty" style="padding:20px"><div class="emoji">💎</div>No upgrade candidates yet. More trial users need to become active first.</div>';
+        return;
+      }
+      list.innerHTML = candidates.slice(0, 15).map(c => `
+        <div class="shop-item">
+          <div style="width:32px;height:32px;background:linear-gradient(135deg,#FF6B35,#EA580C);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex-shrink:0">💎</div>
+          <div class="shop-info">
+            <div class="shop-info-name">${escapeHtml(c.shopName)}</div>
+            <div class="shop-info-meta">${escapeHtml(c.reason)} · ${escapeHtml(c.ownerName || c.phone)}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <a href="https://wa.me/${(c.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Namaste! Aap hisaabnow ka bahut accha use kar rahe ho. Pro version mein aur zyaada features milenge — dekho?')}" target="_blank" class="btn-activate" style="padding:6px 12px;font-size:11px;background:#25d366;text-decoration:none;display:inline-block">💬 Nudge</a>
+            <button class="btn-activate" style="padding:6px 12px;font-size:11px"
+              onclick="openActivateModal('${c.uid}', ${JSON.stringify(c.shopName)}, ${JSON.stringify(c.phone || '')}, ${JSON.stringify(c.ownerName || '')})">
+              Activate
+            </button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error('loadUpgradeCandidates:', err);
+      list.innerHTML = `<div style="color:#dc2626;font-size:13px;padding:16px">Failed: ${escapeHtml(err.message)}</div>`;
+    }
+  };
 </script>
 
 </body>
