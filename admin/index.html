@@ -617,6 +617,17 @@
         </h3>
         <div id="upgrade-candidates-list"><div class="loading">Loading...</div></div>
       </div>
+
+      <!-- GA4 Website Traffic (Session 3a) -->
+      <div class="panel-card" style="margin-top:14px">
+        <h3>
+          <span>🌐 Website Traffic <span style="font-weight:500;color:#9ca3af;font-size:12px">(last 30 days)</span></span>
+          <button class="refresh-btn" id="ga4-refresh-btn" onclick="loadGA4Overview(true)">🔄 Refresh</button>
+        </h3>
+        <div id="ga4-content">
+          <div class="loading">Loading GA4 data...</div>
+        </div>
+      </div>
     </div>
 
     <div id="view-users" style="display:none">
@@ -719,15 +730,14 @@
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
   // ═══ FIREBASE CONFIG — REPLACE WITH YOUR ACTUAL VALUES ═══════════════════
- const firebaseConfig = {
-  apiKey: "AIzaSyB8v9gYxCg4qBfLl2J08D9TeUVygKVAqC8",
-  authDomain: "panshopmanager.firebaseapp.com",
-  projectId: "panshopmanager",
-  storageBucket: "panshopmanager.firebasestorage.app",
-  messagingSenderId: "448042777087",
-  appId: "1:448042777087:web:9b4c4a0bd4dbc425bccfca",
-  measurementId: "G-YVLCREDL6Q"
-};
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "panshopmanager.firebaseapp.com",
+    projectId: "panshopmanager",
+    storageBucket: "panshopmanager.appspot.com",
+    messagingSenderId: "YOUR_MSG_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
   // ═════════════════════════════════════════════════════════════════════════
 
   const app = initializeApp(firebaseConfig);
@@ -1109,6 +1119,7 @@
     loadTopShops();
     loadAtRisk();
     loadUpgradeCandidates();
+    loadGA4Overview(false);
   }
   window.loadInsightsAll = loadInsightsAll;
 
@@ -1389,6 +1400,120 @@
     } catch (err) {
       console.error('loadUpgradeCandidates:', err);
       list.innerHTML = `<div style="color:#dc2626;font-size:13px;padding:16px">Failed: ${escapeHtml(err.message)}</div>`;
+    }
+  };
+
+  // ── GA4 Website Traffic (Session 3a) ─────────────────────────
+  window.loadGA4Overview = async function(force) {
+    const content = document.getElementById('ga4-content');
+    const btn = document.getElementById('ga4-refresh-btn');
+    content.innerHTML = '<div class="loading">Loading GA4 data...</div>';
+    if (btn) btn.disabled = true;
+
+    try {
+      const fn = httpsCallable(functions, 'adminGA4Overview');
+      const result = await fn({ force: !!force });
+      const { totals, topSources, topCountries, topPages, generatedAt, cached } = result.data;
+
+      const duration = totals.avgSessionDuration;
+      const durationStr = duration >= 60
+        ? `${Math.floor(duration / 60)}m ${duration % 60}s`
+        : `${duration}s`;
+
+      const ago = timeAgo(new Date(generatedAt));
+      content.innerHTML = `
+        <!-- Top-line metrics -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px">
+          <div class="timeline-summary-tile">
+            <div class="lbl">Total Users</div>
+            <div class="val">${totals.users.toLocaleString('en-IN')}</div>
+          </div>
+          <div class="timeline-summary-tile green">
+            <div class="lbl">Sessions</div>
+            <div class="val">${totals.sessions.toLocaleString('en-IN')}</div>
+          </div>
+          <div class="timeline-summary-tile blue">
+            <div class="lbl">Pageviews</div>
+            <div class="val">${totals.pageviews.toLocaleString('en-IN')}</div>
+          </div>
+          <div class="timeline-summary-tile">
+            <div class="lbl">Avg Session</div>
+            <div class="val">${durationStr}</div>
+          </div>
+          <div class="timeline-summary-tile">
+            <div class="lbl">Bounce Rate</div>
+            <div class="val">${totals.bounceRate}%</div>
+          </div>
+        </div>
+
+        <!-- 3-column breakdown: Sources / Countries / Landing Pages -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">🔗 Top Sources</div>
+            ${topSources.length ? topSources.map((s, i) => `
+              <div class="shop-item" style="padding:8px 10px">
+                <div class="shop-rank${i >= 3 ? ' muted' : ''}">${i + 1}</div>
+                <div class="shop-info">
+                  <div class="shop-info-name" style="font-size:12px">${escapeHtml(s.source)}</div>
+                  <div class="shop-info-meta">${s.users} users</div>
+                </div>
+                <div class="shop-stat"><b>${s.sessions}</b><span style="font-size:10px">sessions</span></div>
+              </div>
+            `).join('') : '<div style="color:#9ca3af;font-size:12px;padding:12px">No data</div>'}
+          </div>
+
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">🌍 Top Countries</div>
+            ${topCountries.length ? topCountries.map((c, i) => `
+              <div class="shop-item" style="padding:8px 10px">
+                <div class="shop-rank${i >= 3 ? ' muted' : ''}">${i + 1}</div>
+                <div class="shop-info">
+                  <div class="shop-info-name" style="font-size:12px">${escapeHtml(c.country)}</div>
+                  <div class="shop-info-meta">${c.sessions} sessions</div>
+                </div>
+                <div class="shop-stat"><b>${c.users}</b><span style="font-size:10px">users</span></div>
+              </div>
+            `).join('') : '<div style="color:#9ca3af;font-size:12px;padding:12px">No data</div>'}
+          </div>
+
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">📄 Top Landing Pages</div>
+            ${topPages.length ? topPages.map((p, i) => `
+              <div class="shop-item" style="padding:8px 10px">
+                <div class="shop-rank${i >= 3 ? ' muted' : ''}">${i + 1}</div>
+                <div class="shop-info">
+                  <div class="shop-info-name" style="font-size:12px">${escapeHtml(p.path)}</div>
+                  <div class="shop-info-meta">${p.pageviews} pageviews</div>
+                </div>
+                <div class="shop-stat"><b>${p.sessions}</b><span style="font-size:10px">sessions</span></div>
+              </div>
+            `).join('') : '<div style="color:#9ca3af;font-size:12px;padding:12px">No data</div>'}
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:#9ca3af;margin-top:14px;text-align:right">
+          Data from GA4 · Generated ${ago}${cached ? ' (cached · click Refresh for fresh data)' : ''}
+        </div>
+      `;
+    } catch (err) {
+      console.error('loadGA4Overview:', err);
+      let hint = '';
+      const msg = err.message || '';
+      if (msg.includes('GA4 secrets not configured')) {
+        hint = '<div style="margin-top:8px;font-size:12px">💡 Make sure you ran: <code>firebase functions:secrets:set GA4_PROPERTY_ID</code> and <code>GA4_SERVICE_ACCOUNT</code></div>';
+      } else if (msg.includes('GA4 auth failed')) {
+        hint = '<div style="margin-top:8px;font-size:12px">💡 Service account JSON might be invalid or service account needs Viewer access on the GA4 property</div>';
+      } else if (msg.includes('GA4 report failed')) {
+        hint = '<div style="margin-top:8px;font-size:12px">💡 Check that GA4 Property ID is correct (9-10 digit number, not G-XXXXXXX)</div>';
+      }
+      content.innerHTML = `
+        <div style="color:#dc2626;font-size:13px;padding:12px;background:#fef2f2;border-radius:8px;border-left:3px solid #dc2626">
+          <b>Failed to load GA4 data:</b><br>${escapeHtml(err.message)}
+          ${hint}
+        </div>
+      `;
+    } finally {
+      if (btn) btn.disabled = false;
     }
   };
 </script>
