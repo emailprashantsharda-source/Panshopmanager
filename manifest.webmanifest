@@ -1,0 +1,19 @@
+{
+  "name": "hisaabnow — Aapki Dukaan Ka Munim",
+  "short_name": "hisaabnow",
+  "description": "Voice billing + Munim AI insights for Indian shopkeepers",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFF7ED",
+  "theme_color": "#FF6B35",
+  "lang": "hi-IN",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
