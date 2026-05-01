@@ -1,0 +1,2269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7C3AED">
+<title>HisaabNow — Urban Business Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#7C3AED;--p-deep:#5B21B6;--p-700:#6D28D9;
+  --p-50:#F5F3FF;--p-100:#EDE9FE;--p-200:#DDD6FE;--p-300:#C4B5FD;
+  --surface:#FAFAFC;--card:#FFFFFF;
+  --y:#FACC15;--teal:#2DD4BF;--success:#10B981;--danger:#EF4444;
+  --t1:#0F172A;--t2:#64748B;--t3:#94A3B8;--t4:#CBD5E1;
+  --border:#EEF0F4;--border-strong:#E5E7EB;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:0 4px 16px rgba(15,23,42,.05),0 1px 2px rgba(15,23,42,.03);
+  --shadow-lg:0 12px 32px -8px rgba(15,23,42,.12);
+  --shadow-purple:0 12px 32px -8px rgba(124,58,237,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#EEF0F4;font-family:'Inter',system-ui,sans-serif;color:var(--t1);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{min-height:100vh;display:flex;justify-content:center}
+
+.app{
+  width:100%;max-width:430px;background:var(--surface);
+  min-height:100vh;position:relative;
+  padding-bottom:108px;
+  overflow-x:hidden;
+}
+
+/* Page system */
+.page{display:none;animation:fadeIn .25s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ─── HEADERS ─── */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 18px 12px;background:var(--surface);
+  position:sticky;top:0;z-index:20;
+}
+.hdr.solid{background:#fff;border-bottom:1px solid var(--border)}
+.icon-btn{
+  width:40px;height:40px;border-radius:12px;background:transparent;border:none;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  color:var(--t1);transition:background .15s ease;flex-shrink:0;
+}
+.icon-btn:active{background:var(--p-100)}
+.icon-btn.has-dot{position:relative}
+.dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--p);border:2px solid var(--surface)}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-mark{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:19px;font-weight:800;color:var(--p);letter-spacing:-.02em}
+.hdr-title{font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.02em;flex:1;text-align:center}
+
+/* ─── GREETING ─── */
+.greet{padding:6px 18px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.greet-text h1{font-size:22px;font-weight:800;letter-spacing:-.025em;line-height:1.2}
+.greet-text p{font-size:13.5px;color:var(--t2);margin-top:4px;font-weight:500}
+.wave{display:inline-block;animation:wave 2.4s ease-in-out infinite;transform-origin:70% 70%}
+@keyframes wave{0%,60%,100%{transform:rotate(0)}10%{transform:rotate(14deg)}20%{transform:rotate(-8deg)}30%{transform:rotate(14deg)}40%{transform:rotate(-4deg)}50%{transform:rotate(10deg)}}
+.date-chip{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;
+  background:var(--card);border:1px solid var(--border-strong);
+  font-size:12.5px;font-weight:600;color:var(--t1);cursor:pointer;flex-shrink:0;
+  font-variant-numeric:tabular-nums;box-shadow:var(--shadow-sm);
+}
+.date-chip svg{color:var(--t2);flex-shrink:0}
+
+/* ─── HERO REVENUE ─── */
+.hero{
+  margin:0 18px 14px;
+  background:linear-gradient(135deg,#8B5CF6 0%,var(--p) 35%,var(--p-deep) 100%);
+  border-radius:22px;padding:20px 20px 14px;color:#fff;
+  position:relative;overflow:hidden;box-shadow:var(--shadow-purple);
+}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 88% -10%,rgba(255,255,255,.18) 0%,transparent 45%);pointer-events:none}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:2}
+.hero-label{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.92)}
+.hero-toggle{
+  display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);
+  backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);
+  padding:6px 11px;border-radius:10px;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;
+}
+.hero-amount{font-size:42px;font-weight:800;letter-spacing:-.035em;margin-top:8px;line-height:1.05;font-variant-numeric:tabular-nums;position:relative;z-index:2}
+.hero-rupee{font-size:34px;font-weight:700;opacity:.95;margin-right:1px}
+.hero-delta{margin-top:6px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.95);position:relative;z-index:2}
+.hero-delta .arrow{color:#86EFAC}
+.hero-chart{margin:12px -20px -14px;height:96px;position:relative;z-index:2}
+.hero-chart svg{width:100%;height:100%;display:block}
+.hero-axis{display:flex;justify-content:space-between;padding:0 14px;margin-top:-16px;position:relative;z-index:2}
+.hero-axis span{font-size:10.5px;color:rgba(255,255,255,.65);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ─── KPI ROW ─── */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 18px 14px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 11px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;min-width:0}
+.kpi-head{display:flex;align-items:flex-start;gap:9px;min-width:0}
+.kpi-icon{width:34px;height:34px;border-radius:10px;background:var(--p-100);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kpi-text{min-width:0;flex:1}
+.kpi-label{font-size:11px;color:var(--t2);font-weight:600;line-height:1.2;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-value{font-size:19px;font-weight:800;color:var(--t1);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.kpi-delta{font-size:11px;font-weight:600;color:var(--success);display:flex;align-items:center;gap:3px;border-top:1px solid var(--border);padding-top:7px}
+.kpi-delta .vs{color:var(--t3);font-weight:500;margin-left:1px}
+.kpi-delta.neg{color:var(--danger)}
+
+/* ─── AI INSIGHT ─── */
+.ai-card{
+  margin:0 18px 14px;
+  background:linear-gradient(135deg,#F5F3FF 0%,#EEF2FF 100%);
+  border:1px solid var(--p-200);border-radius:18px;padding:16px;
+  position:relative;overflow:hidden;cursor:pointer;
+  transition:transform .15s ease;
+}
+.ai-card:active{transform:scale(.99)}
+.ai-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ai-spark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--p) 0%,var(--p-deep) 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;box-shadow:0 4px 10px -2px rgba(124,58,237,.4)}
+.ai-title{font-size:15.5px;font-weight:800;color:var(--p-deep);letter-spacing:-.015em}
+.ai-bullets{display:flex;flex-direction:column;gap:8px;max-width:64%;position:relative;z-index:2}
+.ai-bullet{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1);font-weight:500}
+.ai-bullet svg{color:var(--p);flex-shrink:0}
+.ai-bullet b{font-weight:700}
+.ai-illust{position:absolute;right:12px;top:50%;transform:translateY(-46%);width:120px;height:120px;pointer-events:none}
+.ai-sparkle{position:absolute;animation:sparkle 2.6s ease-in-out infinite}
+.ai-sparkle.s1{top:8px;right:16px}.ai-sparkle.s2{bottom:18px;left:6px;animation-delay:.7s}.ai-sparkle.s3{top:48px;right:6px;animation-delay:1.4s}
+@keyframes sparkle{0%,100%{opacity:.3;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+
+/* ─── DUAL PANELS ─── */
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 18px 14px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-width:0}
+.panel.full{grid-column:1/-1}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.panel-title{font-size:13.5px;font-weight:800;color:var(--t1);letter-spacing:-.015em}
+.panel-link{font-size:11.5px;font-weight:700;color:var(--p);cursor:pointer;background:none;border:none;font-family:inherit}
+
+/* Top services */
+.svc-list{display:flex;flex-direction:column;gap:11px}
+.svc-item{display:flex;align-items:center;gap:10px;min-width:0}
+.svc-emoji{width:32px;height:32px;border-radius:9px;background:var(--p-50);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid var(--p-100)}
+.svc-meta{flex:1;min-width:0}
+.svc-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.svc-name{font-size:12.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc-amt{font-size:12px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums;flex-shrink:0}
+.svc-sub{font-size:10.5px;color:var(--t2);font-weight:600;margin:1px 0 5px}
+.svc-bar{height:4px;background:var(--p-100);border-radius:99px;overflow:hidden}
+.svc-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--p) 0%,#A78BFA 100%);border-radius:99px}
+
+/* Donut */
+.donut-wrap{display:flex;align-items:center;justify-content:center;margin:-2px 0 8px}
+.donut{position:relative;width:120px;height:120px}
+.donut svg{transform:rotate(-90deg)}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.donut-num{font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-.025em;line-height:1;font-variant-numeric:tabular-nums}
+.donut-lbl{font-size:10.5px;color:var(--t2);font-weight:600;margin-top:2px}
+.legend{display:flex;flex-direction:column;gap:6px}
+.lg-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--t1);font-weight:600;justify-content:space-between}
+.lg-left{display:flex;align-items:center;gap:6px;min-width:0}
+.lg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.lg-name{color:var(--t2);font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-val{color:var(--t1);font-weight:700;font-size:11.5px;font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* Peak hours */
+.peak-chart{height:120px;display:flex;align-items:flex-end;gap:6px;padding:0 0 22px;position:relative;margin-top:-2px}
+.peak-yaxis{position:absolute;left:0;top:0;bottom:22px;width:18px;display:flex;flex-direction:column;justify-content:space-between;font-size:9.5px;color:var(--t3);font-weight:600;font-variant-numeric:tabular-nums}
+.peak-bars{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:space-around;gap:5px;margin-left:18px;position:relative}
+.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;position:relative;justify-content:flex-end}
+.bar{width:100%;max-width:18px;background:var(--p-200);border-radius:4px 4px 0 0;transition:all .2s ease}
+.bar.peak{background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%)}
+.bar-lbl{position:absolute;bottom:-19px;font-size:9.5px;color:var(--t2);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.peak-pill{position:absolute;background:var(--y);color:#7C2D12;font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:6px;top:-2px;left:50%;transform:translateX(-50%);white-space:nowrap;display:flex;align-items:center;gap:2px;box-shadow:0 2px 4px rgba(0,0,0,.08)}
+.peak-pill::after{content:"";position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);border-left:3px solid transparent;border-right:3px solid transparent;border-top:3px solid var(--y)}
+
+/* Payments */
+.pay-list{display:flex;flex-direction:column;gap:11px}
+.pay-row{display:flex;align-items:center;gap:9px;min-width:0}
+.pay-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pay-icon.cash{background:#D1FAE5;color:#065F46}
+.pay-icon.upi{background:#FEF3C7;color:#92400E}
+.pay-icon.card{background:#DBEAFE;color:#1E40AF}
+.pay-name{font-size:12.5px;font-weight:700;color:var(--t1);flex:1}
+.pay-amt{font-size:12.5px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums}
+.pay-pct{font-size:11px;font-weight:700;color:var(--success);font-variant-numeric:tabular-nums;margin-left:6px;min-width:30px;text-align:right}
+
+/* Action buttons */
+.actions{padding:4px 18px 18px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{height:52px;border-radius:14px;font-size:14.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:none;letter-spacing:-.01em;font-family:inherit;transition:transform .12s ease}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(180deg,var(--p) 0%,var(--p-700) 100%);color:#fff;box-shadow:0 6px 18px -6px rgba(124,58,237,.55)}
+.btn-primary .plus{width:20px;height:20px;border-radius:50%;background:var(--y);color:var(--p-deep);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;line-height:1}
+.btn-secondary{background:#fff;color:var(--p);border:1.5px solid var(--p-200)}
+.btn-block{width:100%}
+.btn-ghost{background:transparent;color:var(--p);border:none;height:44px}
+
+/* ─── BOTTOM NAV ─── */
+.nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;background:rgba(255,255,255,.96);
+  backdrop-filter:blur(14px);border-top:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr 1fr;
+  padding:9px 6px calc(9px + env(safe-area-inset-bottom));z-index:100;
+}
+.nav-tab{background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;color:var(--t2);font-family:inherit;position:relative}
+.nav-tab.active{color:var(--p)}
+.nav-tab span{font-size:10.5px;font-weight:600}
+.nav-fab{background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;align-self:center;justify-self:center;box-shadow:0 8px 22px -4px rgba(124,58,237,.55);margin-top:-22px;transition:transform .12s ease;border:none;cursor:pointer}
+.nav-fab:active{transform:scale(.92)}
+
+/* ─── SHARED COMPONENTS ─── */
+/* Filter chip strip */
+.chips{display:flex;gap:8px;padding:0 18px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:#fff;border:1px solid var(--border-strong);border-radius:99px;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--t1);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s ease}
+.chip.active{background:var(--p);color:#fff;border-color:var(--p);box-shadow:0 4px 12px -2px rgba(124,58,237,.4)}
+
+/* Stat strip */
+.stat-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 18px 14px}
+.stat-strip.three{grid-template-columns:repeat(3,1fr)}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:13px;box-shadow:var(--shadow-sm)}
+.stat-lbl{font-size:11.5px;color:var(--t2);font-weight:600;margin-bottom:4px}
+.stat-val{font-size:20px;font-weight:800;color:var(--t1);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.stat-sub{font-size:11px;color:var(--success);font-weight:600;margin-top:5px}
+
+/* Search bar */
+.search-row{padding:0 18px 12px}
+.search-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border-strong);border-radius:14px;padding:11px 14px}
+.search-bar svg{color:var(--t3);flex-shrink:0}
+.search-bar input{border:none;outline:none;font-size:14px;flex:1;color:var(--t1);font-family:inherit;background:transparent}
+.search-bar input::placeholder{color:var(--t3)}
+
+/* List item card */
+.list{padding:0 18px;display:flex;flex-direction:column;gap:8px}
+.li{background:#fff;border:1px solid var(--border);border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .12s ease;box-shadow:var(--shadow-sm)}
+.li:active{transform:scale(.99)}
+.li-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0;letter-spacing:-.005em}
+.li-meta{flex:1;min-width:0}
+.li-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.li-name{font-size:14px;font-weight:700;color:var(--t1);letter-spacing:-.005em}
+.li-amt{font-size:14px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums}
+.li-sub{font-size:11.5px;color:var(--t2);font-weight:500;margin-top:2px;display:flex;align-items:center;gap:5px}
+.li-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.02em;text-transform:uppercase}
+.tag-loyal{background:#FEF3C7;color:#92400E}
+.tag-repeat{background:#DDD6FE;color:#5B21B6}
+.tag-new{background:#CCFBF1;color:#115E59}
+
+/* Section heading */
+.section-h{padding:14px 18px 8px;display:flex;align-items:center;justify-content:space-between}
+.section-t{font-size:13px;color:var(--t2);font-weight:700;letter-spacing:-.005em;text-transform:uppercase;letter-spacing:.04em}
+
+/* FAB */
+.fab{position:fixed;bottom:118px;right:max(18px,calc(50% - 195px));z-index:50;width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -4px rgba(124,58,237,.5);cursor:pointer;transition:transform .15s ease}
+.fab:active{transform:scale(.93)}
+
+/* ─── ADD SALE FLOW ─── */
+.cart-summary{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);width:calc(100% - 36px);max-width:394px;background:linear-gradient(135deg,var(--p) 0%,var(--p-deep) 100%);color:#fff;border-radius:16px;padding:13px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--shadow-purple);z-index:90;cursor:pointer;animation:slideUp .25s ease}
+.cart-summary.show{display:flex}
+@keyframes slideUp{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.cart-meta{display:flex;flex-direction:column;gap:1px}
+.cart-count{font-size:11.5px;font-weight:600;opacity:.85}
+.cart-total{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.015em}
+.cart-cta{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2)}
+
+.svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 18px 100px}
+.svc-tile{background:#fff;border:1.5px solid var(--border-strong);border-radius:14px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all .15s ease;position:relative}
+.svc-tile.in-cart{border-color:var(--p);background:var(--p-50)}
+.svc-tile:active{transform:scale(.96)}
+.svc-tile-emoji{width:44px;height:44px;border-radius:12px;background:var(--p-50);display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--p-100)}
+.svc-tile.in-cart .svc-tile-emoji{background:var(--p-100)}
+.svc-tile-name{font-size:11.5px;font-weight:700;color:var(--t1);text-align:center;line-height:1.2;letter-spacing:-.005em}
+.svc-tile-price{font-size:11px;font-weight:700;color:var(--p);font-variant-numeric:tabular-nums}
+.svc-tile-qty{position:absolute;top:6px;right:6px;background:var(--p);color:#fff;font-size:11px;font-weight:800;width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+
+/* ─── CUSTOMER DETAIL ─── */
+.cust-hero{padding:18px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.cust-avatar-lg{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:30px;color:#fff;letter-spacing:-.02em;margin-bottom:12px}
+.cust-name-lg{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.cust-phone{font-size:13.5px;color:var(--t2);font-weight:500;margin-top:3px}
+.cust-action-row{display:flex;gap:10px;margin-top:14px}
+.cust-action{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:var(--p-50);color:var(--p);border-radius:10px;font-size:12.5px;font-weight:700;border:none;cursor:pointer;font-family:inherit}
+.cust-action.wa{background:#D1FAE5;color:#065F46}
+
+/* ─── REPORTS ─── */
+.tab-strip{display:flex;background:#fff;border:1px solid var(--border-strong);border-radius:12px;padding:4px;margin:0 18px 14px}
+.tab-strip button{flex:1;background:transparent;border:none;padding:9px;font-size:12.5px;font-weight:700;color:var(--t2);cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s ease}
+.tab-strip button.active{background:var(--p);color:#fff;box-shadow:0 4px 10px -2px rgba(124,58,237,.4)}
+
+/* ─── STAFF ─── */
+.rank-badge{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.rank-1{background:#FEF3C7;color:#92400E}
+.rank-2{background:#E5E7EB;color:#374151}
+.rank-3{background:#FED7AA;color:#7C2D12}
+.rank-n{background:#F3F4F6;color:#6B7280}
+
+/* ─── APPOINTMENTS ─── */
+.cal-strip{display:flex;gap:8px;padding:0 18px 14px;overflow-x:auto}
+.cal-strip::-webkit-scrollbar{display:none}
+.cal-day{min-width:54px;flex-shrink:0;background:#fff;border:1px solid var(--border-strong);border-radius:12px;padding:9px 4px;text-align:center;cursor:pointer;font-family:inherit}
+.cal-day.active{background:var(--p);border-color:var(--p);color:#fff;box-shadow:0 6px 14px -4px rgba(124,58,237,.4)}
+.cal-day-name{font-size:10px;font-weight:600;opacity:.75}
+.cal-day-num{font-size:18px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+.appt{display:flex;gap:12px;padding:0 18px 10px}
+.appt-time{font-size:11.5px;font-weight:700;color:var(--t2);font-variant-numeric:tabular-nums;width:54px;flex-shrink:0;padding-top:14px}
+.appt-card{flex:1;background:#fff;border:1px solid var(--border);border-left:3px solid var(--p);border-radius:12px;padding:11px 13px;cursor:pointer;box-shadow:var(--shadow-sm)}
+.appt-card.walkin{border-left-color:var(--teal)}
+.appt-name{font-size:13.5px;font-weight:700}
+.appt-svc{font-size:11.5px;color:var(--t2);margin-top:2px;font-weight:500}
+.appt-meta{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:10.5px;color:var(--t3);font-weight:600}
+
+/* ─── MORE MENU ─── */
+.menu-group{padding:0 18px 18px}
+.menu-group-title{font-size:11.5px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-left:4px}
+.menu-card{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.menu-item{display:flex;align-items:center;gap:14px;padding:14px;cursor:pointer;border-bottom:1px solid var(--border);font-family:inherit;background:transparent;width:100%;text-align:left;border:none;border-bottom:1px solid var(--border)}
+.menu-item:last-child{border-bottom:none}
+.menu-item:active{background:var(--p-50)}
+.menu-icon{width:36px;height:36px;border-radius:10px;background:var(--p-50);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.menu-icon.green{background:#D1FAE5;color:#065F46}
+.menu-icon.yellow{background:#FEF3C7;color:#92400E}
+.menu-icon.blue{background:#DBEAFE;color:#1E40AF}
+.menu-icon.pink{background:#FCE7F3;color:#9D174D}
+.menu-text{flex:1;min-width:0}
+.menu-label{font-size:14px;font-weight:700;color:var(--t1);letter-spacing:-.005em}
+.menu-sub{font-size:11.5px;color:var(--t2);margin-top:1px;font-weight:500}
+.menu-chev{color:var(--t3)}
+.menu-badge{background:var(--y);color:#7C2D12;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.02em}
+
+/* ─── ONBOARDING ─── */
+.onb-screen{padding:30px 24px 24px;display:flex;flex-direction:column;min-height:100vh}
+.onb-logo{display:flex;justify-content:center;margin-bottom:24px}
+.onb-h{font-size:28px;font-weight:800;letter-spacing:-.025em;text-align:center;line-height:1.2}
+.onb-p{font-size:14px;color:var(--t2);font-weight:500;text-align:center;margin-top:8px;line-height:1.5}
+.vert-grid{display:flex;flex-direction:column;gap:12px;margin-top:32px;flex:1}
+.vert-card{background:#fff;border:2px solid var(--border-strong);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s ease}
+.vert-card.selected{border-color:var(--p);background:var(--p-50);box-shadow:var(--shadow-purple)}
+.vert-card:active{transform:scale(.99)}
+.vert-emoji{width:54px;height:54px;border-radius:14px;background:var(--p-50);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;border:1px solid var(--p-100)}
+.vert-card.selected .vert-emoji{background:#fff}
+.vert-meta{flex:1}
+.vert-name{font-size:16px;font-weight:800;letter-spacing:-.015em}
+.vert-desc{font-size:12.5px;color:var(--t2);margin-top:3px;font-weight:500;line-height:1.4}
+.vert-radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.vert-card.selected .vert-radio{border-color:var(--p);background:var(--p)}
+.vert-card.selected .vert-radio::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+
+/* ─── EXPENSES ─── */
+.exp-summary{margin:0 18px 14px;background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);border-radius:18px;padding:18px;display:flex;align-items:center;justify-content:space-between}
+.exp-summary-l{flex:1}
+.exp-summary-lbl{font-size:12.5px;color:#7C2D12;font-weight:600}
+.exp-summary-val{font-size:28px;font-weight:800;color:#451A03;letter-spacing:-.025em;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1}
+.exp-summary-sub{font-size:11.5px;color:#7C2D12;font-weight:600;margin-top:6px}
+.exp-summary-icon{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;color:#92400E}
+
+/* ─── BILL DETAIL / RECEIPT ─── */
+.bill-paper{margin:0 18px 14px;background:#fff;border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow-md)}
+.bill-h{text-align:center;border-bottom:1px dashed var(--border-strong);padding-bottom:14px;margin-bottom:14px}
+.bill-shop{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.bill-sub{font-size:12px;color:var(--t2);margin-top:2px}
+.bill-line{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13.5px}
+.bill-line.total{border-top:1px dashed var(--border-strong);margin-top:8px;padding-top:12px;font-weight:800;font-size:16px}
+.bill-line .l{color:var(--t1);font-weight:600}
+.bill-line .r{font-variant-numeric:tabular-nums;font-weight:700}
+
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translate(-50%,-100px);background:#0F172A;color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:200;box-shadow:0 12px 28px -8px rgba(0,0,0,.3);transition:transform .3s ease;display:flex;align-items:center;gap:8px}
+.toast.show{transform:translate(-50%,0)}
+
+/* ─── FORM SCREENS ─── */
+.form-screen{padding:6px 18px 18px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:11.5px;font-weight:700;color:var(--t2);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;display:block}
+.form-input{width:100%;background:#fff;border:1.5px solid var(--border-strong);border-radius:12px;padding:13px 14px;font-size:15px;color:var(--t1);font-family:inherit;outline:none;transition:border-color .15s ease}
+.form-input:focus{border-color:var(--p)}
+.form-input.lg{font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;padding:14px}
+.form-textarea{min-height:80px;resize:none;font-family:inherit}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-currency{position:relative}
+.form-currency::before{content:'₹';position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:20px;font-weight:700;color:var(--t2);z-index:1;pointer-events:none}
+.form-currency .form-input{padding-left:32px}
+.form-currency .form-input.lg{padding-left:38px;font-size:30px}
+.form-currency.lg::before{font-size:28px;left:14px}
+/* Category tiles */
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cat-tile{background:#fff;border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:inherit;transition:all .15s ease}
+.cat-tile.selected{border-color:var(--p);background:var(--p-50);box-shadow:0 4px 10px -2px rgba(124,58,237,.2)}
+.cat-tile:active{transform:scale(.96)}
+.cat-tile-emoji{font-size:24px}
+.cat-tile-name{font-size:11px;font-weight:700;color:var(--t1);text-align:center;line-height:1.15}
+/* Mini toggle */
+.mini-toggle{display:inline-flex;background:var(--p-50);border:1px solid var(--p-100);border-radius:99px;padding:2px;gap:0}
+.mini-toggle button{background:transparent;border:none;padding:4px 10px;font-size:10.5px;font-weight:700;color:var(--t2);border-radius:99px;cursor:pointer;font-family:inherit}
+.mini-toggle button.active{background:var(--p);color:#fff}
+/* Checkout extras */
+.checkout-extras{margin:0 18px 14px;background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.extras-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--border);gap:10px}
+.extras-row:last-child{border-bottom:none}
+.extras-row-l{display:flex;align-items:center;gap:11px;flex:1;min-width:0}
+.extras-row-icon{width:32px;height:32px;border-radius:9px;background:var(--p-50);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.extras-row-icon.green{background:#D1FAE5;color:#065F46}
+.extras-row-icon.yellow{background:#FEF3C7;color:#92400E}
+.extras-row-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.extras-row-label{font-size:13.5px;font-weight:700;color:var(--t1)}
+.extras-row-sub{font-size:11.5px;color:var(--t2);font-weight:500}
+.extras-input{width:96px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--t1);text-align:right;outline:none;font-family:inherit}
+.extras-input:focus{border-color:var(--p)}
+.extras-textarea{width:100%;border:none;outline:none;font-size:13.5px;color:var(--t1);font-family:inherit;background:transparent;resize:none;min-height:38px;padding:0}
+.extras-textarea::placeholder{color:var(--t3)}
+.gst-pills{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.gst-pill{background:var(--p-50);border:1px solid var(--p-100);color:var(--p);padding:5px 9px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s ease}
+.gst-pill.active{background:var(--p);color:#fff;border-color:var(--p)}
+/* Loyalty tier */
+.loyalty-card{margin:14px 18px;background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);border-radius:18px;padding:14px;display:flex;align-items:center;gap:13px;border:1px solid #FCD34D}
+.loyalty-icon{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.loyalty-meta{flex:1;min-width:0}
+.loyalty-tier{font-size:14.5px;font-weight:800;color:#7C2D12;letter-spacing:-.015em}
+.loyalty-prog{height:6px;background:rgba(255,255,255,.65);border-radius:99px;overflow:hidden;margin-top:7px}
+.loyalty-prog i{display:block;height:100%;background:linear-gradient(90deg,#F59E0B,#D97706);border-radius:99px}
+.loyalty-sub{font-size:11.5px;color:#92400E;font-weight:600;margin-top:5px}
+/* Coupon */
+.coupon{margin:0 18px 10px;background:#fff;border:1.5px dashed var(--p-300);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;cursor:pointer;box-shadow:var(--shadow-sm)}
+.coupon::before,.coupon::after{content:'';position:absolute;width:16px;height:16px;background:var(--surface);border-radius:50%;top:50%;transform:translateY(-50%)}
+.coupon::before{left:-8px}
+.coupon::after{right:-8px}
+.coupon-code{background:var(--p);color:#fff;padding:8px 12px;border-radius:10px;font-size:12.5px;font-weight:800;letter-spacing:.04em;flex-shrink:0;font-family:'JetBrains Mono','SF Mono',monospace}
+.coupon-meta{flex:1;min-width:0}
+.coupon-name{font-size:13.5px;font-weight:800;color:var(--t1);letter-spacing:-.005em}
+.coupon-sub{font-size:11.5px;color:var(--t2);font-weight:600;margin-top:2px}
+.coupon.expired{opacity:.55}
+.coupon.expired .coupon-code{background:var(--t3)}
+/* Inventory stock badge */
+.inv-stock{font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;letter-spacing:.02em;text-transform:uppercase;flex-shrink:0}
+.stock-ok{background:#D1FAE5;color:#065F46}
+.stock-low{background:#FEF3C7;color:#92400E}
+.stock-out{background:#FEE2E2;color:#991B1B}
+/* Multi-store switcher */
+.store-card{background:#fff;border:1.5px solid var(--border-strong);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;font-family:inherit;width:100%;text-align:left;transition:all .15s ease}
+.store-card.active{border-color:var(--p);background:var(--p-50);box-shadow:var(--shadow-purple)}
+.store-card:active{transform:scale(.99)}
+.store-icon{width:42px;height:42px;border-radius:12px;background:var(--p-100);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.store-meta{flex:1;min-width:0}
+.store-name{font-size:14px;font-weight:800;color:var(--t1);letter-spacing:-.005em}
+.store-sub{font-size:11.5px;color:var(--t2);font-weight:600;margin-top:2px}
+.store-radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.store-card.active .store-radio{border-color:var(--p);background:var(--p)}
+.store-card.active .store-radio::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+/* Date/time pill */
+.dt-pill{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;font-size:14px;font-weight:600;color:var(--t1);cursor:pointer;font-family:inherit;width:100%;text-align:left}
+.dt-pill svg{color:var(--p);flex-shrink:0}
+.dt-pill .dt-text{flex:1}
+
+@media (min-width:431px){
+  .app{box-shadow:0 0 60px rgba(15,23,42,.06);min-height:auto;margin-top:24px;margin-bottom:24px;border-radius:36px;overflow:hidden;padding-top:8px}
+  body{padding:0 16px;background:#EEF0F4;align-items:flex-start}
+  .nav{border-radius:0 0 36px 36px;position:absolute}
+  .fab{right:18px}
+  .cart-summary{left:auto;transform:none;right:18px;width:calc(100% - 36px)}
+  .cart-summary.show{transform:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  HOME (Dashboard)              ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page active" id="pg-home">
+  <header class="hdr">
+    <button class="icon-btn" onclick="App.nav('more')" aria-label="Menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
+          <defs><linearGradient id="lg-h" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient></defs>
+          <path d="M9 13.5 L9 22 M12 13.5 L12 22 M15 13.5 L15 22 M18 13.5 L18 22 M21 13.5 L21 22 M24 13.5 L24 22" stroke="url(#lg-h)" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M7 12 L26 12 L26 14 L7 14 Z" fill="url(#lg-h)"/>
+          <circle cx="12" cy="30" r="3.5" stroke="url(#lg-h)" stroke-width="2" fill="none"/>
+          <circle cx="22" cy="30" r="3.5" stroke="url(#lg-h)" stroke-width="2" fill="none"/>
+          <path d="M14.2 28 L28 18 M19.8 28 L8 18" stroke="url(#lg-h)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M31 11 L31.8 13.2 L34 14 L31.8 14.8 L31 17 L30.2 14.8 L28 14 L30.2 13.2 Z" fill="#FACC15"/>
+        </svg>
+      </div>
+      <div class="brand-name">HisaabNow</div>
+    </div>
+    <button class="icon-btn has-dot" aria-label="Notifications">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="dot"></span>
+    </button>
+  </header>
+
+  <section class="greet">
+    <div class="greet-text">
+      <h1>Good morning, Rohan! <span class="wave">👋</span></h1>
+      <p>Here's your salon overview for today.</p>
+    </div>
+    <button class="date-chip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Today
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </section>
+
+  <section class="hero">
+    <div class="hero-top">
+      <div class="hero-label">Today's Revenue
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      </div>
+      <button class="hero-toggle">Today
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+    <div class="hero-amount"><span class="hero-rupee">₹</span>6,850</div>
+    <div class="hero-delta">
+      <svg class="arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      <b>12%</b> vs yesterday
+    </div>
+    <div class="hero-chart">
+      <svg viewBox="0 0 400 96" preserveAspectRatio="none">
+        <defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity=".35"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+        <path d="M0,72 L20,68 L40,70 L60,64 L80,62 L100,58 L120,60 L140,52 L160,48 L180,42 L200,46 L220,38 L240,32 L260,28 L280,30 L300,22 L320,18 L340,12 L360,16 L380,8 L400,4 L400,96 L0,96 Z" fill="url(#hg)"/>
+        <path d="M0,72 L20,68 L40,70 L60,64 L80,62 L100,58 L120,60 L140,52 L160,48 L180,42 L200,46 L220,38 L240,32 L260,28 L280,30 L300,22 L320,18 L340,12 L360,16 L380,8 L400,4" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="hero-axis"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span></div>
+  </section>
+
+  <section class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-head">
+        <div class="kpi-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="kpi-text"><div class="kpi-label">Customers</div><div class="kpi-value">28</div></div>
+      </div>
+      <div class="kpi-delta"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>8%<span class="vs">vs yesterday</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-head">
+        <div class="kpi-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div>
+        <div class="kpi-text"><div class="kpi-label">Services</div><div class="kpi-value">45</div></div>
+      </div>
+      <div class="kpi-delta"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>15%<span class="vs">vs yesterday</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-head">
+        <div class="kpi-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>
+        <div class="kpi-text"><div class="kpi-label">Avg. Bill</div><div class="kpi-value">₹245</div></div>
+      </div>
+      <div class="kpi-delta"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>6%<span class="vs">vs yesterday</span></div>
+    </div>
+  </section>
+
+  <section class="ai-card" onclick="App.nav('reports')">
+    <div class="ai-head">
+      <div class="ai-spark"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></div>
+      <div class="ai-title">AI Insight</div>
+    </div>
+    <div class="ai-bullets">
+      <div class="ai-bullet"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Peak hours: <b>5 PM – 8 PM</b></div>
+      <div class="ai-bullet"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span><b>Haircut</b> is top service today</span></div>
+      <div class="ai-bullet"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>Try a combo offer after 6 PM</div>
+    </div>
+    <div class="ai-illust">
+      <svg viewBox="0 0 120 120" fill="none">
+        <ellipse cx="78" cy="62" rx="42" ry="46" fill="#EDE9FE" opacity=".7"/>
+        <rect x="50" y="36" width="50" height="40" rx="6" fill="#fff" stroke="#DDD6FE" stroke-width="1.5"/>
+        <rect x="56" y="58" width="6" height="12" rx="1.5" fill="#A78BFA"/>
+        <rect x="66" y="50" width="6" height="20" rx="1.5" fill="#7C3AED"/>
+        <rect x="76" y="44" width="6" height="26" rx="1.5" fill="#5B21B6"/>
+        <rect x="86" y="54" width="6" height="16" rx="1.5" fill="#A78BFA"/>
+        <path d="M54 44 L62 38 L70 40 L80 32" stroke="#7C3AED" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="80" cy="32" r="2" fill="#FACC15"/>
+      </svg>
+      <span class="ai-sparkle s1"><svg width="14" height="14" viewBox="0 0 24 24" fill="#7C3AED"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></span>
+      <span class="ai-sparkle s2"><svg width="10" height="10" viewBox="0 0 24 24" fill="#FACC15"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></span>
+      <span class="ai-sparkle s3"><svg width="8" height="8" viewBox="0 0 24 24" fill="#A78BFA"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></span>
+    </div>
+  </section>
+
+  <section class="dual">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Top Services</div><button class="panel-link" onclick="App.nav('catalog')">View All</button></div>
+      <div class="svc-list">
+        <div class="svc-item"><div class="svc-emoji">✂️</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Haircut</div><div class="svc-amt">₹3,200</div></div><div class="svc-sub">32 orders</div><div class="svc-bar"><i style="width:100%"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji">🧔</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Beard Style</div><div class="svc-amt">₹1,500</div></div><div class="svc-sub">18 orders</div><div class="svc-bar"><i style="width:62%"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji">💆</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Facial</div><div class="svc-amt">₹1,200</div></div><div class="svc-sub">12 orders</div><div class="svc-bar"><i style="width:48%"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji">💇</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Hair Spa</div><div class="svc-amt">₹950</div></div><div class="svc-sub">8 orders</div><div class="svc-bar"><i style="width:36%"></i></div></div></div>
+      </div>
+    </div>
+    <div class="panel" onclick="App.nav('customers')" style="cursor:pointer">
+      <div class="panel-head"><div class="panel-title">Customers</div></div>
+      <div class="donut-wrap"><div class="donut">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="46" stroke="#F5F3FF" stroke-width="14" fill="none"/>
+          <circle cx="60" cy="60" r="46" stroke="#7C3AED" stroke-width="14" fill="none" stroke-dasharray="205.2 289" stroke-dashoffset="0"/>
+          <circle cx="60" cy="60" r="46" stroke="#2DD4BF" stroke-width="14" fill="none" stroke-dasharray="83.8 289" stroke-dashoffset="-205.2"/>
+        </svg>
+        <div class="donut-center"><div class="donut-num">28</div><div class="donut-lbl">Total</div></div>
+      </div></div>
+      <div class="legend">
+        <div class="lg-row"><div class="lg-left"><span class="lg-dot" style="background:#7C3AED"></span><span class="lg-name">Repeat</span></div><span class="lg-val">20 · 71%</span></div>
+        <div class="lg-row"><div class="lg-left"><span class="lg-dot" style="background:#2DD4BF"></span><span class="lg-name">New</span></div><span class="lg-val">8 · 29%</span></div>
+        <div class="lg-row"><div class="lg-left"><span class="lg-dot" style="background:#FACC15"></span><span class="lg-name">First-time</span></div><span class="lg-val">0 · 0%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dual">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Peak Hours</div><div class="mini-toggle"><button class="active" onclick="App.peakToggle(this,'today')">Today</button><button onclick="App.peakToggle(this,'yest')">Yest.</button></div></div>
+      <div class="peak-chart">
+        <div class="peak-yaxis"><span>30</span><span>20</span><span>10</span><span>0</span></div>
+        <div class="peak-bars">
+          <div class="bar-col"><div class="bar" style="height:18%"></div><div class="bar-lbl">9 AM</div></div>
+          <div class="bar-col"><div class="bar" style="height:36%"></div><div class="bar-lbl">12 PM</div></div>
+          <div class="bar-col"><div class="bar" style="height:50%"></div><div class="bar-lbl">3 PM</div></div>
+          <div class="bar-col"><div class="bar" style="height:58%"></div><div class="bar-lbl">5 PM</div></div>
+          <div class="bar-col"><div class="peak-pill">⭐ Peak</div><div class="bar peak" style="height:88%"></div><div class="bar-lbl">6 PM</div></div>
+          <div class="bar-col"><div class="bar" style="height:56%"></div><div class="bar-lbl">9 PM</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Payments</div><button class="panel-link" onclick="App.nav('reports')">View All</button></div>
+      <div class="pay-list">
+        <div class="pay-row"><div class="pay-icon cash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div><div class="pay-name">Cash</div><div class="pay-amt">₹4,250</div><div class="pay-pct">62%</div></div>
+        <div class="pay-row"><div class="pay-icon upi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div><div class="pay-name">UPI</div><div class="pay-amt">₹2,100</div><div class="pay-pct">31%</div></div>
+        <div class="pay-row"><div class="pay-icon card"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="pay-name">Card</div><div class="pay-amt">₹500</div><div class="pay-pct">7%</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="actions">
+    <button class="btn btn-primary" onclick="App.nav('addsale')"><span class="plus">+</span>Add Sale</button>
+    <button class="btn btn-secondary" onclick="App.nav('reports')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+      View Reports
+    </button>
+  </section>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  SALES (Transactions)          ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-sales">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Sales</div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+  </header>
+
+  <div class="chips" style="padding-top:14px">
+    <button class="chip active" onclick="App.chipSelect(this)">Today</button>
+    <button class="chip" onclick="App.chipSelect(this)">Yesterday</button>
+    <button class="chip" onclick="App.chipSelect(this)">This Week</button>
+    <button class="chip" onclick="App.chipSelect(this)">This Month</button>
+    <button class="chip" onclick="App.chipSelect(this)">Custom</button>
+  </div>
+
+  <div class="stat-strip three">
+    <div class="stat-card"><div class="stat-lbl">Bills</div><div class="stat-val">28</div></div>
+    <div class="stat-card"><div class="stat-lbl">Revenue</div><div class="stat-val">₹6,850</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg Bill</div><div class="stat-val">₹245</div></div>
+  </div>
+
+  <div class="section-h"><div class="section-t">Today's transactions</div><button class="panel-link">Sort</button></div>
+
+  <div class="list" id="sales-list"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  ADD SALE                      ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-addsale">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.cancelSale()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="hdr-title">New Sale</div>
+    <button class="icon-btn" aria-label="Voice billing"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+  </header>
+
+  <div class="search-row">
+    <div class="search-bar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="Search service or product…">
+    </div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active">All</button>
+    <button class="chip">Hair</button>
+    <button class="chip">Beard</button>
+    <button class="chip">Skin</button>
+    <button class="chip">Combo</button>
+    <button class="chip">Premium</button>
+  </div>
+
+  <div class="svc-grid" id="svc-grid"></div>
+
+  <button class="cart-summary" id="cart-summary" onclick="App.checkout()">
+    <div class="cart-meta"><div class="cart-count" id="cart-count">0 items</div><div class="cart-total" id="cart-total">₹0</div></div>
+    <div class="cart-cta">Checkout
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </div>
+  </button>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  CHECKOUT                      ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-checkout">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('addsale')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Checkout</div>
+    <div style="width:40px"></div>
+  </header>
+
+  <div class="bill-paper">
+    <div class="bill-h">
+      <div class="bill-shop">Cuts & Curls Salon</div>
+      <div class="bill-sub">Sector 18, Noida · GST 09ABCDE1234F1Z5</div>
+    </div>
+    <div id="checkout-items"></div>
+    <div class="bill-line" id="checkout-subtotal-row" style="border-top:1px dashed var(--border-strong);margin-top:8px;padding-top:10px"><span class="l">Subtotal</span><span class="r" id="checkout-subtotal">₹0</span></div>
+    <div class="bill-line" id="checkout-discount-row" style="display:none"><span class="l" style="color:var(--success)">Discount</span><span class="r" id="checkout-discount-display" style="color:var(--success)">−₹0</span></div>
+    <div class="bill-line" id="checkout-gst-row" style="display:none"><span class="l">GST <span id="checkout-gst-rate" style="color:var(--t2);font-weight:600">(18%)</span></span><span class="r" id="checkout-gst-amt">₹0</span></div>
+    <div class="bill-line total"><span class="l">Total</span><span class="r" id="checkout-total">₹0</span></div>
+  </div>
+
+  <div class="checkout-extras">
+    <div class="extras-row">
+      <div class="extras-row-l">
+        <div class="extras-row-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+        <div class="extras-row-text"><div class="extras-row-label">Discount</div><div class="extras-row-sub">Flat amount or %</div></div>
+      </div>
+      <input type="number" class="extras-input" id="discount-input" placeholder="0" oninput="App.recalcTotal()">
+    </div>
+    <div class="extras-row">
+      <div class="extras-row-l">
+        <div class="extras-row-icon yellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+        <div class="extras-row-text"><div class="extras-row-label">GST</div><div class="extras-row-sub">Apply to bill</div></div>
+      </div>
+      <div class="gst-pills">
+        <button class="gst-pill active" onclick="App.gstSelect(this,0)">None</button>
+        <button class="gst-pill" onclick="App.gstSelect(this,5)">5%</button>
+        <button class="gst-pill" onclick="App.gstSelect(this,12)">12%</button>
+        <button class="gst-pill" onclick="App.gstSelect(this,18)">18%</button>
+      </div>
+    </div>
+    <div class="extras-row" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div class="extras-row-l" style="width:100%">
+        <div class="extras-row-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        <div class="extras-row-text" style="flex:1"><div class="extras-row-label">Notes</div></div>
+      </div>
+      <textarea class="extras-textarea" id="bill-notes" placeholder="Add a note for this bill (optional)…"></textarea>
+    </div>
+  </div>
+
+  <div style="padding:0 18px 14px">
+    <div class="panel-title" style="margin-bottom:10px">Customer</div>
+    <div class="search-bar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <input placeholder="Walk-in or search customer…" value="Priya Sharma">
+    </div>
+  </div>
+
+  <div style="padding:0 18px 14px">
+    <div class="panel-title" style="margin-bottom:10px">Payment Method</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <button class="vert-card" style="padding:14px 8px;flex-direction:column;text-align:center;gap:6px;border-width:1.5px" onclick="App.payMethod(this,'cash')">
+        <div class="pay-icon cash" style="width:40px;height:40px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <div style="font-size:12.5px;font-weight:700">Cash</div>
+      </button>
+      <button class="vert-card selected" style="padding:14px 8px;flex-direction:column;text-align:center;gap:6px;border-width:1.5px" onclick="App.payMethod(this,'upi')">
+        <div class="pay-icon upi" style="width:40px;height:40px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+        <div style="font-size:12.5px;font-weight:700">UPI</div>
+      </button>
+      <button class="vert-card" style="padding:14px 8px;flex-direction:column;text-align:center;gap:6px;border-width:1.5px" onclick="App.payMethod(this,'card')">
+        <div class="pay-icon card" style="width:40px;height:40px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+        <div style="font-size:12.5px;font-weight:700">Card</div>
+      </button>
+    </div>
+  </div>
+
+  <div style="padding:0 18px 0">
+    <button class="btn btn-primary btn-block" onclick="App.completeSale()">Complete Sale & Send WhatsApp
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </button>
+  </div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  CUSTOMERS                     ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-customers">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Customers</div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="stat-strip three">
+    <div class="stat-card"><div class="stat-lbl">Total</div><div class="stat-val">142</div></div>
+    <div class="stat-card"><div class="stat-lbl">Repeat</div><div class="stat-val">98</div></div>
+    <div class="stat-card"><div class="stat-lbl">New (30d)</div><div class="stat-val">14</div></div>
+  </div>
+
+  <div class="search-row">
+    <div class="search-bar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="Search by name or phone…">
+    </div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active" onclick="App.chipSelect(this)">All</button>
+    <button class="chip" onclick="App.chipSelect(this)">Loyal</button>
+    <button class="chip" onclick="App.chipSelect(this)">Repeat</button>
+    <button class="chip" onclick="App.chipSelect(this)">New</button>
+    <button class="chip" onclick="App.chipSelect(this)">Inactive</button>
+  </div>
+
+  <div class="list" id="customers-list"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  CUSTOMER DETAIL               ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-customer-detail">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('customers')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Customer</div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><polygon points="18.5 2.5 21.5 5.5 12 15 8 16 9 12 18.5 2.5"/></svg></button>
+  </header>
+
+  <div class="cust-hero">
+    <div class="cust-avatar-lg" style="background:linear-gradient(135deg,#7C3AED,#5B21B6)">PS</div>
+    <div class="cust-name-lg">Priya Sharma</div>
+    <div class="cust-phone">+91 98765 43210</div>
+    <span class="li-tag tag-loyal" style="margin-top:8px">⭐ Loyal customer</span>
+    <div class="cust-action-row">
+      <button class="cust-action wa">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413"/></svg>
+        WhatsApp
+      </button>
+      <button class="cust-action">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Call
+      </button>
+      <button class="cust-action">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Reminder
+      </button>
+    </div>
+  </div>
+
+  <div class="loyalty-card">
+    <div class="loyalty-icon">⭐</div>
+    <div class="loyalty-meta">
+      <div class="loyalty-tier">Gold tier · 12 visits</div>
+      <div class="loyalty-prog"><i style="width:60%"></i></div>
+      <div class="loyalty-sub">3 more visits to unlock Platinum (free Hair Spa)</div>
+    </div>
+  </div>
+
+  <section class="kpi-row">
+    <div class="kpi"><div class="kpi-head"><div class="kpi-text"><div class="kpi-label">Visits</div><div class="kpi-value">12</div></div></div><div class="kpi-delta"><span class="vs">last 6 months</span></div></div>
+    <div class="kpi"><div class="kpi-head"><div class="kpi-text"><div class="kpi-label">Total Spent</div><div class="kpi-value">₹14,400</div></div></div><div class="kpi-delta"><span class="vs">avg ₹1,200</span></div></div>
+    <div class="kpi"><div class="kpi-head"><div class="kpi-text"><div class="kpi-label">Last Visit</div><div class="kpi-value">3d</div></div></div><div class="kpi-delta"><span class="vs">21 May</span></div></div>
+  </section>
+
+  <div class="section-h"><div class="section-t">Visit history</div></div>
+  <div class="list" id="cust-history"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  REPORTS                       ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-reports">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Reports</div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
+  </header>
+
+  <div class="tab-strip">
+    <button class="active" onclick="App.tabSelect(this)">Daily</button>
+    <button onclick="App.tabSelect(this)">Weekly</button>
+    <button onclick="App.tabSelect(this)">Monthly</button>
+  </div>
+
+  <!-- Revenue trend -->
+  <section style="padding:0 18px 14px">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Revenue trend</div><span style="font-size:12px;font-weight:800;color:var(--success)">↑ 18%</span></div>
+      <div style="height:140px;margin:0 -4px">
+        <svg viewBox="0 0 380 140" preserveAspectRatio="none" style="width:100%;height:100%">
+          <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7C3AED" stop-opacity=".3"/><stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/></linearGradient></defs>
+          <line x1="0" y1="35" x2="380" y2="35" stroke="#EEF0F4" stroke-width="1"/>
+          <line x1="0" y1="70" x2="380" y2="70" stroke="#EEF0F4" stroke-width="1"/>
+          <line x1="0" y1="105" x2="380" y2="105" stroke="#EEF0F4" stroke-width="1"/>
+          <path d="M10,90 L60,84 L110,72 L160,76 L210,58 L260,46 L310,38 L370,22 L370,140 L10,140 Z" fill="url(#rg)"/>
+          <path d="M10,90 L60,84 L110,72 L160,76 L210,58 L260,46 L310,38 L370,22" stroke="#7C3AED" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="370" cy="22" r="5" fill="#7C3AED" stroke="#fff" stroke-width="2"/>
+        </svg>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);font-weight:600;padding:0 4px;margin-top:6px"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+    </div>
+  </section>
+
+  <!-- Top items full width -->
+  <section style="padding:0 18px 14px">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Top performers (this week)</div></div>
+      <div class="svc-list">
+        <div class="svc-item"><div class="svc-emoji">✂️</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Haircut</div><div class="svc-amt">₹22,400</div></div><div class="svc-sub">224 orders · ₹100 avg</div><div class="svc-bar"><i style="width:100%"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji">🧔</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Beard Style</div><div class="svc-amt">₹10,500</div></div><div class="svc-sub">126 orders</div><div class="svc-bar"><i style="width:55%"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji">💆</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Facial</div><div class="svc-amt">₹8,400</div></div><div class="svc-sub">84 orders</div><div class="svc-bar"><i style="width:42%"></i></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Low performers -->
+  <section style="padding:0 18px 14px">
+    <div class="panel" style="background:#FEF2F2;border-color:#FECACA">
+      <div class="panel-head"><div class="panel-title" style="color:#991B1B">⚠ Needs attention</div></div>
+      <div class="svc-list">
+        <div class="svc-item"><div class="svc-emoji" style="background:#FEE2E2;border-color:#FECACA">💅</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Manicure</div><div class="svc-amt" style="color:#991B1B">₹400</div></div><div class="svc-sub">2 orders this week — down 60%</div></div></div>
+        <div class="svc-item"><div class="svc-emoji" style="background:#FEE2E2;border-color:#FECACA">🎨</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Hair Color</div><div class="svc-amt" style="color:#991B1B">₹1,500</div></div><div class="svc-sub">1 order this week — down 75%</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Profit estimate -->
+  <section style="padding:0 18px 14px">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Profit estimate (this week)</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px">
+        <div>
+          <div class="stat-lbl">Revenue</div>
+          <div class="stat-val">₹54,300</div>
+        </div>
+        <div>
+          <div class="stat-lbl">Expenses</div>
+          <div class="stat-val" style="color:var(--danger)">₹18,700</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:14px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);border-radius:12px">
+        <div style="font-size:12px;color:#065F46;font-weight:700">Net profit</div>
+        <div style="font-size:26px;font-weight:800;color:#064E3B;letter-spacing:-.025em;font-variant-numeric:tabular-nums">₹35,600</div>
+        <div style="font-size:11.5px;color:#065F46;font-weight:600;margin-top:3px">Margin · 65.6% · ↑ 4% vs last week</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Share -->
+  <section style="padding:0 18px 0">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn btn-secondary" style="height:46px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
+        Share on WhatsApp
+      </button>
+      <button class="btn btn-secondary" style="height:46px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </button>
+    </div>
+  </section>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  STAFF                         ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-staff">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Staff</div>
+    <button class="icon-btn" onclick="App.nav('add-staff')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="stat-strip three">
+    <div class="stat-card"><div class="stat-lbl">Staff</div><div class="stat-val">3</div></div>
+    <div class="stat-card"><div class="stat-lbl">Services</div><div class="stat-val">24</div></div>
+    <div class="stat-card"><div class="stat-lbl">Commission</div><div class="stat-val">₹1,028</div></div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active">Today</button>
+    <button class="chip">This Week</button>
+    <button class="chip">This Month</button>
+  </div>
+
+  <div class="section-h"><div class="section-t">Today's Leaderboard</div></div>
+
+  <div class="list" id="staff-list"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  APPOINTMENTS                  ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-appointments">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Appointments</div>
+    <button class="icon-btn" onclick="App.nav('add-appointment')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="cal-strip" id="cal-strip"></div>
+
+  <div class="stat-strip">
+    <div class="stat-card"><div class="stat-lbl">Booked today</div><div class="stat-val">8</div><div class="stat-sub">3 walk-in · 5 booked</div></div>
+    <div class="stat-card"><div class="stat-lbl">Next slot</div><div class="stat-val">2:30 PM</div><div class="stat-sub" style="color:var(--t2)">in 45 min</div></div>
+  </div>
+
+  <div class="section-h"><div class="section-t">Today's schedule</div></div>
+
+  <div id="appt-list"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  EXPENSES                      ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-expenses">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Expenses</div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="chips" style="padding-top:14px">
+    <button class="chip" onclick="App.expRange(this,'today')">Today</button>
+    <button class="chip" onclick="App.expRange(this,'week')">This Week</button>
+    <button class="chip active" onclick="App.expRange(this,'month')">This Month</button>
+    <button class="chip" onclick="App.expRange(this,'year')">This Year</button>
+  </div>
+
+  <div class="exp-summary" id="exp-summary-card">
+    <div class="exp-summary-l">
+      <div class="exp-summary-lbl">This month's expenses</div>
+      <div class="exp-summary-val">₹43,200</div>
+      <div class="exp-summary-sub">↓ 8% vs last month</div>
+    </div>
+    <div class="exp-summary-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div>
+  </div>
+
+  <section style="padding:0 18px 14px">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">By category</div></div>
+      <div class="svc-list">
+        <div class="svc-item"><div class="svc-emoji" style="background:#FEF3C7;border-color:#FDE68A">🏠</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Rent</div><div class="svc-amt">₹15,000</div></div><div class="svc-sub">35% of total</div><div class="svc-bar"><i style="width:35%;background:linear-gradient(90deg,#F59E0B,#FBBF24)"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji" style="background:#DBEAFE;border-color:#BFDBFE">👤</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Staff salary</div><div class="svc-amt">₹22,000</div></div><div class="svc-sub">51% of total</div><div class="svc-bar"><i style="width:51%;background:linear-gradient(90deg,#3B82F6,#60A5FA)"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji" style="background:#D1FAE5;border-color:#A7F3D0">📦</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Supplies</div><div class="svc-amt">₹3,200</div></div><div class="svc-sub">7% of total</div><div class="svc-bar"><i style="width:7%;background:linear-gradient(90deg,#10B981,#34D399)"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji" style="background:#FCE7F3;border-color:#FBCFE8">⚡</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Utilities</div><div class="svc-amt">₹2,800</div></div><div class="svc-sub">6% of total</div><div class="svc-bar"><i style="width:6%;background:linear-gradient(90deg,#EC4899,#F472B6)"></i></div></div></div>
+        <div class="svc-item"><div class="svc-emoji" style="background:#F3F4F6;border-color:#E5E7EB">📋</div><div class="svc-meta"><div class="svc-row"><div class="svc-name">Other</div><div class="svc-amt">₹200</div></div><div class="svc-sub">1% of total</div><div class="svc-bar"><i style="width:1%;background:linear-gradient(90deg,#6B7280,#9CA3AF)"></i></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-h"><div class="section-t">Recent expenses</div></div>
+
+  <div class="list" id="exp-list"></div>
+
+  <button class="fab" onclick="App.nav('add-expense')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  CATALOG                       ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-catalog">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Services</div>
+    <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="search-row">
+    <div class="search-bar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="Search services…">
+    </div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active">All · 12</button>
+    <button class="chip">Hair · 4</button>
+    <button class="chip">Beard · 2</button>
+    <button class="chip">Skin · 3</button>
+    <button class="chip">Combo · 3</button>
+  </div>
+
+  <div class="list" id="catalog-list"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  MORE MENU                     ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-more">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">More</div>
+    <div style="width:40px"></div>
+  </header>
+
+  <!-- Profile preview -->
+  <section style="padding:14px 18px">
+    <div onclick="App.nav('settings')" style="cursor:pointer;background:linear-gradient(135deg,var(--p) 0%,var(--p-deep) 100%);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px;color:#fff;box-shadow:var(--shadow-purple)">
+      <div style="width:54px;height:54px;border-radius:14px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;letter-spacing:-.02em">CC</div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:800;letter-spacing:-.015em">Cuts & Curls Salon</div>
+        <div style="font-size:12px;opacity:.85;margin-top:2px">Sector 18, Noida · Salon</div>
+        <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(250,204,21,.95);color:#7C2D12;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:99px;margin-top:6px;letter-spacing:.02em">⭐ PRO PLAN · 24d left</div>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </section>
+
+  <div class="menu-group">
+    <div class="menu-group-title">Manage</div>
+    <div class="menu-card">
+      <button class="menu-item" onclick="App.nav('catalog')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Services & Products</div><div class="menu-sub">12 services · 4 categories</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('expenses')">
+        <div class="menu-icon yellow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Expenses</div><div class="menu-sub">₹43,200 this month · 5 categories</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('inventory')">
+        <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Inventory</div><div class="menu-sub">24 items · 5 low on stock</div></div>
+        <span class="menu-badge" style="background:#FEE2E2;color:#991B1B">5 LOW</span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('coupons')">
+        <div class="menu-icon pink"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Offers & Coupons</div><div class="menu-sub">4 active · 86 redeemed (30d)</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('staff')">
+        <div class="menu-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Staff</div><div class="menu-sub">3 members · ₹1,028 commission today</div></div>
+        <span class="menu-badge">PRO</span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('appointments')">
+        <div class="menu-icon pink"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Appointments</div><div class="menu-sub">8 booked today · next at 2:30 PM</div></div>
+        <span class="menu-badge">PRO</span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="menu-group">
+    <div class="menu-group-title">Insights & sharing</div>
+    <div class="menu-card">
+      <button class="menu-item" onclick="App.nav('reports')">
+        <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Reports</div><div class="menu-sub">Daily, weekly, monthly</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.toast('Daily WhatsApp digest scheduled at 8 PM')">
+        <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg></div>
+        <div class="menu-text"><div class="menu-label">WhatsApp daily digest</div><div class="menu-sub">Auto-share to your number at 8 PM</div></div>
+        <span style="width:34px;height:20px;background:var(--success);border-radius:99px;position:relative;flex-shrink:0"><span style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;right:2px"></span></span>
+      </button>
+      <button class="menu-item" onclick="App.toast('Customer reminders enabled')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Customer reminders</div><div class="menu-sub">Auto-WhatsApp lapsed customers</div></div>
+        <span style="width:34px;height:20px;background:var(--border-strong);border-radius:99px;position:relative;flex-shrink:0"><span style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;left:2px"></span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="menu-group">
+    <div class="menu-group-title">Account</div>
+    <div class="menu-card">
+      <button class="menu-item" onclick="App.nav('settings')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Settings</div><div class="menu-sub">Business profile, language, currency</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('multi-store')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="menu-text"><div class="menu-label">My Stores</div><div class="menu-sub">3 stores · ₹3.84L combined this month</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.nav('onboarding')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Switch business type</div><div class="menu-sub">Salon · Café · Sweets · Grocery</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.toast('Subscription page')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Subscription</div><div class="menu-sub">Pro plan · ₹490/year · 24d left</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.toast('Help & support')">
+        <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Help & support</div><div class="menu-sub">Tutorials, WhatsApp us</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" onclick="App.toast('Logged out')">
+        <div class="menu-icon" style="background:#FEE2E2;color:#991B1B"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="menu-text"><div class="menu-label" style="color:#991B1B">Sign out</div></div>
+      </button>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:8px 18px 18px;font-size:11px;color:var(--t3);font-weight:500">HisaabNow · v29.0 Urban</div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  SETTINGS                      ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-settings">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Settings</div>
+    <div style="width:40px"></div>
+  </header>
+
+  <div class="menu-group" style="padding-top:14px">
+    <div class="menu-group-title">Business profile</div>
+    <div class="menu-card">
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px">Business name</div><div class="menu-label">Cuts & Curls Salon</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><polygon points="18.5 2.5 21.5 5.5 12 15 8 16 9 12 18.5 2.5"/></svg>
+      </div>
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px">Type</div><div class="menu-label">Salon</div></div>
+        <span class="menu-badge" style="background:var(--p-100);color:var(--p)">Active</span>
+      </div>
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px">Address</div><div class="menu-label">Sector 18, Noida</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><polygon points="18.5 2.5 21.5 5.5 12 15 8 16 9 12 18.5 2.5"/></svg>
+      </div>
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px">GSTIN (optional)</div><div class="menu-label">09ABCDE1234F1Z5</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-group">
+    <div class="menu-group-title">Preferences</div>
+    <div class="menu-card">
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-label">Language</div><div class="menu-sub">English (Hindi available)</div></div>
+        <div style="display:flex;gap:4px">
+          <button class="chip active" style="padding:6px 11px;font-size:11.5px">EN</button>
+          <button class="chip" style="padding:6px 11px;font-size:11.5px">हिं</button>
+        </div>
+      </div>
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-label">Currency</div><div class="menu-sub">Indian Rupee (₹)</div></div>
+      </div>
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-text"><div class="menu-label">Cloud sync</div><div class="menu-sub">Last synced just now</div></div>
+        <span style="width:34px;height:20px;background:var(--success);border-radius:99px;position:relative;flex-shrink:0"><span style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;right:2px"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-group">
+    <div class="menu-group-title">Security</div>
+    <div class="menu-card">
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="menu-text"><div class="menu-label">PIN lock</div><div class="menu-sub">App locks after 5 minutes</div></div>
+        <span style="width:34px;height:20px;background:var(--success);border-radius:99px;position:relative;flex-shrink:0"><span style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;right:2px"></span></span>
+      </div>
+      <div class="menu-item" style="cursor:default">
+        <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Backup</div><div class="menu-sub">Automatic · last backup 2h ago</div></div>
+        <span style="font-size:11px;color:var(--success);font-weight:700">✓</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  ONBOARDING                    ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-onboarding">
+  <div class="onb-screen">
+    <div class="onb-logo">
+      <svg width="64" height="64" viewBox="0 0 40 40" fill="none">
+        <defs><linearGradient id="lg-on" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient></defs>
+        <path d="M9 13.5 L9 22 M12 13.5 L12 22 M15 13.5 L15 22 M18 13.5 L18 22 M21 13.5 L21 22 M24 13.5 L24 22" stroke="url(#lg-on)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M7 12 L26 12 L26 14 L7 14 Z" fill="url(#lg-on)"/>
+        <circle cx="12" cy="30" r="3.5" stroke="url(#lg-on)" stroke-width="2" fill="none"/>
+        <circle cx="22" cy="30" r="3.5" stroke="url(#lg-on)" stroke-width="2" fill="none"/>
+        <path d="M14.2 28 L28 18 M19.8 28 L8 18" stroke="url(#lg-on)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M31 11 L31.8 13.2 L34 14 L31.8 14.8 L31 17 L30.2 14.8 L28 14 L30.2 13.2 Z" fill="#FACC15"/>
+      </svg>
+    </div>
+    <h1 class="onb-h">What kind of business do you run?</h1>
+    <p class="onb-p">We'll set up your dashboard with the right services, categories, and insights.</p>
+
+    <div class="vert-grid">
+      <button class="vert-card selected" onclick="App.vertSelect(this,'salon')">
+        <div class="vert-emoji">💇</div>
+        <div class="vert-meta">
+          <div class="vert-name">Salon / Spa</div>
+          <div class="vert-desc">Haircut, beard, facial, hair spa. Track services, staff, repeat customers.</div>
+        </div>
+        <div class="vert-radio"></div>
+      </button>
+      <button class="vert-card" onclick="App.vertSelect(this,'cafe')">
+        <div class="vert-emoji">☕</div>
+        <div class="vert-meta">
+          <div class="vert-name">Café / Restaurant</div>
+          <div class="vert-desc">Food, beverages, dine-in. Track orders, peak hours, menu performance.</div>
+        </div>
+        <div class="vert-radio"></div>
+      </button>
+      <button class="vert-card" onclick="App.vertSelect(this,'sweets')">
+        <div class="vert-emoji">🍬</div>
+        <div class="vert-meta">
+          <div class="vert-name">Sweet Shop</div>
+          <div class="vert-desc">Mithai, namkeen, festive demand. Track weight-based sales and fast movers.</div>
+        </div>
+        <div class="vert-radio"></div>
+      </button>
+      <button class="vert-card" onclick="App.vertSelect(this,'grocery')">
+        <div class="vert-emoji">🛒</div>
+        <div class="vert-meta">
+          <div class="vert-name">Grocery / Kirana</div>
+          <div class="vert-desc">Packaged products, inventory, credit (udhar). Reorder alerts.</div>
+        </div>
+        <div class="vert-radio"></div>
+      </button>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:18px" onclick="App.nav('home')">Continue
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </button>
+    <button class="btn btn-ghost" onclick="App.nav('home')">Skip for now</button>
+  </div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  ADD EXPENSE                   ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-add-expense">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('expenses')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="hdr-title">Add Expense</div>
+    <div style="width:40px"></div>
+  </header>
+
+  <div class="form-screen">
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <div class="form-currency lg">
+        <input type="number" class="form-input lg" placeholder="0" id="exp-amount">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <div class="cat-grid">
+        <button class="cat-tile selected" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🏠</div><div class="cat-tile-name">Rent</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">👤</div><div class="cat-tile-name">Salary</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">📦</div><div class="cat-tile-name">Supplies</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">⚡</div><div class="cat-tile-name">Utilities</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🚗</div><div class="cat-tile-name">Travel</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">📱</div><div class="cat-tile-name">Marketing</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🛠️</div><div class="cat-tile-name">Repairs</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">📋</div><div class="cat-tile-name">Tax/GST</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">➕</div><div class="cat-tile-name">Other</div></button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input type="text" class="form-input" placeholder="What did you spend on?" id="exp-desc">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <button class="dt-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="dt-text">Today</span></button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Paid via</label>
+        <button class="dt-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="dt-text">Cash</span></button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="App.saveExpense()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Save Expense
+    </button>
+  </div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  ADD STAFF                     ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-add-staff">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('staff')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="hdr-title">Add Staff</div>
+    <div style="width:40px"></div>
+  </header>
+
+  <div class="form-screen">
+    <div style="display:flex;justify-content:center;margin:14px 0 22px">
+      <button style="width:88px;height:88px;border-radius:50%;background:var(--p-50);border:2px dashed var(--p-300);display:flex;align-items:center;justify-content:center;color:var(--p);cursor:pointer;font-family:inherit">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input type="text" class="form-input" placeholder="Staff member's name" id="staff-name">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Role</label>
+      <div class="cat-grid">
+        <button class="cat-tile selected" onclick="App.catSelect(this)"><div class="cat-tile-emoji">✂️</div><div class="cat-tile-name">Sr. Stylist</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">💇</div><div class="cat-tile-name">Stylist</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">💆</div><div class="cat-tile-name">Beautician</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🧖</div><div class="cat-tile-name">Therapist</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🧹</div><div class="cat-tile-name">Helper</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">📋</div><div class="cat-tile-name">Manager</div></button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Phone Number</label>
+      <input type="tel" class="form-input" placeholder="+91 98765 43210" id="staff-phone">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Monthly Salary</label>
+        <div class="form-currency"><input type="number" class="form-input" placeholder="0" id="staff-salary"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Commission %</label>
+        <input type="number" class="form-input" placeholder="15" id="staff-comm" value="15">
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="App.saveStaff()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Add Staff Member
+    </button>
+  </div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  ADD APPOINTMENT               ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-add-appointment">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('appointments')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="hdr-title">Book Appointment</div>
+    <div style="width:40px"></div>
+  </header>
+
+  <div class="form-screen">
+    <div class="form-group">
+      <label class="form-label">Customer</label>
+      <div class="search-bar" style="margin-bottom:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <input placeholder="Search or add new customer…" id="appt-customer">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Service</label>
+      <div class="cat-grid">
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">✂️</div><div class="cat-tile-name">Haircut</div></button>
+        <button class="cat-tile selected" onclick="App.catSelect(this)"><div class="cat-tile-emoji">💆</div><div class="cat-tile-name">Facial</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">💇</div><div class="cat-tile-name">Hair Spa</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🎨</div><div class="cat-tile-name">Hair Color</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">🧔</div><div class="cat-tile-name">Beard</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji">👰</div><div class="cat-tile-name">Bridal</div></button>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <button class="dt-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="dt-text">Tomorrow, 25 May</span></button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <button class="dt-pill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="dt-text">2:30 PM</span></button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Assign Staff</label>
+      <div class="cat-grid">
+        <button class="cat-tile selected" onclick="App.catSelect(this)"><div class="cat-tile-emoji" style="font-size:18px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800">VK</div><div class="cat-tile-name">Vikash</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji" style="font-size:18px;background:linear-gradient(135deg,#0891B2,#0E7490);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800">RS</div><div class="cat-tile-name">Ravi</div></button>
+        <button class="cat-tile" onclick="App.catSelect(this)"><div class="cat-tile-emoji" style="font-size:18px;background:linear-gradient(135deg,#DB2777,#9D174D);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800">PY</div><div class="cat-tile-name">Pooja</div></button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="cat-tile selected" style="flex-direction:row;justify-content:center;padding:11px" onclick="App.catSelect(this)"><span style="font-size:14px;font-weight:700">📅 Booked</span></button>
+        <button class="cat-tile" style="flex-direction:row;justify-content:center;padding:11px" onclick="App.catSelect(this)"><span style="font-size:14px;font-weight:700">🚶 Walk-in</span></button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-input form-textarea" placeholder="Anything to remember about this booking?"></textarea>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:4px" onclick="App.saveAppointment()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+      Book & Send WhatsApp Confirmation
+    </button>
+  </div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  INVENTORY                     ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-inventory">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Inventory</div>
+    <button class="icon-btn" onclick="App.toast('+ Add stock item')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="stat-strip three">
+    <div class="stat-card"><div class="stat-lbl">Items</div><div class="stat-val">24</div></div>
+    <div class="stat-card"><div class="stat-lbl">Low Stock</div><div class="stat-val" style="color:#92400E">5</div></div>
+    <div class="stat-card"><div class="stat-lbl">Value</div><div class="stat-val">₹38K</div></div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active" onclick="App.chipSelect(this)">All</button>
+    <button class="chip" onclick="App.chipSelect(this)">Low stock</button>
+    <button class="chip" onclick="App.chipSelect(this)">Out</button>
+    <button class="chip" onclick="App.chipSelect(this)">Hair</button>
+    <button class="chip" onclick="App.chipSelect(this)">Skin</button>
+  </div>
+
+  <div class="search-row">
+    <div class="search-bar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="Search inventory…">
+    </div>
+  </div>
+
+  <div class="list" id="inv-list"></div>
+
+  <button class="fab" onclick="App.toast('+ Add stock item')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  COUPONS / OFFERS              ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-coupons">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Offers & Coupons</div>
+    <button class="icon-btn" onclick="App.toast('+ Create coupon')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div class="stat-strip">
+    <div class="stat-card"><div class="stat-lbl">Active offers</div><div class="stat-val">4</div><div class="stat-sub">2 expiring this week</div></div>
+    <div class="stat-card"><div class="stat-lbl">Used (30d)</div><div class="stat-val">86</div><div class="stat-sub">₹14,200 redeemed</div></div>
+  </div>
+
+  <div class="section-h"><div class="section-t">Active</div><button class="panel-link">+ New</button></div>
+
+  <div class="coupon" onclick="App.toast('Edit coupon')">
+    <div class="coupon-code">FIRST50</div>
+    <div class="coupon-meta">
+      <div class="coupon-name">50% off first visit</div>
+      <div class="coupon-sub">Used 32 times · No expiry</div>
+    </div>
+  </div>
+  <div class="coupon" onclick="App.toast('Edit coupon')">
+    <div class="coupon-code">FRI200</div>
+    <div class="coupon-meta">
+      <div class="coupon-name">₹200 off · Friday combos</div>
+      <div class="coupon-sub">Used 18 times · 7 days left</div>
+    </div>
+  </div>
+  <div class="coupon" onclick="App.toast('Edit coupon')">
+    <div class="coupon-code">SPA15</div>
+    <div class="coupon-meta">
+      <div class="coupon-name">15% off · Hair Spa</div>
+      <div class="coupon-sub">Used 24 times · 14 days left</div>
+    </div>
+  </div>
+  <div class="coupon" onclick="App.toast('Edit coupon')">
+    <div class="coupon-code">BRIDAL10</div>
+    <div class="coupon-meta">
+      <div class="coupon-name">10% off · Bridal package</div>
+      <div class="coupon-sub">Used 4 times · No expiry</div>
+    </div>
+  </div>
+
+  <div class="section-h"><div class="section-t">Expired</div></div>
+
+  <div class="coupon expired" onclick="App.toast('Reactivate?')">
+    <div class="coupon-code">DIWALI25</div>
+    <div class="coupon-meta">
+      <div class="coupon-name">25% off · Diwali special</div>
+      <div class="coupon-sub">Used 142 times · Expired Nov 2024</div>
+    </div>
+  </div>
+  <div style="height:18px"></div>
+</div>
+
+
+<!-- ╔════════════════════════════════════════════════╗
+     ║                  MULTI-STORE                   ║
+     ╚════════════════════════════════════════════════╝ -->
+<div class="page" id="pg-multi-store">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">My Stores</div>
+    <button class="icon-btn" onclick="App.toast('+ Add new store')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </header>
+
+  <div style="padding:6px 18px 14px">
+    <div style="background:linear-gradient(135deg,var(--p) 0%,var(--p-deep) 100%);border-radius:18px;padding:18px;color:#fff;box-shadow:var(--shadow-purple)">
+      <div style="font-size:12.5px;opacity:.85;font-weight:600">Combined revenue · this month</div>
+      <div style="font-size:34px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1">₹3,84,500</div>
+      <div style="font-size:12px;opacity:.85;font-weight:600;margin-top:6px">3 stores · ↑ 22% vs last month</div>
+    </div>
+  </div>
+
+  <div class="section-h"><div class="section-t">Active store</div></div>
+
+  <div style="padding:0 18px;display:flex;flex-direction:column;gap:8px">
+    <button class="store-card active" onclick="App.toast('Already viewing this store')">
+      <div class="store-icon">💇</div>
+      <div class="store-meta"><div class="store-name">Cuts & Curls · Sec 18</div><div class="store-sub">Salon · ₹1,42,300 this month</div></div>
+      <div class="store-radio"></div>
+    </button>
+  </div>
+
+  <div class="section-h"><div class="section-t">Switch to</div></div>
+
+  <div style="padding:0 18px;display:flex;flex-direction:column;gap:8px">
+    <button class="store-card" onclick="App.toast('Switching to Cuts & Curls Sec 62…')">
+      <div class="store-icon">💇</div>
+      <div class="store-meta"><div class="store-name">Cuts & Curls · Sec 62</div><div class="store-sub">Salon · ₹1,28,900 this month</div></div>
+      <div class="store-radio"></div>
+    </button>
+    <button class="store-card" onclick="App.toast('Switching to Cuts & Curls Greater Noida…')">
+      <div class="store-icon">💇</div>
+      <div class="store-meta"><div class="store-name">Cuts & Curls · Gr. Noida</div><div class="store-sub">Salon · ₹1,13,300 this month</div></div>
+      <div class="store-radio"></div>
+    </button>
+  </div>
+
+  <div style="padding:18px">
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:14px;padding:14px;display:flex;align-items:flex-start;gap:11px">
+      <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">💡</div>
+      <div style="font-size:12.5px;color:#7C2D12;font-weight:600;line-height:1.5">Greater Noida is your top performer this month — average bill ₹312 vs ₹245 chain average.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ╔════ BOTTOM NAV ════╗ -->
+<nav class="nav" aria-label="Main">
+  <button class="nav-tab active" data-tab="home" onclick="App.nav('home')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12L12 3l9 9v9a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V12z"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="nav-tab" data-tab="sales" onclick="App.nav('sales')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+    <span>Sales</span>
+  </button>
+  <button class="nav-tab nav-fab" aria-label="Add Sale" onclick="App.nav('addsale')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+  <button class="nav-tab" data-tab="customers" onclick="App.nav('customers')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Customers</span>
+  </button>
+  <button class="nav-tab" data-tab="more" onclick="App.nav('more')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="6" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18" cy="12" r="1.2" fill="currentColor"/></svg>
+    <span>More</span>
+  </button>
+</nav>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// MOCK DATA
+// ═══════════════════════════════════════════════════════════════════
+const SERVICES = [
+  {id:'s1', name:'Haircut',     price:400,  emoji:'✂️', cat:'Hair'},
+  {id:'s2', name:'Beard Style', price:250,  emoji:'🧔', cat:'Beard'},
+  {id:'s3', name:'Facial',      price:800,  emoji:'💆', cat:'Skin'},
+  {id:'s4', name:'Hair Spa',    price:600,  emoji:'💇', cat:'Hair'},
+  {id:'s5', name:'Threading',   price:150,  emoji:'🪡', cat:'Skin'},
+  {id:'s6', name:'Hair Color',  price:1500, emoji:'🎨', cat:'Hair'},
+  {id:'s7', name:'Shaving',     price:150,  emoji:'🪒', cat:'Beard'},
+  {id:'s8', name:'Head Massage',price:300,  emoji:'💆‍♂️', cat:'Combo'},
+  {id:'s9', name:'Manicure',    price:400,  emoji:'💅', cat:'Skin'},
+  {id:'s10',name:'Pedicure',    price:500,  emoji:'🦶', cat:'Skin'},
+  {id:'s11',name:'Bridal Combo',price:5000, emoji:'👰', cat:'Combo'},
+  {id:'s12',name:'Premium Spa', price:2500, emoji:'🧖', cat:'Combo'},
+];
+
+const SALES_TODAY = [
+  {time:'11:42 AM', name:'Priya Sharma',  items:'Haircut + Hair Spa', amt:1200, mode:'upi',  initials:'PS', color:'#7C3AED'},
+  {time:'11:18 AM', name:'Walk-in',       items:'Beard Style',         amt:250,  mode:'cash', initials:'WI', color:'#94A3B8'},
+  {time:'10:55 AM', name:'Rohan Mehta',   items:'Haircut',             amt:400,  mode:'upi',  initials:'RM', color:'#0891B2'},
+  {time:'10:30 AM', name:'Anjali Kumar',  items:'Facial + Threading',  amt:1500, mode:'card', initials:'AK', color:'#DB2777'},
+  {time:'10:05 AM', name:'Walk-in',       items:'Haircut',             amt:400,  mode:'cash', initials:'WI', color:'#94A3B8'},
+  {time:'09:42 AM', name:'Vikram Singh',  items:'Hair Color',          amt:1500, mode:'upi',  initials:'VS', color:'#16A34A'},
+  {time:'09:18 AM', name:'Neha Gupta',    items:'Manicure + Pedicure', amt:900,  mode:'card', initials:'NG', color:'#9333EA'},
+  {time:'08:50 AM', name:'Walk-in',       items:'Shaving',             amt:150,  mode:'cash', initials:'WI', color:'#94A3B8'},
+  {time:'08:30 AM', name:'Karan Mehra',   items:'Haircut + Beard',     amt:550,  mode:'upi',  initials:'KM', color:'#EA580C'},
+];
+
+const CUSTOMERS = [
+  {name:'Priya Sharma',   phone:'+91 98765 43210', visits:12, spent:14400, last:'3d ago',  tag:'loyal',  initials:'PS', color:'#7C3AED'},
+  {name:'Rohan Mehta',    phone:'+91 98123 45678', visits:8,  spent:6200,  last:'1w ago',  tag:'repeat', initials:'RM', color:'#0891B2'},
+  {name:'Anjali Kumar',   phone:'+91 99876 12340', visits:6,  spent:4800,  last:'2w ago',  tag:'repeat', initials:'AK', color:'#DB2777'},
+  {name:'Vikram Singh',   phone:'+91 88765 43210', visits:4,  spent:3600,  last:'3w ago',  tag:'repeat', initials:'VS', color:'#16A34A'},
+  {name:'Neha Gupta',     phone:'+91 97654 32109', visits:2,  spent:1800,  last:'1w ago',  tag:'new',    initials:'NG', color:'#9333EA'},
+  {name:'Karan Mehra',    phone:'+91 96543 21098', visits:3,  spent:1650,  last:'5d ago',  tag:'new',    initials:'KM', color:'#EA580C'},
+  {name:'Sneha Iyer',     phone:'+91 95432 10987', visits:1,  spent:800,   last:'2d ago',  tag:'new',    initials:'SI', color:'#0EA5E9'},
+  {name:'Amit Joshi',     phone:'+91 94321 09876', visits:7,  spent:5200,  last:'4d ago',  tag:'repeat', initials:'AJ', color:'#DC2626'},
+];
+
+const STAFF = [
+  {name:'Vikash Kumar',  role:'Sr. Stylist',    services:12, revenue:3800, commission:570, initials:'VK', color:'#7C3AED'},
+  {name:'Ravi Sharma',   role:'Stylist',        services:8,  revenue:2100, commission:315, initials:'RS', color:'#0891B2'},
+  {name:'Pooja Yadav',   role:'Beautician',     services:4,  revenue:950,  commission:143, initials:'PY', color:'#DB2777'},
+];
+
+const APPTS = [
+  {time:'10:00', name:'Priya Sharma',  svc:'Haircut + Spa', staff:'Vikash', type:'booked'},
+  {time:'11:00', name:'Walk-in',       svc:'Beard Style',   staff:'Ravi',   type:'walkin'},
+  {time:'12:30', name:'Rohan Mehta',   svc:'Haircut',       staff:'Vikash', type:'booked'},
+  {time:'02:30', name:'Anjali Kumar',  svc:'Facial',        staff:'Pooja',  type:'booked'},
+  {time:'04:00', name:'Karan Mehra',   svc:'Hair Color',    staff:'Vikash', type:'booked'},
+  {time:'05:30', name:'Walk-in',       svc:'Shaving',       staff:'Ravi',   type:'walkin'},
+  {time:'06:00', name:'Neha Gupta',    svc:'Manicure',      staff:'Pooja',  type:'booked'},
+  {time:'07:30', name:'Sneha Iyer',    svc:'Bridal Trial',  staff:'Pooja',  type:'booked'},
+];
+
+const EXPENSES = [
+  {date:'Today',   cat:'Supplies',  desc:'Hair color stock',     amt:1200, emoji:'📦', clr:'#D1FAE5'},
+  {date:'24 May',  cat:'Utilities', desc:'Electricity bill',     amt:2800, emoji:'⚡', clr:'#FCE7F3'},
+  {date:'22 May',  cat:'Salary',    desc:'Vikash · advance',     amt:5000, emoji:'👤', clr:'#DBEAFE'},
+  {date:'20 May',  cat:'Supplies',  desc:'Towels & equipment',   amt:2000, emoji:'📦', clr:'#D1FAE5'},
+  {date:'15 May',  cat:'Rent',      desc:'May 2025 shop rent',   amt:15000, emoji:'🏠', clr:'#FEF3C7'},
+  {date:'14 May',  cat:'Salary',    desc:'Ravi · monthly',       amt:9000, emoji:'👤', clr:'#DBEAFE'},
+  {date:'14 May',  cat:'Salary',    desc:'Pooja · monthly',      amt:8000, emoji:'👤', clr:'#DBEAFE'},
+];
+
+const EXP_RANGES = {
+  today: {amt:1200, sub:'1 expense logged',     deltaTxt:'',                deltaClr:''},
+  week:  {amt:5000, sub:'4 expenses · 4 days',  deltaTxt:'↓ 12% vs last',   deltaClr:'#7C2D12'},
+  month: {amt:43200,sub:'7 expenses · this month',deltaTxt:'↓ 8% vs last',  deltaClr:'#7C2D12'},
+  year:  {amt:486400,sub:'92 expenses · 2025',  deltaTxt:'↑ 18% vs last yr',deltaClr:'#7C2D12'},
+};
+
+const INVENTORY = [
+  {name:'L\'Oréal Hair Color · Brown', stock:14, unit:'bottles', value:4200, status:'ok',  emoji:'🎨'},
+  {name:'Schwarzkopf Shampoo · 1L',    stock:8,  unit:'bottles', value:3200, status:'ok',  emoji:'🧴'},
+  {name:'Hair Spa Cream · Pro',        stock:3,  unit:'tubs',    value:2400, status:'low', emoji:'💆'},
+  {name:'Disposable Razors',           stock:2,  unit:'packs',   value:240,  status:'low', emoji:'🪒'},
+  {name:'Cotton Towels',               stock:18, unit:'pcs',     value:1800, status:'ok',  emoji:'🏷️'},
+  {name:'Threading Thread',            stock:0,  unit:'spools',  value:0,    status:'out', emoji:'🪡'},
+  {name:'Facial Kit · Lotus',          stock:6,  unit:'kits',    value:3000, status:'ok',  emoji:'🧖'},
+  {name:'Beard Oil · 50ml',            stock:4,  unit:'bottles', value:1200, status:'low', emoji:'🧔'},
+  {name:'Hair Gel · Strong Hold',      stock:11, unit:'tubs',    value:2200, status:'ok',  emoji:'💇'},
+  {name:'Henna Powder · Premium',      stock:0,  unit:'kg',      value:0,    status:'out', emoji:'🌿'},
+];
+
+const PAY_ICON = {
+  cash:{bg:'#D1FAE5',fg:'#065F46',label:'Cash'},
+  upi: {bg:'#FEF3C7',fg:'#92400E',label:'UPI'},
+  card:{bg:'#DBEAFE',fg:'#1E40AF',label:'Card'},
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// APP STATE & ROUTER
+// ═══════════════════════════════════════════════════════════════════
+const App = {
+  current: 'home',
+  vertical: 'salon',
+  cart: {},
+
+  nav(page){
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('pg-' + page);
+    if (!target){ this.toast('Page not found'); return; }
+    target.classList.add('active');
+    this.current = page;
+
+    // Update bottom nav
+    const navMap = {home:'home', sales:'sales', customers:'customers', more:'more'};
+    document.querySelectorAll('.nav-tab[data-tab]').forEach(t => t.classList.remove('active'));
+    if (navMap[page]) {
+      const navBtn = document.querySelector(`[data-tab="${navMap[page]}"]`);
+      if (navBtn) navBtn.classList.add('active');
+    }
+
+    // Hide/show bottom nav for onboarding
+    document.querySelector('.nav').style.display = (page === 'onboarding') ? 'none' : 'grid';
+
+    // Lazy-render
+    if (page === 'sales' && !this._renderedSales) this.renderSales();
+    if (page === 'customers' && !this._renderedCust) this.renderCustomers();
+    if (page === 'customer-detail' && !this._renderedHist) this.renderCustomerHistory();
+    if (page === 'addsale') this.renderServiceGrid();
+    if (page === 'staff' && !this._renderedStaff) this.renderStaff();
+    if (page === 'appointments' && !this._renderedAppts) { this.renderCalStrip(); this.renderAppts(); }
+    if (page === 'expenses') this.renderExpenseSummary();
+    if (page === 'expenses' && !this._renderedExp) this.renderExpenses();
+    if (page === 'catalog' && !this._renderedCat) this.renderCatalog();
+    if (page === 'inventory' && !this._renderedInv) this.renderInventory();
+    if (page === 'add-expense') this.resetForm('add-expense');
+    if (page === 'add-staff') this.resetForm('add-staff');
+    if (page === 'add-appointment') this.resetForm('add-appointment');
+
+    window.scrollTo({top:0, behavior:'smooth'});
+  },
+
+  toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(this._tt);
+    this._tt = setTimeout(()=>t.classList.remove('show'), 2200);
+  },
+
+  chipSelect(el){
+    el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  },
+
+  tabSelect(el){
+    el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  },
+
+  vertSelect(el, v){
+    el.parentElement.querySelectorAll('.vert-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    this.vertical = v;
+  },
+
+  payMethod(el, m){
+    el.parentElement.querySelectorAll('.vert-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    this.paymentMode = m;
+  },
+
+  // ── SALES LIST ──
+  renderSales(){
+    const html = SALES_TODAY.map(s => `
+      <div class="li" onclick="App.toast('Bill detail · ${s.name}')">
+        <div class="li-avatar" style="background:linear-gradient(135deg, ${s.color}, ${this.darken(s.color)})">${s.initials}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${s.name}</div><div class="li-amt">₹${s.amt.toLocaleString('en-IN')}</div></div>
+          <div class="li-sub">
+            <span>${s.time}</span> · <span>${s.items}</span>
+            <span class="li-tag" style="background:${PAY_ICON[s.mode].bg};color:${PAY_ICON[s.mode].fg};margin-left:auto">${PAY_ICON[s.mode].label}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('sales-list').innerHTML = html;
+    this._renderedSales = true;
+  },
+
+  // ── CUSTOMERS LIST ──
+  renderCustomers(){
+    const html = CUSTOMERS.map(c => `
+      <div class="li" onclick="App.nav('customer-detail')">
+        <div class="li-avatar" style="background:linear-gradient(135deg, ${c.color}, ${this.darken(c.color)})">${c.initials}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${c.name}</div><div class="li-amt">₹${c.spent.toLocaleString('en-IN')}</div></div>
+          <div class="li-sub">
+            <span>${c.visits} visits · ${c.last}</span>
+            <span class="li-tag tag-${c.tag}" style="margin-left:auto">${c.tag === 'loyal' ? '⭐ Loyal' : c.tag}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('customers-list').innerHTML = html;
+    this._renderedCust = true;
+  },
+
+  // ── CUSTOMER HISTORY ──
+  renderCustomerHistory(){
+    const visits = [
+      {date:'21 May',  svc:'Haircut + Hair Spa',  amt:1200, mode:'upi'},
+      {date:'05 May',  svc:'Haircut',             amt:400,  mode:'upi'},
+      {date:'21 Apr',  svc:'Facial + Haircut',    amt:1200, mode:'card'},
+      {date:'06 Apr',  svc:'Hair Color',          amt:1500, mode:'upi'},
+      {date:'18 Mar',  svc:'Haircut',             amt:400,  mode:'cash'},
+    ];
+    const html = visits.map(v => `
+      <div class="li" onclick="App.toast('Bill detail')">
+        <div class="li-avatar" style="background:linear-gradient(135deg,#A78BFA,#7C3AED);font-size:11px">${v.date.split(' ')[0]}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${v.svc}</div><div class="li-amt">₹${v.amt.toLocaleString('en-IN')}</div></div>
+          <div class="li-sub">
+            <span>${v.date}</span>
+            <span class="li-tag" style="background:${PAY_ICON[v.mode].bg};color:${PAY_ICON[v.mode].fg};margin-left:auto">${PAY_ICON[v.mode].label}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('cust-history').innerHTML = html;
+    this._renderedHist = true;
+  },
+
+  // ── SERVICE GRID (Add Sale) ──
+  renderServiceGrid(){
+    const html = SERVICES.map(s => {
+      const qty = this.cart[s.id] || 0;
+      return `
+      <button class="svc-tile ${qty ? 'in-cart' : ''}" onclick="App.addToCart('${s.id}')">
+        ${qty ? `<span class="svc-tile-qty">${qty}</span>` : ''}
+        <div class="svc-tile-emoji">${s.emoji}</div>
+        <div class="svc-tile-name">${s.name}</div>
+        <div class="svc-tile-price">₹${s.price}</div>
+      </button>`;
+    }).join('');
+    document.getElementById('svc-grid').innerHTML = html;
+    this.updateCartSummary();
+  },
+
+  addToCart(id){
+    this.cart[id] = (this.cart[id] || 0) + 1;
+    this.renderServiceGrid();
+    if (navigator.vibrate) navigator.vibrate(10);
+  },
+
+  cancelSale(){
+    this.cart = {};
+    this.nav('home');
+  },
+
+  cartTotal(){
+    let total = 0, count = 0;
+    Object.entries(this.cart).forEach(([id, q]) => {
+      const s = SERVICES.find(x => x.id === id);
+      if (s){ total += s.price * q; count += q; }
+    });
+    return {total, count};
+  },
+
+  updateCartSummary(){
+    const {total, count} = this.cartTotal();
+    const summary = document.getElementById('cart-summary');
+    if (count > 0){
+      summary.classList.add('show');
+      document.getElementById('cart-count').textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+      document.getElementById('cart-total').textContent = `₹${total.toLocaleString('en-IN')}`;
+    } else {
+      summary.classList.remove('show');
+    }
+  },
+
+  checkout(){
+    const {total, count} = this.cartTotal();
+    if (count === 0){ this.toast('Cart is empty'); return; }
+    // Render bill
+    const items = Object.entries(this.cart).map(([id, q]) => {
+      const s = SERVICES.find(x => x.id === id);
+      return `<div class="bill-line"><span class="l">${s.name} ${q > 1 ? `× ${q}` : ''}</span><span class="r">₹${(s.price * q).toLocaleString('en-IN')}</span></div>`;
+    }).join('');
+    document.getElementById('checkout-items').innerHTML = items;
+    this._cartSubtotal = total;
+    this._discount = 0;
+    this._gstRate = 0;
+    document.getElementById('checkout-subtotal').textContent = `₹${total.toLocaleString('en-IN')}`;
+    document.getElementById('checkout-total').textContent = `₹${total.toLocaleString('en-IN')}`;
+    document.getElementById('discount-input').value = '';
+    document.getElementById('bill-notes').value = '';
+    document.getElementById('checkout-discount-row').style.display = 'none';
+    document.getElementById('checkout-gst-row').style.display = 'none';
+    // Reset GST pills
+    document.querySelectorAll('.gst-pill').forEach((p, i) => p.classList.toggle('active', i === 0));
+    this.nav('checkout');
+  },
+
+  recalcTotal(){
+    const subtotal = this._cartSubtotal || 0;
+    const discountInput = parseFloat(document.getElementById('discount-input').value) || 0;
+    const discount = Math.min(discountInput, subtotal);
+    this._discount = discount;
+    const afterDiscount = subtotal - discount;
+    const gst = afterDiscount * (this._gstRate / 100);
+    const total = afterDiscount + gst;
+    // Update DOM
+    const dRow = document.getElementById('checkout-discount-row');
+    if (discount > 0){
+      dRow.style.display = 'flex';
+      document.getElementById('checkout-discount-display').textContent = `−₹${discount.toLocaleString('en-IN')}`;
+    } else {
+      dRow.style.display = 'none';
+    }
+    const gRow = document.getElementById('checkout-gst-row');
+    if (this._gstRate > 0){
+      gRow.style.display = 'flex';
+      document.getElementById('checkout-gst-rate').textContent = `(${this._gstRate}%)`;
+      document.getElementById('checkout-gst-amt').textContent = `₹${gst.toFixed(0).toLocaleString('en-IN')}`;
+    } else {
+      gRow.style.display = 'none';
+    }
+    document.getElementById('checkout-total').textContent = `₹${total.toFixed(0).toLocaleString('en-IN')}`;
+  },
+
+  gstSelect(el, rate){
+    el.parentElement.querySelectorAll('.gst-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    this._gstRate = rate;
+    this.recalcTotal();
+  },
+
+  completeSale(){
+    this.toast('✓ Bill saved · WhatsApp sent');
+    this.cart = {};
+    setTimeout(()=> this.nav('home'), 1200);
+  },
+
+  // ── INVENTORY ──
+  renderInventory(){
+    const html = INVENTORY.map(it => {
+      const stockBadge = it.status === 'out' ? `<span class="inv-stock stock-out">Out</span>`
+                       : it.status === 'low' ? `<span class="inv-stock stock-low">Low · ${it.stock}</span>`
+                       : `<span class="inv-stock stock-ok">${it.stock} ${it.unit}</span>`;
+      return `
+      <div class="li" onclick="App.toast('Edit ${it.name}')">
+        <div class="li-avatar" style="background:var(--p-100);color:var(--p);font-size:20px">${it.emoji}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${it.name}</div><div class="li-amt" style="font-size:12.5px;color:var(--t2)">₹${it.value.toLocaleString('en-IN')}</div></div>
+          <div class="li-sub"><span>${it.unit}</span>${stockBadge ? `<span style="margin-left:auto"></span>${stockBadge}` : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('inv-list').innerHTML = html + '<div style="height:88px"></div>';
+    this._renderedInv = true;
+  },
+
+  // ── EXPENSE SUMMARY (responds to range chips) ──
+  renderExpenseSummary(){
+    const range = this._expRange || 'month';
+    const data = EXP_RANGES[range];
+    const labelMap = {today:"Today's expenses", week:"This week's expenses", month:"This month's expenses", year:"This year's expenses"};
+    document.getElementById('exp-summary-card').innerHTML = `
+      <div class="exp-summary-l">
+        <div class="exp-summary-lbl">${labelMap[range]}</div>
+        <div class="exp-summary-val">₹${data.amt.toLocaleString('en-IN')}</div>
+        <div class="exp-summary-sub">${data.deltaTxt || data.sub}</div>
+      </div>
+      <div class="exp-summary-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+    `;
+  },
+
+  expRange(el, range){
+    el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    this._expRange = range;
+    this.renderExpenseSummary();
+  },
+
+  // ── PEAK HOURS TOGGLE ──
+  peakToggle(el, when){
+    el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    // Adjust bar heights for visual feedback
+    const bars = document.querySelectorAll('.peak-bars .bar');
+    if (bars.length === 0) return;
+    if (when === 'yest'){
+      const yestHeights = [22, 30, 42, 50, 70, 48];
+      bars.forEach((b, i) => { if (yestHeights[i] !== undefined) b.style.height = yestHeights[i] + '%'; });
+      const pill = document.querySelector('.peak-pill');
+      if (pill) pill.style.opacity = '.4';
+    } else {
+      const todayHeights = [18, 36, 50, 58, 88, 56];
+      bars.forEach((b, i) => { if (todayHeights[i] !== undefined) b.style.height = todayHeights[i] + '%'; });
+      const pill = document.querySelector('.peak-pill');
+      if (pill) pill.style.opacity = '1';
+    }
+  },
+
+  // ── FORM HELPERS ──
+  catSelect(el){
+    el.parentElement.querySelectorAll('.cat-tile').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  },
+
+  resetForm(formId){
+    // Just scroll to top — keep simple
+    window.scrollTo({top:0, behavior:'instant'});
+  },
+
+  // ── SAVE HANDLERS ──
+  saveExpense(){
+    const amt = document.getElementById('exp-amount').value;
+    const desc = document.getElementById('exp-desc').value;
+    if (!amt || parseFloat(amt) <= 0){ this.toast('Enter a valid amount'); return; }
+    this.toast(`✓ ₹${parseFloat(amt).toLocaleString('en-IN')} expense saved`);
+    setTimeout(()=> this.nav('expenses'), 1000);
+  },
+
+  saveStaff(){
+    const name = document.getElementById('staff-name').value;
+    if (!name.trim()){ this.toast('Enter staff name'); return; }
+    this.toast(`✓ ${name} added to your team`);
+    setTimeout(()=> this.nav('staff'), 1000);
+  },
+
+  saveAppointment(){
+    const cust = document.getElementById('appt-customer').value;
+    if (!cust.trim()){ this.toast('Add a customer'); return; }
+    this.toast(`✓ Booked · WhatsApp confirmation sent`);
+    setTimeout(()=> this.nav('appointments'), 1100);
+  },
+
+  // ── STAFF ──
+  renderStaff(){
+    const html = STAFF.map((s, i) => `
+      <div class="li" onclick="App.toast('${s.name} detail')">
+        <div class="rank-badge rank-${i+1 <= 3 ? i+1 : 'n'}">${i+1}</div>
+        <div class="li-avatar" style="background:linear-gradient(135deg, ${s.color}, ${this.darken(s.color)})">${s.initials}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${s.name}</div><div class="li-amt">₹${s.revenue.toLocaleString('en-IN')}</div></div>
+          <div class="li-sub">
+            <span>${s.role} · ${s.services} services</span>
+            <span class="li-tag" style="background:#FEF3C7;color:#92400E;margin-left:auto">+₹${s.commission} commission</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('staff-list').innerHTML = html;
+    this._renderedStaff = true;
+  },
+
+  // ── APPOINTMENTS ──
+  renderCalStrip(){
+    const today = new Date(2025, 4, 24); // 24 May 2025
+    const days = [];
+    for (let i = -2; i <= 4; i++){
+      const d = new Date(today); d.setDate(d.getDate() + i);
+      days.push({
+        name: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()],
+        num:  d.getDate(),
+        active: i === 0,
+      });
+    }
+    document.getElementById('cal-strip').innerHTML = days.map(d =>
+      `<button class="cal-day ${d.active ? 'active' : ''}" onclick="App.calDay(this)"><div class="cal-day-name">${d.name}</div><div class="cal-day-num">${d.num}</div></button>`
+    ).join('');
+  },
+
+  calDay(el){
+    el.parentElement.querySelectorAll('.cal-day').forEach(d => d.classList.remove('active'));
+    el.classList.add('active');
+  },
+
+  renderAppts(){
+    const html = APPTS.map(a => `
+      <div class="appt">
+        <div class="appt-time">${a.time}</div>
+        <div class="appt-card ${a.type}" onclick="App.toast('Edit appointment')">
+          <div class="appt-name">${a.name}</div>
+          <div class="appt-svc">${a.svc}</div>
+          <div class="appt-meta">
+            <span>👤 ${a.staff}</span>
+            <span style="color:${a.type === 'walkin' ? '#0F766E' : 'var(--p)'}">${a.type === 'walkin' ? 'Walk-in' : 'Booked'}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('appt-list').innerHTML = html + '<div style="height:18px"></div>';
+    this._renderedAppts = true;
+  },
+
+  // ── EXPENSES ──
+  renderExpenses(){
+    const html = EXPENSES.map(e => `
+      <div class="li" onclick="App.toast('Edit expense')">
+        <div class="li-avatar" style="background:${e.clr};color:#0F172A;font-size:18px">${e.emoji}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${e.desc}</div><div class="li-amt" style="color:var(--danger)">−₹${e.amt.toLocaleString('en-IN')}</div></div>
+          <div class="li-sub"><span>${e.date}</span> · <span style="font-weight:700">${e.cat}</span></div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('exp-list').innerHTML = html + '<div style="height:88px"></div>';
+    this._renderedExp = true;
+  },
+
+  // ── CATALOG ──
+  renderCatalog(){
+    const html = SERVICES.map(s => `
+      <div class="li" onclick="App.toast('Edit ${s.name}')">
+        <div class="li-avatar" style="background:var(--p-100);color:var(--p);font-size:20px">${s.emoji}</div>
+        <div class="li-meta">
+          <div class="li-row"><div class="li-name">${s.name}</div><div class="li-amt">₹${s.price}</div></div>
+          <div class="li-sub"><span>${s.cat}</span></div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3)"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    `).join('');
+    document.getElementById('catalog-list').innerHTML = html + '<div style="height:18px"></div>';
+    this._renderedCat = true;
+  },
+
+  // Utility: darken hex by ~15% for gradient endpoint
+  darken(hex){
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, ((n >> 16) & 255) - 40);
+    const g = Math.max(0, ((n >> 8) & 255) - 40);
+    const b = Math.max(0, (n & 255) - 40);
+    return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+  },
+};
+
+// Initial render — for non-active pages, prepare lazy data
+window.addEventListener('DOMContentLoaded', () => {
+  // Pre-render the service grid since checkout depends on it
+});
+</script>
+</body>
+</html>
