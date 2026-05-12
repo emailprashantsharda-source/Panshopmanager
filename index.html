@@ -10,7 +10,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_4_login_compact';
+    window.HISAABNOW_BUILD = 'v33_3_touch_lock';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -31458,99 +31458,6 @@ button:not(:disabled){ user-select:none }
   letter-spacing:-.005em;
 }
 .ls-proof-top .ls-proof-text b{ color:var(--t1, #0A0A0A); font-weight:800 }
-
-/* ----- VERTICAL COMPRESSION · fit legal links above keyboard ----- */
-/* Tighten shell padding */
-.ls-root .ls-shell{
-  padding:24px 22px 18px !important;
-}
-/* Compact brand block */
-.ls-root .ls-brand{
-  margin-bottom:14px !important;
-}
-.ls-root .ls-logo-frame{
-  width:68px !important; height:68px !important;
-  margin-bottom:10px !important;
-}
-.ls-root .ls-brand-mark{
-  width:38px !important; height:38px !important;
-}
-.ls-root .ls-brand-name{
-  font-size:24px !important;
-}
-/* Compact hero headline */
-.ls-root .ls-hero{
-  margin-bottom:16px !important;
-}
-.ls-root .ls-hero-title{
-  font-size:23px !important;
-  line-height:1.2 !important;
-}
-.ls-root .ls-hero-title .accent{
-  font-size:24px !important;
-}
-/* Tighter proof pill spacing */
-.ls-proof-top{
-  margin:-2px 0 14px !important;
-}
-/* Drastically reduce gap between form and USPs */
-.ls-root .ls-form{
-  margin-bottom:14px !important;
-}
-.ls-root .ls-below{
-  margin-top:6px !important;
-  gap:10px !important;
-}
-/* Tighter USP pills */
-.ls-root .ls-usps{
-  gap:6px !important;
-}
-.ls-root .ls-usp{
-  padding:9px 12px !important;
-  gap:11px !important;
-  border-radius:12px !important;
-}
-.ls-root .ls-usp-emoji{
-  width:32px !important; height:32px !important;
-  font-size:16px !important;
-  border-radius:9px !important;
-}
-.ls-root .ls-usp-title{
-  font-size:13px !important;
-  line-height:1.2 !important;
-}
-.ls-root .ls-usp-sub{
-  font-size:11px !important;
-  line-height:1.25 !important;
-}
-/* Compact legal block (Terms / Privacy / reCAPTCHA) */
-.ls-root .ls-legal{
-  font-size:11px !important;
-  line-height:1.5 !important;
-  margin-top:2px !important;
-}
-.ls-root .ls-legal br + br{ display:none !important }
-.ls-root .ls-legal span{
-  display:inline-block;
-  margin-top:4px !important;
-  font-size:10px !important;
-  line-height:1.45 !important;
-}
-/* OTP section (when shown) — keep tight too */
-.ls-root .ls-otp-section{ margin-top:10px !important }
-.ls-root .ls-otp-help{ margin-top:7px !important; font-size:11.5px !important }
-
-/* Tighter input height to save more space if needed */
-.ls-root .hn-li-input{
-  height:50px !important;
-}
-.ls-root .hn-li-btn{
-  height:50px !important;
-  margin-top:10px !important;
-}
-.ls-root .ls-section-label{
-  margin-bottom:6px !important;
-}
 
 /* Defensive: lock body scroll when login is visible (modern browsers) */
 html:has(#login-screen:not([style*="display:none"])),
