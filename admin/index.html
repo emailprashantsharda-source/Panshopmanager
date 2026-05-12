@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>hisaabnow Admin Panel</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="theme-color" content="#2A0800">
+<!-- BUILD: admin-v3.0 — 2026-05-12 — multi-shop ready, Phase A+B enhancements -->
+<title>hisaabnow Admin Panel v3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -506,6 +511,214 @@
   }
   .modal-cancel { background: #f3f4f6; color: #374151; }
   .modal-confirm { background: #16a34a; color: #fff; }
+
+  /* ════════════════════════════════════════════════════════════════
+     v3 ENHANCEMENTS — Phase A + B
+     ════════════════════════════════════════════════════════════════ */
+
+  /* Sticky tabs */
+  .tabs.sticky {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #f5f4f0;
+    padding: 8px 0;
+    margin-bottom: 14px;
+    border-radius: 0;
+    border: none;
+    width: 100%;
+  }
+  .tabs.sticky .tab-btn { background: #fff; }
+  .tabs.sticky .tab-btn.active { background: #2A0800; color: #fff; }
+
+  /* Stat card deltas */
+  .stat-card .delta {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
+    display: inline-block;
+  }
+  .stat-card .delta.up { color: #16a34a; }
+  .stat-card .delta.down { color: #dc2626; }
+  .stat-card .delta.flat { color: #9ca3af; }
+
+  /* Last refreshed timestamp */
+  .last-refreshed {
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 500;
+    margin-left: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* Anomaly banner */
+  .anomaly-banner {
+    background: linear-gradient(90deg, #fef3c7, #fef9e7);
+    border-left: 3px solid #f59e0b;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #78350f;
+    display: none;
+  }
+  .anomaly-banner.critical {
+    background: linear-gradient(90deg, #fef2f2, #fee2e2);
+    border-left-color: #dc2626;
+    color: #991b1b;
+  }
+  .anomaly-banner.show { display: block; }
+  .anomaly-banner b { color: inherit; }
+
+  /* Tier badge in lists */
+  .tier-mini {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-left: 4px;
+  }
+
+  /* Age badge for pending */
+  .age-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  .age-badge.fresh { background: #f0fdf4; color: #166534; }
+  .age-badge.warning { background: #fef3c7; color: #92400e; }
+  .age-badge.critical { background: #fef2f2; color: #991b1b; }
+
+  /* Refresh-all button */
+  .refresh-all-btn {
+    background: #2A0800;
+    color: #fff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: auto;
+    transition: background 0.15s;
+  }
+  .refresh-all-btn:hover { background: #1a0500; }
+  .refresh-all-btn:disabled { background: #6b7280; cursor: not-allowed; }
+
+  /* Export button */
+  .export-btn {
+    background: #0891b2;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 6px;
+  }
+  .export-btn:hover { background: #0e7490; }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: #6b7280;
+  }
+  .pagination button {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    padding: 6px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #374151;
+  }
+  .pagination button:hover:not(:disabled) { background: #f3f4f6; }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pagination .pg-info { padding: 0 8px; font-weight: 600; }
+
+  /* Skeleton loading */
+  .skeleton {
+    background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.4s ease-in-out infinite;
+    border-radius: 6px;
+  }
+  @keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .skeleton-row {
+    height: 14px;
+    margin: 8px 0;
+  }
+
+  /* AI Insight v3 sections */
+  .ai-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(194, 65, 12, 0.25);
+  }
+  .ai-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+  .ai-section-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #9a3412;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  /* Bulk action bar */
+  .bulk-bar {
+    background: #FF6B35;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .bulk-bar.show { display: flex; }
+  .bulk-bar button {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .bulk-bar button:hover { background: rgba(255,255,255,0.3); }
+
+  /* Mobile responsive */
+  @media (max-width: 640px) {
+    .container { padding: 12px 10px 60px; }
+    .header h1 { font-size: 16px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-card .value { font-size: 18px; }
+    .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { white-space: nowrap; padding: 8px 12px; font-size: 12px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar input, .toolbar select { width: 100%; }
+    th, td { padding: 8px; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -533,22 +746,28 @@
   <div class="container">
     <div class="header">
       <div>
-        <h1>hisaabnow Admin <span class="badge">v2</span></h1>
+        <h1>hisaabnow Admin <span class="badge">v3</span></h1>
         <div style="font-size:11px;opacity:0.7;margin-top:3px" id="admin-phone-display"></div>
       </div>
-      <button class="logout-btn" onclick="logout()">Logout</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="refresh-all-btn" id="refresh-all-btn" onclick="refreshAll()">🔄 Refresh All</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
     </div>
 
+    <!-- Anomaly banner — appears only when conditions met -->
+    <div class="anomaly-banner" id="anomaly-banner"></div>
+
     <div class="stats-grid" id="stats-grid">
-      <div class="stat-card"><div class="label">Total Signups</div><div class="value" id="st-total">—</div><div class="sublabel">All time</div></div>
-      <div class="stat-card green"><div class="label">Active Today</div><div class="value" id="st-active-today">—</div><div class="sublabel">Last 24h</div></div>
-      <div class="stat-card blue"><div class="label">Active (7-day)</div><div class="value" id="st-active-week">—</div><div class="sublabel">Last 7 days</div></div>
+      <div class="stat-card"><div class="label">Total Signups</div><div class="value" id="st-total">—</div><div class="sublabel" id="st-total-sub">All time</div></div>
+      <div class="stat-card green"><div class="label">Active Today</div><div class="value" id="st-active-today">—</div><div class="sublabel" id="st-active-today-sub">Last 24h</div></div>
+      <div class="stat-card blue"><div class="label">Active (7-day)</div><div class="value" id="st-active-week">—</div><div class="sublabel" id="st-active-week-sub">Last 7 days</div></div>
       <div class="stat-card purple"><div class="label">Paying Users</div><div class="value" id="st-paid">—</div><div class="sublabel" id="st-paid-split">—</div></div>
-      <div class="stat-card yellow"><div class="label">Est. MRR</div><div class="value" id="st-mrr">—</div><div class="sublabel">Active subs × plan</div></div>
+      <div class="stat-card yellow"><div class="label">Est. MRR</div><div class="value" id="st-mrr">—</div><div class="sublabel" id="st-mrr-sub">Active subs × plan</div></div>
       <div class="stat-card red"><div class="label">Pending</div><div class="value" id="st-pending">—</div><div class="sublabel" id="st-pending-val">₹0 value</div></div>
     </div>
 
-    <div class="tabs">
+    <div class="tabs sticky">
       <button class="tab-btn active" id="tab-insights" onclick="switchTab('insights')">📊 Insights</button>
       <button class="tab-btn" id="tab-funnel" onclick="switchTab('funnel')">📈 Funnel</button>
       <button class="tab-btn" id="tab-users" onclick="switchTab('users')">👥 All Users</button>
@@ -561,7 +780,7 @@
       <!-- AI Business Summary -->
       <div class="panel-card">
         <h3>
-          <span>🧠 AI Business Insight</span>
+          <span>🧠 AI Business Insight<span class="last-refreshed" id="insight-refreshed"></span></span>
           <button class="refresh-btn" id="ai-regen-btn" onclick="loadInsights(true)">✨ Regenerate</button>
         </h3>
         <div id="ai-insight-box" class="ai-insight-box">
@@ -572,7 +791,7 @@
       <!-- Revenue Timeline -->
       <div class="panel-card">
         <h3>
-          <span>💰 Revenue Timeline</span>
+          <span>💰 Revenue Timeline<span class="last-refreshed" id="timeline-refreshed"></span></span>
           <div style="display:flex;gap:6px">
             <button class="chip-btn" data-days="7" onclick="loadTimeline(7)">7d</button>
             <button class="chip-btn active" data-days="30" onclick="loadTimeline(30)">30d</button>
@@ -586,7 +805,7 @@
       <!-- Conversion Funnel -->
       <div class="panel-card">
         <h3>
-          <span>🎯 Conversion Funnel</span>
+          <span>🎯 Conversion Funnel<span class="last-refreshed" id="funnel-refreshed"></span></span>
           <button class="refresh-btn" onclick="loadFunnel()">🔄 Refresh</button>
         </h3>
         <div id="funnel-box"><div class="loading">Building funnel...</div></div>
@@ -596,7 +815,7 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:14px">
         <div class="panel-card" style="margin-bottom:0">
           <h3>
-            <span>🏆 Top Shops</span>
+            <span>🏆 Top Shops<span class="last-refreshed" id="topshops-refreshed"></span></span>
             <select id="top-sort" onchange="loadTopShops()" style="margin:0;padding:6px 10px;width:auto;font-size:12px">
               <option value="bills">By Bills</option>
               <option value="revenue">By Revenue</option>
@@ -606,7 +825,7 @@
         </div>
 
         <div class="panel-card" style="margin-bottom:0">
-          <h3><span>⚠️ At-Risk Shops</span></h3>
+          <h3><span>⚠️ At-Risk Shops<span class="last-refreshed" id="atrisk-refreshed"></span></span></h3>
           <div id="at-risk-list"><div class="loading">Loading...</div></div>
         </div>
       </div>
@@ -614,16 +833,15 @@
       <!-- Upgrade Candidates -->
       <div class="panel-card" style="margin-top:14px">
         <h3>
-          <span>💎 Upgrade Candidates</span>
-          <span style="font-weight:500;color:#9ca3af;font-size:13px" id="candidates-count">(0)</span>
+          <span>💎 Upgrade Candidates <span style="font-weight:500;color:#9ca3af;font-size:13px" id="candidates-count">(0)</span><span class="last-refreshed" id="upgrade-refreshed"></span></span>
         </h3>
         <div id="upgrade-candidates-list"><div class="loading">Loading...</div></div>
       </div>
 
-      <!-- GA4 Website Traffic (Session 3a) -->
+      <!-- GA4 Website Traffic -->
       <div class="panel-card" style="margin-top:14px">
         <h3>
-          <span>🌐 Website Traffic <span style="font-weight:500;color:#9ca3af;font-size:12px">(last 30 days)</span></span>
+          <span>🌐 Website Traffic <span style="font-weight:500;color:#9ca3af;font-size:12px">(last 30 days)</span><span class="last-refreshed" id="ga4-refreshed"></span></span>
           <button class="refresh-btn" id="ga4-refresh-btn" onclick="loadGA4Overview(true)">🔄 Refresh</button>
         </h3>
         <div id="ga4-content">
@@ -659,17 +877,26 @@
     <div id="view-users" style="display:none">
       <div class="panel-card">
         <h3>
-          <span>All Users <span style="font-weight:500;color:#9ca3af;font-size:13px" id="users-count">(0)</span></span>
-          <button class="refresh-btn" onclick="loadAll()">🔄 Refresh</button>
+          <span>All Users <span style="font-weight:500;color:#9ca3af;font-size:13px" id="users-count">(0)</span><span class="last-refreshed" id="users-refreshed"></span></span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <button class="export-btn" onclick="exportUsersCSV()">📥 Export CSV</button>
+            <button class="refresh-btn" onclick="loadAll()">🔄 Refresh</button>
+          </span>
         </h3>
+        <div class="bulk-bar" id="bulk-bar">
+          <span><b id="bulk-count">0</b> selected</span>
+          <button onclick="bulkWhatsApp()">💬 WhatsApp All</button>
+          <button onclick="bulkExport()">📥 Export Selected</button>
+          <button onclick="clearBulkSelection()" style="margin-left:auto">✕ Clear</button>
+        </div>
         <div class="toolbar">
-          <input type="search" id="user-search" placeholder="🔍 Search by name, phone, shop..." oninput="renderUserTable()"/>
+          <input type="search" id="user-search" placeholder="🔍 Search by name, phone, shop..."/>
           <select id="user-filter-tier" onchange="renderUserTable()">
             <option value="">All Tiers</option>
             <option value="trial">Trial</option>
-            <option value="basic">Basic (₹10)</option>
-            <option value="pro">Pro (₹99)</option>
-            <option value="king">King Pro (₹499)</option>
+            <option value="basic">Basic (₹99)</option>
+            <option value="pro">Pro (₹149)</option>
+            <option value="king">King Pro (₹399)</option>
           </select>
           <select id="user-filter-status" onchange="renderUserTable()">
             <option value="">All Status</option>
@@ -677,12 +904,14 @@
             <option value="active-week">Active this week</option>
             <option value="inactive">Inactive (7+ days)</option>
             <option value="at-limit">At/near limit (80%+)</option>
+            <option value="no-bills">Never made a bill</option>
           </select>
         </div>
         <div class="table-wrap">
           <table id="users-table">
             <thead>
               <tr>
+                <th style="width:30px"><input type="checkbox" id="bulk-select-all" onclick="toggleBulkAll()" style="width:auto;margin:0"/></th>
                 <th data-sort="shopName">Shop Name</th>
                 <th data-sort="ownerName">Owner</th>
                 <th data-sort="phone">Phone</th>
@@ -691,14 +920,21 @@
                 <th data-sort="tier">Tier</th>
                 <th data-sort="subDaysLeft">Expiry</th>
                 <th data-sort="billsUsed">Bills (usage)</th>
+                <th data-sort="daysSinceLastBill">Last Bill</th>
+                <th data-sort="ltv">LTV</th>
                 <th data-sort="lastActiveAt">Last Active</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="users-tbody">
-              <tr><td colspan="10" class="loading">Loading users...</td></tr>
+              <tr><td colspan="13" class="loading">Loading users...</td></tr>
             </tbody>
           </table>
+        </div>
+        <div class="pagination" id="users-pagination" style="display:none">
+          <button onclick="changePage(-1)" id="pg-prev">← Prev</button>
+          <span class="pg-info" id="pg-info">Page 1</span>
+          <button onclick="changePage(1)" id="pg-next">Next →</button>
         </div>
       </div>
     </div>
@@ -793,9 +1029,9 @@
     <div class="modal-row">
       <label>Plan</label>
       <select id="act-plan">
-        <option value="basic">Basic — ₹10 — 30 days — 1,500 bills</option>
-        <option value="pro" selected>Pro — ₹99 — 30 days — 5,000 bills</option>
-        <option value="king">King Pro — ₹499 — 30 days — Unlimited</option>
+        <option value="basic">Basic — ₹99/mo or ₹990/yr — 1,500 bills</option>
+        <option value="pro" selected>Pro — ₹149/mo or ₹1,490/yr — 5,000 bills</option>
+        <option value="king">King Pro — ₹399/mo or ₹3,990/yr — Unlimited</option>
       </select>
     </div>
     <div class="modal-row">
@@ -854,6 +1090,63 @@
   let sortField = 'signupAt';
   let sortDir = 'desc';
 
+  // v3 state
+  let currentPage = 1;
+  const PAGE_SIZE = 50;
+  let bulkSelected = new Set();
+  const widgetTimestamps = {};
+  let autoRefreshInterval = null;
+
+  // localStorage cache for stale-while-revalidate
+  const CACHE_PREFIX = 'hisaabnow_admin_v3_';
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+
+  function cacheGet(key) {
+    try {
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if (!raw) return null;
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts > CACHE_TTL_MS) return null;
+      return data;
+    } catch (e) { return null; }
+  }
+  function cacheSet(key, data) {
+    try {
+      localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data }));
+    } catch (e) { /* quota exceeded, ignore */ }
+  }
+  function cacheClear() {
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
+    });
+  }
+
+  function markRefreshed(widgetId) {
+    widgetTimestamps[widgetId] = Date.now();
+    const el = document.getElementById(widgetId + '-refreshed');
+    if (el) el.textContent = '· just now';
+  }
+
+  // Update all "last refreshed" labels every 30s
+  setInterval(() => {
+    Object.entries(widgetTimestamps).forEach(([id, ts]) => {
+      const el = document.getElementById(id + '-refreshed');
+      if (el) {
+        const mins = Math.floor((Date.now() - ts) / 60000);
+        el.textContent = mins < 1 ? '· just now' : `· ${mins}m ago`;
+      }
+    });
+  }, 30000);
+
+  // Debounce helper
+  function debounce(fn, delay) {
+    let t;
+    return function(...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
   function toast(msg, type = '') {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -867,12 +1160,36 @@
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-panel').style.display = 'block';
       document.getElementById('admin-phone-display').textContent = user.phoneNumber || '';
+      // Wire up debounced search (avoids re-render on every keystroke)
+      const searchEl = document.getElementById('user-search');
+      if (searchEl && !searchEl._wired) {
+        searchEl.addEventListener('input', _renderUserTableDebounced);
+        searchEl._wired = true;
+      }
       loadDashboard();
+      startAutoRefresh();
     } else {
       document.getElementById('login-screen').style.display = 'block';
       document.getElementById('admin-panel').style.display = 'none';
+      stopAutoRefresh();
     }
   });
+
+  // Auto-refresh stats every 60s while admin tab is visible
+  function startAutoRefresh() {
+    if (autoRefreshInterval) return;
+    autoRefreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && auth.currentUser) {
+        loadStats(); // only refresh top stats — full reload is expensive
+      }
+    }, 60000);
+  }
+  function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+    }
+  }
 
   window.sendOTP = async function() {
     const phoneRaw = document.getElementById('phone').value.trim();
@@ -931,40 +1248,148 @@
   }
   window.loadDashboard = loadDashboard;
 
+  // Refresh All — clears cache + reloads everything
+  window.refreshAll = async function() {
+    const btn = document.getElementById('refresh-all-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Refreshing...';
+    cacheClear();
+    window._insightsLoaded = false;
+    window._funnelLoaded = false;
+    try {
+      await Promise.all([loadStats(), loadAll(), loadPending()]);
+      // Reload insights only if Insights tab is currently active
+      const insightsActive = document.getElementById('tab-insights').classList.contains('active');
+      if (insightsActive) {
+        loadInsightsAll();
+        window._insightsLoaded = true;
+      }
+      const funnelActive = document.getElementById('tab-funnel').classList.contains('active');
+      if (funnelActive) {
+        loadFunnelDashboard(true);
+        window._funnelLoaded = true;
+      }
+      toast('✓ All data refreshed', 'success');
+    } catch (e) {
+      toast('Refresh failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 Refresh All';
+    }
+  };
+
   async function loadStats() {
     try {
       const fn = httpsCallable(functions, 'adminDashboardStats');
       const result = await fn({});
       const s = result.data;
-      document.getElementById('st-total').textContent = s.totalSignups || 0;
-      document.getElementById('st-active-today').textContent = s.activeToday || 0;
-      document.getElementById('st-active-week').textContent = s.activeWeek || 0;
+
+      // Set value with optional delta sublabel
+      const setStatWithDelta = (valId, subId, value, delta, fallbackSub) => {
+        document.getElementById(valId).textContent = value;
+        const subEl = document.getElementById(subId);
+        if (subEl) {
+          if (delta !== undefined && delta !== null) {
+            const sign = delta > 0 ? '+' : '';
+            const cls = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+            const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+            subEl.innerHTML = `<span class="delta ${cls}">${arrow} ${sign}${delta}</span>`;
+          } else if (fallbackSub) {
+            subEl.textContent = fallbackSub;
+          }
+        }
+      };
+
+      setStatWithDelta('st-total', 'st-total-sub', s.totalSignups || 0, s.totalSignupsDelta, 'All time');
+      setStatWithDelta('st-active-today', 'st-active-today-sub', s.activeToday || 0, s.activeTodayDelta, 'Last 24h');
+      setStatWithDelta('st-active-week', 'st-active-week-sub', s.activeWeek || 0, s.activeWeekDelta, 'Last 7 days');
+
       document.getElementById('st-paid').textContent = s.activeSubs || 0;
       document.getElementById('st-paid-split').textContent =
         `B:${s.basicCount || 0} · P:${s.proCount || 0} · K:${s.kingCount || 0}`;
+
       document.getElementById('st-mrr').textContent = '₹' + (s.estMRR || 0).toLocaleString('en-IN');
+      const mrrSub = document.getElementById('st-mrr-sub');
+      if (mrrSub) {
+        if (s.estMRRDelta !== undefined && s.estMRRDelta !== null) {
+          const sign = s.estMRRDelta > 0 ? '+' : '';
+          const cls = s.estMRRDelta > 0 ? 'up' : s.estMRRDelta < 0 ? 'down' : 'flat';
+          mrrSub.innerHTML = `<span class="delta ${cls}">${s.estMRRDelta > 0 ? '↑' : s.estMRRDelta < 0 ? '↓' : '→'} ${sign}₹${Math.abs(s.estMRRDelta).toLocaleString('en-IN')}</span>`;
+        } else {
+          mrrSub.textContent = 'Active subs × plan';
+        }
+      }
+
       document.getElementById('st-pending').textContent = s.pendingCount || 0;
       document.getElementById('st-pending-val').textContent = '₹' + (s.pendingValue || 0).toLocaleString('en-IN') + ' value';
+
+      cacheSet('stats', s);
+      markRefreshed('stats');
+      detectAnomalies(s);
     } catch (err) {
       console.error('loadStats:', err);
-      toast('Stats load failed: ' + err.message, 'error');
+      const cached = cacheGet('stats');
+      if (cached) {
+        toast('Using cached stats (live load failed)', 'error');
+      } else {
+        toast('Stats load failed: ' + err.message, 'error');
+      }
     }
+  }
+
+  // Anomaly detection — warns admin about suspicious patterns
+  function detectAnomalies(s) {
+    const anomalies = [];
+
+    if ((s.pendingCount || 0) >= 3) {
+      anomalies.push({ level: 'warning', text: `🟡 <b>${s.pendingCount} pending activations</b> — review the Pending tab` });
+    }
+    if ((s.activeToday || 0) === 0 && (s.totalSignups || 0) > 5) {
+      anomalies.push({ level: 'critical', text: '🔴 <b>Zero activity today</b> across all users — possible app issue?' });
+    }
+    if (s.activeTodayDelta !== undefined && s.activeTodayDelta <= -5) {
+      anomalies.push({ level: 'warning', text: `🟡 <b>Active users dropped by ${Math.abs(s.activeTodayDelta)}</b> vs yesterday` });
+    }
+
+    const banner = document.getElementById('anomaly-banner');
+    if (anomalies.length === 0) {
+      banner.classList.remove('show', 'critical');
+      banner.innerHTML = '';
+      return;
+    }
+    const critical = anomalies.some(a => a.level === 'critical');
+    banner.className = 'anomaly-banner show' + (critical ? ' critical' : '');
+    banner.innerHTML = anomalies.map(a => `<div>${a.text}</div>`).join('');
   }
 
   window.loadAll = async function() {
     const tbody = document.getElementById('users-tbody');
-    tbody.innerHTML = '<tr><td colspan="10" class="loading">Loading users...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="loading">Loading users...</td></tr>';
     try {
       const fn = httpsCallable(functions, 'adminListAllUsers');
       const result = await fn({});
       allUsers = result.data.users || [];
       document.getElementById('users-count').textContent = `(${allUsers.length})`;
+      cacheSet('users', allUsers);
+      markRefreshed('users');
+      currentPage = 1;
       renderUserTable();
     } catch (err) {
       console.error('loadAll:', err);
-      tbody.innerHTML = `<tr><td colspan="10" class="empty">❌ Load failed: ${escapeHtml(err.message)}</td></tr>`;
+      const cached = cacheGet('users');
+      if (cached) {
+        allUsers = cached;
+        document.getElementById('users-count').textContent = `(${allUsers.length} cached)`;
+        renderUserTable();
+        toast('Using cached users — live load failed', 'error');
+      } else {
+        tbody.innerHTML = `<tr><td colspan="13" class="empty">❌ Load failed: ${escapeHtml(err.message)}</td></tr>`;
+      }
     }
   };
+
+  // Debounced search input (200ms)
+  const _renderUserTableDebounced = debounce(() => renderUserTable(), 200);
 
   window.renderUserTable = function() {
     const tbody = document.getElementById('users-tbody');
@@ -995,6 +1420,7 @@
           if (u.billLimit === null) return false;
           return u.billLimit > 0 && (u.billsUsed / u.billLimit) >= 0.8;
         }
+        if (statusFilter === 'no-bills') return (u.billsUsed || 0) === 0;
         return true;
       });
     }
@@ -1021,12 +1447,27 @@
       }
     });
 
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const pgEl = document.getElementById('users-pagination');
+    if (filtered.length > PAGE_SIZE) {
+      pgEl.style.display = 'flex';
+      document.getElementById('pg-info').textContent = `Page ${currentPage} of ${totalPages} · ${filtered.length} users`;
+      document.getElementById('pg-prev').disabled = currentPage <= 1;
+      document.getElementById('pg-next').disabled = currentPage >= totalPages;
+    } else {
+      pgEl.style.display = 'none';
+    }
+
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty"><div class="emoji">🔍</div>No users match the filter</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="empty"><div class="emoji">🔍</div>No users match the filter</td></tr>';
       return;
     }
 
-    tbody.innerHTML = filtered.map(u => {
+    tbody.innerHTML = pageItems.map(u => {
       const signup = u.signupAt ? new Date(u.signupAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—';
       const la = u.lastActiveAt ? timeAgo(new Date(u.lastActiveAt)) : 'Never';
       const tierClass = 'tier-' + (u.tier || 'trial');
@@ -1045,9 +1486,26 @@
         usageHtml = `<span class="progress-label">0 / —</span>`;
       }
 
+      // Days since last bill (uses field if present; falls back to '—')
+      let dsbStr = '—';
+      if (u.daysSinceLastBill !== undefined && u.daysSinceLastBill !== null) {
+        const d = u.daysSinceLastBill;
+        const color = d >= 7 ? '#dc2626' : d >= 3 ? '#d97706' : '#16a34a';
+        dsbStr = `<span style="color:${color};font-weight:600">${d}d ago</span>`;
+      } else if ((u.billsUsed || 0) === 0) {
+        dsbStr = '<span class="cell-muted">never</span>';
+      }
+
+      // LTV (uses field if present)
+      const ltvStr = u.ltv !== undefined && u.ltv !== null
+        ? `<b>₹${Number(u.ltv).toLocaleString('en-IN')}</b>`
+        : '<span class="cell-muted">—</span>';
+
       const ownerCell = u.ownerName ? escapeHtml(u.ownerName) : '<span class="cell-muted">—</span>';
+      const selected = bulkSelected.has(u.uid);
       return `
         <tr>
+          <td><input type="checkbox" class="bulk-cb" data-uid="${escapeHtml(u.uid)}" ${selected ? 'checked' : ''} onchange="toggleBulkRow('${escapeHtml(u.uid)}')" style="width:auto;margin:0"/></td>
           <td class="cell-shop">${escapeHtml(u.shopName || '—')}</td>
           <td>${ownerCell}</td>
           <td><a class="cell-phone" href="https://wa.me/${(u.phone || '').replace(/[^0-9]/g, '')}" target="_blank">${escapeHtml(u.phone || '—')}</a></td>
@@ -1056,6 +1514,8 @@
           <td><span class="tier-pill ${tierClass}">${escapeHtml(u.tierName || 'Trial')}</span></td>
           <td>${expiryStr}</td>
           <td class="progress-cell">${usageHtml}</td>
+          <td>${dsbStr}</td>
+          <td>${ltvStr}</td>
           <td class="cell-muted">${la}</td>
           <td>
             <button class="btn-activate" style="padding:6px 12px;font-size:12px"
@@ -1066,7 +1526,91 @@
         </tr>
       `;
     }).join('');
+
+    updateBulkBar();
   };
+
+  // Pagination
+  window.changePage = function(direction) {
+    currentPage += direction;
+    if (currentPage < 1) currentPage = 1;
+    renderUserTable();
+    // Scroll to top of table
+    document.getElementById('users-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Bulk selection
+  window.toggleBulkRow = function(uid) {
+    if (bulkSelected.has(uid)) bulkSelected.delete(uid);
+    else bulkSelected.add(uid);
+    updateBulkBar();
+  };
+  window.toggleBulkAll = function() {
+    const checked = document.getElementById('bulk-select-all').checked;
+    document.querySelectorAll('.bulk-cb').forEach(cb => {
+      const uid = cb.dataset.uid;
+      cb.checked = checked;
+      if (checked) bulkSelected.add(uid);
+      else bulkSelected.delete(uid);
+    });
+    updateBulkBar();
+  };
+  window.clearBulkSelection = function() {
+    bulkSelected.clear();
+    document.querySelectorAll('.bulk-cb').forEach(cb => cb.checked = false);
+    document.getElementById('bulk-select-all').checked = false;
+    updateBulkBar();
+  };
+  function updateBulkBar() {
+    const bar = document.getElementById('bulk-bar');
+    document.getElementById('bulk-count').textContent = bulkSelected.size;
+    if (bulkSelected.size > 0) bar.classList.add('show');
+    else bar.classList.remove('show');
+  }
+  window.bulkWhatsApp = function() {
+    const phones = allUsers.filter(u => bulkSelected.has(u.uid)).map(u => u.phone).filter(Boolean);
+    if (phones.length === 0) { toast('No users selected', 'error'); return; }
+    const msg = encodeURIComponent('Namaste! HisaabNow team se. Aapko help chahiye to bataiye.');
+    // Open first chat, queue others as toast list
+    const first = phones[0].replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${first}?text=${msg}`, '_blank');
+    if (phones.length > 1) {
+      toast(`Opened 1st chat. ${phones.length - 1} more to go — click each row to WhatsApp.`, 'success');
+    }
+  };
+  window.bulkExport = function() {
+    const selected = allUsers.filter(u => bulkSelected.has(u.uid));
+    exportCSV(selected, `hisaabnow-users-selected-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  // CSV export
+  window.exportUsersCSV = function() {
+    exportCSV(allUsers, `hisaabnow-users-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+  function exportCSV(rows, filename) {
+    if (!rows.length) { toast('No data to export', 'error'); return; }
+    const cols = ['shopName', 'ownerName', 'phone', 'profession', 'signupAt', 'tier', 'tierName',
+                  'subActive', 'subExpiry', 'subDaysLeft', 'billsUsed', 'billLimit',
+                  'daysSinceLastBill', 'ltv', 'lastActiveAt', 'uid'];
+    const header = cols.join(',');
+    const escape = v => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+    const body = rows.map(r => cols.map(c => escape(r[c])).join(',')).join('\n');
+    const csv = '\ufeff' + header + '\n' + body; // BOM for Excel Hindi/UTF-8 support
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Exported ${rows.length} users`, 'success');
+  }
 
   document.addEventListener('click', (e) => {
     const th = e.target.closest('th[data-sort]');
@@ -1087,17 +1631,32 @@
     try {
       const fn = httpsCallable(functions, 'adminListPending');
       const result = await fn({});
-      const requests = result.data.requests || [];
+      let requests = result.data.requests || [];
+      // Sort by age — oldest first (most urgent)
+      requests.sort((a, b) => {
+        const ta = a.requestedAt ? new Date(a.requestedAt).getTime() : 0;
+        const tb = b.requestedAt ? new Date(b.requestedAt).getTime() : 0;
+        return ta - tb;
+      });
+      markRefreshed('pending');
       if (requests.length === 0) {
         listEl.innerHTML = '<div class="empty"><div class="emoji">📭</div>No pending requests</div>';
         return;
       }
       listEl.innerHTML = requests.map(r => {
+        const ts = r.requestedAt ? new Date(r.requestedAt).getTime() : 0;
+        const ageMs = ts ? Date.now() - ts : 0;
+        const ageHrs = ageMs / 3600000;
+        let ageClass = 'fresh', ageLabel = '🟢 fresh';
+        if (ageHrs > 6) { ageClass = 'critical'; ageLabel = `🔴 ${Math.round(ageHrs)}h old — URGENT`; }
+        else if (ageHrs > 1) { ageClass = 'warning'; ageLabel = `🟡 ${Math.round(ageHrs)}h old`; }
+        else { ageLabel = `🟢 ${Math.round(ageMs / 60000)}m old`; }
+
         const date = r.requestedAt ? new Date(r.requestedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
         return `
           <div class="request-card">
             <div class="request-info">
-              <div class="request-shop">${escapeHtml(r.shopName)} (${r.profession || 'shop'})</div>
+              <div class="request-shop">${escapeHtml(r.shopName)} (${r.profession || 'shop'}) <span class="age-badge ${ageClass}">${ageLabel}</span></div>
               <div class="request-meta">
                 <span>📞 <a href="https://wa.me/${(r.phone || '').replace(/[^0-9]/g, '')}" target="_blank" class="cell-phone">${escapeHtml(r.phone)}</a></span>
                 <span>🕐 ${date}</span>
@@ -1105,8 +1664,8 @@
               <span class="request-plan">${r.planName} — ₹${r.amount}</span>
             </div>
             <div class="request-actions">
-              <button class="btn-activate" onclick="openActivateModal('${r.uid}', ${escapeAttr(r.shopName)}, ${escapeAttr(r.phone)}, '', '${r.plan || 'pro'}')">✅ Activate</button>
-              <button class="btn-reject" onclick="reject('${r.uid}', ${escapeAttr(r.shopName)})">Reject</button>
+              <button class="btn-activate" onclick="openActivateModal('${r.uid}', ${escapeAttr(r.shopName)}, ${escapeAttr(r.phone)}, '', ${escapeAttr(r.plan || 'pro')})">✅ Activate</button>
+              <button class="btn-reject" onclick="rejectMenu('${r.uid}', ${escapeAttr(r.shopName)})">Reject</button>
             </div>
           </div>
         `;
@@ -1116,6 +1675,48 @@
       listEl.innerHTML = '<div class="empty"><div class="emoji">❌</div>Failed: ' + escapeHtml(err.message) + '</div>';
     }
   };
+
+  // Reject with reason picker (replaces ugly prompt())
+  window.rejectMenu = function(uid, shopName) {
+    const reasons = [
+      'No payment received',
+      'Wrong amount sent',
+      'Duplicate request',
+      'Test/spam account',
+      'Other (custom)'
+    ];
+    const choice = prompt(
+      `Reject request from "${shopName}"?\n\n` +
+      reasons.map((r, i) => `${i + 1}. ${r}`).join('\n') +
+      `\n\nEnter number (1-${reasons.length}) or type custom reason:`,
+      ''
+    );
+    if (choice === null) return;
+    let reason = choice.trim();
+    const num = parseInt(reason);
+    if (num >= 1 && num <= reasons.length) {
+      reason = reasons[num - 1];
+      if (reason === 'Other (custom)') {
+        reason = prompt('Custom reason:', '') || '';
+        if (!reason) return;
+      }
+    }
+    reject(uid, reason);
+  };
+
+  // Internal: actually reject (keeps existing window.reject working too)
+  async function reject(uid, reason) {
+    try {
+      const fn = httpsCallable(functions, 'adminRejectRequest');
+      await fn({ uid, reason });
+      toast('Rejected', 'success');
+      loadPending();
+      loadStats();
+    } catch (err) {
+      toast('Failed: ' + err.message, 'error');
+    }
+  }
+  window.reject = reject;
 
   window.switchTab = function(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1158,29 +1759,30 @@
     if (!_activateCtx) return;
     const plan = document.getElementById('act-plan').value;
     const note = document.getElementById('act-note').value.trim();
-    const { uid, shopName } = _activateCtx;
+    const { uid, shopName, phone } = _activateCtx;
     try {
       const fn = httpsCallable(functions, 'adminActivatePro');
       const result = await fn({ uid, plan, note });
       toast(`✅ Activated ${plan} for ${shopName} until ${new Date(result.data.expiry).toLocaleDateString('en-IN')}`, 'success');
       closeActivateModal();
+
+      // Reset cached widget data so insights/funnel get fresh post-activation numbers
+      window._insightsLoaded = false;
+      cacheClear();
       loadDashboard();
+
+      // Offer to send WhatsApp confirmation
+      if (phone && confirm(`Send WhatsApp confirmation to ${phone}?`)) {
+        const wa = phone.replace(/[^0-9]/g, '');
+        const planName = plan === 'king' ? 'King Pro' : plan === 'pro' ? 'Pro' : 'Basic';
+        const msg = encodeURIComponent(
+          `Namaste! ✅ Aapka HisaabNow ${planName} plan activate ho gaya hai. ` +
+          `Ab aap unlimited bills bana sakte ho. App kholiye aur use shuru kariye. — HisaabNow Team`
+        );
+        window.open(`https://wa.me/${wa}?text=${msg}`, '_blank');
+      }
     } catch (err) {
       console.error(err);
-      toast('Failed: ' + err.message, 'error');
-    }
-  };
-
-  window.reject = async function(uid, shopName) {
-    const reason = prompt(`Reject request from "${shopName}"?\n\nReason (optional):`, '');
-    if (reason === null) return;
-    try {
-      const fn = httpsCallable(functions, 'adminRejectRequest');
-      await fn({ uid, reason });
-      toast('Rejected', 'success');
-      loadPending();
-      loadStats();
-    } catch (err) {
       toast('Failed: ' + err.message, 'error');
     }
   };
@@ -1243,10 +1845,42 @@
     try {
       const fn = httpsCallable(functions, 'adminBusinessInsights');
       const result = await fn({ force: !!force });
-      const { insight, generatedAt, cached, stats } = result.data;
+      const { insight, generatedAt, cached, stats, sections, priorities } = result.data;
+
+      markRefreshed('insight');
+      cacheSet('insight', result.data);
 
       const generated = new Date(generatedAt);
       const ago = timeAgo(generated);
+
+      // If CF returns new 'sections' structure, render in 3-section format
+      // Otherwise fall back to legacy single-paragraph rendering
+      let bodyHtml = '';
+      if (sections && (sections.whatsHappening || sections.priority || sections.vsLastWeek)) {
+        bodyHtml = `
+          ${sections.whatsHappening ? `
+            <div class="ai-section">
+              <div class="ai-section-label">📊 What's happening</div>
+              <div>${escapeHtml(sections.whatsHappening).replace(/\n/g, '<br>')}</div>
+            </div>` : ''}
+          ${sections.priority || priorities ? `
+            <div class="ai-section">
+              <div class="ai-section-label">🎯 Today's priority</div>
+              <div>${sections.priority ? escapeHtml(sections.priority).replace(/\n/g, '<br>') : ''}</div>
+              ${priorities && priorities.length ? '<ol style="margin-top:6px;padding-left:20px">' +
+                priorities.map(p => `<li>${escapeHtml(p)}</li>`).join('') + '</ol>' : ''}
+            </div>` : ''}
+          ${sections.vsLastWeek ? `
+            <div class="ai-section">
+              <div class="ai-section-label">💡 vs last week</div>
+              <div>${escapeHtml(sections.vsLastWeek).replace(/\n/g, '<br>')}</div>
+            </div>` : ''}
+        `;
+      } else {
+        // Legacy single-paragraph fallback
+        bodyHtml = `<div>${escapeHtml(insight || '').replace(/\n/g, '<br>')}</div>`;
+      }
+
       let statsHtml = '';
       if (stats) {
         statsHtml = `
@@ -1260,14 +1894,16 @@
           </div>
         `;
       }
-      box.innerHTML = `
-        <div>${escapeHtml(insight).replace(/\n/g, '<br>')}</div>
-        ${statsHtml}
-        <div class="meta">Generated ${ago}${cached ? ' (cached · click Regenerate for fresh)' : ''}</div>
-      `;
+      box.innerHTML = bodyHtml + statsHtml +
+        `<div class="meta">Generated ${ago}${cached ? ' (cached · click Regenerate for fresh)' : ''}</div>`;
     } catch (err) {
       console.error('loadInsights:', err);
-      box.innerHTML = `<div style="color:#dc2626;font-size:13px">Failed to load: ${escapeHtml(err.message)}</div>`;
+      const cached = cacheGet('insight');
+      if (cached && cached.insight) {
+        box.innerHTML = `<div style="color:#92400e;font-size:12px;margin-bottom:8px">⚠️ Live load failed — showing cached</div><div>${escapeHtml(cached.insight).replace(/\n/g, '<br>')}</div>`;
+      } else {
+        box.innerHTML = `<div style="color:#dc2626;font-size:13px">Failed to load: ${escapeHtml(err.message)}</div>`;
+      }
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -1287,6 +1923,7 @@
       const fn = httpsCallable(functions, 'adminRevenueTimeline');
       const result = await fn({ days });
       const { timeline, summary: sum, windowDays } = result.data;
+      markRefreshed('timeline');
 
       summary.innerHTML = `
         <div class="timeline-summary-tile">
@@ -1310,16 +1947,20 @@
     }
   };
 
-  // Render SVG bar chart for timeline
+  // Render SVG bar chart for timeline — with hover tooltips, average line, weekend bands
   function renderTimelineSVG(timeline) {
     if (!timeline || !timeline.length) return '<div class="empty">No data</div>';
-    const W = 900, H = 180, PAD_L = 40, PAD_R = 10, PAD_T = 14, PAD_B = 30;
+    const W = 900, H = 200, PAD_L = 45, PAD_R = 50, PAD_T = 14, PAD_B = 38;
     const chartW = W - PAD_L - PAD_R;
     const chartH = H - PAD_T - PAD_B;
     const maxRev = Math.max(1, ...timeline.map(d => d.revenue));
     const maxSignups = Math.max(1, ...timeline.map(d => d.newSignups));
     const barW = chartW / timeline.length;
     const gap = Math.min(2, barW * 0.15);
+
+    // Average revenue line
+    const avgRev = timeline.reduce((a, d) => a + d.revenue, 0) / timeline.length;
+    const avgY = PAD_T + chartH - (avgRev / maxRev) * chartH;
 
     // Y-axis ticks (4 levels)
     let yTicks = '';
@@ -1330,42 +1971,74 @@
       yTicks += `<text x="${PAD_L - 5}" y="${y + 3}" text-anchor="end" font-size="9" fill="#9ca3af">${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}</text>`;
     }
 
-    // Bars for revenue
+    // Right Y-axis for signups
+    for (let i = 0; i <= 4; i++) {
+      const y = PAD_T + (chartH * (1 - i / 4));
+      const val = Math.round((maxSignups * i / 4));
+      yTicks += `<text x="${W - PAD_R + 5}" y="${y + 3}" text-anchor="start" font-size="9" fill="#0891b2">${val}</text>`;
+    }
+
+    // Weekend shading + bars + tooltips
+    let weekendBands = '';
     let bars = '';
+    let interactions = '';
     timeline.forEach((d, i) => {
       const x = PAD_L + i * barW + gap / 2;
       const w = barW - gap;
+      const date = new Date(d.date);
+      const dow = date.getDay(); // 0=Sun, 6=Sat
+      if (dow === 0 || dow === 6) {
+        weekendBands += `<rect x="${PAD_L + i * barW}" y="${PAD_T}" width="${barW}" height="${chartH}" fill="#fafaf5"/>`;
+      }
       const h = (d.revenue / maxRev) * chartH;
       const y = PAD_T + chartH - h;
       if (d.revenue > 0) {
-        bars += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#FF6B35" rx="2"/>`;
+        bars += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#FF6B35" rx="2"><title>${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}: ₹${d.revenue.toLocaleString('en-IN')} · ${d.newSignups || 0} signups · ${d.activations || 0} activations</title></rect>`;
       }
-      // Dot for signups (overlay)
+      // Invisible hover layer to make every bar tooltip-able even with 0 revenue
+      interactions += `<rect x="${PAD_L + i * barW}" y="${PAD_T}" width="${barW}" height="${chartH}" fill="transparent"><title>${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}: ₹${(d.revenue || 0).toLocaleString('en-IN')} · ${d.newSignups || 0} signups · ${d.activations || 0} activations</title></rect>`;
+      // Dot for signups (overlay) — scaled to right Y axis
       if (d.newSignups > 0) {
-        const dy = PAD_T + chartH - (d.newSignups / maxSignups) * chartH * 0.8;
+        const dy = PAD_T + chartH - (d.newSignups / maxSignups) * chartH;
         bars += `<circle cx="${x + w / 2}" cy="${dy}" r="3" fill="#0891b2" stroke="#fff" stroke-width="1.5"/>`;
       }
     });
 
-    // X-axis labels (first, middle, last)
-    const indices = [0, Math.floor(timeline.length / 2), timeline.length - 1];
+    // Average revenue line
+    const avgLine = `
+      <line x1="${PAD_L}" y1="${avgY}" x2="${W - PAD_R}" y2="${avgY}" stroke="#dc2626" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>
+      <text x="${W - PAD_R - 5}" y="${avgY - 4}" text-anchor="end" font-size="9" fill="#dc2626">avg ₹${avgRev >= 1000 ? (avgRev / 1000).toFixed(1) + 'k' : Math.round(avgRev)}</text>
+    `;
+
+    // X-axis labels — first / 1/3 / 2/3 / last
+    const idxs = [0, Math.floor(timeline.length / 3), Math.floor(timeline.length * 2 / 3), timeline.length - 1];
     let xLabels = '';
-    indices.forEach(i => {
+    [...new Set(idxs)].forEach(i => {
       if (i < 0 || i >= timeline.length) return;
       const x = PAD_L + i * barW + barW / 2;
       const dateStr = new Date(timeline[i].date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      xLabels += `<text x="${x}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#6b7280">${dateStr}</text>`;
+      xLabels += `<text x="${x}" y="${H - 18}" text-anchor="middle" font-size="10" fill="#6b7280">${dateStr}</text>`;
     });
+
+    // Axis labels
+    const axisLabels = `
+      <text x="${PAD_L - 30}" y="${PAD_T + chartH / 2}" text-anchor="middle" font-size="9" fill="#9ca3af" transform="rotate(-90 ${PAD_L - 30} ${PAD_T + chartH / 2})">Revenue (₹)</text>
+      <text x="${W - PAD_R + 35}" y="${PAD_T + chartH / 2}" text-anchor="middle" font-size="9" fill="#0891b2" transform="rotate(-90 ${W - PAD_R + 35} ${PAD_T + chartH / 2})">Signups</text>
+    `;
 
     // Legend
     const legend = `
-      <rect x="${W - 180}" y="4" width="10" height="10" fill="#FF6B35" rx="2"/>
-      <text x="${W - 165}" y="13" font-size="10" fill="#374151">Revenue</text>
-      <circle cx="${W - 115}" cy="9" r="3" fill="#0891b2" stroke="#fff" stroke-width="1.5"/>
-      <text x="${W - 107}" y="13" font-size="10" fill="#374151">New signups</text>
+      <rect x="${PAD_L}" y="${H - 6}" width="10" height="6" fill="#FF6B35" rx="1"/>
+      <text x="${PAD_L + 14}" y="${H - 1}" font-size="9" fill="#374151">Revenue</text>
+      <circle cx="${PAD_L + 72}" cy="${H - 3}" r="3" fill="#0891b2" stroke="#fff" stroke-width="1.5"/>
+      <text x="${PAD_L + 80}" y="${H - 1}" font-size="9" fill="#374151">Signups</text>
+      <line x1="${PAD_L + 130}" y1="${H - 3}" x2="${PAD_L + 145}" y2="${H - 3}" stroke="#dc2626" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="${PAD_L + 150}" y="${H - 1}" font-size="9" fill="#374151">30d avg</text>
+      <rect x="${PAD_L + 195}" y="${H - 6}" width="10" height="6" fill="#fafaf5" stroke="#e5e7eb" stroke-width="0.5"/>
+      <text x="${PAD_L + 209}" y="${H - 1}" font-size="9" fill="#374151">Weekend</text>
     `;
 
-    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:inherit">${yTicks}${bars}${xLabels}${legend}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:inherit">${weekendBands}${yTicks}${bars}${avgLine}${interactions}${xLabels}${axisLabels}${legend}</svg>`;
   }
 
   // ── Conversion Funnel ────────────────────────────────────────
@@ -1376,6 +2049,7 @@
       const fn = httpsCallable(functions, 'adminConversionFunnel');
       const result = await fn({});
       const { steps, biggestDropIdx, biggestDropCount, biggestDropLabel } = result.data;
+      markRefreshed('funnel');
       if (!steps || !steps.length || steps[0].count === 0) {
         box.innerHTML = '<div class="empty"><div class="emoji">📊</div>No users yet</div>';
         return;
@@ -1419,6 +2093,8 @@
       const fn = httpsCallable(functions, 'adminTopShops');
       const result = await fn({ limit: 10, sortBy });
       const { shops } = result.data;
+      markRefreshed('topshops');
+      cacheSet('topShops_' + sortBy, shops);
       if (!shops || !shops.length) {
         list.innerHTML = '<div class="empty"><div class="emoji">🏆</div>No active shops yet</div>';
         return;
@@ -1426,12 +2102,22 @@
       list.innerHTML = shops.map((s, i) => {
         const val = sortBy === 'revenue' ? fmtINR(s.revenue) : `${s.bills} bills`;
         const sub = sortBy === 'revenue' ? `${s.bills} bills` : fmtINR(s.revenue);
+        // Tier badge — render if CF provides it
+        const tierBadge = s.tier ? `<span class="tier-mini tier-${s.tier}">${escapeHtml(s.tierName || capitalize(s.tier))}</span>` : '';
+        // Trend (week-over-week) — render if CF provides it
+        let trendHtml = '';
+        if (s.trendPct !== undefined && s.trendPct !== null) {
+          const cls = s.trendPct > 0 ? 'up' : s.trendPct < 0 ? 'down' : 'flat';
+          const arrow = s.trendPct > 0 ? '↑' : s.trendPct < 0 ? '↓' : '→';
+          const sign = s.trendPct > 0 ? '+' : '';
+          trendHtml = ` <span class="delta ${cls}" style="font-size:10px">${arrow} ${sign}${s.trendPct}%</span>`;
+        }
         return `
           <div class="shop-item">
             <div class="shop-rank${i >= 3 ? ' muted' : ''}">${i + 1}</div>
             <div class="shop-info">
-              <div class="shop-info-name">${escapeHtml(s.shopName)}</div>
-              <div class="shop-info-meta">${escapeHtml(s.ownerName || s.phone || '—')} · ${escapeHtml(capitalize(s.profession || ''))}</div>
+              <div class="shop-info-name">${escapeHtml(s.shopName)}${tierBadge}</div>
+              <div class="shop-info-meta">${escapeHtml(s.ownerName || s.phone || '—')} · ${escapeHtml(capitalize(s.profession || ''))}${trendHtml}</div>
             </div>
             <div class="shop-stat">
               <b>${val}</b>
@@ -1447,6 +2133,21 @@
   };
 
   // ── At-Risk Shops ────────────────────────────────────────────
+  // Pre-filled Hindi nudge templates based on risk reason
+  function buildAtRiskNudge(shop) {
+    const reason = (shop.riskReason || '').toLowerCase();
+    let msg = `Namaste ${shop.ownerName || ''}! HisaabNow team se. `;
+    if (reason.includes('inactive') || reason.includes('no bill')) {
+      msg += `Aapne kafi din se app use nahi kiya. Koi problem ho to bataiye — main turant help karunga.`;
+    } else if (reason.includes('limit') || reason.includes('80%')) {
+      msg += `Aap apni monthly bill limit ke kareeb pohonch gaye hain. Pro plan se unlimited bills mil sakte hain — interest ho to bataiye.`;
+    } else {
+      msg += `Aapka business kaisa chal raha hai? Koi feedback ya help chahiye to bataiye.`;
+    }
+    msg += ` — HisaabNow`;
+    return encodeURIComponent(msg);
+  }
+
   window.loadAtRisk = async function() {
     const list = document.getElementById('at-risk-list');
     list.innerHTML = '<div class="loading">Loading...</div>';
@@ -1454,22 +2155,26 @@
       const fn = httpsCallable(functions, 'adminAtRiskShops');
       const result = await fn({});
       const { shops } = result.data;
+      markRefreshed('atrisk');
       if (!shops || !shops.length) {
         list.innerHTML = '<div class="empty" style="padding:20px"><div class="emoji">✅</div>No at-risk shops — everyone\'s active!</div>';
         return;
       }
-      list.innerHTML = shops.slice(0, 10).map(s => `
+      list.innerHTML = shops.slice(0, 10).map(s => {
+        const wa = (s.phone || '').replace(/[^0-9]/g, '');
+        const tierBadge = s.tier ? `<span class="tier-mini tier-${s.tier}">${escapeHtml(s.tierName || capitalize(s.tier))}</span>` : '';
+        return `
         <div class="shop-item">
           <div class="shop-rank ${s.riskLevel === 'high' ? '' : 'muted'}" style="background:${s.riskLevel === 'high' ? '#dc2626' : '#d97706'}">!</div>
           <div class="shop-info">
-            <div class="shop-info-name">${escapeHtml(s.shopName)}</div>
+            <div class="shop-info-name">${escapeHtml(s.shopName)}${tierBadge}</div>
             <div class="shop-info-meta">${escapeHtml(s.riskReason)} · ${s.billsTotal} bills total</div>
           </div>
           <div class="shop-stat">
-            <a href="https://wa.me/${(s.phone || '').replace(/[^0-9]/g, '')}" target="_blank" style="color:#25d366;font-weight:700;font-size:12px;text-decoration:none">📱 WhatsApp</a>
+            <a href="https://wa.me/${wa}?text=${buildAtRiskNudge(s)}" target="_blank" style="color:#25d366;font-weight:700;font-size:12px;text-decoration:none">📱 Nudge</a>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
       if (shops.length > 10) {
         list.innerHTML += `<div style="text-align:center;padding:10px;font-size:12px;color:#9ca3af">+${shops.length - 10} more at risk</div>`;
       }
@@ -1480,6 +2185,22 @@
   };
 
   // ── Upgrade Candidates ───────────────────────────────────────
+  // Pre-filled Hindi nudge by reason/profession
+  function buildUpgradeNudge(c) {
+    const profession = (c.profession || '').toLowerCase();
+    const reason = (c.reason || '').toLowerCase();
+    let opener = `Namaste ${c.ownerName || ''}! `;
+    let middle = '';
+    if (reason.includes('limit') || reason.includes('80%') || reason.includes('hit')) {
+      middle = `Aap apni bill limit ke kareeb pohonch gaye ho. Pro plan se aap unlimited bills bana sakte ho — sirf ₹149/mo. Interest hai to bataiye.`;
+    } else if (reason.includes('power') || reason.includes('high usage')) {
+      middle = `Aap HisaabNow ka bahut acche se use kar rahe ho! King Pro plan se aapko unlimited bills + premium features milenge.`;
+    } else {
+      middle = `Aapne HisaabNow ka acche se use kiya hai. Pro version mein aur zyaada features milenge — dekho?`;
+    }
+    return encodeURIComponent(`${opener}${middle} — HisaabNow`);
+  }
+
   window.loadUpgradeCandidates = async function() {
     const list = document.getElementById('upgrade-candidates-list');
     list.innerHTML = '<div class="loading">Loading...</div>';
@@ -1487,27 +2208,38 @@
       const fn = httpsCallable(functions, 'adminUpgradeCandidates');
       const result = await fn({});
       const { candidates } = result.data;
+      markRefreshed('upgrade');
       document.getElementById('candidates-count').textContent = `(${candidates.length})`;
       if (!candidates || !candidates.length) {
         list.innerHTML = '<div class="empty" style="padding:20px"><div class="emoji">💎</div>No upgrade candidates yet. More trial users need to become active first.</div>';
         return;
       }
-      list.innerHTML = candidates.slice(0, 15).map(c => `
+
+      // Estimate total potential MRR
+      const potentialMrr = candidates.reduce((sum, c) => sum + (c.suggestedPlanPrice || 149), 0);
+      const summaryHtml = `<div style="background:#fff3e0;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;color:#9a3412">
+        💡 Total potential: <b>+₹${potentialMrr.toLocaleString('en-IN')}/mo MRR</b> across ${candidates.length} candidates
+      </div>`;
+
+      list.innerHTML = summaryHtml + candidates.slice(0, 15).map(c => {
+        const wa = (c.phone || '').replace(/[^0-9]/g, '');
+        const tierBadge = c.tier ? `<span class="tier-mini tier-${c.tier}">${escapeHtml(c.tierName || capitalize(c.tier))}</span>` : '';
+        return `
         <div class="shop-item">
           <div style="width:32px;height:32px;background:linear-gradient(135deg,#FF6B35,#EA580C);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex-shrink:0">💎</div>
           <div class="shop-info">
-            <div class="shop-info-name">${escapeHtml(c.shopName)}</div>
+            <div class="shop-info-name">${escapeHtml(c.shopName)}${tierBadge}</div>
             <div class="shop-info-meta">${escapeHtml(c.reason)} · ${escapeHtml(c.ownerName || c.phone)}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center">
-            <a href="https://wa.me/${(c.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Namaste! Aap hisaabnow ka bahut accha use kar rahe ho. Pro version mein aur zyaada features milenge — dekho?')}" target="_blank" class="btn-activate" style="padding:6px 12px;font-size:11px;background:#25d366;text-decoration:none;display:inline-block">💬 Nudge</a>
+            <a href="https://wa.me/${wa}?text=${buildUpgradeNudge(c)}" target="_blank" class="btn-activate" style="padding:6px 12px;font-size:11px;background:#25d366;text-decoration:none;display:inline-block">💬 Nudge</a>
             <button class="btn-activate" style="padding:6px 12px;font-size:11px"
-              onclick="openActivateModal('${c.uid}', ${JSON.stringify(c.shopName)}, ${JSON.stringify(c.phone || '')}, ${JSON.stringify(c.ownerName || '')})">
+              onclick="openActivateModal('${c.uid}', ${escapeAttr(c.shopName)}, ${escapeAttr(c.phone || '')}, ${escapeAttr(c.ownerName || '')}, ${escapeAttr(c.suggestedPlan || 'pro')})">
               Activate
             </button>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     } catch (err) {
       console.error('loadUpgradeCandidates:', err);
       list.innerHTML = `<div style="color:#dc2626;font-size:13px;padding:16px">Failed: ${escapeHtml(err.message)}</div>`;
@@ -1525,6 +2257,7 @@
       const fn = httpsCallable(functions, 'adminGA4Overview');
       const result = await fn({ force: !!force });
       const { totals, topSources, topCountries, topPages, generatedAt, cached } = result.data;
+      markRefreshed('ga4');
 
       const duration = totals.avgSessionDuration;
       const durationStr = duration >= 60
