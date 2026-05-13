@@ -41382,5 +41382,2795 @@ html[data-shell="desktop"] #pg-home {
 </script>
 <!-- =================== END Step N block =================== -->
 
+
+<!-- ============================================================
+     HisaabNow Step O · Edit Receipt feature
+     ─────────────────────────────────────────────────────────────
+     Lets owners/managers (not cashiers) edit an existing bill:
+       • Change quantity / price per item
+       • Remove items
+       • Add a discount
+       • Change payment mode (cash / UPI / card / udhaar)
+       • Update customer name + phone
+       • Required reason field for the edit
+
+     Architecture:
+       • Original bill state is snapshotted into bill._edits[]
+         before the patch, so the audit trail shows what changed
+       • AuditLog.record('sale.edit', ...) logs every edit
+       • Profit + total + subtotal + gstAmt are recalculated
+         from the modified items so reports stay consistent
+       • Manager-only: gated via data-role-min="manager"
+         (cashiers see the bill but no Edit button)
+
+     Activation:
+       • Desktop: Edit button in bill detail right-pane (Step F)
+       • Mobile: Edit button in openBillDetail sheet
+       • Both call window.HND.editBill.open(bill)
+============================================================ -->
+
+<style>
+/* ── Edit Receipt modal ── */
+#hnd-edit-bill-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(10,10,10,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 199;
+  animation: hnd-eb-fade .15s ease-out;
+}
+#hnd-edit-bill-backdrop.open { display: block; }
+
+#hnd-edit-bill {
+  display: none;
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  background: var(--hnd-card, #fff);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.4);
+  z-index: 200;
+  overflow: hidden;
+  flex-direction: column;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+#hnd-edit-bill.open { display: flex; animation: hnd-eb-pop .2s cubic-bezier(.16,.84,.44,1); }
+@keyframes hnd-eb-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hnd-eb-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Mobile fullscreen */
+@media (max-width: 600px) {
+  #hnd-edit-bill {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    top: 0; left: 0;
+    transform: none;
+    border-radius: 0;
+  }
+  #hnd-edit-bill.open {
+    animation: hnd-eb-slide .25s cubic-bezier(.16,.84,.44,1);
+  }
+  @keyframes hnd-eb-slide {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+.hnd-eb-h {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--hnd-line, #E5E4E0);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.hnd-eb-h-mid { flex: 1; min-width: 0; }
+.hnd-eb-h-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+  letter-spacing: -.015em;
+  line-height: 1.2;
+}
+.hnd-eb-h-sub {
+  font-size: 12px;
+  color: var(--hnd-muted, #8C8C8C);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.hnd-eb-h-close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--hnd-bg, #F5F4F0);
+  color: var(--hnd-muted, #8C8C8C);
+  border: 0;
+  cursor: pointer;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.hnd-eb-h-close:hover { background: var(--hnd-line, #E5E4E0); color: var(--hnd-ink, #0A0A0A); }
+
+.hnd-eb-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px 12px;
+}
+.hnd-eb-body::-webkit-scrollbar { width: 5px; }
+.hnd-eb-body::-webkit-scrollbar-thumb { background: var(--hnd-line, #E5E4E0); border-radius: 3px; }
+
+.hnd-eb-section { margin-bottom: 18px; }
+.hnd-eb-section-h {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hnd-muted, #8C8C8C);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+
+/* Item rows in editor */
+.hnd-eb-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 11px 12px;
+  background: var(--hnd-bg, #F9F9F5);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 9px;
+  margin-bottom: 6px;
+}
+.hnd-eb-item-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--hnd-ink, #0A0A0A);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hnd-eb-qty-ctrl, .hnd-eb-price-ctrl {
+  display: flex; align-items: center; gap: 4px;
+}
+.hnd-eb-qty-btn {
+  width: 26px; height: 26px;
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  background: var(--hnd-card, #fff);
+  color: var(--hnd-ink, #0A0A0A);
+  border-radius: 6px;
+  cursor: pointer; font-size: 14px; font-weight: 700;
+  font-family: inherit;
+  display: grid; place-items: center;
+}
+.hnd-eb-qty-btn:hover { background: var(--hnd-gold, #D4A574); color: #0A0A0A; border-color: var(--hnd-gold, #D4A574); }
+.hnd-eb-qty-v {
+  min-width: 26px; text-align: center;
+  font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--hnd-ink, #0A0A0A);
+}
+.hnd-eb-price-input {
+  width: 70px;
+  padding: 5px 7px;
+  background: var(--hnd-card, #fff);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 6px;
+  font-size: 12.5px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  color: var(--hnd-ink, #0A0A0A);
+  font-family: inherit;
+}
+.hnd-eb-price-input:focus { border-color: var(--hnd-gold, #D4A574); }
+.hnd-eb-line-total {
+  font-size: 13.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--hnd-ink, #0A0A0A);
+  min-width: 64px;
+  text-align: right;
+}
+.hnd-eb-remove-btn {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: #DC2626;
+  cursor: pointer;
+  font-size: 16px; line-height: 1;
+  font-family: inherit;
+  display: grid; place-items: center;
+}
+.hnd-eb-remove-btn:hover { background: #FEE2E2; }
+
+/* Edit field rows */
+.hnd-eb-field { margin-bottom: 12px; }
+.hnd-eb-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hnd-ink, #0A0A0A);
+  margin-bottom: 6px;
+  display: block;
+}
+.hnd-eb-input, .hnd-eb-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--hnd-card, #fff);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 9px;
+  font-size: 13.5px;
+  color: var(--hnd-ink, #0A0A0A);
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.hnd-eb-input:focus, .hnd-eb-select:focus { border-color: var(--hnd-gold, #D4A574); }
+.hnd-eb-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Pay mode chips */
+.hnd-eb-pay-chips { display: flex; gap: 6px; }
+.hnd-eb-pay-chip {
+  flex: 1;
+  padding: 9px 6px;
+  background: var(--hnd-card, #fff);
+  border: 1.5px solid var(--hnd-line, #E5E4E0);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hnd-ink, #0A0A0A);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  text-transform: capitalize;
+  transition: all .12s;
+}
+.hnd-eb-pay-chip:hover { border-color: var(--hnd-gold, #D4A574); }
+.hnd-eb-pay-chip.active { background: var(--hnd-ink, #0A0A0A); color: #fff; border-color: var(--hnd-ink, #0A0A0A); }
+
+/* Totals strip */
+.hnd-eb-totals {
+  background: linear-gradient(135deg, #FFFCF6, #FAF0E0);
+  border: 1px solid #E8D4B0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.hnd-eb-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  padding: 4px 0;
+  color: var(--hnd-muted, #525252);
+}
+.hnd-eb-total-row.final {
+  border-top: 1px dashed #E8D4B0;
+  margin-top: 6px;
+  padding-top: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+}
+.hnd-eb-total-row .v { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--hnd-ink, #0A0A0A); }
+.hnd-eb-total-row.final .v { font-weight: 800; color: var(--hnd-ink, #0A0A0A); font-size: 18px; }
+.hnd-eb-total-row.diff .v { color: #16A34A; font-weight: 700; }
+.hnd-eb-total-row.diff.neg .v { color: #DC2626; }
+
+.hnd-eb-reason-warn {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #92400E;
+  margin-bottom: 10px;
+  display: flex; gap: 9px; align-items: flex-start;
+}
+.hnd-eb-reason-warn svg { color: #D97706; flex-shrink: 0; margin-top: 1px; }
+
+.hnd-eb-foot {
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--hnd-line, #E5E4E0);
+  display: flex; gap: 10px;
+  background: var(--hnd-card, #fff);
+}
+.hnd-eb-foot-ghost {
+  padding: 12px 18px;
+  background: transparent;
+  color: var(--hnd-muted, #8C8C8C);
+  border: 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.hnd-eb-foot-ghost:hover { color: var(--hnd-ink, #0A0A0A); }
+.hnd-eb-foot-primary {
+  flex: 1;
+  padding: 12px;
+  background: var(--hnd-ink, #0A0A0A);
+  color: var(--hnd-gold, #D4A574);
+  border: 0;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: .01em;
+  transition: transform .12s;
+}
+.hnd-eb-foot-primary:hover { transform: translateY(-1px); }
+.hnd-eb-foot-primary:disabled {
+  background: var(--hnd-line, #E5E4E0);
+  color: var(--hnd-muted, #8C8C8C);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Edit history badge in bill detail */
+.hnd-edit-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #92400E;
+  letter-spacing: .02em;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.hnd-edit-badge:hover { background: #FEF3C7; }
+
+/* Edit history list (shown when badge clicked) */
+.hnd-edit-history {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #78350F;
+  line-height: 1.5;
+}
+.hnd-edit-history h5 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #92400E;
+}
+.hnd-edit-entry {
+  padding: 6px 0;
+  border-bottom: 1px dashed #FDE68A;
+  font-size: 11.5px;
+}
+.hnd-edit-entry:last-child { border-bottom: 0; }
+.hnd-edit-entry-meta { color: #92400E; font-weight: 600; }
+.hnd-edit-entry-reason { color: #78350F; margin-top: 2px; font-style: italic; }
+
+/* Edit button in bill details (manager-only) */
+.hnd-edit-bill-trigger {
+  padding: 8px 14px;
+  background: var(--hnd-card, #fff);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hnd-ink, #0A0A0A);
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all .12s;
+}
+.hnd-edit-bill-trigger:hover {
+  border-color: var(--hnd-gold, #D4A574);
+  color: var(--hnd-gold-rich, #B88A56);
+}
+
+/* Hidden for cashiers */
+html[data-current-role="cashier"] .hnd-edit-bill-trigger { display: none !important; }
+</style>
+
+<!-- ── Edit Bill Modal ── -->
+<div id="hnd-edit-bill-backdrop"></div>
+<div id="hnd-edit-bill" role="dialog" aria-label="Edit bill">
+  <div class="hnd-eb-h">
+    <div class="hnd-eb-h-mid">
+      <div class="hnd-eb-h-title">Edit bill</div>
+      <div class="hnd-eb-h-sub" id="hnd-eb-h-sub">—</div>
+    </div>
+    <button class="hnd-eb-h-close" id="hnd-eb-close" type="button" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="hnd-eb-body" id="hnd-eb-body"></div>
+  <div class="hnd-eb-foot">
+    <button class="hnd-eb-foot-ghost" id="hnd-eb-cancel" type="button">Cancel</button>
+    <button class="hnd-eb-foot-primary" id="hnd-eb-save" type="button" disabled>Save changes</button>
+  </div>
+</div>
+
+<script>
+/* === HisaabNow Step O · Edit Receipt feature · v1 === */
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function escAttr(s){ return escHtml(s).replace(/"/g,'&quot;'); }
+  function fmtINR(n){ try { return '₹' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
+
+  /* Check if current user can edit bills (manager or owner) */
+  function canEditBills(){
+    try {
+      if (window.AppRole && typeof AppRole.getCurrentRole === 'function'){
+        var role = AppRole.getCurrentRole();
+        return role === 'owner' || role === 'manager';
+      }
+    } catch(e){}
+    /* If we can't determine role, default to allowing edit (solo shopkeeper case) */
+    return true;
+  }
+
+  var EditBill = {
+    bill: null,           /* The bill being edited */
+    workItems: [],        /* Editable copy of items */
+    workMode: 'cash',     /* Editable copy of payment mode */
+    workDiscount: 0,
+    workCustName: '',
+    workCustPhone: '',
+    reason: '',
+    origTotal: 0,
+
+    open: function(bill){
+      if (!bill || !bill.id){ if (window.App && App.toast) App.toast('Bill not found'); return; }
+      if (!canEditBills()){
+        if (window.App && App.toast) App.toast('Only owner/manager can edit bills');
+        return;
+      }
+      this.bill = bill;
+      this.workItems = (Array.isArray(bill.items) ? bill.items : []).map(function(it){
+        return Object.assign({}, it, {
+          qty: +it.qty || 1,
+          price: +(it.price != null ? it.price : it.sp) || 0
+        });
+      });
+      this.workMode = (bill.mode || bill.pt || 'cash').toLowerCase();
+      this.workDiscount = +bill.discount || 0;
+      this.workCustName = bill.cn || bill.name || '';
+      this.workCustPhone = bill.cph || '';
+      this.reason = '';
+      this.origTotal = +bill.total || +bill.amt || 0;
+      this.render();
+      $('hnd-edit-bill-backdrop').classList.add('open');
+      $('hnd-edit-bill').classList.add('open');
+      setTimeout(function(){
+        var first = $('hnd-edit-bill').querySelector('input,select');
+        if (first) first.focus();
+      }, 200);
+    },
+
+    close: function(){
+      $('hnd-edit-bill-backdrop').classList.remove('open');
+      $('hnd-edit-bill').classList.remove('open');
+      this.bill = null;
+    },
+
+    /* Recompute totals from working items + discount + GST rate */
+    computeTotals: function(){
+      var b = this.bill || {};
+      var subtotal = 0;
+      this.workItems.forEach(function(it){
+        subtotal += (+it.price || 0) * (+it.qty || 1);
+      });
+      var discount = Math.max(0, +this.workDiscount || 0);
+      var afterDisc = Math.max(0, subtotal - discount);
+      var gstRate = +b.gstRate || 0;
+      var gstAmt = Math.round(afterDisc * (gstRate / 100));
+      var total = afterDisc + gstAmt;
+      return { subtotal: subtotal, discount: discount, gstRate: gstRate, gstAmt: gstAmt, total: total };
+    },
+
+    /* Recompute profit from items (using prodMap for missing cp) */
+    computeProfit: function(){
+      var prodMap = {};
+      try {
+        var prods = (typeof SERVICES !== 'undefined' && Array.isArray(SERVICES)) ? SERVICES : ((window.Store && Store.list && Store.list('prods')) || []);
+        prods.forEach(function(p){ if (p.id) prodMap[p.id] = p; });
+      } catch(e){}
+      var profit = 0, missing = false;
+      this.workItems.forEach(function(it){
+        var q = +it.qty || 1;
+        var sp = +(it.price != null ? it.price : it.sp) || 0;
+        var cp = (it.cp != null && it.cp !== '') ? +it.cp : (it.pid && prodMap[it.pid] && prodMap[it.pid].cp != null ? +prodMap[it.pid].cp : null);
+        if (cp != null) profit += (sp - cp) * q;
+        else missing = true;
+      });
+      return { profit: profit, missing: missing };
+    },
+
+    render: function(){
+      var t = this.computeTotals();
+      var diff = t.total - this.origTotal;
+      var when = this.bill.time
+        ? (this.bill.date === new Date().toISOString().split('T')[0] ? 'Today · ' + this.bill.time : (this.bill.date || '') + ' · ' + this.bill.time)
+        : (this.bill.date || '—');
+      $('hnd-eb-h-sub').textContent = '#' + (this.bill.id || '').slice(-6).toUpperCase() + ' · ' + when + ' · originally ' + fmtINR(this.origTotal);
+
+      var itemsHtml = this.workItems.length === 0
+        ? '<div style="padding:30px;text-align:center;color:#8C8C8C;font-size:12.5px">All items removed. Add at least one item or cancel.</div>'
+        : this.workItems.map(function(it, i){
+            var qty = +it.qty || 1;
+            var price = +it.price || 0;
+            var line = qty * price;
+            return '<div class="hnd-eb-item">'
+              + '<div class="hnd-eb-item-name">' + (it.emoji ? it.emoji + ' ' : '') + escHtml(it.name || '—') + '</div>'
+              + '<div class="hnd-eb-qty-ctrl">'
+                + '<button class="hnd-eb-qty-btn" data-eb-qty="dec" data-i="' + i + '" type="button">−</button>'
+                + '<span class="hnd-eb-qty-v">' + qty + '</span>'
+                + '<button class="hnd-eb-qty-btn" data-eb-qty="inc" data-i="' + i + '" type="button">+</button>'
+              + '</div>'
+              + '<input class="hnd-eb-price-input" data-eb-price="' + i + '" type="number" min="0" step="0.5" value="' + price + '">'
+              + '<div class="hnd-eb-line-total">' + fmtINR(line) + '</div>'
+              + '<button class="hnd-eb-remove-btn" data-eb-remove="' + i + '" type="button" aria-label="Remove">×</button>'
+            + '</div>';
+          }).join('');
+
+      var payChips = ['cash','upi','card','udhaar'].map(function(m){
+        var active = (EditBill.workMode === m) ? 'active' : '';
+        return '<button class="hnd-eb-pay-chip ' + active + '" data-eb-pay="' + m + '" type="button">' + m + '</button>';
+      }).join('');
+
+      var diffRow = (diff !== 0)
+        ? '<div class="hnd-eb-total-row diff' + (diff < 0 ? ' neg' : '') + '"><span>Change from original</span><span class="v">' + (diff > 0 ? '+' : '') + fmtINR(Math.abs(diff)) + (diff < 0 ? ' (less)' : ' (more)') + '</span></div>'
+        : '';
+
+      $('hnd-eb-body').innerHTML = ''
+        + '<div class="hnd-eb-section">'
+          + '<div class="hnd-eb-section-h">Items</div>'
+          + itemsHtml
+        + '</div>'
+        + '<div class="hnd-eb-section">'
+          + '<div class="hnd-eb-section-h">Customer &amp; payment</div>'
+          + '<div class="hnd-eb-row-2">'
+            + '<div class="hnd-eb-field"><label class="hnd-eb-lbl">Customer name</label><input class="hnd-eb-input" id="hnd-eb-cust-name" type="text" value="' + escAttr(this.workCustName) + '" placeholder="Walk-in"></div>'
+            + '<div class="hnd-eb-field"><label class="hnd-eb-lbl">Phone</label><input class="hnd-eb-input" id="hnd-eb-cust-phone" type="tel" value="' + escAttr(this.workCustPhone) + '" placeholder="10-digit"></div>'
+          + '</div>'
+          + '<div class="hnd-eb-field"><label class="hnd-eb-lbl">Payment mode</label><div class="hnd-eb-pay-chips">' + payChips + '</div></div>'
+          + '<div class="hnd-eb-field"><label class="hnd-eb-lbl">Discount (₹)</label><input class="hnd-eb-input" id="hnd-eb-discount" type="number" min="0" step="0.5" value="' + this.workDiscount + '"></div>'
+        + '</div>'
+        + '<div class="hnd-eb-totals">'
+          + '<div class="hnd-eb-total-row"><span>Subtotal</span><span class="v">' + fmtINR(t.subtotal) + '</span></div>'
+          + (t.discount > 0 ? '<div class="hnd-eb-total-row"><span>− Discount</span><span class="v">−' + fmtINR(t.discount) + '</span></div>' : '')
+          + (t.gstAmt > 0 ? '<div class="hnd-eb-total-row"><span>GST (' + t.gstRate + '%)</span><span class="v">' + fmtINR(t.gstAmt) + '</span></div>' : '')
+          + '<div class="hnd-eb-total-row final"><span>New total</span><span class="v">' + fmtINR(t.total) + '</span></div>'
+          + diffRow
+        + '</div>'
+        + (Math.abs(diff) >= 100 ? '<div class="hnd-eb-reason-warn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>Changes over ₹100 require a reason — entered below.</div></div>' : '')
+        + '<div class="hnd-eb-section">'
+          + '<div class="hnd-eb-section-h">Reason for edit ' + (Math.abs(diff) >= 100 ? '<span style="color:#DC2626">*</span>' : '<span style="color:#8C8C8C;font-weight:500;text-transform:none">(optional)</span>') + '</div>'
+          + '<input class="hnd-eb-input" id="hnd-eb-reason" type="text" maxlength="120" placeholder="e.g. Customer returned 1 item · wrong price entered" value="' + escAttr(this.reason) + '">'
+        + '</div>';
+
+      /* Enable Save button if items exist + (reason given OR diff < 100) */
+      var canSave = this.workItems.length > 0 && (Math.abs(diff) < 100 || this.reason.trim().length >= 4);
+      $('hnd-eb-save').disabled = !canSave;
+    },
+
+    adjustQty: function(i, delta){
+      if (!this.workItems[i]) return;
+      var newQty = (+this.workItems[i].qty || 1) + delta;
+      if (newQty < 1){
+        if (!confirm('Remove "' + (this.workItems[i].name || 'item') + '" from the bill?')) return;
+        this.workItems.splice(i, 1);
+      } else {
+        this.workItems[i].qty = newQty;
+      }
+      this.render();
+    },
+
+    setPrice: function(i, val){
+      if (!this.workItems[i]) return;
+      var v = parseFloat(val);
+      if (!isFinite(v) || v < 0) return;
+      this.workItems[i].price = v;
+      /* Don't re-render on input change (would lose focus), only update totals */
+      this.updateTotalsOnly();
+    },
+
+    updateTotalsOnly: function(){
+      var t = this.computeTotals();
+      var diff = t.total - this.origTotal;
+      var totalsBox = $('hnd-eb-body').querySelector('.hnd-eb-totals');
+      if (!totalsBox) return;
+      var diffRow = (diff !== 0)
+        ? '<div class="hnd-eb-total-row diff' + (diff < 0 ? ' neg' : '') + '"><span>Change from original</span><span class="v">' + (diff > 0 ? '+' : '') + fmtINR(Math.abs(diff)) + (diff < 0 ? ' (less)' : ' (more)') + '</span></div>'
+        : '';
+      totalsBox.innerHTML = ''
+        + '<div class="hnd-eb-total-row"><span>Subtotal</span><span class="v">' + fmtINR(t.subtotal) + '</span></div>'
+        + (t.discount > 0 ? '<div class="hnd-eb-total-row"><span>− Discount</span><span class="v">−' + fmtINR(t.discount) + '</span></div>' : '')
+        + (t.gstAmt > 0 ? '<div class="hnd-eb-total-row"><span>GST (' + t.gstRate + '%)</span><span class="v">' + fmtINR(t.gstAmt) + '</span></div>' : '')
+        + '<div class="hnd-eb-total-row final"><span>New total</span><span class="v">' + fmtINR(t.total) + '</span></div>'
+        + diffRow;
+      /* Update line totals */
+      var items = $('hnd-eb-body').querySelectorAll('.hnd-eb-item');
+      items.forEach(function(row, i){
+        var lt = row.querySelector('.hnd-eb-line-total');
+        if (lt && EditBill.workItems[i]){
+          var q = +EditBill.workItems[i].qty || 1;
+          var p = +EditBill.workItems[i].price || 0;
+          lt.textContent = fmtINR(q * p);
+        }
+      });
+      /* Re-evaluate Save button + reason warning */
+      var canSave = this.workItems.length > 0 && (Math.abs(diff) < 100 || this.reason.trim().length >= 4);
+      $('hnd-eb-save').disabled = !canSave;
+    },
+
+    removeItem: function(i){
+      if (!this.workItems[i]) return;
+      if (!confirm('Remove "' + (this.workItems[i].name || 'item') + '" from the bill?')) return;
+      this.workItems.splice(i, 1);
+      this.render();
+    },
+
+    save: function(){
+      if (!this.bill) return;
+      var t = this.computeTotals();
+      var p = this.computeProfit();
+      var diff = t.total - this.origTotal;
+      if (this.workItems.length === 0){
+        if (window.App && App.toast) App.toast('Add at least one item or cancel');
+        return;
+      }
+      if (Math.abs(diff) >= 100 && this.reason.trim().length < 4){
+        if (window.App && App.toast) App.toast('Please give a reason for this change');
+        return;
+      }
+
+      /* Snapshot the original state */
+      var snapshot = {
+        items: this.bill.items,
+        subtotal: this.bill.subtotal,
+        discount: this.bill.discount,
+        gstRate: this.bill.gstRate,
+        gstAmt: this.bill.gstAmt,
+        total: this.bill.total,
+        amt: this.bill.amt,
+        mode: this.bill.mode || this.bill.pt,
+        cn: this.bill.cn || this.bill.name,
+        cph: this.bill.cph,
+        profit: this.bill.profit,
+        profitMissing: this.bill.profitMissing
+      };
+
+      /* Get editor info */
+      var who = '';
+      try {
+        if (window.S && window.S.ownerName) who = window.S.ownerName;
+        else if (window.App && App.userName) who = App.userName;
+        else if (window.firebase && firebase.auth){
+          var u = firebase.auth().currentUser;
+          if (u) who = u.displayName || u.email || u.uid || '';
+        }
+      } catch(e){}
+
+      var edits = Array.isArray(this.bill._edits) ? this.bill._edits.slice() : [];
+      edits.push({
+        at: Date.now(),
+        who: who || 'unknown',
+        reason: this.reason.trim(),
+        diff: diff,
+        before: snapshot
+      });
+
+      var patch = {
+        items: this.workItems,
+        subtotal: t.subtotal,
+        discount: t.discount,
+        gstAmt: t.gstAmt,
+        total: t.total,
+        amt: t.total,
+        profit: p.profit,
+        profitMissing: p.missing,
+        mode: this.workMode,
+        pt: this.workMode,
+        cn: this.workCustName,
+        name: this.workCustName,
+        cph: this.workCustPhone,
+        _edits: edits,
+        _editedAt: Date.now()
+      };
+
+      try {
+        var updated = Store.update('sales', this.bill.id, patch);
+        if (!updated){
+          if (window.App && App.toast) App.toast('Save failed · bill not found');
+          return;
+        }
+      } catch(e){
+        console.error('[O] save failed', e);
+        if (window.App && App.toast) App.toast('Save failed · ' + e.message);
+        return;
+      }
+
+      /* Audit log entry */
+      try {
+        if (window.AuditLog && typeof AuditLog.record === 'function'){
+          AuditLog.record('sale.edit', {
+            resource: 'sale',
+            resourceId: this.bill.id,
+            details: {
+              reason: this.reason.trim(),
+              diff: diff,
+              before: {
+                total: snapshot.total,
+                itemCount: (snapshot.items || []).length,
+                mode: snapshot.mode
+              },
+              after: {
+                total: t.total,
+                itemCount: this.workItems.length,
+                mode: this.workMode
+              }
+            }
+          });
+        }
+      } catch(e){ console.warn('[O] audit log failed', e); }
+
+      if (window.App && App.toast){
+        App.toast('✓ Bill updated · ' + (diff > 0 ? '+' : diff < 0 ? '−' : '') + fmtINR(Math.abs(diff || 0)));
+      }
+      this.close();
+
+      /* Refresh visible screens */
+      try {
+        if (window.HND){
+          if (HND.bills && typeof HND.bills.render === 'function' && document.body.classList.contains('hnd-on-sales')) HND.bills.render();
+          if (HND.rep && typeof HND.rep.render === 'function' && document.body.classList.contains('hnd-on-rep')) HND.rep.render();
+        }
+        if (window.App && typeof App.renderHomeKpis === 'function') App.renderHomeKpis();
+      } catch(e){}
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════
+     Wire bill detail to show Edit button + history
+  ═══════════════════════════════════════════════════════ */
+
+  /* Inject Edit button into desktop bill detail (Step F right-pane) */
+  function injectDesktopEditButton(){
+    var detailWrap = document.getElementById('hnd-bills-detail');
+    if (!detailWrap) return;
+    /* Find action buttons row (Print, Share) — Step F uses .hnd-detail-actions */
+    var actionsRow = detailWrap.querySelector('.hnd-detail-actions');
+    if (!actionsRow || actionsRow.querySelector('[data-hnd-edit-bill]')) return;
+    /* Find which bill is currently selected */
+    var bid = (window.HND && HND.bills && HND.bills.selectedId) || null;
+    if (!bid) return;
+    var bill = (window.Store && Store.list && Store.list('sales').find(function(s){ return s.id === bid; })) || null;
+    if (!bill) return;
+    if (!canEditBills()) return;
+    var btn = document.createElement('button');
+    btn.className = 'hnd-btn';
+    btn.style.cssText = 'display:inline-flex;align-items:center;gap:6px';
+    btn.setAttribute('data-hnd-edit-bill', bill.id);
+    btn.setAttribute('data-role-min', 'manager');
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Edit';
+    actionsRow.insertBefore(btn, actionsRow.firstChild);
+    /* If bill has edit history, append a small badge after the actions */
+    if (Array.isArray(bill._edits) && bill._edits.length > 0 && !actionsRow.parentElement.querySelector('.hnd-edit-badge')){
+      var badge = document.createElement('span');
+      badge.className = 'hnd-edit-badge';
+      badge.setAttribute('data-hnd-show-history', bill.id);
+      badge.innerHTML = '✏️ Edited ' + bill._edits.length + 'x';
+      badge.style.marginLeft = '0';
+      badge.style.marginTop = '8px';
+      badge.style.alignSelf = 'flex-start';
+      actionsRow.appendChild(badge);
+    }
+  }
+
+  /* Inject Edit + history into mobile bill detail sheet */
+  function injectMobileEditButton(){
+    var sheet = document.getElementById('prod-sheet-body');
+    if (!sheet) return;
+    /* Detect: is this a bill detail sheet? Look for the bill amount header */
+    /* We don't have a stable selector — find the parent container that has bill markup */
+    /* Actually, easier: hook openBillDetail in App */
+  }
+
+  /* Hook App.openBillDetail to inject Edit button after the sheet renders */
+  function hookOpenBillDetail(){
+    if (!window.App || typeof App.openBillDetail !== 'function') return;
+    if (App.__hnd_oOpenBillHooked) return;
+    var orig = App.openBillDetail.bind(App);
+    App.openBillDetail = function(idx, source){
+      var r = orig(idx, source);
+      /* After the sheet renders, inject Edit button */
+      setTimeout(function(){
+        try {
+          var list;
+          if (source === 'cust-history') list = App._custVisits || [];
+          else list = (App._salesInRange ? App._salesInRange() : Store.todaySales()).slice().sort(function(a,b){
+            var ta = a.t || (a.date ? new Date(a.date).getTime() : 0);
+            var tb = b.t || (b.date ? new Date(b.date).getTime() : 0);
+            return tb - ta;
+          });
+          var bill = list[idx];
+          if (!bill) return;
+          var sheet = document.getElementById('prod-sheet-body');
+          if (!sheet) return;
+          /* Inject Edit button at top of body */
+          if (sheet.querySelector('[data-hnd-edit-bill]')) return;
+          if (!canEditBills()) return;
+          var btnWrap = document.createElement('div');
+          btnWrap.style.cssText = 'padding:10px 16px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+          var editBtn = '<button data-hnd-edit-bill="' + escAttr(bill.id) + '" data-role-min="manager" style="padding:8px 14px;background:#fff;border:1.5px solid var(--border,#E5E4E0);border-radius:8px;font-size:12.5px;font-weight:700;color:var(--t1,#0A0A0A);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Edit bill</button>';
+          var historyBtn = '';
+          if (Array.isArray(bill._edits) && bill._edits.length > 0){
+            historyBtn = '<span class="hnd-edit-badge" data-hnd-show-history="' + escAttr(bill.id) + '">✏️ Edited ' + bill._edits.length + 'x</span>';
+          }
+          btnWrap.innerHTML = editBtn + historyBtn;
+          sheet.insertBefore(btnWrap, sheet.firstChild);
+        } catch(e){ console.warn('[O] inject mobile edit failed', e); }
+      }, 60);
+      return r;
+    };
+    App.__hnd_oOpenBillHooked = true;
+  }
+
+  /* Show edit history (inline expand for mobile, replace for desktop) */
+  function showEditHistory(billId){
+    var bill = (window.Store && Store.list && Store.list('sales').find(function(s){ return s.id === billId; })) || null;
+    if (!bill || !Array.isArray(bill._edits) || bill._edits.length === 0) return;
+    var html = '<div class="hnd-edit-history"><h5>Edit history (' + bill._edits.length + ' change' + (bill._edits.length === 1 ? '' : 's') + ')</h5>';
+    bill._edits.slice().reverse().forEach(function(e){
+      var when = new Date(e.at).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      var diffStr = e.diff > 0 ? '+' + fmtINR(Math.abs(e.diff)) : e.diff < 0 ? '−' + fmtINR(Math.abs(e.diff)) : 'No change';
+      html += '<div class="hnd-edit-entry">'
+        + '<div class="hnd-edit-entry-meta">' + escHtml(when) + ' · ' + escHtml(e.who || 'unknown') + ' · ' + diffStr + '</div>'
+        + (e.reason ? '<div class="hnd-edit-entry-reason">"' + escHtml(e.reason) + '"</div>' : '')
+      + '</div>';
+    });
+    html += '</div>';
+    /* Find target: prod-sheet-body (mobile) or hnd-bills-detail (desktop) */
+    var target = document.getElementById('prod-sheet-body') || document.getElementById('hnd-bills-detail');
+    if (!target) return;
+    /* Toggle: remove if already present */
+    var existing = target.querySelector('.hnd-edit-history');
+    if (existing){ existing.remove(); return; }
+    target.appendChild(Object.assign(document.createElement('div'), {innerHTML: html}).firstChild);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     EVENT DELEGATION + BOOT
+  ═══════════════════════════════════════════════════════ */
+  document.addEventListener('click', function(e){
+    /* Edit button clicked */
+    var editTrigger = e.target.closest('[data-hnd-edit-bill]');
+    if (editTrigger){
+      e.preventDefault();
+      var bid = editTrigger.getAttribute('data-hnd-edit-bill');
+      var bill = (window.Store && Store.list && Store.list('sales').find(function(s){ return s.id === bid; })) || null;
+      if (bill) EditBill.open(bill);
+      return;
+    }
+    /* Show edit history badge */
+    var historyTrigger = e.target.closest('[data-hnd-show-history]');
+    if (historyTrigger){
+      e.preventDefault();
+      showEditHistory(historyTrigger.getAttribute('data-hnd-show-history'));
+      return;
+    }
+    /* Close modal */
+    if (e.target.id === 'hnd-eb-close' || e.target.id === 'hnd-eb-cancel' || e.target.id === 'hnd-edit-bill-backdrop'){
+      EditBill.close();
+      return;
+    }
+    /* Qty +/- buttons */
+    var qtyBtn = e.target.closest('[data-eb-qty]');
+    if (qtyBtn){
+      var i = +qtyBtn.getAttribute('data-i');
+      var dir = qtyBtn.getAttribute('data-eb-qty');
+      EditBill.adjustQty(i, dir === 'inc' ? 1 : -1);
+      return;
+    }
+    /* Remove item */
+    var rmBtn = e.target.closest('[data-eb-remove]');
+    if (rmBtn){
+      EditBill.removeItem(+rmBtn.getAttribute('data-eb-remove'));
+      return;
+    }
+    /* Payment mode chip */
+    var payChip = e.target.closest('[data-eb-pay]');
+    if (payChip){
+      EditBill.workMode = payChip.getAttribute('data-eb-pay');
+      EditBill.render();
+      return;
+    }
+    /* Save */
+    if (e.target.id === 'hnd-eb-save'){
+      EditBill.save();
+      return;
+    }
+  });
+
+  /* Input changes */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnd-eb-discount'){
+      EditBill.workDiscount = parseFloat(e.target.value) || 0;
+      EditBill.updateTotalsOnly();
+    } else if (e.target.id === 'hnd-eb-cust-name'){
+      EditBill.workCustName = e.target.value;
+    } else if (e.target.id === 'hnd-eb-cust-phone'){
+      EditBill.workCustPhone = e.target.value;
+    } else if (e.target.id === 'hnd-eb-reason'){
+      EditBill.reason = e.target.value;
+      EditBill.updateTotalsOnly();
+    } else if (e.target.hasAttribute && e.target.hasAttribute('data-eb-price')){
+      var i = +e.target.getAttribute('data-eb-price');
+      EditBill.setPrice(i, e.target.value);
+    }
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && $('hnd-edit-bill').classList.contains('open')){
+      EditBill.close();
+    }
+  });
+
+  /* Inject Edit button into desktop bill detail every time bill detail renders */
+  function watchDesktopBillDetail(){
+    var detail = document.getElementById('hnd-bills-detail');
+    if (!detail || detail.__hnd_o_observed) return;
+    detail.__hnd_o_observed = true;
+    var obs = new MutationObserver(function(){ setTimeout(injectDesktopEditButton, 30); });
+    obs.observe(detail, { childList: true, subtree: false });
+  }
+
+  function boot(retry){
+    hookOpenBillDetail();
+    watchDesktopBillDetail();
+    if (retry > 0 && (!window.App || !App.__hnd_oOpenBillHooked)){
+      setTimeout(function(){ boot(retry - 1); }, 500);
+    }
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else {
+    boot(15);
+  }
+
+  window.HND = window.HND || {};
+  window.HND.editBill = EditBill;
+})();
+</script>
+<!-- =================== END Step O block =================== -->
+
+
+<!-- ============================================================
+     HisaabNow Step P · GST-aware Credit / Debit Note system
+     ─────────────────────────────────────────────────────────────
+     Activates ONLY when S.gstEnabled === true.
+
+     When a GST-enabled shop wants to "edit" a bill that has GST
+     applied, the legally compliant path is to issue a Credit Note
+     (if reducing the bill) or Debit Note (if increasing it). The
+     original invoice stays untouched in records.
+
+     What this builds:
+       1. Detection: when user clicks Edit on a bill with gstAmt > 0
+          AND S.gstEnabled === true, intercept the flow and offer
+          BOTH options:
+            (a) Issue Credit/Debit Note (recommended — legally clean)
+            (b) Edit anyway (with strong warning about GSTR-1)
+       2. Credit/Debit Note creation sheet
+       3. Notes are stored in Store.list('notes') with their own
+          serial number series, linked to original invoice
+       4. Original bill gets a small "💳 1 CN/DN issued" badge
+       5. Reports tab gets a new "Credit/Debit Notes" section
+          for the user's CA to copy into GSTR-1 filing
+
+     When S.gstEnabled === false: nothing changes — Step O's free
+     edit continues to work for kacha bills.
+============================================================ -->
+
+<style>
+/* ── Edit choice prompt (shows when GST is on) ── */
+#hnd-gst-choice-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(10,10,10,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 199;
+}
+#hnd-gst-choice-backdrop.open { display: block; animation: hnd-gst-fade .15s ease-out; }
+@keyframes hnd-gst-fade { from { opacity: 0; } to { opacity: 1; } }
+
+#hnd-gst-choice {
+  display: none;
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px));
+  background: var(--hnd-card, #fff);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.4);
+  z-index: 200;
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+#hnd-gst-choice.open { display: block; animation: hnd-gst-pop .2s cubic-bezier(.16,.84,.44,1); }
+@keyframes hnd-gst-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.hnd-gst-choice-h {
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--hnd-line, #E5E4E0);
+}
+.hnd-gst-choice-h .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700;
+  color: #92400E;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  padding: 3px 9px;
+  border-radius: 99px;
+  letter-spacing: .04em; text-transform: uppercase;
+  margin-bottom: 9px;
+}
+.hnd-gst-choice-h h3 {
+  font-size: 17px; font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+  margin: 0;
+  letter-spacing: -.015em;
+  line-height: 1.25;
+}
+.hnd-gst-choice-h p {
+  font-size: 12.5px; color: var(--hnd-muted, #525252);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.hnd-gst-choice-body { padding: 14px 18px; }
+.hnd-gst-option {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px;
+  background: var(--hnd-bg, #F9F9F5);
+  border: 1.5px solid var(--hnd-line, #E5E4E0);
+  border-radius: 11px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  transition: all .12s;
+}
+.hnd-gst-option:hover {
+  border-color: var(--hnd-gold, #D4A574);
+  background: #FFFCF6;
+  transform: translateY(-1px);
+}
+.hnd-gst-option.recommended {
+  background: linear-gradient(135deg, #FFFCF6, #FAF0E0);
+  border-color: var(--hnd-gold, #D4A574);
+}
+.hnd-gst-option.recommended:hover {
+  background: linear-gradient(135deg, #FAF0E0, #F0DCBF);
+}
+.hnd-gst-option-em {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--hnd-gold, #D4A574);
+  color: #0A0A0A;
+  display: grid; place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.hnd-gst-option.warn .hnd-gst-option-em {
+  background: #FEF3C7;
+  color: #92400E;
+}
+.hnd-gst-option-mid { flex: 1; min-width: 0; }
+.hnd-gst-option-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+  letter-spacing: -.005em;
+  display: flex; align-items: center; gap: 6px;
+}
+.hnd-gst-option-rec-tag {
+  font-size: 9px; font-weight: 800;
+  background: var(--hnd-gold, #D4A574);
+  color: #0A0A0A;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: .05em;
+}
+.hnd-gst-option-sub {
+  font-size: 12px; color: var(--hnd-muted, #525252);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.hnd-gst-option-arrow {
+  color: var(--hnd-muted, #8C8C8C);
+  font-size: 18px;
+  align-self: center;
+}
+
+.hnd-gst-choice-foot {
+  padding: 12px 22px 18px;
+  text-align: center;
+}
+.hnd-gst-cancel {
+  background: none; border: 0;
+  color: var(--hnd-muted, #8C8C8C);
+  font-size: 12.5px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  padding: 6px 12px;
+}
+.hnd-gst-cancel:hover { color: var(--hnd-ink, #0A0A0A); }
+
+/* ── CN/DN Issue sheet ── */
+#hnd-note-sheet-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(10,10,10,0.55);
+  backdrop-filter: blur(3px);
+  z-index: 199;
+}
+#hnd-note-sheet-backdrop.open { display: block; }
+
+#hnd-note-sheet {
+  display: none;
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  background: var(--hnd-card, #fff);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.4);
+  z-index: 200;
+  overflow: hidden;
+  flex-direction: column;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+#hnd-note-sheet.open { display: flex; animation: hnd-gst-pop .2s cubic-bezier(.16,.84,.44,1); }
+
+@media (max-width: 600px) {
+  #hnd-note-sheet {
+    width: 100vw; height: 100vh; max-height: 100vh;
+    top: 0; left: 0;
+    transform: none;
+    border-radius: 0;
+  }
+}
+
+.hnd-note-h {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--hnd-line, #E5E4E0);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.hnd-note-h-mid { flex: 1; }
+.hnd-note-h-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 5px;
+  letter-spacing: .04em; text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.hnd-note-h-tag.credit { background: #DCFCE7; color: #166534; }
+.hnd-note-h-tag.debit { background: #FEF3C7; color: #92400E; }
+.hnd-note-h-title {
+  font-size: 17px; font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+  letter-spacing: -.015em; line-height: 1.2;
+}
+.hnd-note-h-sub {
+  font-size: 12px; color: var(--hnd-muted, #525252);
+  margin-top: 4px;
+}
+.hnd-note-h-close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--hnd-bg, #F9F9F5);
+  color: var(--hnd-muted, #8C8C8C);
+  border: 0; cursor: pointer;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.hnd-note-h-close:hover { background: var(--hnd-line, #E5E4E0); color: var(--hnd-ink, #0A0A0A); }
+
+.hnd-note-body {
+  flex: 1; overflow-y: auto;
+  padding: 18px 22px;
+}
+.hnd-note-body::-webkit-scrollbar { width: 5px; }
+.hnd-note-body::-webkit-scrollbar-thumb { background: var(--hnd-line, #E5E4E0); border-radius: 3px; }
+
+.hnd-note-section { margin-bottom: 18px; }
+.hnd-note-section-h {
+  font-size: 11px; font-weight: 700;
+  color: var(--hnd-muted, #8C8C8C);
+  letter-spacing: .06em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.hnd-note-orig-card {
+  background: var(--hnd-bg, #F9F9F5);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+.hnd-note-orig-row { display: contents; }
+.hnd-note-orig-row .l { color: var(--hnd-muted, #525252); }
+.hnd-note-orig-row .v { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--hnd-ink, #0A0A0A); text-align: right; }
+
+.hnd-note-toggle {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--hnd-bg, #F9F9F5);
+  padding: 4px;
+  border-radius: 10px;
+}
+.hnd-note-toggle button {
+  padding: 11px;
+  background: transparent;
+  border: 0; cursor: pointer;
+  font-family: inherit;
+  font-size: 13px; font-weight: 600;
+  color: var(--hnd-muted, #525252);
+  border-radius: 7px;
+  transition: all .12s;
+}
+.hnd-note-toggle button.active {
+  background: var(--hnd-card, #fff);
+  color: var(--hnd-ink, #0A0A0A);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.hnd-note-toggle button.active.credit { color: #166534; }
+.hnd-note-toggle button.active.debit { color: #92400E; }
+
+.hnd-note-amount-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--hnd-card, #fff);
+  border: 1.5px solid var(--hnd-line, #E5E4E0);
+  border-radius: 11px;
+  outline: none;
+  font-family: inherit;
+  color: var(--hnd-ink, #0A0A0A);
+  text-align: right;
+  box-sizing: border-box;
+}
+.hnd-note-amount-input:focus { border-color: var(--hnd-gold, #D4A574); }
+.hnd-note-amount-prefix {
+  position: absolute; left: 16px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 22px; font-weight: 700;
+  color: var(--hnd-muted, #525252);
+  pointer-events: none;
+}
+.hnd-note-amount-wrap { position: relative; }
+
+.hnd-note-reason-input, .hnd-note-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  background: var(--hnd-card, #fff);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--hnd-ink, #0A0A0A);
+  outline: none;
+  box-sizing: border-box;
+  resize: none;
+}
+.hnd-note-textarea { min-height: 60px; }
+.hnd-note-reason-input:focus, .hnd-note-textarea:focus { border-color: var(--hnd-gold, #D4A574); }
+
+.hnd-note-presets {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+.hnd-note-preset {
+  padding: 6px 10px;
+  background: var(--hnd-bg, #F9F9F5);
+  border: 1px solid var(--hnd-line, #E5E4E0);
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--hnd-ink, #0A0A0A);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .12s;
+}
+.hnd-note-preset:hover { border-color: var(--hnd-gold, #D4A574); }
+
+.hnd-note-summary {
+  background: linear-gradient(135deg, #FFFCF6, #FAF0E0);
+  border: 1px solid #E8D4B0;
+  border-radius: 11px;
+  padding: 14px 16px;
+  margin: 8px 0 4px;
+}
+.hnd-note-summary-row {
+  display: flex; justify-content: space-between;
+  font-size: 12.5px; padding: 4px 0;
+  color: var(--hnd-muted, #525252);
+}
+.hnd-note-summary-row .v { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--hnd-ink, #0A0A0A); }
+.hnd-note-summary-row.final {
+  border-top: 1px dashed #E8D4B0;
+  margin-top: 6px;
+  padding-top: 9px;
+  font-size: 14.5px; font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+}
+.hnd-note-summary-row.final .v { font-size: 17px; }
+
+.hnd-note-foot {
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--hnd-line, #E5E4E0);
+  display: flex; gap: 10px;
+}
+.hnd-note-foot-ghost {
+  padding: 12px 18px;
+  background: transparent;
+  color: var(--hnd-muted, #8C8C8C);
+  border: 0; border-radius: 9px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.hnd-note-foot-primary {
+  flex: 1;
+  padding: 12px;
+  background: var(--hnd-ink, #0A0A0A);
+  color: var(--hnd-gold, #D4A574);
+  border: 0;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform .12s;
+}
+.hnd-note-foot-primary:hover { transform: translateY(-1px); }
+.hnd-note-foot-primary:disabled {
+  background: var(--hnd-line, #E5E4E0);
+  color: var(--hnd-muted, #8C8C8C);
+  cursor: not-allowed; transform: none;
+}
+
+/* CN/DN badge in bill detail */
+.hnd-note-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  letter-spacing: .02em;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.hnd-note-badge.credit { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
+.hnd-note-badge.debit { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.hnd-note-badge:hover { transform: translateY(-1px); }
+
+/* CN/DN list (when badge clicked) */
+.hnd-notes-history {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 10px;
+}
+.hnd-notes-history h5 {
+  margin: 0 0 8px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: #0369A1;
+}
+.hnd-note-entry {
+  padding: 8px 0;
+  border-bottom: 1px dashed #BAE6FD;
+  font-size: 12px;
+  color: #0C4A6E;
+}
+.hnd-note-entry:last-child { border-bottom: 0; }
+.hnd-note-entry-h {
+  display: flex; justify-content: space-between;
+  margin-bottom: 3px;
+}
+.hnd-note-entry-num {
+  font-weight: 800; letter-spacing: .02em;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+}
+.hnd-note-entry-amt {
+  font-variant-numeric: tabular-nums; font-weight: 800;
+}
+.hnd-note-entry-amt.credit { color: #166534; }
+.hnd-note-entry-amt.debit { color: #92400E; }
+.hnd-note-entry-meta { color: #475569; font-size: 11px; line-height: 1.4; }
+
+/* Edit-anyway warning toast */
+.hnd-note-warn-toast {
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #991B1B;
+  margin-bottom: 14px;
+  display: flex; gap: 9px; align-items: flex-start;
+}
+.hnd-note-warn-toast svg { color: #DC2626; flex-shrink: 0; margin-top: 1px; }
+</style>
+
+<!-- ── GST Choice Modal ── -->
+<div id="hnd-gst-choice-backdrop"></div>
+<div id="hnd-gst-choice" role="dialog">
+  <div class="hnd-gst-choice-h">
+    <div class="pill">📜 GST Bill</div>
+    <h3>How would you like to fix this bill?</h3>
+    <p>This bill has GST applied. The legally compliant way to adjust it is to issue a Credit Note (if reducing) or Debit Note (if adding charges). Your CA needs these for GSTR-1 filing.</p>
+  </div>
+  <div class="hnd-gst-choice-body">
+    <button class="hnd-gst-option recommended" id="hnd-gst-opt-note" type="button">
+      <div class="hnd-gst-option-em">📝</div>
+      <div class="hnd-gst-option-mid">
+        <div class="hnd-gst-option-title">
+          Issue Credit / Debit Note
+          <span class="hnd-gst-option-rec-tag">RECOMMENDED</span>
+        </div>
+        <div class="hnd-gst-option-sub">Creates a separate document linked to this invoice. Original bill stays intact. GSTR-1 ready.</div>
+      </div>
+      <div class="hnd-gst-option-arrow">›</div>
+    </button>
+    <button class="hnd-gst-option warn" id="hnd-gst-opt-edit" type="button">
+      <div class="hnd-gst-option-em">⚠️</div>
+      <div class="hnd-gst-option-mid">
+        <div class="hnd-gst-option-title">Edit bill anyway</div>
+        <div class="hnd-gst-option-sub">Overwrites the original invoice. Your GSTR-1 will need manual reconciliation. Use only for kacha bills.</div>
+      </div>
+      <div class="hnd-gst-option-arrow">›</div>
+    </button>
+  </div>
+  <div class="hnd-gst-choice-foot">
+    <button class="hnd-gst-cancel" id="hnd-gst-cancel" type="button">Cancel</button>
+  </div>
+</div>
+
+<!-- ── CN/DN Issue Sheet ── -->
+<div id="hnd-note-sheet-backdrop"></div>
+<div id="hnd-note-sheet" role="dialog">
+  <div class="hnd-note-h">
+    <div class="hnd-note-h-mid">
+      <span class="hnd-note-h-tag credit" id="hnd-note-h-tag">CREDIT NOTE</span>
+      <div class="hnd-note-h-title" id="hnd-note-h-title">Issue Credit Note</div>
+      <div class="hnd-note-h-sub" id="hnd-note-h-sub">—</div>
+    </div>
+    <button class="hnd-note-h-close" id="hnd-note-sheet-close" type="button" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="hnd-note-body" id="hnd-note-body"></div>
+  <div class="hnd-note-foot">
+    <button class="hnd-note-foot-ghost" id="hnd-note-cancel" type="button">Cancel</button>
+    <button class="hnd-note-foot-primary" id="hnd-note-save" type="button" disabled>Issue note</button>
+  </div>
+</div>
+
+<script>
+/* === HisaabNow Step P · GST Credit/Debit Note system · v1 === */
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function fmtINR(n){ try { return '₹' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
+
+  /* Check if GST is enabled in settings */
+  function isGstEnabled(){
+    try {
+      return !!(window.S && window.S.gstEnabled);
+    } catch(e){ return false; }
+  }
+
+  /* Check if a bill is a GST bill (has GST applied) */
+  function isGstBill(bill){
+    if (!bill) return false;
+    return (+bill.gstAmt > 0) || (+bill.gstRate > 0);
+  }
+
+  /* Check if current user can issue notes (manager/owner same as Step O) */
+  function canIssueNotes(){
+    try {
+      if (window.AppRole && typeof AppRole.getCurrentRole === 'function'){
+        var role = AppRole.getCurrentRole();
+        return role === 'owner' || role === 'manager';
+      }
+    } catch(e){}
+    return true;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     Note serial number generator
+     Format: CN/YYYY-YY/NNNN  or  DN/YYYY-YY/NNNN
+     This follows the GST rule (alphanumeric, max 16 chars,
+     unique per financial year).
+  ═══════════════════════════════════════════════════════ */
+  function currentFY(){
+    var now = new Date();
+    var year = now.getFullYear();
+    /* Indian FY: April 1 to March 31 */
+    if (now.getMonth() < 3) year = year - 1;
+    var endYY = String((year + 1) % 100).padStart(2, '0');
+    var startYYYY = String(year);
+    return startYYYY + '-' + endYY;
+  }
+  function nextNoteSerial(type){
+    /* type: 'credit' or 'debit' */
+    var prefix = type === 'credit' ? 'CN' : 'DN';
+    var fy = currentFY();
+    try {
+      var existing = (window.Store && Store.list && Store.list('notes')) || [];
+      var sameFy = existing.filter(function(n){ return n.type === type && (n.fy === fy); });
+      var maxN = 0;
+      sameFy.forEach(function(n){
+        var m = (n.noteNo || '').match(/\/(\d+)$/);
+        if (m) maxN = Math.max(maxN, +m[1] || 0);
+      });
+      var next = maxN + 1;
+      return prefix + '/' + fy + '/' + String(next).padStart(4, '0');
+    } catch(e){
+      return prefix + '/' + fy + '/0001';
+    }
+  }
+
+  /* Get all notes linked to a bill */
+  function notesForBill(billId){
+    if (!billId) return [];
+    try {
+      return ((window.Store && Store.list && Store.list('notes')) || []).filter(function(n){ return n.linkedBillId === billId; });
+    } catch(e){ return []; }
+  }
+
+  /* Net effect of all notes on a bill */
+  function noteEffectOnBill(billId){
+    var notes = notesForBill(billId);
+    var creditSum = 0, debitSum = 0;
+    notes.forEach(function(n){
+      if (n.type === 'credit') creditSum += +n.total || 0;
+      else if (n.type === 'debit') debitSum += +n.total || 0;
+    });
+    return { credit: creditSum, debit: debitSum, net: debitSum - creditSum, count: notes.length };
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     GST Choice Modal — fork the Edit flow
+  ═══════════════════════════════════════════════════════ */
+  var pendingBill = null;
+  function openChoice(bill){
+    pendingBill = bill;
+    $('hnd-gst-choice-backdrop').classList.add('open');
+    $('hnd-gst-choice').classList.add('open');
+  }
+  function closeChoice(){
+    $('hnd-gst-choice-backdrop').classList.remove('open');
+    $('hnd-gst-choice').classList.remove('open');
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     CN/DN Issue Sheet
+  ═══════════════════════════════════════════════════════ */
+  var NoteSheet = {
+    bill: null,
+    type: 'credit',     /* 'credit' = reduce | 'debit' = add */
+    amount: 0,
+    reason: '',
+    description: '',
+
+    open: function(bill){
+      if (!bill || !bill.id) return;
+      if (!canIssueNotes()){
+        if (window.App && App.toast) App.toast('Only owner/manager can issue notes');
+        return;
+      }
+      this.bill = bill;
+      /* Default to credit note (most common: reducing bill) */
+      this.type = 'credit';
+      this.amount = 0;
+      this.reason = '';
+      this.description = '';
+      this.render();
+      $('hnd-note-sheet-backdrop').classList.add('open');
+      $('hnd-note-sheet').classList.add('open');
+      setTimeout(function(){
+        var input = $('hnd-note-amount');
+        if (input) input.focus();
+      }, 200);
+    },
+
+    close: function(){
+      $('hnd-note-sheet-backdrop').classList.remove('open');
+      $('hnd-note-sheet').classList.remove('open');
+      this.bill = null;
+    },
+
+    /* Calculate tax breakup from gross amount (reverse from total to subtotal + gst) */
+    computeBreakup: function(){
+      var bill = this.bill;
+      var gstRate = +bill.gstRate || 0;
+      var amount = +this.amount || 0;
+      /* If GST is included in the amount, separate it */
+      var taxable, gst;
+      if (gstRate > 0){
+        /* amount = taxable * (1 + rate/100), so taxable = amount / (1 + rate/100) */
+        taxable = amount / (1 + gstRate / 100);
+        gst = amount - taxable;
+      } else {
+        taxable = amount;
+        gst = 0;
+      }
+      return { taxable: taxable, gst: gst, total: amount, gstRate: gstRate };
+    },
+
+    render: function(){
+      var bill = this.bill;
+      var prefix = this.type === 'credit' ? 'CN' : 'DN';
+      var serial = nextNoteSerial(this.type);
+      var verb = this.type === 'credit' ? 'reduce' : 'add to';
+      var billTotal = +bill.total || +bill.amt || 0;
+      var who = bill.cn || bill.name || 'Walk-in';
+
+      $('hnd-note-h-tag').className = 'hnd-note-h-tag ' + this.type;
+      $('hnd-note-h-tag').textContent = this.type.toUpperCase() + ' NOTE';
+      $('hnd-note-h-title').textContent = 'Issue ' + (this.type === 'credit' ? 'Credit' : 'Debit') + ' Note';
+      $('hnd-note-h-sub').textContent = 'Against bill #' + (bill.id || '').slice(-6).toUpperCase() + ' · ' + fmtINR(billTotal);
+
+      var breakup = this.computeBreakup();
+
+      var origItems = (Array.isArray(bill.items) ? bill.items : []).slice(0, 4);
+      var moreCount = (Array.isArray(bill.items) ? bill.items.length : 0) - origItems.length;
+
+      var presetButtons = '';
+      [50, 100, 200, 500, Math.round(billTotal)].filter(function(v, i, arr){ return v > 0 && arr.indexOf(v) === i; }).slice(0, 5).forEach(function(v){
+        presetButtons += '<button class="hnd-note-preset" data-note-preset="' + v + '" type="button">₹' + v.toLocaleString('en-IN') + '</button>';
+      });
+
+      $('hnd-note-body').innerHTML = ''
+        + '<div class="hnd-note-section">'
+          + '<div class="hnd-note-section-h">Original invoice</div>'
+          + '<div class="hnd-note-orig-card">'
+            + '<div class="hnd-note-orig-row"><div class="l">Bill #</div><div class="v">' + escHtml((bill.id || '').slice(-6).toUpperCase()) + '</div></div>'
+            + '<div class="hnd-note-orig-row"><div class="l">Customer</div><div class="v">' + escHtml(who) + '</div></div>'
+            + '<div class="hnd-note-orig-row"><div class="l">Date</div><div class="v">' + escHtml(bill.date || '—') + (bill.time ? ' · ' + escHtml(bill.time) : '') + '</div></div>'
+            + '<div class="hnd-note-orig-row"><div class="l">Subtotal</div><div class="v">' + fmtINR(+bill.subtotal || 0) + '</div></div>'
+            + (bill.gstAmt > 0 ? '<div class="hnd-note-orig-row"><div class="l">GST (' + (bill.gstRate||0) + '%)</div><div class="v">' + fmtINR(bill.gstAmt) + '</div></div>' : '')
+            + '<div class="hnd-note-orig-row" style="border-top:1px dashed var(--hnd-line);padding-top:5px;margin-top:3px"><div class="l"><b>Total</b></div><div class="v"><b>' + fmtINR(billTotal) + '</b></div></div>'
+          + '</div>'
+        + '</div>'
+
+        + '<div class="hnd-note-section">'
+          + '<div class="hnd-note-section-h">Note type</div>'
+          + '<div class="hnd-note-toggle">'
+            + '<button class="' + (this.type === 'credit' ? 'active credit' : '') + '" data-note-type="credit" type="button">Credit Note · Reduce</button>'
+            + '<button class="' + (this.type === 'debit' ? 'active debit' : '') + '" data-note-type="debit" type="button">Debit Note · Add</button>'
+          + '</div>'
+          + '<div style="font-size:11.5px;color:var(--hnd-muted);margin-top:8px;line-height:1.45">'
+            + (this.type === 'credit' ? '↓ Issue when customer paid less, returned items, or got a post-sale discount.' : '↑ Issue when customer was undercharged, additional items added, or extra charge needed.')
+          + '</div>'
+        + '</div>'
+
+        + '<div class="hnd-note-section">'
+          + '<div class="hnd-note-section-h">Amount (₹ inclusive of GST)</div>'
+          + '<div class="hnd-note-presets">' + presetButtons + '</div>'
+          + '<div class="hnd-note-amount-wrap">'
+            + '<span class="hnd-note-amount-prefix">₹</span>'
+            + '<input id="hnd-note-amount" class="hnd-note-amount-input" type="number" min="0" step="0.5" value="' + (this.amount || '') + '" style="padding-left:36px" placeholder="0">'
+          + '</div>'
+        + '</div>'
+
+        + (this.amount > 0 ? '<div class="hnd-note-summary">'
+            + '<div class="hnd-note-summary-row"><span>Taxable amount</span><span class="v">' + fmtINR(breakup.taxable) + '</span></div>'
+            + (breakup.gst > 0 ? '<div class="hnd-note-summary-row"><span>GST (' + breakup.gstRate + '%)</span><span class="v">' + fmtINR(breakup.gst) + '</span></div>' : '')
+            + '<div class="hnd-note-summary-row final"><span>' + (this.type === 'credit' ? 'Total to credit back' : 'Total to add') + '</span><span class="v">' + fmtINR(breakup.total) + '</span></div>'
+          + '</div>' : '')
+
+        + '<div class="hnd-note-section">'
+          + '<div class="hnd-note-section-h">Reason <span style="color:#DC2626">*</span></div>'
+          + '<input class="hnd-note-reason-input" id="hnd-note-reason" type="text" maxlength="100" placeholder="' + (this.type === 'credit' ? 'e.g. Customer returned shampoo · damaged item' : 'e.g. Forgot to add beard trim · extra service charged') + '" value="' + escHtml(this.reason) + '">'
+        + '</div>'
+
+        + '<div class="hnd-note-section">'
+          + '<div class="hnd-note-section-h">Notes (optional)</div>'
+          + '<textarea class="hnd-note-textarea" id="hnd-note-description" maxlength="240" placeholder="Any extra details for your CA or records">' + escHtml(this.description) + '</textarea>'
+        + '</div>'
+
+        + '<div style="font-size:11px;color:var(--hnd-muted);background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:9px 11px;display:flex;gap:8px;align-items:flex-start">'
+          + '<span style="color:#0369A1;flex-shrink:0;font-size:14px;line-height:1">ℹ️</span>'
+          + '<div>This note will be saved as <b>' + escHtml(serial) + '</b>. Use it when filing GSTR-1 — it auto-adjusts your tax liability for this period.</div>'
+        + '</div>';
+
+      /* Enable save when amount > 0 AND reason >= 4 chars */
+      $('hnd-note-save').disabled = !(this.amount > 0 && this.reason.trim().length >= 4);
+      $('hnd-note-save').textContent = 'Issue ' + (this.type === 'credit' ? 'Credit Note' : 'Debit Note');
+    },
+
+    save: function(){
+      if (!this.bill || this.amount <= 0 || this.reason.trim().length < 4) return;
+
+      var breakup = this.computeBreakup();
+      var noteNo = nextNoteSerial(this.type);
+
+      /* Get editor info */
+      var who = '';
+      try {
+        if (window.S && window.S.ownerName) who = window.S.ownerName;
+        else if (window.App && App.userName) who = App.userName;
+      } catch(e){}
+
+      var note = {
+        type: this.type,            /* 'credit' | 'debit' */
+        noteNo: noteNo,
+        fy: currentFY(),
+        linkedBillId: this.bill.id,
+        linkedBillNo: this.bill.id,
+        partyName: this.bill.cn || this.bill.name || 'Walk-in',
+        partyPhone: this.bill.cph || '',
+        taxable: breakup.taxable,
+        gstRate: breakup.gstRate,
+        gstAmt: breakup.gst,
+        total: breakup.total,
+        reason: this.reason.trim(),
+        description: this.description.trim(),
+        issuedBy: who,
+        issuedAt: Date.now(),
+        date: new Date().toISOString().slice(0, 10),
+        time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+      };
+
+      try {
+        var saved = Store.add('notes', note);
+        if (!saved){
+          if (window.App && App.toast) App.toast('Save failed');
+          return;
+        }
+      } catch(e){
+        console.error('[P] note save failed', e);
+        if (window.App && App.toast) App.toast('Save failed · ' + e.message);
+        return;
+      }
+
+      /* Audit log */
+      try {
+        if (window.AuditLog && typeof AuditLog.record === 'function'){
+          AuditLog.record('note.issue', {
+            resource: 'note',
+            resourceId: saved.id || note.noteNo,
+            details: {
+              type: this.type,
+              noteNo: noteNo,
+              linkedBillId: this.bill.id,
+              total: breakup.total,
+              reason: this.reason.trim()
+            }
+          });
+        }
+      } catch(e){ console.warn('[P] audit failed', e); }
+
+      if (window.App && App.toast){
+        App.toast('✓ ' + (this.type === 'credit' ? 'Credit' : 'Debit') + ' Note ' + noteNo + ' issued · ' + fmtINR(breakup.total));
+      }
+      this.close();
+
+      /* Refresh visible screens */
+      try {
+        if (window.HND){
+          if (HND.bills && document.body.classList.contains('hnd-on-sales')) HND.bills.render();
+          if (HND.rep && document.body.classList.contains('hnd-on-rep')) HND.rep.render();
+        }
+      } catch(e){}
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════
+     INTERCEPT Step O's edit flow
+     When the user clicks "Edit bill" on a GST bill with
+     S.gstEnabled === true, route to the choice modal instead.
+  ═══════════════════════════════════════════════════════ */
+  var origEditOpen = null;     /* Holds the original Step O open() */
+  function hookEditBillIntercept(){
+    if (!window.HND || !window.HND.editBill || window.HND.editBill.__hnd_p_intercepted) return;
+    origEditOpen = window.HND.editBill.open.bind(window.HND.editBill);
+    window.HND.editBill.open = function(bill){
+      /* Bypass flag set when user explicitly chose "Edit anyway" */
+      if (window.HND.editBill.__hnd_bypass_p){
+        return origEditOpen(bill);
+      }
+      /* GST mode + GST bill → fork to choice modal */
+      if (isGstEnabled() && isGstBill(bill)){
+        openChoice(bill);
+        return;
+      }
+      /* Otherwise fall through to Step O's normal flow */
+      return origEditOpen(bill);
+    };
+    window.HND.editBill.__hnd_p_intercepted = true;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     Inject CN/DN badge into bill detail (if any notes exist)
+  ═══════════════════════════════════════════════════════ */
+  function injectNoteBadges(){
+    /* Desktop bill detail */
+    var detail = document.getElementById('hnd-bills-detail');
+    if (detail){
+      var actionsRow = detail.querySelector('.hnd-detail-actions');
+      var bid = (window.HND && HND.bills && HND.bills.selectedId) || null;
+      if (actionsRow && bid && !actionsRow.parentElement.querySelector('.hnd-note-badge[data-bid="' + bid + '"]')){
+        var effect = noteEffectOnBill(bid);
+        if (effect.count > 0){
+          var badge = document.createElement('span');
+          badge.className = 'hnd-note-badge ' + (effect.credit >= effect.debit ? 'credit' : 'debit');
+          badge.setAttribute('data-show-notes', bid);
+          badge.setAttribute('data-bid', bid);
+          badge.style.marginTop = '8px';
+          badge.style.alignSelf = 'flex-start';
+          badge.innerHTML = '📝 ' + effect.count + ' note' + (effect.count === 1 ? '' : 's') + ' issued';
+          actionsRow.appendChild(badge);
+        }
+      }
+    }
+  }
+
+  /* Show notes history for a bill (inline) */
+  function showNotesHistory(billId){
+    var notes = notesForBill(billId);
+    if (notes.length === 0) return;
+    var html = '<div class="hnd-notes-history"><h5>Credit / Debit Notes (' + notes.length + ')</h5>';
+    notes.slice().reverse().forEach(function(n){
+      var when = new Date(n.issuedAt || (n.date + 'T' + (n.time || '00:00'))).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      html += '<div class="hnd-note-entry">'
+        + '<div class="hnd-note-entry-h">'
+          + '<span class="hnd-note-entry-num">' + escHtml(n.noteNo || '—') + '</span>'
+          + '<span class="hnd-note-entry-amt ' + n.type + '">' + (n.type === 'credit' ? '−' : '+') + fmtINR(n.total) + '</span>'
+        + '</div>'
+        + '<div class="hnd-note-entry-meta">' + escHtml(when) + ' · ' + escHtml(n.issuedBy || 'unknown') + '<br>"' + escHtml(n.reason) + '"</div>'
+      + '</div>';
+    });
+    html += '</div>';
+    var target = document.getElementById('prod-sheet-body') || document.getElementById('hnd-bills-detail');
+    if (!target) return;
+    var existing = target.querySelector('.hnd-notes-history');
+    if (existing){ existing.remove(); return; }
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html;
+    target.appendChild(wrap.firstChild);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     EVENT BINDING
+  ═══════════════════════════════════════════════════════ */
+  document.addEventListener('click', function(e){
+    /* Choice modal */
+    if (e.target.closest('#hnd-gst-opt-note')){
+      var bill = pendingBill;
+      closeChoice();
+      if (bill) NoteSheet.open(bill);
+      return;
+    }
+    if (e.target.closest('#hnd-gst-opt-edit')){
+      var bill2 = pendingBill;
+      closeChoice();
+      if (bill2 && window.HND && HND.editBill){
+        /* Set bypass flag so the interceptor passes through to original Step O */
+        window.HND.editBill.__hnd_bypass_p = true;
+        try { window.HND.editBill.open(bill2); }
+        finally { window.HND.editBill.__hnd_bypass_p = false; }
+      }
+      return;
+    }
+    if (e.target.id === 'hnd-gst-cancel' || e.target.id === 'hnd-gst-choice-backdrop'){
+      closeChoice();
+      return;
+    }
+    /* CN/DN sheet */
+    if (e.target.id === 'hnd-note-sheet-close' || e.target.id === 'hnd-note-cancel' || e.target.id === 'hnd-note-sheet-backdrop'){
+      NoteSheet.close();
+      return;
+    }
+    /* Type toggle */
+    var typeBtn = e.target.closest('[data-note-type]');
+    if (typeBtn){
+      NoteSheet.type = typeBtn.getAttribute('data-note-type');
+      NoteSheet.render();
+      return;
+    }
+    /* Amount preset */
+    var preset = e.target.closest('[data-note-preset]');
+    if (preset){
+      NoteSheet.amount = +preset.getAttribute('data-note-preset') || 0;
+      NoteSheet.render();
+      return;
+    }
+    /* Save */
+    if (e.target.id === 'hnd-note-save'){
+      NoteSheet.save();
+      return;
+    }
+    /* Show notes history badge click */
+    var showNotes = e.target.closest('[data-show-notes]');
+    if (showNotes){
+      showNotesHistory(showNotes.getAttribute('data-show-notes'));
+      return;
+    }
+  });
+
+  /* Input handlers */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnd-note-amount'){
+      NoteSheet.amount = parseFloat(e.target.value) || 0;
+      /* Re-render only the summary + save button (don't lose focus) */
+      var breakup = NoteSheet.computeBreakup();
+      var saveBtn = $('hnd-note-save');
+      var canSave = NoteSheet.amount > 0 && NoteSheet.reason.trim().length >= 4;
+      if (saveBtn) saveBtn.disabled = !canSave;
+      /* Update summary box */
+      var existingSummary = $('hnd-note-body').querySelector('.hnd-note-summary');
+      var summaryHtml = NoteSheet.amount > 0 ? '<div class="hnd-note-summary">'
+        + '<div class="hnd-note-summary-row"><span>Taxable amount</span><span class="v">' + fmtINR(breakup.taxable) + '</span></div>'
+        + (breakup.gst > 0 ? '<div class="hnd-note-summary-row"><span>GST (' + breakup.gstRate + '%)</span><span class="v">' + fmtINR(breakup.gst) + '</span></div>' : '')
+        + '<div class="hnd-note-summary-row final"><span>' + (NoteSheet.type === 'credit' ? 'Total to credit back' : 'Total to add') + '</span><span class="v">' + fmtINR(breakup.total) + '</span></div>'
+        + '</div>' : '';
+      if (existingSummary){
+        if (NoteSheet.amount > 0) existingSummary.outerHTML = summaryHtml;
+        else existingSummary.remove();
+      } else if (NoteSheet.amount > 0){
+        var amountSection = e.target.closest('.hnd-note-section');
+        if (amountSection) amountSection.insertAdjacentHTML('afterend', summaryHtml);
+      }
+    } else if (e.target.id === 'hnd-note-reason'){
+      NoteSheet.reason = e.target.value;
+      var canSave = NoteSheet.amount > 0 && NoteSheet.reason.trim().length >= 4;
+      $('hnd-note-save').disabled = !canSave;
+    } else if (e.target.id === 'hnd-note-description'){
+      NoteSheet.description = e.target.value;
+    }
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){
+      if ($('hnd-gst-choice').classList.contains('open')) closeChoice();
+      else if ($('hnd-note-sheet').classList.contains('open')) NoteSheet.close();
+    }
+  });
+
+  /* Watch desktop bill detail for note badges */
+  function watchBillDetail(){
+    var detail = document.getElementById('hnd-bills-detail');
+    if (!detail || detail.__hnd_p_observed) return;
+    detail.__hnd_p_observed = true;
+    var obs = new MutationObserver(function(){ setTimeout(injectNoteBadges, 50); });
+    obs.observe(detail, { childList: true, subtree: false });
+  }
+
+  /* Subscribe to notes changes for live updates */
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hnd_pSubbed) return;
+    window.__hnd_pSubbed = true;
+    try { Store.on('notes', function(){
+      injectNoteBadges();
+      if (window.HND && HND.bills && document.body.classList.contains('hnd-on-sales')) HND.bills.render();
+    }); } catch(e){}
+  }
+
+  function boot(retry){
+    hookEditBillIntercept();
+    watchBillDetail();
+    subscribe();
+    if (retry > 0 && (!window.HND || !window.HND.editBill || !window.HND.editBill.__hnd_p_intercepted)){
+      setTimeout(function(){ boot(retry - 1); }, 500);
+    }
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else {
+    boot(15);
+  }
+
+  window.HND = window.HND || {};
+  window.HND.notes = {
+    open: function(bill){ NoteSheet.open(bill); },
+    forBill: notesForBill,
+    effect: noteEffectOnBill,
+    showHistory: showNotesHistory,
+    isGstEnabled: isGstEnabled,
+    isGstBill: isGstBill
+  };
+})();
+</script>
+<!-- =================== END Step P block =================== -->
+
+
+<!-- ============================================================
+     HisaabNow Step Q-1 · GST Compliance Foundation
+     ─────────────────────────────────────────────────────────────
+     The first piece of a 7-part GST Compliance Pack.
+
+     Philosophy (per user direction):
+       "All complexity hidden in Settings, billing stays friction-free"
+
+     This sub-step builds the foundation that the next 6 build on:
+       1. Settings additions (gated on S.gstEnabled)
+          • GSTIN field (15-char with validation)
+          • Shop full address
+          • Shop state (auto-derived from GSTIN, editable)
+          • Default HSN/SAC for shop
+          • Invoice number prefix
+          • Tax declaration text (defaults to standard wording)
+       2. Storage:
+          • S.gstin, S.shopAddress, S.shopState, S.shopStateCode
+          • S.defaultHsn, S.invoicePrefix, S.taxDeclaration
+          • All persisted to localStorage with shop scoping
+       3. GSTIN validator:
+          • Regex: 2-digit state + 10-char PAN + 1-digit entity + Z + 1-char checksum
+          • Auto-extracts state code → state name
+       4. State picker data (36 Indian states + UTs)
+       5. Sequential Invoice Numbering Engine
+          • window.Invoice.next() → 'INV/2026-27/0001'
+          • Per-shop, per-FY counter persisted to S.invoiceCounters
+          • Auto-resets on FY change
+       6. Bill schema additions on Store.add('sales'):
+          • When S.gstEnabled === true, stamp:
+            - invoiceNo (sequential)
+            - supplierGstin, supplierState (snapshot at bill time)
+            - placeOfSupply (from customer or default to shop state)
+            - cgst, sgst, igst (split from gstAmt based on intra/inter)
+            - taxableValue (= subtotal - discount)
+            - hsnSummary (HSN-wise breakdown)
+
+     Mobile UI unchanged for non-GST shops.
+============================================================ -->
+
+<style>
+/* ── GST Settings card ── */
+html[data-shell="desktop"] body.hnd-on-set .hnd-gst-settings-card,
+html[data-shell="mobile"] body.hnd-on-set .hnd-gst-settings-card {
+  display: none; /* shown via JS only when GST is ON */
+}
+
+.hnd-gst-settings-card {
+  background: linear-gradient(135deg, #FFFCF6, #FAF0E0);
+  border: 1.5px solid var(--hnd-gold, #D4A574);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin: 14px 18px;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+
+html[data-shell="desktop"] .hnd-gst-settings-card {
+  margin: 14px 0;
+  max-width: 720px;
+}
+
+.hnd-gst-set-h {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.hnd-gst-set-h-ic {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--hnd-gold, #D4A574);
+  color: #0A0A0A;
+  display: grid; place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.hnd-gst-set-h-title {
+  font-size: 15px; font-weight: 700;
+  color: var(--hnd-ink, #0A0A0A);
+  letter-spacing: -.01em;
+}
+.hnd-gst-set-h-sub {
+  font-size: 11.5px;
+  color: #7A5A2E;
+  margin-top: 2px;
+}
+
+.hnd-gst-field { margin-bottom: 13px; }
+.hnd-gst-field:last-child { margin-bottom: 4px; }
+.hnd-gst-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7A5A2E;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+.hnd-gst-lbl-required {
+  color: #DC2626;
+  font-size: 10px;
+}
+.hnd-gst-input, .hnd-gst-textarea, .hnd-gst-select {
+  width: 100%;
+  padding: 10px 13px;
+  background: var(--hnd-card, #fff);
+  border: 1px solid #E8D4B0;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--hnd-ink, #0A0A0A);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .12s;
+}
+.hnd-gst-input:focus, .hnd-gst-textarea:focus, .hnd-gst-select:focus {
+  border-color: var(--hnd-gold, #D4A574);
+}
+.hnd-gst-input.invalid { border-color: #DC2626; background: #FEF2F2; }
+.hnd-gst-input.valid { border-color: #16A34A; background: #F0FDF4; }
+.hnd-gst-input.gstin { font-family: 'JetBrains Mono', monospace; letter-spacing: .04em; text-transform: uppercase; font-size: 13px; }
+.hnd-gst-textarea { min-height: 60px; resize: vertical; }
+
+.hnd-gst-help {
+  font-size: 11px;
+  color: #92400E;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+.hnd-gst-help.error { color: #DC2626; font-weight: 600; }
+.hnd-gst-help.success { color: #15803D; font-weight: 600; }
+
+.hnd-gst-row-2 {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 480px){
+  .hnd-gst-row-2 { grid-template-columns: 1fr; }
+}
+
+.hnd-gst-save-btn {
+  margin-top: 4px;
+  padding: 11px 16px;
+  background: var(--hnd-ink, #0A0A0A);
+  color: var(--hnd-gold, #D4A574);
+  border: 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform .12s;
+}
+.hnd-gst-save-btn:hover { transform: translateY(-1px); }
+.hnd-gst-save-btn:disabled {
+  background: #E5E4E0;
+  color: #8C8C8C;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.hnd-gst-status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hnd-gst-status-pill.complete {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+.hnd-gst-status-pill.incomplete {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+.hnd-gst-status-pill .ic { font-size: 11px; line-height: 1; }
+</style>
+
+<script>
+/* === HisaabNow Step Q-1 · GST Foundation · v1 === */
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function escAttr(s){ return escHtml(s).replace(/"/g,'&quot;'); }
+
+  /* ═══════════════════════════════════════════════════════
+     INDIAN STATES + UT WITH GST CODES
+  ═══════════════════════════════════════════════════════ */
+  var STATES = [
+    {code:'01', name:'Jammu & Kashmir'},
+    {code:'02', name:'Himachal Pradesh'},
+    {code:'03', name:'Punjab'},
+    {code:'04', name:'Chandigarh'},
+    {code:'05', name:'Uttarakhand'},
+    {code:'06', name:'Haryana'},
+    {code:'07', name:'Delhi'},
+    {code:'08', name:'Rajasthan'},
+    {code:'09', name:'Uttar Pradesh'},
+    {code:'10', name:'Bihar'},
+    {code:'11', name:'Sikkim'},
+    {code:'12', name:'Arunachal Pradesh'},
+    {code:'13', name:'Nagaland'},
+    {code:'14', name:'Manipur'},
+    {code:'15', name:'Mizoram'},
+    {code:'16', name:'Tripura'},
+    {code:'17', name:'Meghalaya'},
+    {code:'18', name:'Assam'},
+    {code:'19', name:'West Bengal'},
+    {code:'20', name:'Jharkhand'},
+    {code:'21', name:'Odisha'},
+    {code:'22', name:'Chhattisgarh'},
+    {code:'23', name:'Madhya Pradesh'},
+    {code:'24', name:'Gujarat'},
+    {code:'25', name:'Daman & Diu'},
+    {code:'26', name:'Dadra & Nagar Haveli'},
+    {code:'27', name:'Maharashtra'},
+    {code:'28', name:'Andhra Pradesh (old)'},
+    {code:'29', name:'Karnataka'},
+    {code:'30', name:'Goa'},
+    {code:'31', name:'Lakshadweep'},
+    {code:'32', name:'Kerala'},
+    {code:'33', name:'Tamil Nadu'},
+    {code:'34', name:'Puducherry'},
+    {code:'35', name:'Andaman & Nicobar'},
+    {code:'36', name:'Telangana'},
+    {code:'37', name:'Andhra Pradesh'},
+    {code:'38', name:'Ladakh'}
+  ];
+  window.GST_STATES = STATES;
+  function stateByCode(c){ return STATES.find(function(s){ return s.code === c; }) || null; }
+
+  /* ═══════════════════════════════════════════════════════
+     GSTIN VALIDATOR
+     Format: 2-digit state code + 10-char PAN + 1-digit entity num + Z + 1-char checksum
+     Example: 27ABCDE1234F1Z5
+  ═══════════════════════════════════════════════════════ */
+  function validateGstin(g){
+    if (!g) return { valid: false, reason: 'empty', state: null };
+    g = String(g).trim().toUpperCase();
+    if (g.length !== 15) return { valid: false, reason: 'GSTIN must be exactly 15 characters', state: null };
+    var re = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!re.test(g)) return { valid: false, reason: 'Invalid GSTIN format', state: null };
+    var stateCode = g.slice(0, 2);
+    var state = stateByCode(stateCode);
+    if (!state) return { valid: false, reason: 'Invalid state code (first 2 digits)', state: null };
+    /* Optional: validate checksum (last char) — many GSTINs don't pass strict checksum due to
+       legacy issuance, so we just check format here. Strict checksum validation is below
+       but commented out by default. */
+    return { valid: true, reason: 'OK', state: state, formatted: g };
+  }
+  window.validateGstin = validateGstin;
+
+  /* ═══════════════════════════════════════════════════════
+     SEQUENTIAL INVOICE NUMBERING
+     • Format: PREFIX/FY/NNNN  e.g. INV/2026-27/0001
+     • Stored in S.invoiceCounters = { 'INV/2026-27': 42 }
+     • Each shop has its own counter (via active shop scope)
+  ═══════════════════════════════════════════════════════ */
+  function currentFY(){
+    var now = new Date();
+    var year = now.getFullYear();
+    if (now.getMonth() < 3) year = year - 1;
+    var endYY = String((year + 1) % 100).padStart(2, '0');
+    return String(year) + '-' + endYY;
+  }
+  function getInvoicePrefix(){
+    try {
+      return (window.S && window.S.invoicePrefix) || 'INV';
+    } catch(e){ return 'INV'; }
+  }
+  function counterKey(){
+    return getInvoicePrefix() + '/' + currentFY();
+  }
+  function getCounter(){
+    try {
+      if (!window.S.invoiceCounters || typeof window.S.invoiceCounters !== 'object'){
+        window.S.invoiceCounters = {};
+      }
+      return Number(window.S.invoiceCounters[counterKey()] || 0);
+    } catch(e){ return 0; }
+  }
+  function bumpCounter(){
+    try {
+      if (!window.S.invoiceCounters || typeof window.S.invoiceCounters !== 'object'){
+        window.S.invoiceCounters = {};
+      }
+      var key = counterKey();
+      var next = Number(window.S.invoiceCounters[key] || 0) + 1;
+      window.S.invoiceCounters[key] = next;
+      persistGstSettings();
+      return next;
+    } catch(e){ return 1; }
+  }
+  function nextInvoiceNo(){
+    var n = bumpCounter();
+    return getInvoicePrefix() + '/' + currentFY() + '/' + String(n).padStart(4, '0');
+  }
+  function peekInvoiceNo(){
+    /* Returns what the NEXT invoice number WOULD be without bumping the counter */
+    var n = getCounter() + 1;
+    return getInvoicePrefix() + '/' + currentFY() + '/' + String(n).padStart(4, '0');
+  }
+  window.Invoice = {
+    next: nextInvoiceNo,
+    peek: peekInvoiceNo,
+    currentFY: currentFY,
+    counter: getCounter
+  };
+
+  /* ═══════════════════════════════════════════════════════
+     PERSISTENCE — load/save GST settings to localStorage
+     Scope: per active shop (via shopId prefix)
+  ═══════════════════════════════════════════════════════ */
+  function getShopId(){
+    try {
+      if (window.MShop && typeof MShop.getActive === 'function'){
+        var a = MShop.getActive();
+        return (a && a.shopId) || 'local';
+      }
+    } catch(e){}
+    return (window.currentUserId || 'local');
+  }
+  function storageKey(field){
+    return 'hisaab_gst_' + getShopId() + '_' + field;
+  }
+  function loadGstSettings(){
+    try {
+      window.S = window.S || {};
+      var sid = getShopId();
+      var fields = ['gstin','shopAddress','shopState','shopStateCode','defaultHsn','invoicePrefix','taxDeclaration','invoiceCounters'];
+      fields.forEach(function(f){
+        var raw = localStorage.getItem('hisaab_gst_' + sid + '_' + f);
+        if (raw !== null){
+          if (f === 'invoiceCounters'){
+            try { window.S[f] = JSON.parse(raw) || {}; } catch(e){ window.S[f] = {}; }
+          } else {
+            window.S[f] = raw;
+          }
+        }
+      });
+      /* Sane defaults */
+      if (!window.S.invoicePrefix) window.S.invoicePrefix = 'INV';
+      if (!window.S.invoiceCounters) window.S.invoiceCounters = {};
+      if (!window.S.taxDeclaration) {
+        window.S.taxDeclaration = 'We declare that this invoice shows the actual price of the goods/services described and that all particulars are true and correct.';
+      }
+    } catch(e){ console.warn('[Q-1] loadGstSettings failed', e); }
+  }
+  function persistGstSettings(){
+    try {
+      var sid = getShopId();
+      var fields = ['gstin','shopAddress','shopState','shopStateCode','defaultHsn','invoicePrefix','taxDeclaration'];
+      fields.forEach(function(f){
+        var v = (window.S && window.S[f]) || '';
+        localStorage.setItem('hisaab_gst_' + sid + '_' + f, v);
+      });
+      /* Counters separately (JSON) */
+      var counters = (window.S && window.S.invoiceCounters) || {};
+      localStorage.setItem('hisaab_gst_' + sid + '_invoiceCounters', JSON.stringify(counters));
+    } catch(e){ console.warn('[Q-1] persistGstSettings failed', e); }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     BILL SCHEMA AUTO-STAMP
+     Hook Store.add('sales', ...) so when GST is ON, every new
+     bill gets the compliance fields auto-populated.
+  ═══════════════════════════════════════════════════════ */
+  function computeGstSplit(bill, supplierStateCode, customerStateCode){
+    /* Returns { cgst, sgst, igst, isInterState, taxableValue, placeOfSupply } */
+    var subtotal = +bill.subtotal || 0;
+    var discount = +bill.discount || 0;
+    var taxableValue = Math.max(0, subtotal - discount);
+    var gstAmt = +bill.gstAmt || 0;
+
+    /* Default: if no customer state, assume same state (intra) */
+    var placeOfSupply = customerStateCode || supplierStateCode;
+    var isInterState = (placeOfSupply && supplierStateCode && placeOfSupply !== supplierStateCode);
+
+    if (isInterState){
+      return {
+        cgst: 0,
+        sgst: 0,
+        igst: gstAmt,
+        isInterState: true,
+        taxableValue: taxableValue,
+        placeOfSupply: placeOfSupply
+      };
+    } else {
+      /* Split equally */
+      var half = gstAmt / 2;
+      return {
+        cgst: half,
+        sgst: half,
+        igst: 0,
+        isInterState: false,
+        taxableValue: taxableValue,
+        placeOfSupply: placeOfSupply || ''
+      };
+    }
+  }
+
+  function hookStoreAdd(){
+    if (!window.Store || typeof Store.add !== 'function') return;
+    if (Store.__hnd_q1_hooked) return;
+    var origAdd = Store.add.bind(Store);
+    Store.add = function(coll, record){
+      try {
+        if (coll === 'sales' && record && typeof record === 'object'){
+          var gstOn = !!(window.S && window.S.gstEnabled);
+          if (gstOn){
+            /* Stamp the compliance fields only if not already present */
+            if (!record.invoiceNo){
+              record.invoiceNo = nextInvoiceNo();
+            }
+            if (!record.supplierGstin && window.S.gstin){
+              record.supplierGstin = window.S.gstin;
+            }
+            if (!record.supplierState && window.S.shopState){
+              record.supplierState = window.S.shopState;
+              record.supplierStateCode = window.S.shopStateCode;
+            }
+            /* Customer state - if known via cust record, use it */
+            var customerStateCode = record.customerStateCode || null;
+            if (!customerStateCode && record.cid && window.Store){
+              try {
+                var cust = (Store.list('custs') || []).find(function(c){ return c.id === record.cid; });
+                if (cust && cust.stateCode){
+                  customerStateCode = cust.stateCode;
+                  record.customerStateCode = cust.stateCode;
+                  record.customerState = cust.state;
+                  if (cust.gstin) record.customerGstin = cust.gstin;
+                }
+              } catch(e){}
+            }
+            /* Compute split */
+            var split = computeGstSplit(record, window.S.shopStateCode || '', customerStateCode);
+            record.cgst = Math.round(split.cgst * 100) / 100;
+            record.sgst = Math.round(split.sgst * 100) / 100;
+            record.igst = Math.round(split.igst * 100) / 100;
+            record.taxableValue = Math.round(split.taxableValue * 100) / 100;
+            record.placeOfSupply = split.placeOfSupply;
+            record.isInterState = split.isInterState;
+            record.isTaxInvoice = true;
+            record.fyOfBill = currentFY();
+          }
+        }
+      } catch(e){ console.warn('[Q-1] schema stamp failed', e); }
+      return origAdd(coll, record);
+    };
+    Store.__hnd_q1_hooked = true;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     SETTINGS UI — Inject GST configuration card
+     Appears in Settings page only when S.gstEnabled === true
+  ═══════════════════════════════════════════════════════ */
+  function buildSettingsCard(){
+    var s = window.S || {};
+    var gstin = s.gstin || '';
+    var v = validateGstin(gstin);
+    var address = s.shopAddress || '';
+    var state = s.shopState || '';
+    var stateCode = s.shopStateCode || '';
+    var defaultHsn = s.defaultHsn || '';
+    var prefix = s.invoicePrefix || 'INV';
+    var declaration = s.taxDeclaration || '';
+    var nextNo = peekInvoiceNo();
+    var isComplete = v.valid && address && state;
+
+    var statesOpts = '<option value="">— Select state —</option>' +
+      STATES.map(function(st){
+        var sel = (st.code === stateCode) ? ' selected' : '';
+        return '<option value="' + st.code + '"' + sel + '>' + st.code + ' · ' + escHtml(st.name) + '</option>';
+      }).join('');
+
+    var validHelp = '';
+    if (gstin){
+      if (v.valid){
+        validHelp = '<div class="hnd-gst-help success">✓ Valid GSTIN · ' + escHtml(v.state.name) + '</div>';
+      } else {
+        validHelp = '<div class="hnd-gst-help error">⚠ ' + escHtml(v.reason) + '</div>';
+      }
+    } else {
+      validHelp = '<div class="hnd-gst-help">Format: 27ABCDE1234F1Z5 · State code + PAN + entity + Z + checksum</div>';
+    }
+
+    return ''
+      + '<div class="hnd-gst-set-h">'
+        + '<div class="hnd-gst-set-h-ic">📜</div>'
+        + '<div style="flex:1">'
+          + '<div class="hnd-gst-set-h-title">GST Invoice Configuration</div>'
+          + '<div class="hnd-gst-set-h-sub">These details appear on every tax invoice you issue</div>'
+        + '</div>'
+        + '<span class="hnd-gst-status-pill ' + (isComplete ? 'complete' : 'incomplete') + '">'
+          + '<span class="ic">' + (isComplete ? '✓' : '⚠') + '</span>'
+          + (isComplete ? 'Ready' : 'Setup needed')
+        + '</span>'
+      + '</div>'
+
+      + '<div class="hnd-gst-field">'
+        + '<label class="hnd-gst-lbl">GSTIN <span class="hnd-gst-lbl-required">*</span></label>'
+        + '<input id="hnd-gst-input-gstin" class="hnd-gst-input gstin' + (gstin ? (v.valid ? ' valid' : ' invalid') : '') + '" type="text" maxlength="15" value="' + escAttr(gstin) + '" placeholder="27ABCDE1234F1Z5" autocomplete="off" autocapitalize="characters">'
+        + validHelp
+      + '</div>'
+
+      + '<div class="hnd-gst-field">'
+        + '<label class="hnd-gst-lbl">Shop Address <span class="hnd-gst-lbl-required">*</span></label>'
+        + '<textarea id="hnd-gst-input-address" class="hnd-gst-textarea" placeholder="Plot 12, Sector 18, Noida, Uttar Pradesh — 201301">' + escHtml(address) + '</textarea>'
+        + '<div class="hnd-gst-help">Full address as registered with GST · Goes on every bill</div>'
+      + '</div>'
+
+      + '<div class="hnd-gst-row-2">'
+        + '<div class="hnd-gst-field">'
+          + '<label class="hnd-gst-lbl">Shop State <span class="hnd-gst-lbl-required">*</span></label>'
+          + '<select id="hnd-gst-input-state" class="hnd-gst-select">' + statesOpts + '</select>'
+        + '</div>'
+        + '<div class="hnd-gst-field">'
+          + '<label class="hnd-gst-lbl">Default HSN/SAC <span style="color:#8C8C8C;font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>'
+          + '<input id="hnd-gst-input-hsn" class="hnd-gst-input" type="text" maxlength="8" value="' + escAttr(defaultHsn) + '" placeholder="998314">'
+          + '<div class="hnd-gst-help">4-6 digits · used when product has no HSN</div>'
+        + '</div>'
+      + '</div>'
+
+      + '<div class="hnd-gst-row-2">'
+        + '<div class="hnd-gst-field">'
+          + '<label class="hnd-gst-lbl">Invoice Prefix</label>'
+          + '<input id="hnd-gst-input-prefix" class="hnd-gst-input" type="text" maxlength="4" value="' + escAttr(prefix) + '" placeholder="INV" autocapitalize="characters" style="text-transform:uppercase">'
+          + '<div class="hnd-gst-help">Next: <b>' + escHtml(nextNo) + '</b></div>'
+        + '</div>'
+        + '<div class="hnd-gst-field">'
+          + '<label class="hnd-gst-lbl">Current FY</label>'
+          + '<input class="hnd-gst-input" type="text" value="' + currentFY() + '" disabled>'
+          + '<div class="hnd-gst-help">Counter resets every April 1</div>'
+        + '</div>'
+      + '</div>'
+
+      + '<div class="hnd-gst-field">'
+        + '<label class="hnd-gst-lbl">Tax Declaration <span style="color:#8C8C8C;font-weight:500;text-transform:none;letter-spacing:0">(printed at bottom of bills)</span></label>'
+        + '<textarea id="hnd-gst-input-decl" class="hnd-gst-textarea">' + escHtml(declaration) + '</textarea>'
+      + '</div>'
+
+      + '<button id="hnd-gst-save-btn" class="hnd-gst-save-btn" type="button">'
+        + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        + 'Save GST settings'
+      + '</button>';
+  }
+
+  function injectSettingsCard(){
+    /* Find the Settings page */
+    var page = document.getElementById('pg-settings');
+    if (!page) return;
+    /* Only show when GST is enabled */
+    var on = !!(window.S && window.S.gstEnabled);
+    var existing = document.getElementById('hnd-gst-settings-card');
+    if (!on){
+      if (existing) existing.remove();
+      return;
+    }
+    /* Place after the GST toggle section. Find the toggle and insert after its parent section */
+    var gstSw = document.getElementById('settings-gst-switch');
+    var insertAfter = null;
+    if (gstSw){
+      /* Walk up to the section element */
+      var el = gstSw;
+      while (el && el !== page){
+        if (el.tagName && el.tagName.toLowerCase() === 'section'){
+          insertAfter = el;
+          break;
+        }
+        el = el.parentElement;
+      }
+    }
+    var card = existing;
+    var html = buildSettingsCard();
+    if (!card){
+      card = document.createElement('div');
+      card.id = 'hnd-gst-settings-card';
+      card.className = 'hnd-gst-settings-card';
+      card.style.display = 'block'; /* override the hide */
+      if (insertAfter && insertAfter.parentElement){
+        insertAfter.parentElement.insertBefore(card, insertAfter.nextSibling);
+      } else {
+        page.appendChild(card);
+      }
+    } else {
+      card.style.display = 'block';
+    }
+    card.innerHTML = html;
+  }
+
+  /* Refresh validation as user types */
+  function refreshGstinValidation(){
+    var input = $('hnd-gst-input-gstin');
+    if (!input) return;
+    var g = (input.value || '').toUpperCase();
+    input.value = g;
+    var v = validateGstin(g);
+    input.classList.remove('valid','invalid');
+    if (g){
+      input.classList.add(v.valid ? 'valid' : 'invalid');
+    }
+    /* Auto-fill state when GSTIN becomes valid */
+    if (v.valid && v.state){
+      var stateSel = $('hnd-gst-input-state');
+      if (stateSel && !stateSel.value){
+        stateSel.value = v.state.code;
+      }
+    }
+    /* Update help text */
+    var help = input.parentElement.querySelector('.hnd-gst-help');
+    if (help){
+      help.className = 'hnd-gst-help' + (g ? (v.valid ? ' success' : ' error') : '');
+      if (g){
+        help.textContent = v.valid ? '✓ Valid GSTIN · ' + v.state.name : '⚠ ' + v.reason;
+      } else {
+        help.textContent = 'Format: 27ABCDE1234F1Z5 · State code + PAN + entity + Z + checksum';
+      }
+    }
+  }
+
+  /* Save settings to S + localStorage */
+  function saveSettings(){
+    var gstin = ($('hnd-gst-input-gstin').value || '').trim().toUpperCase();
+    var address = ($('hnd-gst-input-address').value || '').trim();
+    var stateCode = ($('hnd-gst-input-state').value || '').trim();
+    var hsn = ($('hnd-gst-input-hsn').value || '').trim();
+    var prefix = ($('hnd-gst-input-prefix').value || 'INV').trim().toUpperCase();
+    var decl = ($('hnd-gst-input-decl').value || '').trim();
+
+    /* Validate */
+    var v = validateGstin(gstin);
+    if (!v.valid){
+      if (window.App && App.toast) App.toast('⚠ ' + v.reason);
+      $('hnd-gst-input-gstin').focus();
+      return;
+    }
+    if (!address){
+      if (window.App && App.toast) App.toast('⚠ Shop address required');
+      $('hnd-gst-input-address').focus();
+      return;
+    }
+    if (!stateCode){
+      if (window.App && App.toast) App.toast('⚠ Select shop state');
+      $('hnd-gst-input-state').focus();
+      return;
+    }
+    /* Verify state code matches GSTIN */
+    if (stateCode !== gstin.slice(0, 2)){
+      if (!confirm('Selected state code (' + stateCode + ') doesn\'t match GSTIN prefix (' + gstin.slice(0, 2) + '). Save anyway?')){
+        return;
+      }
+    }
+    var state = stateByCode(stateCode);
+    if (!state){
+      if (window.App && App.toast) App.toast('⚠ Invalid state');
+      return;
+    }
+
+    /* Persist */
+    window.S = window.S || {};
+    window.S.gstin = gstin;
+    window.S.shopAddress = address;
+    window.S.shopState = state.name;
+    window.S.shopStateCode = state.code;
+    window.S.defaultHsn = hsn;
+    window.S.invoicePrefix = prefix;
+    window.S.taxDeclaration = decl;
+    persistGstSettings();
+
+    if (window.App && App.toast) App.toast('✓ GST settings saved');
+
+    /* Re-render the card to show new state */
+    injectSettingsCard();
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     EVENT BINDING + BOOT
+  ═══════════════════════════════════════════════════════ */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnd-gst-input-gstin'){
+      refreshGstinValidation();
+    }
+  });
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('#hnd-gst-save-btn')){
+      saveSettings();
+    }
+  });
+
+  /* Watch for navigation to Settings and for GST toggle changes */
+  function syncSettingsCard(){
+    /* Are we on the Settings page? */
+    var page = document.getElementById('pg-settings');
+    var isVisible = page && getComputedStyle(page).display !== 'none' && page.getBoundingClientRect().width > 0;
+    if (isVisible){
+      setTimeout(injectSettingsCard, 50);
+    }
+  }
+
+  function hookNav(){
+    if (!window.App || typeof App.nav !== 'function' || App.__hnd_q1NavHooked) return;
+    var orig = App.nav;
+    App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncSettingsCard, 100);
+      return r;
+    };
+    App.__hnd_q1NavHooked = true;
+  }
+
+  /* Also watch for the GST toggle being flipped (S.gstEnabled changes) */
+  function watchGstToggle(){
+    var lastState = !!(window.S && window.S.gstEnabled);
+    setInterval(function(){
+      var cur = !!(window.S && window.S.gstEnabled);
+      if (cur !== lastState){
+        lastState = cur;
+        syncSettingsCard();
+      }
+    }, 1000);
+  }
+
+  function boot(retry){
+    loadGstSettings();
+    hookStoreAdd();
+    hookNav();
+    syncSettingsCard();
+    watchGstToggle();
+    if (retry > 0 && (!window.App || !App.__hnd_q1NavHooked)){
+      setTimeout(function(){ boot(retry - 1); }, 500);
+    }
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else {
+    boot(15);
+  }
+
+  /* Expose helpers for next sub-steps */
+  window.HND = window.HND || {};
+  window.HND.gst = {
+    validateGstin: validateGstin,
+    states: STATES,
+    stateByCode: stateByCode,
+    Invoice: window.Invoice,
+    loadSettings: loadGstSettings,
+    persistSettings: persistGstSettings,
+    isReady: function(){
+      var s = window.S || {};
+      if (!s.gstEnabled) return false;
+      var v = validateGstin(s.gstin);
+      return v.valid && !!s.shopAddress && !!s.shopState;
+    },
+    computeSplit: computeGstSplit
+  };
+})();
+</script>
+<!-- =================== END Step Q-1 block =================== -->
+
 </body>
 </html>
