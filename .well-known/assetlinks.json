@@ -2,8 +2,9 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.hisaabnow.app",
+    "package_name": "com.hisaabnow.app.twa",
     "sha256_cert_fingerprints": [
+      "88:22:40:FF:F6:E9:C4:C1:3F:BA:43:7E:6C:08:60:16:E6:A4:61:8D:AF:4C:5A:61:7E:D6:FA:94:6D:BA:6F:18",
       "04:EB:A6:1B:74:5E:2B:28:57:AF:08:74:EA:3D:41:B1:31:A4:0B:C6:69:0D:51:AF:C9:D0:12:C0:F0:A2:04:B9"
     ]
   }
