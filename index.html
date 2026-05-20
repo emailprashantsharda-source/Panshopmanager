@@ -3813,15 +3813,15 @@ html[data-current-role="manager"] body{
     'dash.itemLc':          { en: 'item',               hi: 'आइटम' },
     'dash.itemsLc':         { en: 'items',              hi: 'आइटम' },
     'dash.walkIn':          { en: 'Walk-in',            hi: 'वॉक-इन' },
-    'dash.consumablesLow':  { en: 'consumables running low', hi: 'सामान कम हो रहे' },
+    'dash.consumablesLow':  { en: 'supplies running low', hi: 'सामान कम हो रहे' },
     'dash.outOfStock':      { en: 'is out of stock — restock to keep selling',
                               hi: 'खत्म — दोबारा भरें' },
     'dash.outOfStockMany':  { en: 'are out of stock — restock now',
                               hi: 'खत्म — अभी भरें' },
     'dash.ingredients':     { en: 'ingredients',        hi: 'सामान' },
     'dash.ingredient':      { en: 'ingredient',         hi: 'सामान' },
-    'dash.consumable':      { en: 'consumable',         hi: 'सामान' },
-    'dash.consumables':     { en: 'consumables',        hi: 'सामान' },
+    'dash.consumable':      { en: 'supply',           hi: 'सामान' },
+    'dash.consumables':     { en: 'supplies',         hi: 'सामान' },
     'dash.runningLow':      { en: 'running low',        hi: 'कम हो रहे' },
     'dash.youTopItem':      { en: 'your top item',      hi: 'आपका टॉप आइटम' },
     'dash.bookedToday':     { en: 'booked',             hi: 'बुक हुआ' },
@@ -4690,6 +4690,7 @@ html[data-current-role="manager"] body{
     'login.autoVerifyTitle':    { en: 'Auto-verify enabled',               hi: 'ऑटो-वेरिफाई चालू' },
     'login.autoVerifySub':      { en: "we'll log you in as soon as the code arrives", hi: 'कोड आते ही आप लॉगिन हो जाएंगे' },
     'login.dpdpCompliant':      { en: 'DPDP compliant',                    hi: 'DPDP कम्प्लायंट' },
+    'toast.seedSkipped':        { en: "OK · you can add supplies manually anytime", hi: 'ठीक है · सप्लाई कभी भी मैनुअल जोड़ सकते हैं' },
     'login.sentTo': { en: 'OTP sent to', hi: 'OTP भेजा गया' },
 
     /* Tranche F · Remaining low-traffic HTML */
@@ -5373,6 +5374,74 @@ window.SUPPLY_CAT_BY_ID = (function(){
   });
   return m;
 })();
+
+/* ════════════════════════════════════════════════════════════════
+   SALON_SUPPLY_SEED · May 2026
+   ────────────────────────────────────────────────────────────────
+   Pre-loaded list of common salon/parlour consumables for India.
+   Triggered ONCE on first visit to Supplies page when vertical='salon'
+   AND ingredients list is empty. User can accept or skip; either way
+   the flag is set so this prompt never appears again.
+   
+   Research basis: IndiaMART salon consumables, L'Oréal Professionnel
+   India, Schwarzkopf Igora India, Streax Professional, common unisex
+   salon backbar SKUs. Pack sizes reflect typical wholesale units.
+   
+   Categories used (must match SUPPLY_CATEGORIES.salon):
+     hair · color · skin · tools · retail · disposables
+   
+   Pricing is indicative wholesale (not retail). User edits any.
+   ════════════════════════════════════════════════════════════════ */
+window.SALON_SUPPLY_SEED = [
+  /* ── Hair care backbar ── */
+  { name: "L'Oréal Professionnel Shampoo",       brand: "L'Oréal",     cat: 'hair',   emoji: '🧴', pack: '1 L',     price: 850 },
+  { name: "L'Oréal Professionnel Conditioner",   brand: "L'Oréal",     cat: 'hair',   emoji: '🧴', pack: '1 L',     price: 980 },
+  { name: 'Schwarzkopf Bonacure Shampoo',        brand: 'Schwarzkopf', cat: 'hair',   emoji: '🧴', pack: '1 L',     price: 780 },
+  { name: 'Schwarzkopf Bonacure Mask',           brand: 'Schwarzkopf', cat: 'hair',   emoji: '🧴', pack: '500 ml',  price: 1450 },
+  { name: 'Streax Pro Hair Serum',               brand: 'Streax',      cat: 'hair',   emoji: '💧', pack: '100 ml',  price: 280 },
+  { name: 'Hair Spa Cream',                      brand: 'Generic',     cat: 'hair',   emoji: '🧴', pack: '500 g',   price: 380 },
+  { name: 'Argan Oil',                           brand: 'Generic',     cat: 'hair',   emoji: '🫙', pack: '100 ml',  price: 320 },
+  { name: 'Keratin Treatment Cream',             brand: 'Generic',     cat: 'hair',   emoji: '🧴', pack: '500 ml',  price: 1800 },
+
+  /* ── Hair color & developer ── */
+  { name: "L'Oréal Majirel Hair Color · Black",  brand: "L'Oréal",     cat: 'color',  emoji: '🎨', pack: '50 g',    price: 420 },
+  { name: "L'Oréal Majirel Hair Color · Brown",  brand: "L'Oréal",     cat: 'color',  emoji: '🎨', pack: '50 g',    price: 420 },
+  { name: "L'Oréal Majirel Hair Color · Burgundy", brand: "L'Oréal",   cat: 'color',  emoji: '🎨', pack: '50 g',    price: 480 },
+  { name: 'Schwarzkopf Igora Royal · Black',     brand: 'Schwarzkopf', cat: 'color',  emoji: '🎨', pack: '60 ml',   price: 390 },
+  { name: 'Schwarzkopf Igora Royal · Brown',     brand: 'Schwarzkopf', cat: 'color',  emoji: '🎨', pack: '60 ml',   price: 390 },
+  { name: 'Developer 20 Vol',                    brand: 'Generic',     cat: 'color',  emoji: '🧪', pack: '1 L',     price: 280 },
+  { name: 'Developer 30 Vol',                    brand: 'Generic',     cat: 'color',  emoji: '🧪', pack: '1 L',     price: 320 },
+  { name: 'Bleach Powder',                       brand: 'Generic',     cat: 'color',  emoji: '🎨', pack: '500 g',   price: 380 },
+  { name: 'Hair Color Brush',                    brand: 'Generic',     cat: 'color',  emoji: '🖌️', pack: '10 pcs',  price: 150 },
+
+  /* ── Skin / facial / waxing ── */
+  { name: 'Cold Wax',                            brand: 'Generic',     cat: 'skin',   emoji: '🌸', pack: '600 g',   price: 220 },
+  { name: 'Hot Wax (Honey)',                     brand: 'Generic',     cat: 'skin',   emoji: '🍯', pack: '600 g',   price: 280 },
+  { name: 'Chocolate Wax',                       brand: 'Generic',     cat: 'skin',   emoji: '🍫', pack: '600 g',   price: 340 },
+  { name: 'Threading Thread (cotton)',           brand: 'Generic',     cat: 'skin',   emoji: '🧵', pack: '6 spools', price: 180 },
+  { name: 'Facial Kit · VLCC',                   brand: 'VLCC',        cat: 'skin',   emoji: '🧖', pack: '6 pcs',   price: 850 },
+  { name: 'Facial Kit · Lotus',                  brand: 'Lotus',       cat: 'skin',   emoji: '🧖', pack: '6 pcs',   price: 950 },
+  { name: 'Bleach Cream · Fem',                  brand: 'Fem',         cat: 'skin',   emoji: '✨', pack: '100 g',   price: 180 },
+  { name: 'D-Tan Pack',                          brand: 'Generic',     cat: 'skin',   emoji: '🧖', pack: '500 g',   price: 420 },
+  { name: 'Face Pack · Multani Mitti',           brand: 'Generic',     cat: 'skin',   emoji: '🟤', pack: '1 kg',    price: 180 },
+  { name: 'Massage Cream',                       brand: 'Generic',     cat: 'skin',   emoji: '🫙', pack: '500 g',   price: 250 },
+
+  /* ── Tools & consumables ── */
+  { name: 'Razor Blade',                         brand: 'Generic',     cat: 'tools',  emoji: '🪒', pack: '100 pcs', price: 380 },
+  { name: 'Cotton Roll',                         brand: 'Generic',     cat: 'tools',  emoji: '☁️', pack: '500 g',   price: 220 },
+  { name: 'Hair Pins · Black',                   brand: 'Generic',     cat: 'tools',  emoji: '📎', pack: '100 pcs', price: 80 },
+  { name: 'Comb · Cutting',                      brand: 'Generic',     cat: 'tools',  emoji: '💈', pack: '10 pcs',  price: 350 },
+  { name: 'Sectioning Clips',                    brand: 'Generic',     cat: 'tools',  emoji: '📎', pack: '12 pcs',  price: 180 },
+
+  /* ── Disposables ── */
+  { name: 'Disposable Towels',                   brand: 'Generic',     cat: 'disposables', emoji: '🧻', pack: '100 pcs', price: 280 },
+  { name: 'Disposable Gloves',                   brand: 'Generic',     cat: 'disposables', emoji: '🧤', pack: '100 pcs', price: 240 },
+  { name: 'Disposable Salon Cape',               brand: 'Generic',     cat: 'disposables', emoji: '🥼', pack: '50 pcs',  price: 380 },
+  { name: 'Waxing Strips',                       brand: 'Generic',     cat: 'disposables', emoji: '🌸', pack: '100 pcs', price: 220 },
+  { name: 'Cotton Pads',                         brand: 'Generic',     cat: 'disposables', emoji: '⚪', pack: '500 pcs', price: 180 },
+  { name: 'Ear Buds',                            brand: 'Generic',     cat: 'disposables', emoji: '🦻', pack: '300 pcs', price: 90 },
+  { name: 'Tissue Paper Box',                    brand: 'Generic',     cat: 'disposables', emoji: '🧻', pack: '6 boxes', price: 240 }
+];
 
 window.getCurrentCardDisplay = function(){
   try {
@@ -17137,6 +17206,13 @@ const App = {
     const isSalon = _vKey === 'salon';
     const isRecipeShop = (_vKey === 'salon' || _vKey === 'cafe' || _vKey === 'restaurant' || _vKey === 'bakery' || _vKey === 'sweets');
 
+    /* SEED PROMPT (salon only): If list is empty AND user hasn't been
+       prompted before, offer to pre-load common salon supplies.
+       Triggered once per shop. Skip flag honored if user declined. */
+    if (isSalon && list.length === 0) {
+      try { this._maybePromptSalonSeed(); } catch(e){ console.warn('[salon seed] prompt failed', e); }
+    }
+
     const _titleEl = document.getElementById('ig-page-title');
     if (_titleEl) {
       if (isRecipeShop) {
@@ -17398,6 +17474,123 @@ const App = {
   supSetCat(catId){
     this._supCatFilter = catId;
     this.renderIngredients();
+  },
+
+  /* ─────────────────────────────────────────────────────────────
+     SALON SEED · prompt + apply
+     ─────────────────────────────────────────────────────────────
+     Per-shop one-time prompt to pre-load common salon supplies.
+     Storage key is namespaced by shopId so each new shop gets its
+     own chance to seed (or skip).
+  ───────────────────────────────────────────────────────────── */
+  _salonSeedKey(){
+    var sid = '';
+    try {
+      sid = (window.MShop && MShop.getActive && MShop.getActive().shopId)
+            || (window.currentUserId || '');
+    } catch(e){}
+    return 'hn_salon_seed_done_' + (sid || 'default');
+  },
+
+  _maybePromptSalonSeed(){
+    /* Bail if already prompted (accepted OR skipped) */
+    var key = this._salonSeedKey();
+    var done = '';
+    try { done = localStorage.getItem(key) || ''; } catch(e){}
+    if (done) return;
+
+    /* Bail if seed data isn't loaded */
+    if (!Array.isArray(window.SALON_SUPPLY_SEED) || window.SALON_SUPPLY_SEED.length === 0) return;
+
+    /* Avoid double-prompting in same render pass */
+    if (this._salonSeedPromptOpen) return;
+    this._salonSeedPromptOpen = true;
+
+    var count = window.SALON_SUPPLY_SEED.length;
+    var self = this;
+
+    /* Build prompt sheet */
+    var sheet = document.createElement('div');
+    sheet.id = 'salon-seed-sheet';
+    sheet.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(10,10,10,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .25s ease-out';
+    sheet.innerHTML = ''
+      + '<div style="background:#fff;border-radius:24px 24px 0 0;max-width:480px;width:100%;padding:28px 24px 24px;animation:slideUpSeed .35s cubic-bezier(.2,.7,.2,1) both;box-shadow:0 -8px 32px -8px rgba(10,10,10,.2)">'
+      +   '<div style="text-align:center;font-size:48px;margin-bottom:12px;line-height:1">💇</div>'
+      +   '<div style="text-align:center;font-size:21px;font-weight:800;color:#0A0A0A;letter-spacing:-.02em;margin-bottom:8px">Pre-load common salon supplies?</div>'
+      +   '<div style="text-align:center;font-size:14px;color:#6B6557;line-height:1.5;margin-bottom:20px;max-width:340px;margin-left:auto;margin-right:auto">'
+      +     'We can pre-load <b style="color:#0A0A0A">' + count + ' common supplies</b> for unisex salons — Hair color, shampoo, wax, facial kits, disposables, and more.'
+      +     '<br><br>You can edit or delete any after. Saves you ~30 minutes of setup.'
+      +   '</div>'
+      +   '<div style="display:flex;flex-direction:column;gap:10px">'
+      +     '<button onclick="App._applySalonSeed()" style="padding:16px;background:linear-gradient(180deg,#FF6B35 0%,#EA580C 100%);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:-.005em;box-shadow:0 8px 20px -6px rgba(255,107,53,.4)">✨ Yes, pre-load ' + count + ' supplies</button>'
+      +     '<button onclick="App._skipSalonSeed()" style="padding:14px;background:transparent;color:#6B6557;border:1.5px solid rgba(10,10,10,.08);border-radius:14px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:-.005em">Skip · I\'ll add my own</button>'
+      +   '</div>'
+      +   '<div style="text-align:center;font-size:11px;color:#9A9A9A;margin-top:14px;line-height:1.4">'
+      +     'Pack sizes and prices are wholesale defaults. Edit any item to match your supplier.'
+      +   '</div>'
+      + '</div>';
+
+    /* Inject keyframes once */
+    if (!document.getElementById('salon-seed-anims')) {
+      var sty = document.createElement('style');
+      sty.id = 'salon-seed-anims';
+      sty.textContent = '@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes slideUpSeed{from{transform:translateY(100%)}to{transform:translateY(0)}}';
+      document.head.appendChild(sty);
+    }
+    document.body.appendChild(sheet);
+  },
+
+  _closeSalonSeedSheet(){
+    var sh = document.getElementById('salon-seed-sheet');
+    if (sh) sh.parentNode.removeChild(sh);
+    this._salonSeedPromptOpen = false;
+  },
+
+  _skipSalonSeed(){
+    var key = this._salonSeedKey();
+    try { localStorage.setItem(key, 'skipped'); } catch(e){}
+    this._closeSalonSeedSheet();
+    this.toast(this._T('toast.seedSkipped', "OK · you can add supplies manually anytime"));
+  },
+
+  _applySalonSeed(){
+    var seed = window.SALON_SUPPLY_SEED || [];
+    if (!seed.length) { this._closeSalonSeedSheet(); return; }
+    var added = 0;
+    var failed = 0;
+    var self = this;
+
+    seed.forEach(function(s){
+      try {
+        /* Parse pack size into baseUnit + qty using UNITS helper */
+        var parsed = (window.UNITS && UNITS.parse) ? UNITS.parse(s.pack) : null;
+        if (!parsed) { failed++; return; }
+        var packQtyInBase = parsed.qty * parsed.factor;
+        Store.add('ingredients', {
+          name:           s.name,
+          brand:          s.brand || '',
+          cat:            s.cat,
+          emoji:          s.emoji || '🧴',
+          baseUnit:       parsed.base,
+          packPrice:      Number(s.price) || 0,
+          packQtyInBase:  packQtyInBase,
+          stock:          0,
+          min:            0
+        });
+        added++;
+      } catch(e){
+        console.warn('[salon seed] failed to add', s.name, e);
+        failed++;
+      }
+    });
+
+    /* Mark seed as done so we don't prompt again */
+    try { localStorage.setItem(this._salonSeedKey(), 'applied'); } catch(e){}
+
+    this._closeSalonSeedSheet();
+    this.toast('✓ ' + added + ' supplies added · tap any to edit price or stock');
+    /* Re-render to show the new list */
+    setTimeout(function(){ self.renderIngredients(); }, 50);
   },
 
   igFilter(q){ this._igFilter = q; this.renderIngredients(); },
@@ -26756,6 +26949,33 @@ window.MunimEngine = (function(){
   function reorderPriority(){
     var pc=gPC();
     if(!pc.hasStock) return {urgent:[], soon:[]};
+
+    /* FIX (May 2026): For salon vertical, "catalog" items are SERVICES
+       (Hair Color, Threading) which have no stock — they shouldn't be
+       flagged as low stock. The real consumables are in /ingredients
+       (Wax, Color tubes, Shampoo bottles). Same for cafe/restaurant/bakery
+       where catalog = menu items and ingredients are the actual stock.
+       
+       For grocery/kirana/stationery/pan, catalog items ARE the stock
+       (each product has a real qty), so use them as before. */
+    var v = (window.App && window.App.vertical) || (pc && pc.id) || 'cafe';
+    var useIngredients = (v === 'salon' || v === 'cafe' || v === 'restaurant' || v === 'bakery' || v === 'sweets');
+
+    if (useIngredients) {
+      var igs = (window.Store && Store.list) ? (Store.list('ingredients') || []) : [];
+      /* Only count ingredients with an alert threshold set (min > 0) — otherwise
+         freshly-seeded items with stock=0 would all flag, which is noise. */
+      var urgentIg = igs.filter(function(g){
+        var s = Number(g.stock || 0), m = Number(g.min || 0);
+        return m > 0 && s <= 0;
+      });
+      var soonIg = igs.filter(function(g){
+        var s = Number(g.stock || 0), m = Number(g.min || 0);
+        return m > 0 && s > 0 && s <= m;
+      });
+      return { urgent: urgentIg, soon: soonIg };
+    }
+
     var prods=(S.prods||[]).filter(function(p){return Number(p.qty||0) <= 0;});
     var soon =(S.prods||[]).filter(function(p){return Number(p.qty||0) > 0 && Number(p.qty||0) <= Number(p.min||0);});
     return { urgent: prods, soon: soon };
@@ -36035,9 +36255,12 @@ html[data-shell="desktop"] .hnd-tb {
 
 <aside class="hnd-sb" id="hnd-sb" aria-label="Desktop navigation">
   <div class="hnd-sb-logo">
-    <div class="hnd-sb-logo-mark">H</div>
+    <div class="hnd-sb-logo-mark" style="background:linear-gradient(135deg,#000000 0%,#FFC043 100%) !important;position:relative;overflow:visible">
+      <span style="display:block;width:18px;height:14px;background:linear-gradient(to top,#fff 30%,transparent 30%) 0 100%/3.5px 100% no-repeat, linear-gradient(to top,#fff 60%,transparent 60%) 7px 100%/3.5px 100% no-repeat, linear-gradient(to top,#fff 90%,transparent 90%) 14px 100%/3.5px 100% no-repeat"></span>
+      <span style="position:absolute;top:-3px;right:-3px;font-size:12px;color:#FFC043;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.3)">✦</span>
+    </div>
     <div>
-      <div class="hnd-sb-logo-word"><span class="a" data-i18n="nav.home">Hisaab</span><span class="b">Now</span></div>
+      <div class="hnd-sb-logo-word"><span class="a">Hisaab</span><span class="b">Now</span></div>
       <div class="hnd-sb-logo-tag">AI Insights for your shop</div>
     </div>
   </div>
@@ -43244,11 +43467,24 @@ html[data-shell="desktop"] #pg-home {
       var banner = document.createElement('div');
       banner.id = bannerId;
       banner.className = 'hnd-cat-starter-banner';
+      /* Vocab adapts per vertical: salon → "starter services", cafe/restaurant
+         → "starter menu", bakery → "starter items", else → "starter products". */
+      var _v = (window.App && window.App.vertical) || 'cafe';
+      var _starterWord = 'starter products';
+      var _starterSub  = "We've preloaded a menu for your vertical. Set prices and activate the ones you sell — they'll appear instantly in the POS.";
+      if (_v === 'salon') {
+        _starterWord = 'starter services';
+        _starterSub  = "We've preloaded common services. Set prices and activate the ones you offer — they'll appear instantly in billing.";
+      } else if (_v === 'cafe' || _v === 'restaurant') {
+        _starterWord = 'starter menu items';
+      } else if (_v === 'bakery') {
+        _starterWord = 'starter bakery items';
+      }
       banner.innerHTML = ''
         + '<div class="ic">🎁</div>'
         + '<div class="mid">'
-          + '<div class="t">' + seededCount + ' starter products waiting</div>'
-          + '<div class="s">We\'ve preloaded a menu for your vertical. Set prices and activate the ones you sell — they\'ll appear instantly in the POS.</div>'
+          + '<div class="t">' + seededCount + ' ' + _starterWord + ' waiting</div>'
+          + '<div class="s">' + _starterSub + '</div>'
         + '</div>'
         + '<button class="cta" id="hnd-activate-all-btn" data-i18n="common.activatePriced">Activate priced</button>';
       /* Insert at the top of the card (before the filter chips area) */
@@ -43290,10 +43526,24 @@ html[data-shell="desktop"] #pg-home {
       if (seededCount === 0) return;
       /* Only rewrite if it's the generic "No items found" state, not "no matches for search" */
       if (grid.parentElement && grid.parentElement.querySelector('input') && grid.parentElement.querySelector('input').value) return;
+      /* Vocab adapts per vertical (same as catalog banner) */
+      var _v = (window.App && window.App.vertical) || 'cafe';
+      var _word = 'starter products';
+      var _sub  = "We've preloaded a menu for your vertical. Open Catalog to set prices and activate them — they'll appear here ready to bill.";
+      var _ctaText = 'Open catalog · set prices';
+      if (_v === 'salon') {
+        _word = 'starter services';
+        _sub  = "We've preloaded common services. Open Services to set prices and activate them — they'll appear here ready to bill.";
+        _ctaText = 'Open services · set prices';
+      } else if (_v === 'cafe' || _v === 'restaurant') {
+        _word = 'starter menu items';
+      } else if (_v === 'bakery') {
+        _word = 'starter bakery items';
+      }
       empty.innerHTML = ''
-        + '<div class="hnd-pos-empty-title">🎁 ' + seededCount + ' starter products waiting</div>'
-        + '<div class="hnd-pos-empty-sub">We\'ve preloaded a menu for your vertical. Open Catalog to set prices and activate them — they\'ll appear here ready to bill.</div>'
-        + '<button class="hnd-pos-empty-cta" onclick="window.App && App.nav && App.nav(\'catalog\')">Open catalog · set prices</button>';
+        + '<div class="hnd-pos-empty-title">🎁 ' + seededCount + ' ' + _word + ' waiting</div>'
+        + '<div class="hnd-pos-empty-sub">' + _sub + '</div>'
+        + '<button class="hnd-pos-empty-cta" onclick="window.App && App.nav && App.nav(\'catalog\')">' + _ctaText + '</button>';
     });
     obs.observe(grid, { childList: true, subtree: false });
   }
@@ -53625,6 +53875,26 @@ html[data-shell="desktop"] .hnd-sb-shop-info .hnd-sb-shop-sync {
       }
     } catch(e){}
 
+    /* Update catalog label per vertical (May 2026):
+       salon → "Services", cafe/restaurant → "Menu", bakery → "Items",
+       default → "Catalog". Keeps the nav vocabulary aligned with what
+       the shopkeeper actually thinks of as their offering. */
+    try {
+      var catItem = document.querySelector('.hnd-sb .hnd-nav-item[data-hnd-nav="catalog"]');
+      if (catItem){
+        var catLbl = catItem.querySelector('.lbl');
+        if (catLbl){
+          var catCorrect = 'Catalog';
+          if (key === 'salon') catCorrect = 'Services';
+          else if (key === 'cafe' || key === 'restaurant') catCorrect = 'Menu';
+          else if (key === 'bakery' || key === 'sweets') catCorrect = 'Items';
+          catLbl.textContent = catCorrect;
+          /* Remove data-i18n so the MutationObserver doesn't overwrite our value */
+          catLbl.removeAttribute('data-i18n');
+        }
+      }
+    } catch(e){}
+
     updateShopPill();
     return true;
   }
@@ -54816,6 +55086,32 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
     if (sb.getAttribute('data-vertical') !== v){
       sb.setAttribute('data-vertical', v);
     }
+    /* Update nav labels per vertical (Catalog → Services for salon, etc.).
+       Called on every poll so labels stay correct even when vertical
+       changes via other code paths (multi-shop switch, MShop, etc.) */
+    try {
+      var catItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="catalog"] .lbl');
+      if (catItem){
+        var catCorrect = 'Catalog';
+        if (v === 'salon') catCorrect = 'Services';
+        else if (v === 'cafe' || v === 'restaurant') catCorrect = 'Menu';
+        else if (v === 'bakery' || v === 'sweets') catCorrect = 'Items';
+        if (catItem.textContent !== catCorrect){
+          catItem.textContent = catCorrect;
+          catItem.removeAttribute('data-i18n');
+        }
+      }
+      var igItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="ingredients"] .lbl');
+      if (igItem){
+        var igCorrect = 'Ingredients';
+        if (v === 'salon') igCorrect = 'Supplies';
+        else if (v === 'sweets') igCorrect = 'Raw Materials';
+        if (igItem.textContent !== igCorrect){
+          igItem.textContent = igCorrect;
+          igItem.removeAttribute('data-i18n');
+        }
+      }
+    } catch(e){}
   }
 
   /* Hook nav */
