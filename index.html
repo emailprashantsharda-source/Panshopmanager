@@ -41342,16 +41342,17 @@ html[data-shell="desktop"] body.hnd-exp-modal-open::before {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  /* Note: backdrop-filter REMOVED. It created a stacking context
+     that visually blurred the modal form itself (browser quirk with
+     position:fixed siblings). The dark dim alone is sufficient. */
   z-index: 199;
   animation: hnd-exp-fade .22s cubic-bezier(.4,0,.2,1);
 }
 @keyframes hnd-exp-fade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes hnd-exp-slide-up { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }
+@keyframes hnd-exp-slide-up { from { opacity: 0; transform: translate(-50%, -45%) } to { opacity: 1; transform: translate(-50%, -50%) } }
 
 html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
-  display: block;
+  display: block !important;
   position: fixed;
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
@@ -41360,8 +41361,13 @@ html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
   overflow-y: auto;
   z-index: 200;
   border-radius: 16px;
-  box-shadow: 0 30px 80px -20px rgba(20, 17, 12, 0.4);
+  box-shadow: 0 30px 80px -20px rgba(20, 17, 12, 0.5);
   animation: hnd-exp-slide-up .26s cubic-bezier(.2,.7,.2,1);
+  /* CRITICAL: solid background so dim overlay behind doesn't bleed through.
+     Override any inherited transparency. Also isolate stacking context. */
+  background: #FFFBF5 !important;
+  isolation: isolate;
+  opacity: 1 !important;
 }
 
 /* Close X button injected via JS — needs visible position */
