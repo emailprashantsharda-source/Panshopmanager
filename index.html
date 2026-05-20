@@ -8416,15 +8416,10 @@ const App = {
       }
     } catch(e){}
 
-    if (page === 'inventory') {
-      try {
-        var _vKey = (typeof this._supplyVerticalKey === 'function')
-          ? this._supplyVerticalKey() : this.vertical;
-        if (this.vertical === 'salon' || _vKey === 'salon') {
-          page = 'catalog';
-        }
-      } catch(e){}
-    }
+    /* (May 2026 fix) Removed legacy redirect that sent salon 'inventory' →
+       'catalog'. The new #hnd-services screen now properly handles salon's
+       inventory page, so this redirect was incorrectly hijacking the Services
+       nav button and routing it to Product Sales instead. */
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('pg-' + page);
