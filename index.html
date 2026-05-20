@@ -41361,22 +41361,31 @@ html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
   overflow-y: auto;
   z-index: 200;
   border-radius: 16px;
-  box-shadow: 0 30px 80px -20px rgba(20, 17, 12, 0.5);
+  /* Crisp pure-white background for max contrast against dim backdrop.
+     Cream blended with the dim too much (felt blurry). */
+  background: #FFFFFF !important;
+  border: 1px solid #E5E2D8 !important;
+  /* Stronger shadow to lift the modal off the dim layer */
+  box-shadow: 0 30px 80px -10px rgba(20, 17, 12, 0.5), 0 0 0 1px rgba(0,0,0,.03) !important;
   animation: hnd-exp-slide-up .26s cubic-bezier(.2,.7,.2,1);
-  /* CRITICAL: solid background so dim overlay behind doesn't bleed through.
-     Override any inherited transparency. Also isolate stacking context. */
-  background: #FFFBF5 !important;
   isolation: isolate;
   opacity: 1 !important;
+  /* Reset the .hnd-exp-form-pulse animation in case it was applied */
+  padding: 24px 22px !important;
 }
 
-/* Close X button injected via JS — needs visible position */
+/* Close X button injected via JS — STICKY so it stays in view while
+   scrolling. Was position:absolute which scrolled out of view inside
+   the scrollable modal. */
 .hnd-exp-form-close {
-  position: absolute;
-  top: 14px; right: 14px;
-  width: 32px; height: 32px;
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: -12px -8px 0 0;
+  width: 34px; height: 34px;
   border-radius: 8px;
-  background: #F4F0E8; border: 0;
+  background: #F4F0E8;
+  border: 0;
   display: grid; place-items: center;
   cursor: pointer;
   color: #525252;
@@ -41386,6 +41395,22 @@ html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
 }
 .hnd-exp-form-close:hover { background: #EAE3D0; color: #0A0A0A; }
 html[data-shell="desktop"] body:not(.hnd-exp-modal-open) .hnd-exp-form-close { display: none; }
+
+/* The form's first child (header) needs space to clear the floated close btn */
+html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form .hnd-exp-form-h {
+  clear: none;
+}
+
+/* The Save button at the bottom of the modal — make it a sticky footer
+   so user always sees it without scrolling */
+html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form .hnd-exp-save {
+  position: sticky;
+  bottom: -24px;
+  margin: 16px -22px -24px;
+  border-radius: 0 0 16px 16px;
+  z-index: 4;
+  box-shadow: 0 -8px 16px -6px rgba(0,0,0,.06);
+}
 
 /* Compact P&L strip — single line layout */
 .hnd-exp-pnl-strip.compact {
@@ -42193,7 +42218,9 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
       var amt = $('hnd-exp-amt');
       if (isDesktop && form){
         document.body.classList.add('hnd-exp-modal-open');
-        /* Inject close button if missing */
+        /* Inject close button as the FIRST child so it floats right at the top.
+           Using float so it sits next to the existing form header without
+           changing the form's internal markup. */
         if (!form.querySelector('.hnd-exp-form-close')){
           var closeBtn = document.createElement('button');
           closeBtn.type = 'button';
@@ -42205,8 +42232,11 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
             e.stopPropagation();
             Exp.closeForm();
           });
-          form.appendChild(closeBtn);
+          /* Insert at the very top so it stays sticky-visible while user scrolls */
+          form.insertBefore(closeBtn, form.firstChild);
         }
+        /* Reset modal scroll so user always sees the top (Amount field) when opening */
+        form.scrollTop = 0;
       } else if (form){
         /* Mobile fallback — scroll into view */
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
