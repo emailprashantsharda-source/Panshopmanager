@@ -5553,9 +5553,20 @@ salon: {
   greetingSub: "Here's your salon overview for today.",
   txnUnit: 'service', txnUnitPlural: 'services',
   topPanelTitle: 'Top Services',
-  catalogTitle: 'Services', catalogSearch: 'Search services…',
+  /* Salon architecture (May 2026):
+       Catalog page  = Product Sales (retail items like shampoo bottles for take-home)
+       Inventory page = Services (Hair Color, Threading, Facials)
+     Both pull from the same `prods` collection, filtered by cat. */
+  catalogTitle: 'Product Sales', catalogSearch: 'Search retail products…',
+  catalogSub: 'Take-home products customers can buy',
+  inventoryTitle: 'Services', inventorySearch: 'Search services…',
+  inventorySub: 'Hair, skin, beauty services you offer',
+  /* Filters: catalog only shows items in "Retail" category, inventory shows
+     everything else (the services). Used by renderCatalog / renderInventory. */
+  catalogFilter: function(p){ return (p.cat || p.category) === 'Retail'; },
+  inventoryFilter: function(p){ return (p.cat || p.category) !== 'Retail'; },
 
-  catalogChips: ['All','Men · Hair','Men · Face','Men · Body','Women · Hair','Women · Face','Women · Threading','Women · Nails','Women · Waxing','Women · Body','Women · Bridal','Common','Retail'],
+  catalogChips: ['All','Retail'],
   addSaleChips: ['All','Men · Hair','Men · Face','Women · Hair','Women · Face','Women · Threading','Women · Nails','Women · Waxing','Women · Bridal','Common','Retail'],
   salesUnitLabel: 'Bills',
   showUdhar: false,
@@ -9278,6 +9289,33 @@ const App = {
     const cfg = VERTICAL_CONFIG[this.vertical]; if (!cfg) return;
     const t = document.getElementById('catalog-title'); if (t) t.textContent = cfg.catalogTitle;
     const si = document.getElementById('catalog-search-input'); if (si) si.placeholder = cfg.catalogSearch;
+
+    /* Desktop catalog page (#hnd-cat) — update h1 title + subtitle from
+       VERTICAL_CONFIG so salon shows "Product Sales" / "Take-home products"
+       instead of generic "Catalog" / "Your products and pricing". */
+    try {
+      var hndCat = document.getElementById('hnd-cat');
+      if (hndCat){
+        var h1 = hndCat.querySelector('.hnd-pgh h1');
+        if (h1 && cfg.catalogTitle){
+          h1.textContent = cfg.catalogTitle;
+          h1.removeAttribute('data-i18n');  /* prevent i18n MutationObserver overwrite */
+        }
+        var sub = document.getElementById('hnd-cat-sub');
+        if (sub && cfg.catalogSub){
+          sub.textContent = cfg.catalogSub;
+          sub.removeAttribute('data-i18n');
+        }
+      }
+      /* Desktop inventory page header (mobile structure rendered in desktop frame).
+         Salon shows "Services" / subtitle from cfg.inventorySub. */
+      var invHdr = document.querySelector('#pg-inventory .hdr-title');
+      if (invHdr && cfg.inventoryTitle){
+        invHdr.textContent = cfg.inventoryTitle;
+        invHdr.removeAttribute('data-i18n');
+      }
+    } catch(e){}
+
     const ch = document.getElementById('catalog-chips');
     if (ch) {
 
@@ -16985,6 +17023,13 @@ const App = {
     const filter = (this._invFilter || '').trim().toLowerCase();
     const chip = this._invChip || 'All';
     let list = INVENTORY.slice();
+
+    /* Vertical filter — salon inventory shows only non-Retail items (services).
+       VERTICAL_CONFIG[vertical].inventoryFilter defines the predicate. */
+    if (cfg && typeof cfg.inventoryFilter === 'function'){
+      list = list.filter(cfg.inventoryFilter);
+    }
+
     if (filter) list = list.filter(it => (it.name || '').toLowerCase().includes(filter));
 
     const brandName = (typeof window.parseBrandChip === 'function')
@@ -25720,8 +25765,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const target = document.getElementById('catalog-list');
     if (!target) return;
 
-    let active = list.filter(s => s.active !== false);
-    let suggested = list.filter(s => s.active === false);
+    /* Vertical filter — salon splits prods into Catalog (retail) vs Inventory (services).
+       VERTICAL_CONFIG[vertical].catalogFilter defines the predicate. */
+    const _vcfg = (typeof VERTICAL_CONFIG !== 'undefined') ? VERTICAL_CONFIG[this.vertical] : null;
+    const _catFilterFn = _vcfg && typeof _vcfg.catalogFilter === 'function' ? _vcfg.catalogFilter : null;
+    const _baseList = _catFilterFn ? list.filter(_catFilterFn) : list;
+
+    let active = _baseList.filter(s => s.active !== false);
+    let suggested = _baseList.filter(s => s.active === false);
 
     const chip = this._catChip || 'All';
 
@@ -39426,6 +39477,144 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
 
 .hnd-exp-form-foot { margin-top: 10px; font-size: 10.5px; color: var(--hnd-muted); text-align: center; }
 
+/* ── New (May 2026): P&L strip, payment mode picker, recurring toggle ── */
+.hnd-exp-pnl-strip {
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+  border: 1px solid #FED7AA;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.hnd-exp-pnl-strip-cell { flex: 1; min-width: 130px; }
+.hnd-exp-pnl-strip-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #9A3412; margin-bottom: 3px; }
+.hnd-exp-pnl-strip-val { font-size: 18px; font-weight: 800; color: #0A0A0A; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.hnd-exp-pnl-strip-val.neg { color: #DC2626; }
+.hnd-exp-pnl-strip-val.pos { color: #15803D; }
+.hnd-exp-pnl-strip-sub { font-size: 11px; color: #9A3412; opacity: .8; margin-top: 1px; }
+
+.hnd-exp-pnl-preview {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  background: rgba(234, 88, 12, .06);
+  border: 1px dashed rgba(234, 88, 12, .25);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--hnd-text, #0A0A0A);
+  line-height: 1.45;
+}
+.hnd-exp-pnl-preview b { font-variant-numeric: tabular-nums; }
+
+/* Payment mode picker */
+.hnd-exp-mode-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.hnd-exp-mode {
+  background: var(--hnd-card, #fff);
+  border: 1px solid var(--hnd-line, #E5E7EB);
+  border-radius: 9px;
+  padding: 8px 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hnd-muted, #6B6557);
+  transition: all .12s;
+  font-family: inherit;
+}
+.hnd-exp-mode:hover { border-color: var(--hnd-gold, #D4A574); }
+.hnd-exp-mode.active {
+  background: #0A0A0A;
+  color: #fff;
+  border-color: #0A0A0A;
+}
+.hnd-exp-mode .m-ic { font-size: 16px; line-height: 1; }
+
+/* Recurring toggle */
+.hnd-exp-recur-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  background: rgba(10,10,10,.03);
+  border: 1px solid var(--hnd-line, #E5E7EB);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .12s;
+}
+.hnd-exp-recur-row:hover { background: rgba(10,10,10,.05); }
+.hnd-exp-recur-row input[type=checkbox] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #FF6B35;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hnd-exp-recur-info { flex: 1; }
+.hnd-exp-recur-t { font-size: 13px; font-weight: 700; color: var(--hnd-text, #0A0A0A); }
+.hnd-exp-recur-s { font-size: 11.5px; color: var(--hnd-muted, #6B6557); margin-top: 2px; }
+
+.hnd-exp-recur-detail {
+  padding: 6px 14px 0;
+  animation: fadeInExp .2s ease;
+}
+@keyframes fadeInExp {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulse animation for the form when "Add expense" CTA is clicked */
+@keyframes pulseExp {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+  50% { box-shadow: 0 0 0 6px rgba(255,107,53,.18); }
+}
+.hnd-exp-form.hnd-exp-form-pulse { animation: pulseExp 1s ease 2; }
+
+/* PAID column in expense table - colored pill */
+.hnd-exp-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2.5px 7px;
+  border-radius: 99px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.hnd-exp-mode-pill[data-mode=cash] { background: #F0FDF4; color: #15803D; }
+.hnd-exp-mode-pill[data-mode=upi]  { background: #EFF6FF; color: #1D4ED8; }
+.hnd-exp-mode-pill[data-mode=card] { background: #FAF5FF; color: #7E22CE; }
+.hnd-exp-mode-pill[data-mode=bank] { background: #FEF3C7; color: #B45309; }
+.hnd-exp-mode-pill .recur-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .8;
+}
+/* Recurring badge inline next to description */
+.hnd-exp-recur-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  background: #FEF3C7;
+  color: #B45309;
+  border-radius: 4px;
+  margin-left: 6px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 /* Filter chips */
 .hnd-exp-cat-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 </style>
@@ -39436,10 +39625,13 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       <h1 data-i18n="exp.title">Expenses</h1>
       <p id="hnd-exp-sub" data-i18n="d.expSub">Log every rupee out the door — clean profit numbers depend on it</p>
     </div>
-    <div class="hnd-pgh-r">
-      <button class="hnd-btn" onclick="window.HND&&HND.exp&&HND.exp.refresh()">
+    <div class="hnd-pgh-r" style="display:flex;gap:8px">
+      <button class="hnd-btn" onclick="window.HND&&HND.exp&&HND.exp.refresh()" title="Refresh">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        <span data-i18n="d.refresh">Refresh</span>
+      </button>
+      <button class="hnd-btn hnd-btn-primary" id="hnd-exp-add-cta" onclick="window.HND&&HND.exp&&HND.exp.focusForm()" style="padding:9px 18px;font-weight:700">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Add expense</span>
       </button>
     </div>
   </div>
@@ -39460,6 +39652,9 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
 
   <div class="hnd-kpi-strip" id="hnd-exp-kpis"></div>
 
+  <!-- P&L Impact strip (always visible) -->
+  <div id="hnd-exp-pnl-strip" class="hnd-exp-pnl-strip"></div>
+
   <div class="hnd-exp-grid">
     <div>
       <div class="hnd-exp-cats" id="hnd-exp-cats-wrap"></div>
@@ -39474,6 +39669,7 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
                 <th>DATE</th>
                 <th>DESCRIPTION</th>
                 <th data-i18n="d.thCategory">CATEGORY</th>
+                <th>PAID</th>
                 <th class="r" data-i18n="d.thAmount">AMOUNT</th>
                 <th class="r" data-i18n="d.thActions">ACTIONS</th>
               </tr>
@@ -39484,7 +39680,7 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       </div>
     </div>
 
-    <aside class="hnd-exp-form">
+    <aside class="hnd-exp-form" id="hnd-exp-form-aside">
       <div class="hnd-exp-form-h">
         <div class="ic">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -39516,16 +39712,45 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
         <select class="hnd-exp-sub-select" id="hnd-exp-sub" disabled><option>Pick a category first</option></select>
       </div>
 
+      <!-- Payment method picker -->
+      <div class="hnd-exp-fld">
+        <label class="hnd-exp-lbl">Paid via</label>
+        <div class="hnd-exp-mode-row" id="hnd-exp-mode-row">
+          <button class="hnd-exp-mode active" data-mode="cash"><span class="m-ic">💵</span><span>Cash</span></button>
+          <button class="hnd-exp-mode" data-mode="upi"><span class="m-ic">📱</span><span>UPI</span></button>
+          <button class="hnd-exp-mode" data-mode="card"><span class="m-ic">💳</span><span>Card</span></button>
+          <button class="hnd-exp-mode" data-mode="bank"><span class="m-ic">🏦</span><span>Bank</span></button>
+        </div>
+      </div>
+
       <div class="hnd-exp-fld">
         <label class="hnd-exp-lbl">Description (optional)</label>
         <input class="hnd-exp-desc" id="hnd-exp-desc" type="text" placeholder="e.g. Cylinder refill" maxlength="80" autocomplete="off">
       </div>
 
+      <!-- Recurring toggle -->
+      <div class="hnd-exp-fld">
+        <label class="hnd-exp-recur-row">
+          <input type="checkbox" id="hnd-exp-recur-cb">
+          <div class="hnd-exp-recur-info">
+            <div class="hnd-exp-recur-t">🔁 Repeat every month</div>
+            <div class="hnd-exp-recur-s">Auto-creates this expense on day <span id="hnd-exp-recur-day-disp">1</span></div>
+          </div>
+        </label>
+        <div class="hnd-exp-recur-detail" id="hnd-exp-recur-detail" style="display:none">
+          <label class="hnd-exp-lbl" style="margin-top:8px">Day of month</label>
+          <select id="hnd-exp-recur-day" class="hnd-exp-sub-select"></select>
+        </div>
+      </div>
+
+      <!-- P&L impact mini-preview -->
+      <div class="hnd-exp-pnl-preview" id="hnd-exp-pnl-preview" style="display:none"></div>
+
       <button class="hnd-exp-save" id="hnd-exp-save" disabled>
         <span>Save expense</span>
         <kbd>Ctrl+S</kbd>
       </button>
-      <div class="hnd-exp-form-foot">Saved instantly · syncs with mobile</div>
+      <div class="hnd-exp-form-foot">Logged in P&amp;L · syncs across devices</div>
     </aside>
   </div>
 </div>
@@ -39560,6 +39785,9 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
     formSubcat: null,
     formAmt: '',
     formDesc: '',
+    formMode: 'cash',       /* cash | upi | card | bank */
+    formRecurring: false,   /* boolean - schedule monthly */
+    formRecurDay: 1,        /* day of month for recurring (1-28) */
 
     cardType: function(){
       try {
@@ -39723,10 +39951,14 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
         else dateStr = e.date || '—';
         var emoji = e.emoji || (window.EXPENSE_TAXONOMY && EXPENSE_TAXONOMY[e.cat] && EXPENSE_TAXONOMY[e.cat].emoji) || '📋';
         var catLabel = e.subcatLabel || e.catLabel || e.cat || '—';
+        var mode = (e.mode || 'cash').toLowerCase();
+        var modeLabel = mode === 'upi' ? 'UPI' : mode === 'card' ? 'Card' : mode === 'bank' ? 'Bank' : 'Cash';
+        var recurBadge = e.recurringId ? '<span class="hnd-exp-recur-badge">🔁 Auto</span>' : '';
         return '<tr data-exp-id="' + escAttr(e.id || '') + '">'
           + '<td>' + escHtml(dateStr) + '</td>'
-          + '<td><div class="hnd-cell-bold">' + escHtml(e.desc || catLabel) + '</div></td>'
+          + '<td><div class="hnd-cell-bold">' + escHtml(e.desc || catLabel) + recurBadge + '</div></td>'
           + '<td><span class="hnd-exp-cat-emoji">' + escHtml(emoji) + '</span> <span style="color:var(--hnd-muted);font-size:12px">' + escHtml(catLabel) + '</span></td>'
+          + '<td><span class="hnd-exp-mode-pill" data-mode="' + escAttr(mode) + '">' + escHtml(modeLabel) + '</span></td>'
           + '<td class="r hnd-cell-bold">' + fmtINR(e.amt) + '</td>'
           + '<td class="r"><button class="hnd-btn" data-hnd-exp-del="' + escAttr(e.id || '') + '" style="padding:5px 12px;font-size:11.5px" data-i18n="btn.delete">Delete</button></td>'
         + '</tr>';
@@ -39814,24 +40046,62 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
         emoji: sub.emoji || parent.emoji,
         clr: clr,
         amt: amt,
-        mode: 'cash',
-        source: 'desktop_quick_add'
+        mode: this.formMode || 'cash',
+        source: 'desktop_quick_add',
+        /* P&L bucket — all expenses count toward profit calculation.
+           Stored explicitly so reports include them regardless of category. */
+        inPnl: true
       };
       try {
         Store.add('exps', exp);
-        if (window.App && App.toast) App.toast('✓ ' + fmtINR(amt) + ' logged');
+        if (window.App && App.toast) App.toast('✓ ' + fmtINR(amt) + ' logged in P&L');
       } catch(e){
         if (window.App && App.toast) App.toast(App._T('toast.couldNotSave', 'Could not save · try again'));
         console.error('[HND.exp] save failed', e);
         return;
       }
-      /* Clear form, keep category selected (next expense in same cat is most common) */
+
+      /* If "recurring" toggle is on, also create a recurring rule.
+         Stored in /recurring collection — existing scheduler picks it up. */
+      if (this.formRecurring){
+        try {
+          var rule = {
+            t: now,
+            kind: 'expense',
+            amt: amt,
+            desc: this.formDesc || sub.label,
+            cat: this.formParent,
+            subcat: this.formSubcat,
+            catLabel: parent.label,
+            subcatLabel: sub.label,
+            emoji: sub.emoji || parent.emoji,
+            mode: this.formMode || 'cash',
+            schedule: 'monthly',
+            dayOfMonth: Math.max(1, Math.min(28, parseInt(this.formRecurDay, 10) || 1)),
+            active: true,
+            createdAt: now,
+            lastRunAt: now,  /* mark today as already created so it doesn't double-fire */
+            source: 'desktop_exp_form'
+          };
+          Store.add('recurring', rule);
+          if (window.App && App.toast) {
+            setTimeout(function(){ App.toast('🔁 Will repeat on day ' + rule.dayOfMonth + ' each month'); }, 800);
+          }
+        } catch(e){
+          console.warn('[HND.exp] recurring create failed', e);
+        }
+      }
+
+      /* Clear form, keep category + mode selected (next expense often same) */
       this.formAmt = '';
       this.formDesc = '';
       this.formSubcat = null;
+      this.formRecurring = false;
       $('hnd-exp-amt').value = '';
       $('hnd-exp-desc').value = '';
       $('hnd-exp-sub').value = '';
+      var rcb = $('hnd-exp-recur-cb');
+      if (rcb) rcb.checked = false;
       this.validateForm();
       this.render();
       /* Refocus amount for the next entry */
@@ -39852,15 +40122,151 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
 
     render: function(){
       this.renderKPIs();
+      this.renderPnlStrip();
       this.renderCatBreakdown();
       this.renderCatFilter();
       this.renderTable();
       this.renderCatPickers();
       this.renderSubcatSelect();
+      this.renderModeRow();
+      this.renderRecurringPicker();
+      this.renderPnlPreview();
       this.validateForm();
     },
 
-    refresh: function(){ this.render(); }
+    refresh: function(){ this.render(); },
+
+    /* ─────────────────────────────────────────────────────────
+       Bring the form into view + pulse animation, called by the
+       prominent "Add expense" CTA at the top of the page.
+    ───────────────────────────────────────────────────────── */
+    focusForm: function(){
+      var form = document.getElementById('hnd-exp-form-aside');
+      var amt = $('hnd-exp-amt');
+      if (form){
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        form.classList.remove('hnd-exp-form-pulse');
+        /* Force reflow to restart animation */
+        void form.offsetWidth;
+        form.classList.add('hnd-exp-form-pulse');
+      }
+      setTimeout(function(){ if (amt) amt.focus(); }, 300);
+    },
+
+    /* ─────────────────────────────────────────────────────────
+       P&L Impact Strip · Shows live this-month profit numbers
+       Revenue · Expenses · Net profit · Margin %
+    ───────────────────────────────────────────────────────── */
+    renderPnlStrip: function(){
+      var el = $('hnd-exp-pnl-strip');
+      if (!el) return;
+      var now = new Date();
+      var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      /* Revenue this month */
+      var sales = safeList('sales');
+      var rev = 0;
+      sales.forEach(function(s){
+        var t = Number(s.t || s.time || 0);
+        if (t >= monthStart) rev += Number(s.total || s.amt || 0);
+      });
+      /* Expenses this month */
+      var exps = safeList('exps');
+      var totalExp = 0;
+      exps.forEach(function(e){
+        var t = Number(e.t || 0);
+        if (t >= monthStart) totalExp += Number(e.amt || 0);
+      });
+      var net = rev - totalExp;
+      var margin = rev > 0 ? Math.round((net / rev) * 100) : 0;
+      var netClass = net >= 0 ? 'pos' : 'neg';
+      el.innerHTML = ''
+        + '<div class="hnd-exp-pnl-strip-cell">'
+          + '<div class="hnd-exp-pnl-strip-lbl">📊 Revenue this month</div>'
+          + '<div class="hnd-exp-pnl-strip-val">' + fmtINR(rev) + '</div>'
+        + '</div>'
+        + '<div class="hnd-exp-pnl-strip-cell">'
+          + '<div class="hnd-exp-pnl-strip-lbl">💸 Expenses this month</div>'
+          + '<div class="hnd-exp-pnl-strip-val">' + fmtINR(totalExp) + '</div>'
+        + '</div>'
+        + '<div class="hnd-exp-pnl-strip-cell">'
+          + '<div class="hnd-exp-pnl-strip-lbl">' + (net >= 0 ? '✓ Net profit' : '⚠ Net loss') + ' (so far)</div>'
+          + '<div class="hnd-exp-pnl-strip-val ' + netClass + '">' + fmtINR(Math.abs(net)) + '</div>'
+          + '<div class="hnd-exp-pnl-strip-sub">' + (rev > 0 ? margin + '% margin' : 'No sales yet') + '</div>'
+        + '</div>';
+    },
+
+    /* ─────────────────────────────────────────────────────────
+       Inline P&L preview while user is typing the amount
+       Shows: "After this ₹500 expense your profit drops to ₹X"
+    ───────────────────────────────────────────────────────── */
+    renderPnlPreview: function(){
+      var el = $('hnd-exp-pnl-preview');
+      if (!el) return;
+      var amt = parseFloat(this.formAmt) || 0;
+      if (amt <= 0){ el.style.display = 'none'; return; }
+      var now = new Date();
+      var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      var sales = safeList('sales');
+      var rev = 0;
+      sales.forEach(function(s){
+        var t = Number(s.t || s.time || 0);
+        if (t >= monthStart) rev += Number(s.total || s.amt || 0);
+      });
+      var exps = safeList('exps');
+      var totalExp = 0;
+      exps.forEach(function(e){
+        var t = Number(e.t || 0);
+        if (t >= monthStart) totalExp += Number(e.amt || 0);
+      });
+      var currNet = rev - totalExp;
+      var afterNet = currNet - amt;
+      var arrow = afterNet < currNet ? '↓' : '';
+      var sign = afterNet >= 0 ? '' : '−';
+      var afterClass = afterNet >= 0 ? 'color:#15803D' : 'color:#DC2626';
+      var labelBefore = currNet >= 0 ? 'Profit now' : 'Loss now';
+      var labelAfter  = afterNet >= 0 ? 'After this expense' : 'Loss after this';
+      el.style.display = 'block';
+      el.innerHTML = ''
+        + '📊 ' + labelBefore + ': <b>' + fmtINR(Math.abs(currNet)) + '</b> '
+        + arrow + ' ' + labelAfter + ': '
+        + '<b style="' + afterClass + '">' + sign + fmtINR(Math.abs(afterNet)) + '</b>';
+    },
+
+    /* ─────────────────────────────────────────────────────────
+       Payment mode row · marks the active button
+    ───────────────────────────────────────────────────────── */
+    renderModeRow: function(){
+      var row = $('hnd-exp-mode-row');
+      if (!row) return;
+      var self = this;
+      row.querySelectorAll('.hnd-exp-mode').forEach(function(btn){
+        btn.classList.toggle('active', btn.getAttribute('data-mode') === self.formMode);
+      });
+    },
+
+    /* ─────────────────────────────────────────────────────────
+       Recurring picker · checkbox + day-of-month dropdown
+    ───────────────────────────────────────────────────────── */
+    renderRecurringPicker: function(){
+      var cb = $('hnd-exp-recur-cb');
+      var dayDisp = $('hnd-exp-recur-day-disp');
+      var daySel = $('hnd-exp-recur-day');
+      var detail = $('hnd-exp-recur-detail');
+      if (!cb || !daySel) return;
+      cb.checked = !!this.formRecurring;
+      detail.style.display = this.formRecurring ? 'block' : 'none';
+      /* Populate days 1-28 (safe for all months including Feb) */
+      if (!daySel.options.length){
+        var opts = '';
+        for (var d = 1; d <= 28; d++){
+          var suf = (d === 1 || d === 21) ? 'st' : (d === 2 || d === 22) ? 'nd' : (d === 3 || d === 23) ? 'rd' : 'th';
+          opts += '<option value="' + d + '">' + d + suf + ' of each month</option>';
+        }
+        daySel.innerHTML = opts;
+      }
+      daySel.value = String(this.formRecurDay || 1);
+      if (dayDisp) dayDisp.textContent = String(this.formRecurDay || 1);
+    },
   };
 
   /* ── Routing ── */
@@ -39901,6 +40307,14 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       Exp.formAmt = preset.getAttribute('data-preset');
       $('hnd-exp-amt').value = Exp.formAmt;
       Exp.validateForm();
+      Exp.renderPnlPreview();
+      return;
+    }
+    /* Payment mode pickers (new May 2026) */
+    var modeBtn = e.target.closest('#hnd-exp-mode-row [data-mode]');
+    if (modeBtn){
+      Exp.formMode = modeBtn.getAttribute('data-mode');
+      Exp.renderModeRow();
       return;
     }
     /* Form category pickers */
@@ -39940,6 +40354,7 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       if (v !== e.target.value) e.target.value = v;
       Exp.formAmt = v;
       Exp.validateForm();
+      Exp.renderPnlPreview();   /* live P&L preview as user types */
     }
     if (e.target.id === 'hnd-exp-desc'){
       Exp.formDesc = e.target.value;
@@ -39954,6 +40369,17 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
     if (e.target.id === 'hnd-exp-sub'){
       Exp.formSubcat = e.target.value || null;
       Exp.validateForm();
+    }
+    /* Recurring checkbox toggle */
+    if (e.target.id === 'hnd-exp-recur-cb'){
+      Exp.formRecurring = !!e.target.checked;
+      Exp.renderRecurringPicker();
+    }
+    /* Day-of-month selector for recurring */
+    if (e.target.id === 'hnd-exp-recur-day'){
+      Exp.formRecurDay = Math.max(1, Math.min(28, parseInt(e.target.value, 10) || 1));
+      var disp = $('hnd-exp-recur-day-disp');
+      if (disp) disp.textContent = String(Exp.formRecurDay);
     }
   });
 
@@ -43352,7 +43778,30 @@ html[data-shell="desktop"] #pg-home {
     } catch(e){ return []; }
   }
   function getSeededCount(){
-    return getAllProds().filter(function(p){ return p.seeded === true && p.active === false; }).length;
+    /* Respect vertical catalog filter (May 2026):
+       For salon, Catalog page shows only retail items; seeded services
+       shouldn't count toward "X starter products waiting" on that page. */
+    var all = getAllProds().filter(function(p){ return p.seeded === true && p.active === false; });
+    try {
+      var v = (window.App && window.App.vertical) || 'cafe';
+      var cfg = (typeof window.VERTICAL_CONFIG !== 'undefined') ? VERTICAL_CONFIG[v] : null;
+      if (cfg && typeof cfg.catalogFilter === 'function'){
+        all = all.filter(cfg.catalogFilter);
+      }
+    } catch(e){}
+    return all.length;
+  }
+  /* Inventory-page-aware seeded count for Services/Inventory banner */
+  function getSeededCountForInventory(){
+    var all = getAllProds().filter(function(p){ return p.seeded === true && p.active === false; });
+    try {
+      var v = (window.App && window.App.vertical) || 'cafe';
+      var cfg = (typeof window.VERTICAL_CONFIG !== 'undefined') ? VERTICAL_CONFIG[v] : null;
+      if (cfg && typeof cfg.inventoryFilter === 'function'){
+        all = all.filter(cfg.inventoryFilter);
+      }
+    } catch(e){}
+    return all.length;
   }
   function activateProduct(pid){
     if (!pid) return;
@@ -43467,14 +43916,15 @@ html[data-shell="desktop"] #pg-home {
       var banner = document.createElement('div');
       banner.id = bannerId;
       banner.className = 'hnd-cat-starter-banner';
-      /* Vocab adapts per vertical: salon → "starter services", cafe/restaurant
-         → "starter menu", bakery → "starter items", else → "starter products". */
+      /* Vocab adapts per vertical: salon → "starter retail products" (the
+         catalog is now Product Sales for salon), cafe/restaurant → "starter menu",
+         bakery → "starter items", else → "starter products". */
       var _v = (window.App && window.App.vertical) || 'cafe';
       var _starterWord = 'starter products';
       var _starterSub  = "We've preloaded a menu for your vertical. Set prices and activate the ones you sell — they'll appear instantly in the POS.";
       if (_v === 'salon') {
-        _starterWord = 'starter services';
-        _starterSub  = "We've preloaded common services. Set prices and activate the ones you offer — they'll appear instantly in billing.";
+        _starterWord = 'starter retail products';
+        _starterSub  = "Take-home items customers can buy — shampoo, hair oil, gift sets. Set prices and activate.";
       } else if (_v === 'cafe' || _v === 'restaurant') {
         _starterWord = 'starter menu items';
       } else if (_v === 'bakery') {
@@ -43491,6 +43941,27 @@ html[data-shell="desktop"] #pg-home {
       var firstFilterBar = catWrap.querySelector('.hnd-filter-bar');
       if (firstFilterBar) firstFilterBar.parentNode.insertBefore(banner, firstFilterBar);
       else catWrap.insertBefore(banner, catWrap.firstChild);
+    } else {
+      /* No seeded items in this filter — for salon Product Sales page, show
+         a helpful empty-state hint explaining what to add here. */
+      var _v2 = (window.App && window.App.vertical) || 'cafe';
+      if (_v2 === 'salon'){
+        var emptyBanner = document.createElement('div');
+        emptyBanner.id = bannerId;
+        emptyBanner.className = 'hnd-cat-starter-banner';
+        emptyBanner.style.background = '#FFF7ED';
+        emptyBanner.style.borderColor = '#FED7AA';
+        emptyBanner.innerHTML = ''
+          + '<div class="ic">🛍️</div>'
+          + '<div class="mid">'
+            + '<div class="t">Product Sales · Retail counter</div>'
+            + '<div class="s">Add take-home products customers can buy — shampoo bottles, hair oils, gift hampers. Services live in the <b>Services</b> tab.</div>'
+          + '</div>'
+          + '<button class="cta" onclick="window.App && App.openProductSheet && App.openProductSheet()">+ Add retail product</button>';
+        var fb2 = catWrap.querySelector('.hnd-filter-bar');
+        if (fb2) fb2.parentNode.insertBefore(emptyBanner, fb2);
+        else catWrap.insertBefore(emptyBanner, catWrap.firstChild);
+      }
     }
 
     /* Replace rows for seeded items with Activate buttons */
@@ -53876,7 +54347,7 @@ html[data-shell="desktop"] .hnd-sb-shop-info .hnd-sb-shop-sync {
     } catch(e){}
 
     /* Update catalog label per vertical (May 2026):
-       salon → "Services", cafe/restaurant → "Menu", bakery → "Items",
+       salon → "Product Sales", cafe/restaurant → "Menu", bakery → "Items",
        default → "Catalog". Keeps the nav vocabulary aligned with what
        the shopkeeper actually thinks of as their offering. */
     try {
@@ -53885,12 +54356,28 @@ html[data-shell="desktop"] .hnd-sb-shop-info .hnd-sb-shop-sync {
         var catLbl = catItem.querySelector('.lbl');
         if (catLbl){
           var catCorrect = 'Catalog';
-          if (key === 'salon') catCorrect = 'Services';
+          if (key === 'salon') catCorrect = 'Product Sales';
           else if (key === 'cafe' || key === 'restaurant') catCorrect = 'Menu';
           else if (key === 'bakery' || key === 'sweets') catCorrect = 'Items';
           catLbl.textContent = catCorrect;
           /* Remove data-i18n so the MutationObserver doesn't overwrite our value */
           catLbl.removeAttribute('data-i18n');
+        }
+      }
+    } catch(e){}
+
+    /* Update inventory label per vertical: salon → "Services" (since salon
+       inventory items are services like Hair Color, Threading, Facials).
+       Other verticals keep "Retail Products" / "Inventory". */
+    try {
+      var invItem = document.querySelector('.hnd-sb .hnd-nav-item[data-hnd-nav="inventory"]');
+      if (invItem){
+        var invLbl = invItem.querySelector('.lbl');
+        if (invLbl){
+          var invCorrect = 'Retail Products';
+          if (key === 'salon') invCorrect = 'Services';
+          invLbl.textContent = invCorrect;
+          invLbl.removeAttribute('data-i18n');
         }
       }
     } catch(e){}
@@ -55093,12 +55580,21 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
       var catItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="catalog"] .lbl');
       if (catItem){
         var catCorrect = 'Catalog';
-        if (v === 'salon') catCorrect = 'Services';
+        if (v === 'salon') catCorrect = 'Product Sales';
         else if (v === 'cafe' || v === 'restaurant') catCorrect = 'Menu';
         else if (v === 'bakery' || v === 'sweets') catCorrect = 'Items';
         if (catItem.textContent !== catCorrect){
           catItem.textContent = catCorrect;
           catItem.removeAttribute('data-i18n');
+        }
+      }
+      var invItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="inventory"] .lbl');
+      if (invItem){
+        var invCorrect = 'Retail Products';
+        if (v === 'salon') invCorrect = 'Services';
+        if (invItem.textContent !== invCorrect){
+          invItem.textContent = invCorrect;
+          invItem.removeAttribute('data-i18n');
         }
       }
       var igItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="ingredients"] .lbl');
