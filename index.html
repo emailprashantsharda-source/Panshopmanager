@@ -2748,6 +2748,26 @@ html[data-current-role="manager"] body{
   <div class="list" id="staff-list"></div>
 </div>
 
+<!-- ════════════════════════════════════════════════════════════
+     CASHFLOW mobile stub (full UI lives on desktop)
+════════════════════════════════════════════════════════════ -->
+<div class="page" id="pg-cashflow">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Cashflow</div>
+    <div style="width:40px"></div>
+  </header>
+  <div style="padding:42px 20px;text-align:center">
+    <div style="font-size:54px;margin-bottom:18px">📊</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:10px;color:var(--t1)">Cashflow dashboard</div>
+    <div style="font-size:13.5px;color:var(--t2);line-height:1.5;max-width:300px;margin:0 auto 24px">Open HisaabNow on desktop or tablet for the full cashflow view with charts, breakdowns and 30-day forecast.</div>
+    <button class="btn btn-secondary btn-block" style="max-width:280px;margin:0 auto" onclick="App.nav('reports')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      View Reports
+    </button>
+  </div>
+</div>
+
 <div class="page" id="pg-appointments">
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
@@ -5562,11 +5582,11 @@ salon: {
   txnUnit: 'service', txnUnitPlural: 'services',
   topPanelTitle: 'Top Services',
   /* Salon architecture (May 2026):
-       Catalog page  = Product Sales (retail items like shampoo bottles for take-home)
+       Catalog page  = Retail (take-home products like shampoo bottles)
        Inventory page = Services (Hair Color, Threading, Facials)
      Both pull from the same `prods` collection, filtered by cat. */
-  catalogTitle: 'Product Sales', catalogSearch: 'Search retail products…',
-  catalogSub: 'Take-home products customers can buy',
+  catalogTitle: 'Retail', catalogSearch: 'Search retail products…',
+  catalogSub: 'Take-home products customers can buy at the counter',
   inventoryTitle: 'Services', inventorySearch: 'Search services…',
   inventorySub: 'Hair, skin, beauty services you offer',
   /* Filters: catalog only shows items in "Retail" category, inventory shows
@@ -36396,10 +36416,6 @@ html[data-shell="desktop"] .hnd-tb {
 
   <div class="hnd-sb-group">
     <div class="hnd-sb-group-title">MANAGE</div>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="catalog" onclick="window.App && window.App.nav && window.App.nav('catalog')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-      <span class="lbl" data-i18n="nav.catalog">Catalog</span>
-    </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="inventory" onclick="window.App && window.App.nav && window.App.nav('inventory')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       <span class="lbl" data-i18n="more.inventory">Inventory</span>
@@ -36420,10 +36436,18 @@ html[data-shell="desktop"] .hnd-tb {
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
       <span class="lbl" data-i18n="nav.udhaar">Udhaar</span>
     </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="catalog" onclick="window.App && window.App.nav && window.App.nav('catalog')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span class="lbl" data-i18n="nav.catalog">Catalog</span>
+    </button>
   </div>
 
   <div class="hnd-sb-group">
     <div class="hnd-sb-group-title">INSIGHTS &amp; TEAM</div>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="cashflow" onclick="window.App && window.App.nav && window.App.nav('cashflow')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg>
+      <span class="lbl">Cashflow</span>
+    </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="reports" onclick="window.App && window.App.nav && window.App.nav('reports')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span class="lbl" data-i18n="nav.reports">Reports</span>
@@ -39185,8 +39209,8 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 <div id="hnd-prodsales">
   <div class="hnd-pgh">
     <div class="hnd-pgh-l">
-      <h1>Product Sales</h1>
-      <p>Take-home retail products customers can buy at the counter</p>
+      <h1>Retail</h1>
+      <p>Take-home products customers can buy at the counter</p>
     </div>
     <div class="hnd-pgh-r">
       <button class="hnd-btn dark" onclick="window.App && App.openProductSheet && App.openProductSheet(null, {forceRetail:true})">
@@ -41269,6 +41293,2030 @@ html[data-shell="desktop"] body.hnd-on-supplies #hnd-supplies {
 })();
 </script>
 <!-- =================== END Salon Supplies block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     APPOINTMENTS desktop screen (Step F-AP · May 2026)
+     ────────────────────────────────────────────────────────────
+     Ports the mobile appointments module to a polished desktop UI.
+     Layout: header + cal strip + summary strip + time-grouped
+     appointment cards. Booking opens the existing mobile form
+     (#pg-add-appointment) repurposed as a centered modal.
+════════════════════════════════════════════════════════════ -->
+<style>
+html[data-shell="desktop"] body.hnd-on-appts #pg-appointments,
+html[data-shell="desktop"] body.hnd-on-appts #cart-summary { display: none !important; }
+#hnd-appts { display: none; }
+html[data-shell="desktop"] body.hnd-on-appts #hnd-appts {
+  display: block;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
+  padding: 24px 28px 32px;
+  background: var(--hnd-bg);
+  z-index: 8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnd-ink);
+  min-height: calc(100vh - var(--hnd-tb-h));
+}
+
+/* Calendar strip — week navigator */
+.hnd-ap-calwrap {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+}
+.hnd-ap-cal-nav {
+  width: 36px; height: 56px;
+  border-radius: 10px;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  color: var(--hnd-ink);
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: all .12s;
+  font-family: inherit;
+}
+.hnd-ap-cal-nav:hover { background: var(--hnd-bg); border-color: var(--hnd-gold); }
+.hnd-ap-cal-nav:disabled { opacity: .4; cursor: not-allowed; }
+.hnd-ap-cal-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  flex: 1;
+}
+.hnd-ap-day {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 10px;
+  padding: 10px 6px;
+  cursor: pointer;
+  transition: all .12s;
+  font-family: inherit;
+  text-align: center;
+  position: relative;
+  min-height: 56px;
+}
+.hnd-ap-day:hover {
+  background: var(--hnd-bg);
+  border-color: var(--hnd-gold);
+  transform: translateY(-1px);
+}
+.hnd-ap-day.active {
+  background: linear-gradient(180deg, #0A0A0A 0%, #1F1F1F 100%);
+  color: #fff;
+  border-color: #0A0A0A;
+  box-shadow: 0 6px 14px -4px rgba(10,10,10,.35);
+}
+.hnd-ap-day.today:not(.active) {
+  border-color: #FF6B35;
+  background: #FFF7ED;
+}
+.hnd-ap-day .dn {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--hnd-muted);
+  margin-bottom: 3px;
+}
+.hnd-ap-day.active .dn { color: rgba(255,255,255,.7); }
+.hnd-ap-day.today:not(.active) .dn { color: #C2410C; }
+.hnd-ap-day .dnum {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.hnd-ap-day.active .dnum { color: #fff; }
+.hnd-ap-day .dct {
+  position: absolute;
+  top: 4px; right: 6px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  background: #FF6B35;
+  color: #fff;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: grid; place-items: center;
+  line-height: 1;
+}
+.hnd-ap-day.active .dct { background: var(--hnd-gold); color: #0A0A0A; }
+
+/* Summary strip — compact today overview */
+.hnd-ap-summary {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+}
+.hnd-ap-summary-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--hnd-muted);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hnd-ap-summary-piece {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--hnd-muted);
+}
+.hnd-ap-summary-piece b {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  font-variant-numeric: tabular-nums;
+}
+.hnd-ap-summary-sep { width: 1px; height: 18px; background: var(--hnd-line); }
+.hnd-ap-summary-next {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9A3412;
+}
+.hnd-ap-summary-next b { color: #0A0A0A; font-weight: 700; }
+.hnd-ap-summary-next.none {
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+  color: #15803D;
+}
+
+/* Time-grouped list */
+.hnd-ap-grouping {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.hnd-ap-group { }
+.hnd-ap-group-h {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+.hnd-ap-group-icon { font-size: 16px; }
+.hnd-ap-group-t {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--hnd-muted);
+}
+.hnd-ap-group-ct {
+  font-size: 11px;
+  color: var(--hnd-muted);
+  padding: 2px 8px;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 99px;
+  font-weight: 600;
+}
+.hnd-ap-group-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+/* Appointment card */
+.hnd-ap-card {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex; gap: 14px;
+  transition: all .12s;
+  cursor: pointer;
+}
+.hnd-ap-card:hover {
+  border-color: var(--hnd-gold);
+  box-shadow: 0 6px 20px -10px rgba(184,138,86,.4);
+  transform: translateY(-1px);
+}
+.hnd-ap-card.cancelled { opacity: .5; }
+.hnd-ap-card.cancelled .hnd-ap-card-name { text-decoration: line-through; }
+.hnd-ap-card-time {
+  flex-shrink: 0;
+  text-align: center;
+  min-width: 64px;
+  padding-right: 14px;
+  border-right: 1px solid var(--hnd-line);
+}
+.hnd-ap-card-time-h {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  line-height: 1.1;
+}
+.hnd-ap-card-time-m {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--hnd-muted);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+.hnd-ap-card-mid { flex: 1; min-width: 0; }
+.hnd-ap-card-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  letter-spacing: -.005em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.hnd-ap-card-svc {
+  font-size: 12.5px;
+  color: var(--hnd-muted);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hnd-ap-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.hnd-ap-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 99px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.hnd-ap-pill.booked { background: #FEF3C7; color: #92400E; }
+.hnd-ap-pill.walkin { background: #D1FAE5; color: #047857; }
+.hnd-ap-pill.cancelled { background: #FEE2E2; color: #991B1B; }
+.hnd-ap-pill.staff {
+  background: #EDE9FE; color: #5B21B6;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.hnd-ap-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.hnd-ap-iconbtn {
+  width: 32px; height: 32px;
+  background: var(--hnd-bg);
+  border: 1px solid var(--hnd-line);
+  border-radius: 8px;
+  color: var(--hnd-muted);
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: all .12s;
+  font-family: inherit;
+}
+.hnd-ap-iconbtn:hover {
+  background: #fff;
+  color: var(--hnd-ink);
+  border-color: var(--hnd-gold);
+}
+.hnd-ap-iconbtn.danger:hover {
+  background: #FEF2F2;
+  color: #991B1B;
+  border-color: #FECACA;
+}
+
+/* Empty state */
+.hnd-ap-empty {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--hnd-card);
+  border: 1px dashed var(--hnd-line);
+  border-radius: 12px;
+}
+.hnd-ap-empty-ic {
+  font-size: 48px;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+.hnd-ap-empty-t {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  margin-bottom: 6px;
+}
+.hnd-ap-empty-s {
+  font-size: 13px;
+  color: var(--hnd-muted);
+  max-width: 380px;
+  margin: 0 auto 16px;
+  line-height: 1.5;
+}
+.hnd-ap-empty-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px;
+  background: linear-gradient(180deg, #FF6B35 0%, #EA580C 100%);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -3px rgba(255, 107, 53, .42);
+  transition: all .12s;
+}
+.hnd-ap-empty-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -3px rgba(255, 107, 53, .55);
+}
+
+/* === Booking modal (reuses #pg-add-appointment form) === */
+.hnd-ap-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(10, 10, 10, 0.78) !important;
+  z-index: 4998 !important;
+  cursor: pointer !important;
+  isolation: isolate !important;
+}
+
+html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment {
+  display: block !important;
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(560px, calc(100vw - 32px)) !important;
+  max-height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+  z-index: 5000 !important;
+  border-radius: 16px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E5E2D8 !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.04),
+    0 24px 60px -10px rgba(0, 0, 0, 0.5) !important;
+  animation: none !important;
+  isolation: isolate !important;
+  padding: 0 !important;
+}
+/* Hide the mobile back-arrow header in the modal — use our own close button */
+html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment > .hdr.solid {
+  display: none !important;
+}
+html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-screen {
+  padding: 24px 22px !important;
+}
+.hnd-ap-modal-close {
+  position: sticky;
+  top: 8px;
+  float: right;
+  margin: 8px 8px 0 0;
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: #F4F0E8;
+  border: 0;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: #525252;
+  font-family: inherit;
+  transition: background .12s;
+  z-index: 6;
+}
+.hnd-ap-modal-close:hover { background: #EAE3D0; color: #0A0A0A; }
+.hnd-ap-modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0A0A0A;
+  padding: 18px 22px 0;
+  letter-spacing: -.01em;
+}
+</style>
+
+<div id="hnd-appts">
+  <div class="hnd-pgh">
+    <div class="hnd-pgh-l">
+      <h1 id="hnd-ap-title">Appointments</h1>
+      <p id="hnd-ap-sub">Manage your bookings and walk-ins for the day</p>
+    </div>
+    <div class="hnd-pgh-r">
+      <button class="hnd-btn dark" onclick="window.HND && HND.appts && HND.appts.openBooking()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Book appointment</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hnd-ap-calwrap">
+    <button class="hnd-ap-cal-nav" data-ap-week="-1" aria-label="Previous week">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="hnd-ap-cal-strip" id="hnd-ap-cal-strip"></div>
+    <button class="hnd-ap-cal-nav" data-ap-week="+1" aria-label="Next week">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+
+  <div class="hnd-ap-summary" id="hnd-ap-summary"></div>
+
+  <div class="hnd-ap-grouping" id="hnd-ap-list"></div>
+</div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function escAttr(s){ return escHtml(s).replace(/"/g,'&quot;'); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+
+  var DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function isoOf(d){ return d.toISOString().split('T')[0]; }
+  function todayISO(){ var d = new Date(); d.setHours(0,0,0,0); return isoOf(d); }
+  function startOfDay(d){ var n = new Date(d); n.setHours(0,0,0,0); return n; }
+
+  /* Parse a 24h time string "HH:MM" → minutes since midnight (sortable) */
+  function timeToMin(t){
+    if (!t) return 9999;
+    var p = String(t).split(':');
+    var h = parseInt(p[0], 10) || 0;
+    var m = parseInt(p[1], 10) || 0;
+    return h * 60 + m;
+  }
+
+  /* Format 24h "HH:MM" → { h: "10", m: "30 AM" } for card display */
+  function formatTime(t){
+    if (!t) return { h: '—', m: '' };
+    var p = String(t).split(':');
+    var h24 = parseInt(p[0], 10) || 0;
+    var m = (p[1] || '00').padStart(2, '0');
+    var ampm = h24 >= 12 ? 'PM' : 'AM';
+    var h12 = h24 % 12;
+    if (h12 === 0) h12 = 12;
+    return { h: String(h12), m: m + ' ' + ampm };
+  }
+
+  /* Get day part — morning < 12, afternoon < 17, evening rest */
+  function dayPart(t){
+    var min = timeToMin(t);
+    if (min < 12 * 60) return 'morning';
+    if (min < 17 * 60) return 'afternoon';
+    return 'evening';
+  }
+
+  var Appts = {
+    selectedISO: todayISO(),   /* ISO date string */
+    weekOffset: 0,             /* 0 = current week (with today), -1 = previous, etc. */
+
+    /* Get all appointments scoped to selectedISO */
+    forDate: function(iso){
+      var all = safeList('appts');
+      return all.filter(function(a){
+        if (a.date === iso) return true;
+        /* Older entries may use a Date.now() timestamp without date string */
+        if (!a.date && a.t){
+          var d = new Date(a.t);
+          d.setHours(0,0,0,0);
+          return isoOf(d) === iso;
+        }
+        return false;
+      });
+    },
+
+    /* Counts per ISO for the visible week — drives the badge on cal-strip */
+    weekCounts: function(){
+      var all = safeList('appts');
+      var counts = {};
+      all.forEach(function(a){
+        var iso = a.date;
+        if (!iso && a.t){
+          var d = new Date(a.t);
+          d.setHours(0,0,0,0);
+          iso = isoOf(d);
+        }
+        if (iso) counts[iso] = (counts[iso] || 0) + 1;
+      });
+      return counts;
+    },
+
+    renderCalStrip: function(){
+      var strip = $('hnd-ap-cal-strip');
+      if (!strip) return;
+
+      /* Week starts on the day that's (today + weekOffset*7 - 3 days) */
+      var today = startOfDay(new Date());
+      var weekStart = new Date(today);
+      weekStart.setDate(today.getDate() + (this.weekOffset * 7) - 3);
+
+      var todayIso = todayISO();
+      var counts = this.weekCounts();
+
+      var html = '';
+      for (var i = 0; i < 7; i++){
+        var d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        var iso = isoOf(d);
+        var isActive = (iso === this.selectedISO);
+        var isToday = (iso === todayIso);
+        var ct = counts[iso] || 0;
+        var classes = ['hnd-ap-day'];
+        if (isActive) classes.push('active');
+        if (isToday) classes.push('today');
+        html += '<button class="' + classes.join(' ') + '" data-ap-iso="' + iso + '">'
+          + '<div class="dn">' + DAY_NAMES[d.getDay()] + '</div>'
+          + '<div class="dnum">' + d.getDate() + '</div>'
+          + (ct > 0 ? '<div class="dct">' + ct + '</div>' : '')
+          + '</button>';
+      }
+      strip.innerHTML = html;
+    },
+
+    renderSummary: function(){
+      var el = $('hnd-ap-summary');
+      if (!el) return;
+      var list = this.forDate(this.selectedISO).filter(function(a){ return a.type !== 'cancelled'; });
+      var booked = list.filter(function(a){ return a.type !== 'walkin'; }).length;
+      var walkins = list.filter(function(a){ return a.type === 'walkin'; }).length;
+      var total = list.length;
+
+      /* Friendly date label */
+      var date = new Date(this.selectedISO);
+      var today = todayISO();
+      var dateLbl;
+      if (this.selectedISO === today) dateLbl = 'Today';
+      else {
+        var y = new Date(); y.setDate(y.getDate() - 1);
+        var t = new Date(); t.setDate(t.getDate() + 1);
+        if (this.selectedISO === isoOf(y)) dateLbl = 'Yesterday';
+        else if (this.selectedISO === isoOf(t)) dateLbl = 'Tomorrow';
+        else dateLbl = DAY_NAMES[date.getDay()] + ', ' + date.getDate() + ' ' + MONTH_NAMES[date.getMonth()];
+      }
+
+      /* Next upcoming appointment (only show "Next up" pill for today) */
+      var nextHtml = '';
+      if (this.selectedISO === today){
+        var nowMin = (new Date().getHours() * 60) + new Date().getMinutes();
+        var upcoming = list.filter(function(a){
+          return timeToMin(a.time) >= nowMin;
+        }).sort(function(a, b){ return timeToMin(a.time) - timeToMin(b.time); })[0];
+        if (upcoming){
+          var ft = formatTime(upcoming.time);
+          nextHtml = '<div class="hnd-ap-summary-next">'
+            + '<span>⏭ Next up:</span>'
+            + '<b>' + ft.h + ':' + ft.m + ' · ' + escHtml(upcoming.name || 'Walk-in') + '</b>'
+            + '</div>';
+        } else if (list.length > 0){
+          nextHtml = '<div class="hnd-ap-summary-next none">'
+            + '<span>✓ All done for today</span>'
+            + '</div>';
+        }
+      }
+
+      var html = ''
+        + '<span class="hnd-ap-summary-eyebrow">' + escHtml(dateLbl) + '</span>'
+        + '<span class="hnd-ap-summary-piece">Total <b>' + total + '</b></span>'
+        + '<span class="hnd-ap-summary-sep"></span>'
+        + '<span class="hnd-ap-summary-piece">Booked <b>' + booked + '</b></span>'
+        + '<span class="hnd-ap-summary-sep"></span>'
+        + '<span class="hnd-ap-summary-piece">Walk-ins <b>' + walkins + '</b></span>'
+        + nextHtml;
+      el.innerHTML = html;
+    },
+
+    renderList: function(){
+      var wrap = $('hnd-ap-list');
+      if (!wrap) return;
+      var list = this.forDate(this.selectedISO);
+
+      if (!list.length){
+        var todayIso = todayISO();
+        var isPast = this.selectedISO < todayIso;
+        var isToday = this.selectedISO === todayIso;
+        var msg, title;
+        if (isPast){ title = 'No appointments that day'; msg = 'Nothing was booked or recorded on this date.'; }
+        else if (isToday){ title = 'Nothing booked yet today'; msg = 'Click the orange button below to add your first booking. Walk-ins will also appear here once you start a bill.'; }
+        else { title = 'No appointments yet'; msg = 'Start filling this date by booking customers in advance.'; }
+
+        wrap.innerHTML = '<div class="hnd-ap-empty">'
+          + '<div class="hnd-ap-empty-ic">📅</div>'
+          + '<div class="hnd-ap-empty-t">' + title + '</div>'
+          + '<div class="hnd-ap-empty-s">' + msg + '</div>'
+          + '<button class="hnd-ap-empty-cta" onclick="window.HND && HND.appts && HND.appts.openBooking()">+ Book appointment</button>'
+          + '</div>';
+        return;
+      }
+
+      /* Sort by time ascending, then group by day part */
+      list.sort(function(a, b){ return timeToMin(a.time) - timeToMin(b.time); });
+      var groups = { morning: [], afternoon: [], evening: [] };
+      list.forEach(function(a){ groups[dayPart(a.time)].push(a); });
+
+      var groupMeta = [
+        { key: 'morning',   label: 'Morning',   icon: '☀️', timeRange: 'Before 12 PM' },
+        { key: 'afternoon', label: 'Afternoon', icon: '🌤', timeRange: '12 PM – 5 PM' },
+        { key: 'evening',   label: 'Evening',   icon: '🌙', timeRange: 'After 5 PM' }
+      ];
+
+      var html = '';
+      groupMeta.forEach(function(gm){
+        var items = groups[gm.key];
+        if (!items.length) return;
+        html += '<div class="hnd-ap-group">'
+          + '<div class="hnd-ap-group-h">'
+          +   '<span class="hnd-ap-group-icon">' + gm.icon + '</span>'
+          +   '<span class="hnd-ap-group-t">' + gm.label + '</span>'
+          +   '<span class="hnd-ap-group-ct">' + items.length + '</span>'
+          + '</div>'
+          + '<div class="hnd-ap-group-list">';
+
+        items.forEach(function(a, idx){
+          var ft = formatTime(a.time);
+          var typeClass = a.type || 'booked';
+          var typeLabel = typeClass === 'walkin' ? 'Walk-in' : typeClass === 'cancelled' ? 'Cancelled' : 'Booked';
+          var cardClass = 'hnd-ap-card' + (typeClass === 'cancelled' ? ' cancelled' : '');
+          var realIdx = (safeList('appts') || []).findIndex(function(x){ return x.id === a.id; });
+
+          var svcLine = a.svcEmoji ? (a.svcEmoji + ' ' + escHtml(a.svc || '')) : escHtml(a.svc || 'No service');
+          var staffPill = a.staff ? ('<span class="hnd-ap-pill staff">👤 ' + escHtml(a.staff) + '</span>') : '';
+          var phoneLine = a.cph ? '<span style="font-size:11.5px;color:var(--hnd-muted)">📞 ' + escHtml(a.cph) + '</span>' : '';
+
+          html += '<div class="' + cardClass + '" data-ap-idx="' + realIdx + '" data-ap-id="' + escAttr(a.id || '') + '">'
+            + '<div class="hnd-ap-card-time">'
+            +   '<div class="hnd-ap-card-time-h">' + ft.h + '</div>'
+            +   '<div class="hnd-ap-card-time-m">' + ft.m + '</div>'
+            + '</div>'
+            + '<div class="hnd-ap-card-mid">'
+            +   '<div class="hnd-ap-card-name">' + escHtml(a.name || 'Walk-in') + '</div>'
+            +   '<div class="hnd-ap-card-svc">' + svcLine + '</div>'
+            +   '<div class="hnd-ap-card-meta">'
+            +     '<span class="hnd-ap-pill ' + typeClass + '">' + typeLabel + '</span>'
+            +     staffPill
+            +     phoneLine
+            +   '</div>'
+            + '</div>'
+            + '<div class="hnd-ap-card-actions">'
+            +   '<button class="hnd-ap-iconbtn" data-ap-edit="' + escAttr(a.id || realIdx) + '" title="Edit">'
+            +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+            +   '</button>'
+            +   '<button class="hnd-ap-iconbtn danger" data-ap-delete="' + escAttr(a.id || '') + '" title="Cancel">'
+            +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+            +   '</button>'
+            + '</div>'
+            + '</div>';
+        });
+        html += '</div></div>';
+      });
+
+      wrap.innerHTML = html;
+    },
+
+    render: function(){
+      this.renderCalStrip();
+      this.renderSummary();
+      this.renderList();
+    },
+
+    /* Open the booking form as a modal — reuses #pg-add-appointment */
+    openBooking: function(){
+      var form = document.getElementById('pg-add-appointment');
+      if (!form){
+        if (window.App && App.nav) App.nav('add-appointment');
+        return;
+      }
+      /* Portal to body for stacking-safety */
+      if (!form.__hnd_origParent){
+        form.__hnd_origParent = form.parentNode;
+        form.__hnd_origNext = form.nextSibling;
+      }
+      if (form.parentNode !== document.body){
+        document.body.appendChild(form);
+      }
+
+      document.body.classList.add('hnd-ap-modal-open');
+
+      /* Backdrop */
+      if (!document.getElementById('hnd-ap-backdrop')){
+        var bd = document.createElement('div');
+        bd.id = 'hnd-ap-backdrop';
+        bd.className = 'hnd-ap-modal-backdrop';
+        bd.addEventListener('click', function(){ Appts.closeBooking(); });
+        document.body.appendChild(bd);
+      }
+
+      /* Close button */
+      if (!form.querySelector('.hnd-ap-modal-close')){
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'hnd-ap-modal-close';
+        x.setAttribute('aria-label', 'Close');
+        x.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        x.addEventListener('click', function(e){
+          e.preventDefault();
+          e.stopPropagation();
+          Appts.closeBooking();
+        });
+        form.insertBefore(x, form.firstChild);
+      }
+
+      /* Title row at top of modal */
+      if (!form.querySelector('.hnd-ap-modal-title')){
+        var title = document.createElement('div');
+        title.className = 'hnd-ap-modal-title';
+        title.textContent = 'Book appointment';
+        var firstChild = form.firstChild;
+        /* Insert title AFTER the close button so close stays floated right */
+        var afterClose = form.querySelector('.hnd-ap-modal-close');
+        if (afterClose) form.insertBefore(title, afterClose.nextSibling);
+        else form.insertBefore(title, firstChild);
+      }
+
+      /* Reset scroll */
+      form.scrollTop = 0;
+
+      /* Trigger any form lifecycle (re-renders tiles/staff) */
+      try {
+        if (window.App && App.renderApptsScreen) App.renderApptsScreen();
+        if (window.App && App.renderStaffTiles) App.renderStaffTiles();
+      } catch(e){}
+    },
+
+    closeBooking: function(){
+      document.body.classList.remove('hnd-ap-modal-open');
+      var bd = document.getElementById('hnd-ap-backdrop');
+      if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+      /* Restore form to its original parent */
+      var form = document.getElementById('pg-add-appointment');
+      if (form && form.__hnd_origParent && form.parentNode !== form.__hnd_origParent){
+        try {
+          if (form.__hnd_origNext && form.__hnd_origNext.parentNode === form.__hnd_origParent){
+            form.__hnd_origParent.insertBefore(form, form.__hnd_origNext);
+          } else {
+            form.__hnd_origParent.appendChild(form);
+          }
+        } catch(e){}
+      }
+    }
+  };
+
+  /* ── Routing ─────────────────────────────────────────────── */
+  function currentPageKey(){
+    try { if (window.App && window.App.current) return window.App.current; } catch(e){}
+    return 'home';
+  }
+  function syncShellClass(){
+    var key = currentPageKey();
+    var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+    var wasOn = document.body.classList.contains('hnd-on-appts');
+    var on = isDesktop && key === 'appointments';
+    document.body.classList.toggle('hnd-on-appts', on);
+    if (on) Appts.render();
+    else if (wasOn){
+      /* Make sure booking modal isn't stuck open when leaving */
+      document.body.classList.remove('hnd-ap-modal-open');
+      var bd = document.getElementById('hnd-ap-backdrop');
+      if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+    }
+  }
+
+  /* Belt-and-suspenders nav listener */
+  document.addEventListener('click', function(e){
+    var navBtn = e.target.closest('[data-hnd-nav="appointments"]');
+    if (navBtn){
+      setTimeout(syncShellClass, 50);
+      setTimeout(syncShellClass, 150);
+    }
+  });
+
+  /* Event delegation inside the screen */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnd-on-appts')) return;
+
+    /* Week nav */
+    var wn = e.target.closest('[data-ap-week]');
+    if (wn){
+      Appts.weekOffset += parseInt(wn.getAttribute('data-ap-week'), 10);
+      Appts.render();
+      return;
+    }
+
+    /* Day picker */
+    var dy = e.target.closest('[data-ap-iso]');
+    if (dy){
+      Appts.selectedISO = dy.getAttribute('data-ap-iso');
+      Appts.render();
+      return;
+    }
+
+    /* Edit appointment */
+    var edit = e.target.closest('[data-ap-edit]');
+    if (edit){
+      e.stopPropagation();
+      var aid = edit.getAttribute('data-ap-edit');
+      try {
+        var all = safeList('appts');
+        var idx = isNaN(parseInt(aid, 10)) ? all.findIndex(function(x){ return x.id === aid; }) : parseInt(aid, 10);
+        if (idx >= 0 && window.App && App.openApptEdit) App.openApptEdit(idx);
+      } catch(err){ console.warn('[HND.appts] edit failed', err); }
+      return;
+    }
+
+    /* Cancel appointment */
+    var del = e.target.closest('[data-ap-delete]');
+    if (del){
+      e.stopPropagation();
+      var did = del.getAttribute('data-ap-delete');
+      if (!did) return;
+      if (!confirm('Cancel this appointment? This cannot be undone.')) return;
+      try {
+        if (window.Store && Store.update) Store.update('appts', did, { type: 'cancelled' });
+        if (window.App && App.toast) App.toast('Appointment cancelled');
+        Appts.render();
+      } catch(err){ console.warn('[HND.appts] cancel failed', err); }
+      return;
+    }
+
+    /* Card body click → edit */
+    var card = e.target.closest('.hnd-ap-card');
+    if (card){
+      var cardId = card.getAttribute('data-ap-id');
+      var cardIdx = parseInt(card.getAttribute('data-ap-idx'), 10);
+      if (window.App && App.openApptEdit){
+        if (!isNaN(cardIdx) && cardIdx >= 0) App.openApptEdit(cardIdx);
+      }
+      return;
+    }
+  });
+
+  /* ESC closes booking modal */
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && document.body.classList.contains('hnd-ap-modal-open')){
+      Appts.closeBooking();
+    }
+  });
+
+  /* Hook nav */
+  function hookNav(){
+    if (!window.App || window.App.__hndApptsHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 60);
+      return r;
+    };
+    window.App.__hndApptsHooked = true;
+    syncShellClass();
+    return true;
+  }
+
+  /* Subscribe to data changes */
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hndApptsSubbed) return;
+    window.__hndApptsSubbed = true;
+    try {
+      Store.on('appts', function(){
+        if (document.body.classList.contains('hnd-on-appts')) Appts.render();
+        /* Close modal if save was triggered from inside it */
+        if (document.body.classList.contains('hnd-ap-modal-open')){
+          setTimeout(function(){ Appts.closeBooking(); }, 200);
+        }
+      });
+    } catch(e){}
+  }
+
+  function boot(retry){
+    subscribe();
+    syncShellClass();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(10); });
+  } else { boot(10); }
+
+  window.HND = window.HND || {};
+  window.HND.appts = Appts;
+})();
+</script>
+<!-- =================== END Appointments block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     CASHFLOW desktop screen (Step F-CF · May 2026)
+     ────────────────────────────────────────────────────────────
+     Advanced cashflow dashboard for salons. Composed from existing
+     sales/exps/udhar/recurring collections — NO new schema.
+
+     Layout:
+       - Header with period selector
+       - 4 KPI cards (Cash in hand, Money in, Money out, Net flow)
+       - SVG line chart (30 days past + 30 days forecast)
+       - Two-column breakdown (inflows by mode / outflows by category)
+       - Upcoming obligations panel (from recurring rules)
+════════════════════════════════════════════════════════════ -->
+<style>
+html[data-shell="desktop"] body.hnd-on-cashflow #pg-cashflow,
+html[data-shell="desktop"] body.hnd-on-cashflow #cart-summary { display: none !important; }
+#hnd-cashflow { display: none; }
+html[data-shell="desktop"] body.hnd-on-cashflow #hnd-cashflow {
+  display: block;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
+  padding: 24px 28px 32px;
+  background: var(--hnd-bg);
+  z-index: 8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnd-ink);
+  min-height: calc(100vh - var(--hnd-tb-h));
+}
+
+/* Period selector */
+.hnd-cf-periods {
+  display: flex; gap: 6px;
+  margin-bottom: 16px;
+  background: var(--hnd-card);
+  padding: 4px;
+  border: 1px solid var(--hnd-line);
+  border-radius: 10px;
+  width: fit-content;
+}
+.hnd-cf-period {
+  padding: 7px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--hnd-muted);
+  transition: all .12s;
+}
+.hnd-cf-period:hover { color: var(--hnd-ink); }
+.hnd-cf-period.active {
+  background: linear-gradient(180deg, #0A0A0A 0%, #1F1F1F 100%);
+  color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(10,10,10,.3);
+}
+
+/* KPI cards (4 cards) */
+.hnd-cf-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (max-width: 1200px) { .hnd-cf-kpis { grid-template-columns: repeat(2, 1fr); } }
+.hnd-cf-kpi {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.hnd-cf-kpi.hero {
+  background: linear-gradient(135deg, #FFFBF5 0%, #FFF7E5 100%);
+  border-color: #E5D5B0;
+}
+.hnd-cf-kpi.hero::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 192, 67, .35) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hnd-cf-kpi-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--hnd-muted);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hnd-cf-kpi-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--hnd-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.hnd-cf-kpi-val.pos { color: #15803D; }
+.hnd-cf-kpi-val.neg { color: #B91C1C; }
+.hnd-cf-kpi-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--hnd-muted);
+  margin-top: 6px;
+}
+.hnd-cf-kpi-delta .arr { font-weight: 800; }
+.hnd-cf-kpi-delta.up { color: #15803D; }
+.hnd-cf-kpi-delta.down { color: #B91C1C; }
+.hnd-cf-kpi-delta.neutral { color: var(--hnd-muted); }
+
+/* Chart container */
+.hnd-cf-chart-wrap {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.hnd-cf-chart-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.hnd-cf-chart-t {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  letter-spacing: -.005em;
+}
+.hnd-cf-chart-legend {
+  display: flex;
+  gap: 14px;
+  font-size: 11.5px;
+  color: var(--hnd-muted);
+}
+.hnd-cf-chart-legend .dot {
+  display: inline-block;
+  width: 12px; height: 3px;
+  border-radius: 99px;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.hnd-cf-chart-legend .dot.solid { background: #15803D; }
+.hnd-cf-chart-legend .dot.dashed { background: repeating-linear-gradient(to right, #C2410C 0 4px, transparent 4px 8px); }
+.hnd-cf-chart-svg { display: block; width: 100%; height: 260px; }
+
+/* Breakdown grid */
+.hnd-cf-breakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+@media (max-width: 980px) { .hnd-cf-breakdown { grid-template-columns: 1fr; } }
+.hnd-cf-panel {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.hnd-cf-panel-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hnd-line);
+}
+.hnd-cf-panel-t {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  letter-spacing: -.005em;
+}
+.hnd-cf-panel-sub {
+  font-size: 11px;
+  color: var(--hnd-muted);
+  font-weight: 600;
+}
+.hnd-cf-row {
+  display: grid;
+  grid-template-columns: 26px 1fr 70px 60px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.hnd-cf-row + .hnd-cf-row { border-top: 1px dashed var(--hnd-line); }
+.hnd-cf-row-ic { font-size: 18px; line-height: 1; }
+.hnd-cf-row-lbl { color: var(--hnd-ink); font-weight: 500; }
+.hnd-cf-row-val {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--hnd-ink);
+  font-size: 13px;
+}
+.hnd-cf-row-val.pos { color: #15803D; }
+.hnd-cf-row-val.neg { color: #B91C1C; }
+.hnd-cf-row-pct {
+  text-align: right;
+  font-size: 11px;
+  color: var(--hnd-muted);
+  font-weight: 600;
+}
+.hnd-cf-row-bar {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  height: 4px;
+  background: #F4F0E8;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.hnd-cf-row-bar-fill { height: 100%; transition: width .3s; }
+.hnd-cf-row-bar-fill.pos { background: #15803D; }
+.hnd-cf-row-bar-fill.neg { background: #C2410C; }
+.hnd-cf-panel-total {
+  margin-top: 10px; padding-top: 12px;
+  border-top: 1.5px solid var(--hnd-ink);
+  display: flex; justify-content: space-between;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--hnd-ink);
+}
+.hnd-cf-panel-total b { font-variant-numeric: tabular-nums; }
+.hnd-cf-panel-empty {
+  text-align: center;
+  padding: 26px 12px;
+  font-size: 12.5px;
+  color: var(--hnd-muted);
+}
+
+/* Upcoming obligations */
+.hnd-cf-obligations {
+  background: linear-gradient(135deg, #FFFBF5 0%, #FFF7ED 100%);
+  border: 1px solid #FED7AA;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.hnd-cf-obligations.empty {
+  background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+  border-color: #BBF7D0;
+}
+.hnd-cf-obligations-h {
+  display: flex; align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.hnd-cf-obligations-t {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #9A3412;
+  letter-spacing: -.005em;
+}
+.hnd-cf-obligations.empty .hnd-cf-obligations-t { color: #15803D; }
+.hnd-cf-obligations-list { display: flex; flex-direction: column; gap: 8px; }
+.hnd-cf-obligation {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(255,255,255,.7);
+  border: 1px solid rgba(254, 215, 170, .5);
+  border-radius: 10px;
+}
+.hnd-cf-obligation-ic {
+  width: 36px; height: 36px;
+  background: #fff;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 18px;
+  border: 1px solid #FED7AA;
+}
+.hnd-cf-obligation-lbl { font-size: 13px; font-weight: 700; color: #0A0A0A; }
+.hnd-cf-obligation-sub { font-size: 11px; color: #9A3412; margin-top: 2px; font-weight: 600; }
+.hnd-cf-obligation-when {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  background: #FED7AA;
+  color: #7C2D12;
+  border-radius: 99px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.hnd-cf-obligation-when.urgent { background: #FCA5A5; color: #7F1D1D; }
+.hnd-cf-obligation-amt {
+  font-size: 14px;
+  font-weight: 800;
+  color: #B91C1C;
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+  text-align: right;
+}
+.hnd-cf-obligations-total {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(254, 215, 170, .4);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #7C2D12;
+}
+.hnd-cf-obligations-total b { font-variant-numeric: tabular-nums; font-size: 14px; }
+
+/* Tooltip for chart hover */
+.hnd-cf-tooltip {
+  position: absolute;
+  background: rgba(10, 10, 10, .95);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s;
+  white-space: nowrap;
+  z-index: 50;
+  font-weight: 600;
+}
+.hnd-cf-tooltip.show { opacity: 1; }
+.hnd-cf-tooltip-d { color: #FBBF24; font-weight: 700; }
+.hnd-cf-tooltip-v { font-variant-numeric: tabular-nums; }
+.hnd-cf-tooltip-forecast { color: #C2410C; font-style: italic; }
+</style>
+
+<div id="hnd-cashflow">
+  <div class="hnd-pgh">
+    <div class="hnd-pgh-l">
+      <h1>Cashflow</h1>
+      <p>Money in, money out, what's left in hand</p>
+    </div>
+    <div class="hnd-pgh-r">
+      <button class="hnd-btn" onclick="window.HND && HND.cashflow && HND.cashflow.refresh()" title="Refresh">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="hnd-cf-periods" id="hnd-cf-periods">
+    <button class="hnd-cf-period" data-cf-period="today">Today</button>
+    <button class="hnd-cf-period" data-cf-period="week">This week</button>
+    <button class="hnd-cf-period active" data-cf-period="month">This month</button>
+    <button class="hnd-cf-period" data-cf-period="year">This year</button>
+  </div>
+
+  <div class="hnd-cf-kpis" id="hnd-cf-kpis"></div>
+
+  <div class="hnd-cf-chart-wrap" style="position:relative">
+    <div class="hnd-cf-chart-h">
+      <div class="hnd-cf-chart-t">Cash position · last 30 days + 30-day forecast</div>
+      <div class="hnd-cf-chart-legend">
+        <span><span class="dot solid"></span>Actual</span>
+        <span><span class="dot dashed"></span>Forecast</span>
+      </div>
+    </div>
+    <svg class="hnd-cf-chart-svg" id="hnd-cf-chart" viewBox="0 0 800 260" preserveAspectRatio="none"></svg>
+    <div class="hnd-cf-tooltip" id="hnd-cf-tooltip"></div>
+  </div>
+
+  <div class="hnd-cf-breakdown">
+    <div class="hnd-cf-panel" id="hnd-cf-inflows"></div>
+    <div class="hnd-cf-panel" id="hnd-cf-outflows"></div>
+  </div>
+
+  <div id="hnd-cf-obligations-slot"></div>
+</div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+  function fmtINR(n){
+    n = Math.round(+n || 0);
+    var abs = Math.abs(n);
+    if (abs >= 10000000) return (n < 0 ? '-' : '') + '₹' + (abs/10000000).toFixed(1) + 'Cr';
+    if (abs >= 100000)   return (n < 0 ? '-' : '') + '₹' + (abs/100000).toFixed(1) + 'L';
+    if (abs >= 1000)     return (n < 0 ? '-' : '') + '₹' + (abs/1000).toFixed(abs >= 10000 ? 0 : 1) + 'K';
+    return (n < 0 ? '-' : '') + '₹' + abs.toLocaleString('en-IN');
+  }
+  function fmtINRFull(n){
+    n = Math.round(+n || 0);
+    try { return (n < 0 ? '-' : '') + '₹' + Math.abs(n).toLocaleString('en-IN'); } catch(e){ return '₹' + n; }
+  }
+
+  var DAY_MS = 24 * 60 * 60 * 1000;
+
+  /* ─────────────────────────────────────────────────────────
+     Period helpers
+  ───────────────────────────────────────────────────────── */
+  function periodRange(period){
+    var now = Date.now();
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    var startOfToday = d.getTime();
+    var range, prevRange;
+
+    switch(period){
+      case 'today':
+        range = { from: startOfToday, to: startOfToday + DAY_MS - 1, label: 'today' };
+        prevRange = { from: startOfToday - DAY_MS, to: startOfToday - 1, label: 'yesterday' };
+        break;
+      case 'week':
+        var dow = new Date(startOfToday).getDay();
+        var weekStart = startOfToday - (dow * DAY_MS);
+        range = { from: weekStart, to: now, label: 'this week' };
+        prevRange = { from: weekStart - 7 * DAY_MS, to: weekStart - 1, label: 'last week' };
+        break;
+      case 'month':
+        var nd = new Date();
+        var monthStart = new Date(nd.getFullYear(), nd.getMonth(), 1).getTime();
+        var prevMonthStart = new Date(nd.getFullYear(), nd.getMonth() - 1, 1).getTime();
+        range = { from: monthStart, to: now, label: 'this month' };
+        prevRange = { from: prevMonthStart, to: monthStart - 1, label: 'last month' };
+        break;
+      case 'year':
+        var yd = new Date();
+        var yearStart = new Date(yd.getFullYear(), 0, 1).getTime();
+        var prevYearStart = new Date(yd.getFullYear() - 1, 0, 1).getTime();
+        range = { from: yearStart, to: now, label: 'this year' };
+        prevRange = { from: prevYearStart, to: yearStart - 1, label: 'last year' };
+        break;
+    }
+    return { current: range, previous: prevRange };
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Inflows / outflows aggregation
+  ───────────────────────────────────────────────────────── */
+  function inflows(fromT, toT){
+    /* Returns { total, byMode: { cash, upi, card, bank }, udharCollected } */
+    var sales = safeList('sales');
+    var udhars = safeList('udhar');
+    var result = { total: 0, byMode: { cash: 0, upi: 0, card: 0, bank: 0 }, udharCollected: 0 };
+
+    sales.forEach(function(s){
+      var t = Number(s.t || s.time || 0);
+      if (t < fromT || t > toT) return;
+      var amt = Number(s.total || s.amt || 0);
+      var mode = (s.mode || s.paymentMode || 'cash').toLowerCase();
+      if (mode === 'udhar' || mode === 'credit') return; /* not actual cash inflow yet */
+      if (!result.byMode.hasOwnProperty(mode)) mode = 'cash';
+      result.byMode[mode] += amt;
+      result.total += amt;
+    });
+
+    /* Udhar collections (when customer pays back outstanding credit) */
+    udhars.forEach(function(u){
+      var payments = u.payments || u.collections || [];
+      if (!Array.isArray(payments)) return;
+      payments.forEach(function(p){
+        var t = Number(p.t || p.time || 0);
+        if (t < fromT || t > toT) return;
+        var amt = Number(p.amt || p.amount || 0);
+        var mode = (p.mode || 'cash').toLowerCase();
+        if (!result.byMode.hasOwnProperty(mode)) mode = 'cash';
+        result.byMode[mode] += amt;
+        result.udharCollected += amt;
+        result.total += amt;
+      });
+    });
+
+    return result;
+  }
+
+  function outflows(fromT, toT){
+    /* Returns { total, byCat: { rent: x, hr: y, ... } } */
+    var exps = safeList('exps');
+    var result = { total: 0, byCat: {} };
+
+    exps.forEach(function(e){
+      var t = Number(e.t || 0);
+      if (t < fromT || t > toT) return;
+      var amt = Number(e.amt || 0);
+      var cat = e.cat || e.category || 'other';
+      var catLabel = e.catLabel || cat;
+      var emoji = e.emoji || '💰';
+      if (!result.byCat[cat]) result.byCat[cat] = { amt: 0, label: catLabel, emoji: emoji };
+      result.byCat[cat].amt += amt;
+      result.total += amt;
+    });
+
+    return result;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Cumulative cash position (all-time, cash-only mode)
+  ───────────────────────────────────────────────────────── */
+  function cashPositionAt(asOfT){
+    var cash = 0;
+
+    /* Opening balance (optional collection) */
+    try {
+      var opening = safeList('cashOpening');
+      if (opening.length > 0){
+        cash += Number(opening[0].amount || opening[0].amt || 0);
+      }
+    } catch(e){}
+
+    /* Cash sales */
+    var sales = safeList('sales');
+    sales.forEach(function(s){
+      var t = Number(s.t || s.time || 0);
+      if (t > asOfT) return;
+      var mode = (s.mode || s.paymentMode || 'cash').toLowerCase();
+      if (mode === 'cash') cash += Number(s.total || s.amt || 0);
+    });
+
+    /* Udhar payments received in cash */
+    var udhars = safeList('udhar');
+    udhars.forEach(function(u){
+      var payments = u.payments || u.collections || [];
+      if (!Array.isArray(payments)) return;
+      payments.forEach(function(p){
+        var t = Number(p.t || p.time || 0);
+        if (t > asOfT) return;
+        var mode = (p.mode || 'cash').toLowerCase();
+        if (mode === 'cash') cash += Number(p.amt || p.amount || 0);
+      });
+    });
+
+    /* Cash expenses */
+    var exps = safeList('exps');
+    exps.forEach(function(e){
+      var t = Number(e.t || 0);
+      if (t > asOfT) return;
+      var mode = (e.mode || 'cash').toLowerCase();
+      if (mode === 'cash') cash -= Number(e.amt || 0);
+    });
+
+    return cash;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Upcoming obligations from recurring rules
+     Returns next N days of scheduled expenses
+  ───────────────────────────────────────────────────────── */
+  function upcomingObligations(daysAhead){
+    var rules = safeList('recurring');
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var result = [];
+
+    rules.forEach(function(rule){
+      if (!rule || rule.active === false) return;
+      if ((rule.kind || 'expense') !== 'expense') return;
+      var dom = parseInt(rule.dayOfMonth, 10);
+      if (!dom || dom < 1 || dom > 31) return;
+
+      /* Find next occurrence of dayOfMonth */
+      var thisMonth = new Date(today.getFullYear(), today.getMonth(), dom);
+      var nextOccurrence;
+      if (thisMonth >= today){
+        nextOccurrence = thisMonth;
+      } else {
+        nextOccurrence = new Date(today.getFullYear(), today.getMonth() + 1, dom);
+      }
+
+      var daysFromNow = Math.floor((nextOccurrence - today) / DAY_MS);
+      if (daysFromNow >= 0 && daysFromNow <= daysAhead){
+        result.push({
+          ruleId: rule.id,
+          name: rule.desc || rule.subcatLabel || rule.catLabel || 'Recurring expense',
+          emoji: rule.emoji || '🔁',
+          amount: Number(rule.amt || 0),
+          daysFromNow: daysFromNow,
+          due: nextOccurrence,
+          cat: rule.cat || 'other'
+        });
+      }
+    });
+
+    /* Sort by closest first */
+    result.sort(function(a, b){ return a.daysFromNow - b.daysFromNow; });
+    return result;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Build daily series for last 30 days + forecast 30 days
+  ───────────────────────────────────────────────────────── */
+  function buildSeries(){
+    var now = Date.now();
+    var startOfToday = (function(){ var d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+
+    /* Historical: 30 days back to today (inclusive) */
+    var historical = [];
+    for (var i = 30; i >= 0; i--){
+      var dayEnd = startOfToday + (DAY_MS) - 1 - (i * DAY_MS);
+      historical.push({
+        t: dayEnd,
+        date: new Date(dayEnd),
+        value: cashPositionAt(dayEnd),
+        isForecast: false
+      });
+    }
+
+    /* Forecast: next 30 days */
+    /* Avg daily net flow from last 30 days */
+    var inflow30 = inflows(now - 30 * DAY_MS, now);
+    var outflow30 = outflows(now - 30 * DAY_MS, now);
+    var avgDailyNet = (inflow30.total - outflow30.total) / 30;
+
+    /* Upcoming obligations for chart step-downs */
+    var obligations = upcomingObligations(30);
+    /* Index obligations by day offset */
+    var oblByDay = {};
+    obligations.forEach(function(o){
+      if (!oblByDay[o.daysFromNow]) oblByDay[o.daysFromNow] = 0;
+      oblByDay[o.daysFromNow] += o.amount;
+    });
+
+    var currentCash = historical[historical.length - 1].value;
+    var forecast = [];
+    for (var d = 1; d <= 30; d++){
+      var futureT = startOfToday + (d * DAY_MS) - 1;
+      /* Base projection: current + avgDailyNet * d */
+      var projected = currentCash + (avgDailyNet * d);
+      /* Subtract obligations cumulatively */
+      for (var dd = 1; dd <= d; dd++){
+        if (oblByDay[dd]) projected -= oblByDay[dd];
+      }
+      forecast.push({
+        t: futureT,
+        date: new Date(futureT),
+        value: projected,
+        isForecast: true,
+        obligationToday: oblByDay[d] || 0
+      });
+    }
+
+    return { historical: historical, forecast: forecast, avgDailyNet: avgDailyNet };
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     SVG chart renderer
+  ───────────────────────────────────────────────────────── */
+  function renderChart(){
+    var svg = $('hnd-cf-chart');
+    if (!svg) return;
+    var series = buildSeries();
+    var all = series.historical.concat(series.forecast);
+    if (!all.length) return;
+
+    /* viewBox is 800x260 — fixed coordinate system, scales responsively */
+    var W = 800, H = 260;
+    var padL = 56, padR = 14, padT = 16, padB = 30;
+    var chartW = W - padL - padR;
+    var chartH = H - padT - padB;
+
+    /* Find Y range with some headroom */
+    var values = all.map(function(p){ return p.value; });
+    var minV = Math.min.apply(null, values);
+    var maxV = Math.max.apply(null, values);
+    /* Ensure 0 is visible if it's near the range, give breathing room */
+    if (minV > 0) minV = 0;
+    var range = (maxV - minV) || 1;
+    minV = minV - range * 0.05;
+    maxV = maxV + range * 0.1;
+    range = maxV - minV;
+
+    var xStep = chartW / (all.length - 1);
+    var pts = all.map(function(p, i){
+      return {
+        x: padL + i * xStep,
+        y: padT + chartH - ((p.value - minV) / range) * chartH,
+        value: p.value,
+        date: p.date,
+        isForecast: p.isForecast,
+        idx: i,
+        obligationToday: p.obligationToday || 0
+      };
+    });
+
+    var todayIdx = series.historical.length - 1;
+    var todayX = pts[todayIdx].x;
+    var todayY = pts[todayIdx].y;
+
+    /* Build paths */
+    function makePath(points){
+      return points.map(function(p, i){ return (i === 0 ? 'M' : 'L') + ' ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1); }).join(' ');
+    }
+    var pastPts = pts.slice(0, todayIdx + 1);
+    var fcPts = pts.slice(todayIdx);
+    var pastPath = makePath(pastPts);
+    var fcPath = makePath(fcPts);
+
+    /* Area fill for past (subtle gradient) */
+    var zeroY = padT + chartH - ((0 - minV) / range) * chartH;
+    var pastArea = pastPath + ' L ' + todayX.toFixed(1) + ' ' + zeroY.toFixed(1) + ' L ' + pts[0].x.toFixed(1) + ' ' + zeroY.toFixed(1) + ' Z';
+
+    /* Y-axis ticks */
+    var yTicks = [];
+    for (var ti = 0; ti <= 4; ti++){
+      var v = minV + (range * ti / 4);
+      yTicks.push({ y: padT + chartH - (ti / 4) * chartH, value: v });
+    }
+
+    /* X-axis labels — 5 evenly spaced dates */
+    var xLabels = [];
+    var labelIdxs = [0, Math.floor(all.length * 0.25), todayIdx, todayIdx + Math.floor((all.length - todayIdx) * 0.5), all.length - 1];
+    labelIdxs.forEach(function(li){
+      if (li < 0 || li >= all.length) return;
+      xLabels.push({
+        x: pts[li].x,
+        label: (li === todayIdx ? 'Today' : (all[li].date.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][all[li].date.getMonth()]))
+      });
+    });
+
+    /* Build SVG */
+    var html = '';
+    /* Defs - gradient */
+    html += '<defs>';
+    html += '  <linearGradient id="hnd-cf-grad" x1="0" y1="0" x2="0" y2="1">';
+    html += '    <stop offset="0%" stop-color="#15803D" stop-opacity="0.16"/>';
+    html += '    <stop offset="100%" stop-color="#15803D" stop-opacity="0"/>';
+    html += '  </linearGradient>';
+    html += '</defs>';
+
+    /* Grid lines */
+    yTicks.forEach(function(tk){
+      html += '<line x1="' + padL + '" y1="' + tk.y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + tk.y.toFixed(1) + '" stroke="#F4F0E8" stroke-width="1"/>';
+    });
+
+    /* Zero line if visible */
+    if (minV < 0 && maxV > 0){
+      html += '<line x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) + '" stroke="#0A0A0A" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>';
+    }
+
+    /* Y-axis labels */
+    yTicks.forEach(function(tk){
+      html += '<text x="' + (padL - 8) + '" y="' + (tk.y + 4).toFixed(1) + '" font-size="10" fill="#8B8276" text-anchor="end" font-weight="600">' + fmtINR(tk.value) + '</text>';
+    });
+
+    /* Forecast region shading */
+    html += '<rect x="' + todayX.toFixed(1) + '" y="' + padT + '" width="' + (W - padR - todayX).toFixed(1) + '" height="' + chartH + '" fill="#FFF7ED" opacity="0.5"/>';
+
+    /* Today vertical marker */
+    html += '<line x1="' + todayX.toFixed(1) + '" y1="' + padT + '" x2="' + todayX.toFixed(1) + '" y2="' + (padT + chartH) + '" stroke="#C2410C" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>';
+
+    /* Past area fill */
+    html += '<path d="' + pastArea + '" fill="url(#hnd-cf-grad)"/>';
+
+    /* Past line (solid) */
+    html += '<path d="' + pastPath + '" fill="none" stroke="#15803D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+
+    /* Forecast line (dashed) */
+    html += '<path d="' + fcPath + '" fill="none" stroke="#C2410C" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>';
+
+    /* Today dot (prominent) */
+    html += '<circle cx="' + todayX.toFixed(1) + '" cy="' + todayY.toFixed(1) + '" r="6" fill="#fff" stroke="#15803D" stroke-width="3"/>';
+
+    /* Obligation markers on forecast (red dots) */
+    pts.slice(todayIdx + 1).forEach(function(p){
+      if (p.obligationToday > 0){
+        html += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#DC2626" stroke="#fff" stroke-width="2"/>';
+      }
+    });
+
+    /* X-axis labels */
+    xLabels.forEach(function(xl){
+      html += '<text x="' + xl.x.toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#8B8276" text-anchor="middle" font-weight="600">' + xl.label + '</text>';
+    });
+
+    /* Invisible hover targets */
+    pts.forEach(function(p, i){
+      html += '<rect x="' + (p.x - xStep/2).toFixed(1) + '" y="' + padT + '" width="' + xStep.toFixed(1) + '" height="' + chartH + '" fill="transparent" data-cf-pt="' + i + '" style="cursor:crosshair"/>';
+    });
+
+    svg.innerHTML = html;
+
+    /* Wire tooltip */
+    var tip = $('hnd-cf-tooltip');
+    var wrap = svg.parentNode;
+    if (tip && wrap){
+      svg.querySelectorAll('[data-cf-pt]').forEach(function(r){
+        r.addEventListener('mouseenter', function(){
+          var i = parseInt(r.getAttribute('data-cf-pt'), 10);
+          var p = pts[i];
+          var dateStr = p.date.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][p.date.getMonth()];
+          var html = '<div class="hnd-cf-tooltip-d">' + dateStr + '</div>'
+            + '<div class="hnd-cf-tooltip-v">' + fmtINRFull(p.value) + '</div>'
+            + (p.isForecast ? '<div class="hnd-cf-tooltip-forecast">forecast</div>' : '');
+          tip.innerHTML = html;
+          tip.classList.add('show');
+          /* Position relative to wrapper */
+          var rect = svg.getBoundingClientRect();
+          var wrapRect = wrap.getBoundingClientRect();
+          var scaleX = rect.width / W;
+          var scaleY = rect.height / H;
+          var leftPx = (p.x * scaleX) + (rect.left - wrapRect.left) - tip.offsetWidth / 2;
+          var topPx = (p.y * scaleY) + (rect.top - wrapRect.top) - tip.offsetHeight - 12;
+          tip.style.left = Math.max(8, Math.min(wrap.offsetWidth - tip.offsetWidth - 8, leftPx)) + 'px';
+          tip.style.top = Math.max(8, topPx) + 'px';
+        });
+        r.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+      });
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Renderers
+  ───────────────────────────────────────────────────────── */
+  var CF = {
+    period: 'month',
+
+    renderKpis: function(){
+      var pr = periodRange(this.period);
+      var inflowCur = inflows(pr.current.from, pr.current.to);
+      var outflowCur = outflows(pr.current.from, pr.current.to);
+      var inflowPrev = inflows(pr.previous.from, pr.previous.to);
+      var outflowPrev = outflows(pr.previous.from, pr.previous.to);
+
+      var cashInHand = cashPositionAt(Date.now());
+
+      /* Comparison to compute delta — use same period last year for cashInHand */
+      var lastWeekCash = cashPositionAt(Date.now() - 7 * DAY_MS);
+      var cashDeltaPct = lastWeekCash !== 0 ? Math.round(((cashInHand - lastWeekCash) / Math.abs(lastWeekCash)) * 100) : 0;
+      var inflowDeltaPct = inflowPrev.total > 0 ? Math.round(((inflowCur.total - inflowPrev.total) / inflowPrev.total) * 100) : (inflowCur.total > 0 ? 100 : 0);
+      var outflowDeltaPct = outflowPrev.total > 0 ? Math.round(((outflowCur.total - outflowPrev.total) / outflowPrev.total) * 100) : (outflowCur.total > 0 ? 100 : 0);
+
+      var net = inflowCur.total - outflowCur.total;
+      var margin = inflowCur.total > 0 ? Math.round((net / inflowCur.total) * 100) : 0;
+
+      function deltaHTML(pct, inverse){
+        /* inverse=true means an increase is BAD (used for expense card) */
+        if (pct === 0) return '<span class="hnd-cf-kpi-delta neutral">— vs last</span>';
+        var isUp = pct > 0;
+        var goodDirection = inverse ? !isUp : isUp;
+        var cls = goodDirection ? 'up' : 'down';
+        var arrow = isUp ? '▲' : '▼';
+        return '<span class="hnd-cf-kpi-delta ' + cls + '"><span class="arr">' + arrow + '</span> ' + Math.abs(pct) + '% vs last</span>';
+      }
+
+      var periodLbl = pr.current.label;
+
+      var html = ''
+        + '<div class="hnd-cf-kpi hero">'
+        +   '<div class="hnd-cf-kpi-lbl">💰 Cash in hand</div>'
+        +   '<div class="hnd-cf-kpi-val ' + (cashInHand < 0 ? 'neg' : '') + '">' + fmtINRFull(cashInHand) + '</div>'
+        +   deltaHTML(cashDeltaPct, false).replace('vs last', 'vs 7 days ago')
+        + '</div>'
+        + '<div class="hnd-cf-kpi">'
+        +   '<div class="hnd-cf-kpi-lbl">📈 Money in · ' + periodLbl + '</div>'
+        +   '<div class="hnd-cf-kpi-val pos">' + fmtINRFull(inflowCur.total) + '</div>'
+        +   deltaHTML(inflowDeltaPct, false)
+        + '</div>'
+        + '<div class="hnd-cf-kpi">'
+        +   '<div class="hnd-cf-kpi-lbl">📉 Money out · ' + periodLbl + '</div>'
+        +   '<div class="hnd-cf-kpi-val neg">' + fmtINRFull(outflowCur.total) + '</div>'
+        +   deltaHTML(outflowDeltaPct, true)
+        + '</div>'
+        + '<div class="hnd-cf-kpi">'
+        +   '<div class="hnd-cf-kpi-lbl">⚡ Net flow · ' + periodLbl + '</div>'
+        +   '<div class="hnd-cf-kpi-val ' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtINRFull(net) + '</div>'
+        +   '<div class="hnd-cf-kpi-delta ' + (margin >= 0 ? 'up' : 'down') + '">' + margin + '% margin</div>'
+        + '</div>';
+      $('hnd-cf-kpis').innerHTML = html;
+    },
+
+    renderInflows: function(){
+      var pr = periodRange(this.period);
+      var inflow = inflows(pr.current.from, pr.current.to);
+      var modes = [
+        { key: 'cash', emoji: '💵', label: 'Cash sales' },
+        { key: 'upi',  emoji: '📱', label: 'UPI sales' },
+        { key: 'card', emoji: '💳', label: 'Card sales' },
+        { key: 'bank', emoji: '🏦', label: 'Bank transfer' }
+      ];
+      /* Treat udhar collections as a row */
+      var allRows = modes.map(function(m){
+        return { emoji: m.emoji, label: m.label, amt: inflow.byMode[m.key] || 0 };
+      });
+
+      /* Filter & sort by amount */
+      allRows = allRows.filter(function(r){ return r.amt > 0; });
+      allRows.sort(function(a, b){ return b.amt - a.amt; });
+
+      var html = '<div class="hnd-cf-panel-h">'
+        + '<div class="hnd-cf-panel-t">📈 Money In</div>'
+        + '<div class="hnd-cf-panel-sub">' + pr.current.label + '</div>'
+        + '</div>';
+
+      if (!allRows.length){
+        html += '<div class="hnd-cf-panel-empty">No income recorded for this period</div>';
+      } else {
+        allRows.forEach(function(r){
+          var pct = inflow.total > 0 ? Math.round((r.amt / inflow.total) * 100) : 0;
+          html += '<div class="hnd-cf-row">'
+            +   '<div class="hnd-cf-row-ic">' + r.emoji + '</div>'
+            +   '<div class="hnd-cf-row-lbl">' + escHtml(r.label) + '</div>'
+            +   '<div class="hnd-cf-row-val pos">' + fmtINRFull(r.amt) + '</div>'
+            +   '<div class="hnd-cf-row-pct">' + pct + '%</div>'
+            +   '<div class="hnd-cf-row-bar"><div class="hnd-cf-row-bar-fill pos" style="width:' + pct + '%"></div></div>'
+            + '</div>';
+        });
+        html += '<div class="hnd-cf-panel-total"><span>Total in</span><b>' + fmtINRFull(inflow.total) + '</b></div>';
+      }
+      $('hnd-cf-inflows').innerHTML = html;
+    },
+
+    renderOutflows: function(){
+      var pr = periodRange(this.period);
+      var outflow = outflows(pr.current.from, pr.current.to);
+      var rows = [];
+      Object.keys(outflow.byCat).forEach(function(k){
+        var v = outflow.byCat[k];
+        rows.push({ emoji: v.emoji, label: v.label, amt: v.amt });
+      });
+      rows.sort(function(a, b){ return b.amt - a.amt; });
+
+      var pr2 = pr.current;
+      var html = '<div class="hnd-cf-panel-h">'
+        + '<div class="hnd-cf-panel-t">📉 Money Out</div>'
+        + '<div class="hnd-cf-panel-sub">' + pr2.label + '</div>'
+        + '</div>';
+
+      if (!rows.length){
+        html += '<div class="hnd-cf-panel-empty">No expenses recorded for this period</div>';
+      } else {
+        rows.forEach(function(r){
+          var pct = outflow.total > 0 ? Math.round((r.amt / outflow.total) * 100) : 0;
+          html += '<div class="hnd-cf-row">'
+            +   '<div class="hnd-cf-row-ic">' + r.emoji + '</div>'
+            +   '<div class="hnd-cf-row-lbl">' + escHtml(r.label) + '</div>'
+            +   '<div class="hnd-cf-row-val neg">' + fmtINRFull(r.amt) + '</div>'
+            +   '<div class="hnd-cf-row-pct">' + pct + '%</div>'
+            +   '<div class="hnd-cf-row-bar"><div class="hnd-cf-row-bar-fill neg" style="width:' + pct + '%"></div></div>'
+            + '</div>';
+        });
+        html += '<div class="hnd-cf-panel-total"><span>Total out</span><b>' + fmtINRFull(outflow.total) + '</b></div>';
+      }
+      $('hnd-cf-outflows').innerHTML = html;
+    },
+
+    renderObligations: function(){
+      var obls = upcomingObligations(7);
+      var slot = $('hnd-cf-obligations-slot');
+      if (!slot) return;
+
+      if (!obls.length){
+        slot.innerHTML = '<div class="hnd-cf-obligations empty">'
+          + '<div class="hnd-cf-obligations-h">'
+          +   '<span style="font-size:20px">✓</span>'
+          +   '<span class="hnd-cf-obligations-t">No upcoming bills in the next 7 days</span>'
+          + '</div>'
+          + '<div style="font-size:12px;color:#15803D;padding-left:30px">You\'re clear of scheduled obligations. New bills set as recurring will appear here.</div>'
+          + '</div>';
+        return;
+      }
+
+      var total = obls.reduce(function(a, b){ return a + b.amount; }, 0);
+      var html = '<div class="hnd-cf-obligations">'
+        + '<div class="hnd-cf-obligations-h">'
+        +   '<span style="font-size:20px">⚠</span>'
+        +   '<span class="hnd-cf-obligations-t">Upcoming obligations · next 7 days</span>'
+        + '</div>'
+        + '<div class="hnd-cf-obligations-list">';
+
+      obls.forEach(function(o){
+        var when;
+        if (o.daysFromNow === 0) when = 'TODAY';
+        else if (o.daysFromNow === 1) when = 'TOMORROW';
+        else when = 'IN ' + o.daysFromNow + ' DAYS';
+        var urgent = (o.daysFromNow <= 1);
+        html += '<div class="hnd-cf-obligation">'
+          +   '<div class="hnd-cf-obligation-ic">' + o.emoji + '</div>'
+          +   '<div>'
+          +     '<div class="hnd-cf-obligation-lbl">' + escHtml(o.name) + '</div>'
+          +     '<div class="hnd-cf-obligation-sub">' + o.due.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][o.due.getMonth()] + ' · recurring rule</div>'
+          +   '</div>'
+          +   '<div class="hnd-cf-obligation-when ' + (urgent ? 'urgent' : '') + '">' + when + '</div>'
+          +   '<div class="hnd-cf-obligation-amt">' + fmtINRFull(o.amount) + '</div>'
+          + '</div>';
+      });
+
+      html += '</div>'
+        + '<div class="hnd-cf-obligations-total">'
+        +   '<span>Total upcoming</span>'
+        +   '<b>' + fmtINRFull(total) + '</b>'
+        + '</div>'
+        + '</div>';
+
+      slot.innerHTML = html;
+    },
+
+    render: function(){
+      this.renderKpis();
+      renderChart();
+      this.renderInflows();
+      this.renderOutflows();
+      this.renderObligations();
+    },
+
+    refresh: function(){
+      this.render();
+      if (window.App && App.toast) App.toast('✓ Cashflow refreshed');
+    },
+
+    setPeriod: function(p){
+      this.period = p;
+      document.querySelectorAll('#hnd-cf-periods .hnd-cf-period').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-cf-period') === p);
+      });
+      this.render();
+    }
+  };
+
+  /* ─────────────────────────────────────────────────────────
+     Routing
+  ───────────────────────────────────────────────────────── */
+  function currentPageKey(){
+    try { if (window.App && window.App.current) return window.App.current; } catch(e){}
+    return 'home';
+  }
+  function syncShellClass(){
+    var key = currentPageKey();
+    var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+    var on = isDesktop && key === 'cashflow';
+    document.body.classList.toggle('hnd-on-cashflow', on);
+    if (on) CF.render();
+  }
+
+  document.addEventListener('click', function(e){
+    var navBtn = e.target.closest('[data-hnd-nav="cashflow"]');
+    if (navBtn){
+      setTimeout(syncShellClass, 50);
+      setTimeout(syncShellClass, 150);
+    }
+  });
+
+  /* Period chip clicks */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnd-on-cashflow')) return;
+    var btn = e.target.closest('[data-cf-period]');
+    if (btn){
+      CF.setPeriod(btn.getAttribute('data-cf-period'));
+    }
+  });
+
+  /* Hook nav */
+  function hookNav(){
+    if (!window.App || window.App.__hndCfHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 60);
+      return r;
+    };
+    window.App.__hndCfHooked = true;
+    syncShellClass();
+    return true;
+  }
+
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hndCfSubbed) return;
+    window.__hndCfSubbed = true;
+    ['sales','exps','udhar','recurring'].forEach(function(c){
+      try {
+        Store.on(c, function(){
+          if (document.body.classList.contains('hnd-on-cashflow')) CF.render();
+        });
+      } catch(e){}
+    });
+  }
+
+  function boot(retry){
+    subscribe();
+    syncShellClass();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(10); });
+  } else { boot(10); }
+
+  window.HND = window.HND || {};
+  window.HND.cashflow = CF;
+})();
+</script>
+<!-- =================== END Cashflow block =================== -->
 
 
 <!-- ============================================================
@@ -46120,7 +48168,7 @@ html[data-shell="desktop"] #pg-home {
         emptyBanner.innerHTML = ''
           + '<div class="ic">🛍️</div>'
           + '<div class="mid">'
-            + '<div class="t">Product Sales · Retail counter</div>'
+            + '<div class="t">Retail · Take-home counter</div>'
             + '<div class="s">Add take-home products customers can buy — shampoo bottles, hair oils, gift hampers. Services live in the <b>Services</b> tab.</div>'
           + '</div>'
           + '<button class="cta" onclick="window.App && App.openProductSheet && App.openProductSheet()">+ Add retail product</button>';
@@ -56550,8 +58598,8 @@ html[data-shell="desktop"] #pg-ingredients > header.hdr > button.icon-btn:last-c
       }
     } catch(e){}
 
-    /* Update catalog label per vertical (May 2026):
-       salon → "Product Sales", cafe/restaurant → "Menu", bakery → "Items",
+    /* Update catalog label per vertical (May 2026, updated):
+       salon → "Retail", cafe/restaurant → "Menu", bakery → "Items",
        default → "Catalog". Keeps the nav vocabulary aligned with what
        the shopkeeper actually thinks of as their offering. */
     try {
@@ -56560,7 +58608,7 @@ html[data-shell="desktop"] #pg-ingredients > header.hdr > button.icon-btn:last-c
         var catLbl = catItem.querySelector('.lbl');
         if (catLbl){
           var catCorrect = 'Catalog';
-          if (key === 'salon') catCorrect = 'Product Sales';
+          if (key === 'salon') catCorrect = 'Retail';
           else if (key === 'cafe' || key === 'restaurant') catCorrect = 'Menu';
           else if (key === 'bakery' || key === 'sweets') catCorrect = 'Items';
           catLbl.textContent = catCorrect;
@@ -57784,7 +59832,7 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
       var catItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="catalog"] .lbl');
       if (catItem){
         var catCorrect = 'Catalog';
-        if (v === 'salon') catCorrect = 'Product Sales';
+        if (v === 'salon') catCorrect = 'Retail';
         else if (v === 'cafe' || v === 'restaurant') catCorrect = 'Menu';
         else if (v === 'bakery' || v === 'sweets') catCorrect = 'Items';
         if (catItem.textContent !== catCorrect){
@@ -57817,18 +59865,23 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
          hitting the screen-update lifecycle). */
       if (v === 'salon'){
         var catTitle = document.getElementById('catalog-title');
-        if (catTitle && catTitle.textContent !== 'Product Sales'){
-          catTitle.textContent = 'Product Sales';
+        if (catTitle && catTitle.textContent !== 'Retail'){
+          catTitle.textContent = 'Retail';
         }
         var hndCatH1 = document.querySelector('#hnd-cat .hnd-pgh h1');
-        if (hndCatH1 && hndCatH1.textContent !== 'Product Sales'){
-          hndCatH1.textContent = 'Product Sales';
+        if (hndCatH1 && hndCatH1.textContent !== 'Retail'){
+          hndCatH1.textContent = 'Retail';
           hndCatH1.removeAttribute('data-i18n');
         }
         var hndCatSub = document.getElementById('hnd-cat-sub');
-        if (hndCatSub && hndCatSub.textContent !== 'Take-home products customers can buy'){
-          hndCatSub.textContent = 'Take-home products customers can buy';
+        if (hndCatSub && hndCatSub.textContent !== 'Take-home products customers can buy at the counter'){
+          hndCatSub.textContent = 'Take-home products customers can buy at the counter';
           hndCatSub.removeAttribute('data-i18n');
+        }
+        /* Also guard #hnd-prodsales h1/sub (the new desktop screen) */
+        var hndPsH1 = document.querySelector('#hnd-prodsales .hnd-pgh h1');
+        if (hndPsH1 && hndPsH1.textContent !== 'Retail'){
+          hndPsH1.textContent = 'Retail';
         }
         var invTitle = document.querySelector('#pg-inventory .hdr-title');
         if (invTitle && invTitle.textContent !== 'Services'){
@@ -65862,7 +67915,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
     <footer class="nrp-foot">
       <button type="button" class="nrp-btn nrp-btn-ghost" data-nrp-close>Cancel</button>
-      <button type="button" class="nrp-btn nrp-btn-primary" id="nrp-save" disabled>+ Add to Product Sales</button>
+      <button type="button" class="nrp-btn nrp-btn-primary" id="nrp-save" disabled>+ Add to Retail</button>
     </footer>
   </div>
 </div>
@@ -66206,7 +68259,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       } else {
         $('nrp-title').textContent = 'Add retail product';
         $('nrp-sub').textContent = 'Take-home items customers buy at the counter';
-        $('nrp-save').textContent = '+ Add to Product Sales';
+        $('nrp-save').textContent = '+ Add to Retail';
       }
 
       /* Collapse "more details" by default unless brand/pack exist */
