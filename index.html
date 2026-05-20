@@ -65523,5 +65523,131 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 </script>
 <!-- =================== END NRP block =================== -->
 
+
+<!-- ════════════════════════════════════════════════════════════
+     DESKTOP BODY SCROLL SYNC (May 2026)
+     ────────────────────────────────────────────────────────────
+     Body has display:flex (legacy mobile layout). Inside flex layout,
+     content that overflows viewport doesn't naturally extend body's
+     scrollHeight — so the page scrollbar appears but can't actually
+     scroll because body's height stays at min-height (100vh).
+
+     This module uses ResizeObserver to continuously monitor the
+     currently active page/screen and sync body.style.minHeight to
+     match its content height. Works for: mobile pages on desktop
+     (#pg-ingredients, #pg-customers, etc.), and the new desktop
+     screens (#hnd-services, #hnd-prodsales, #hnd-cat, etc.).
+════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  if (!window.ResizeObserver) return;  /* graceful skip on ancient browsers */
+
+  function isDesktop(){
+    return document.documentElement.getAttribute('data-shell') === 'desktop';
+  }
+
+  /* Find the current "tallest visible content container" and return it. */
+  function findActiveContent(){
+    if (!isDesktop()) return null;
+    /* Check new desktop screens first (they overlay everything) */
+    var newScreens = ['hnd-services', 'hnd-prodsales', 'hnd-cat', 'hnd-bills',
+                      'hnd-custs', 'hnd-exp', 'hnd-udh', 'hnd-rep', 'hnd-dash'];
+    for (var i = 0; i < newScreens.length; i++){
+      var el = document.getElementById(newScreens[i]);
+      if (el && getComputedStyle(el).display !== 'none') return el;
+    }
+    /* Fall back to active mobile page */
+    var activePage = document.querySelector('.page.active');
+    if (activePage && getComputedStyle(activePage).display !== 'none') return activePage;
+    return null;
+  }
+
+  function syncBodyHeight(){
+    if (!isDesktop()) return;
+    var content = findActiveContent();
+    if (!content){
+      document.body.style.minHeight = '';
+      return;
+    }
+    /* scrollHeight reflects intrinsic content height including overflow */
+    var h = content.scrollHeight;
+    /* Add topbar offset + breathing room */
+    var tbVar = getComputedStyle(document.documentElement).getPropertyValue('--hnd-tb-h');
+    var tb = parseInt(tbVar) || 56;
+    var target = h + tb + 40;
+    /* Only update if changed significantly (avoid layout thrash) */
+    var current = parseInt(document.body.style.minHeight) || 0;
+    if (Math.abs(current - target) > 4){
+      document.body.style.minHeight = target + 'px';
+    }
+  }
+
+  var observed = new WeakSet();
+  var ro = new ResizeObserver(function(){
+    /* Use rAF so we measure after layout settles */
+    requestAnimationFrame(syncBodyHeight);
+  });
+
+  function observeAll(){
+    if (!isDesktop()) return;
+    /* Observe every potential content container so any change triggers sync */
+    var selectors = [
+      '#hnd-services', '#hnd-prodsales', '#hnd-cat', '#hnd-bills',
+      '#hnd-custs', '#hnd-exp', '#hnd-udh', '#hnd-rep', '#hnd-dash',
+      '.page'
+    ];
+    selectors.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){
+        if (!observed.has(el)){
+          ro.observe(el);
+          observed.add(el);
+        }
+      });
+    });
+  }
+
+  /* Hook into App.nav to re-sync on every navigation */
+  function hookNav(){
+    if (!window.App || window.App.__bodySyncHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      observeAll();
+      /* Multi-tap sync to catch slow renders */
+      requestAnimationFrame(syncBodyHeight);
+      setTimeout(syncBodyHeight, 60);
+      setTimeout(syncBodyHeight, 200);
+      setTimeout(syncBodyHeight, 500);
+      return r;
+    };
+    window.App.__bodySyncHooked = true;
+    return true;
+  }
+
+  function boot(retry){
+    observeAll();
+    syncBodyHeight();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else {
+    boot(15);
+  }
+
+  /* Also listen for window resize (viewport changes can affect content height) */
+  window.addEventListener('resize', function(){
+    requestAnimationFrame(syncBodyHeight);
+  });
+
+  /* Expose for debugging */
+  window.__hndBodySync = syncBodyHeight;
+})();
+</script>
+<!-- =================== END Body Scroll Sync block =================== -->
+
 </body>
 </html>
