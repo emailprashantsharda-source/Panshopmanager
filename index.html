@@ -41309,6 +41309,145 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
   html[data-shell="desktop"] .hnd-exp-grid { grid-template-columns: 1fr; }
 }
 
+/* ════════════════════════════════════════════════════════════
+   EXPENSES REDESIGN (May 2026)
+   ────────────────────────────────────────────────────────────
+   - Right aside (Add expense form) hidden by default on desktop;
+     opens as a centered modal when "+ Add expense" clicked.
+   - Old KPI strip (4 cards) hidden — too many redundant numbers.
+   - "Where the money went" mini-bars panel hidden — redundant
+     with the table view + category chip filter below.
+   - P&L strip compressed into a single line.
+   - Grid forced to single column so the expense table uses
+     full width.
+══════════════════════════════════════════════════════════════ */
+/* Force single-column on desktop too (no aside taking right space) */
+html[data-shell="desktop"] body.hnd-on-exp .hnd-exp-grid {
+  grid-template-columns: 1fr !important;
+}
+/* Hide cluttered panels on desktop */
+html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-kpis,
+html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-cats-wrap {
+  display: none !important;
+}
+
+/* Hide the form aside by default — it lives in normal flow but is
+   visually invisible. When user clicks +Add expense we add the
+   .hnd-exp-modal-open class to body which transforms it into a modal. */
+html[data-shell="desktop"] body.hnd-on-exp .hnd-exp-form { display: none; }
+
+/* Modal mode — body.hnd-exp-modal-open turns the aside into a centered overlay */
+html[data-shell="desktop"] body.hnd-exp-modal-open::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  z-index: 199;
+  animation: hnd-exp-fade .22s cubic-bezier(.4,0,.2,1);
+}
+@keyframes hnd-exp-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes hnd-exp-slide-up { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }
+
+html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
+  display: block;
+  position: fixed;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  z-index: 200;
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -20px rgba(20, 17, 12, 0.4);
+  animation: hnd-exp-slide-up .26s cubic-bezier(.2,.7,.2,1);
+}
+
+/* Close X button injected via JS — needs visible position */
+.hnd-exp-form-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: #F4F0E8; border: 0;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: #525252;
+  font-family: inherit;
+  transition: background .12s;
+  z-index: 5;
+}
+.hnd-exp-form-close:hover { background: #EAE3D0; color: #0A0A0A; }
+html[data-shell="desktop"] body:not(.hnd-exp-modal-open) .hnd-exp-form-close { display: none; }
+
+/* Compact P&L strip — single line layout */
+.hnd-exp-pnl-strip.compact {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 60%);
+  border: 1px solid #FED7AA;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.hnd-exp-pnl-strip.compact .pnl-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #9A3412;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.hnd-exp-pnl-strip.compact .pnl-piece {
+  font-size: 12.5px;
+  color: #9A3412;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.hnd-exp-pnl-strip.compact .pnl-piece b {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0A0A0A;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.005em;
+}
+.hnd-exp-pnl-strip.compact .pnl-piece.profit b { color: #15803D; }
+.hnd-exp-pnl-strip.compact .pnl-piece.profit.neg b { color: #DC2626; }
+.hnd-exp-pnl-strip.compact .pnl-op {
+  color: #C2410C;
+  font-size: 14px;
+  font-weight: 500;
+}
+.hnd-exp-pnl-strip.compact .pnl-margin {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #15803D;
+  padding: 3px 10px;
+  background: rgba(21, 128, 61, .12);
+  border-radius: 99px;
+}
+.hnd-exp-pnl-strip.compact .pnl-margin.neg {
+  color: #B91C1C;
+  background: rgba(220, 38, 38, .12);
+}
+
+/* Make the +Add expense CTA prominent (orange) on the redesigned page */
+html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta {
+  background: linear-gradient(180deg, #FF6B35 0%, #EA580C 100%) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 4px 12px -3px rgba(255, 107, 53, .42);
+}
+html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -3px rgba(255, 107, 53, .55);
+}
+
 /* ── Category mini-bars (left top) ── */
 .hnd-exp-cats { background: var(--hnd-card); border: 1px solid var(--hnd-line); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
 .hnd-exp-cats-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
@@ -41998,8 +42137,13 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       if (rcb) rcb.checked = false;
       this.validateForm();
       this.render();
-      /* Refocus amount for the next entry */
-      setTimeout(function(){ var a = $('hnd-exp-amt'); if (a) a.focus(); }, 50);
+      /* May 2026: close the modal after successful save so the table is visible */
+      if (document.body.classList.contains('hnd-exp-modal-open')){
+        this.closeForm();
+      } else {
+        /* Mobile / fallback — refocus amount for the next entry */
+        setTimeout(function(){ var a = $('hnd-exp-amt'); if (a) a.focus(); }, 50);
+      }
     },
 
     deleteExpense: function(id){
@@ -42035,16 +42179,40 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
        prominent "Add expense" CTA at the top of the page.
     ───────────────────────────────────────────────────────── */
     focusForm: function(){
+      /* May 2026: form is hidden by default and opens as a modal.
+         Adding body.hnd-exp-modal-open triggers CSS that fixes the
+         aside as a centered overlay with backdrop. */
+      var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
       var form = document.getElementById('hnd-exp-form-aside');
       var amt = $('hnd-exp-amt');
-      if (form){
+      if (isDesktop && form){
+        document.body.classList.add('hnd-exp-modal-open');
+        /* Inject close button if missing */
+        if (!form.querySelector('.hnd-exp-form-close')){
+          var closeBtn = document.createElement('button');
+          closeBtn.type = 'button';
+          closeBtn.className = 'hnd-exp-form-close';
+          closeBtn.setAttribute('aria-label', 'Close');
+          closeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+          closeBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            Exp.closeForm();
+          });
+          form.appendChild(closeBtn);
+        }
+      } else if (form){
+        /* Mobile fallback — scroll into view */
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         form.classList.remove('hnd-exp-form-pulse');
-        /* Force reflow to restart animation */
         void form.offsetWidth;
         form.classList.add('hnd-exp-form-pulse');
       }
-      setTimeout(function(){ if (amt) amt.focus(); }, 300);
+      setTimeout(function(){ if (amt) amt.focus(); }, 200);
+    },
+
+    closeForm: function(){
+      document.body.classList.remove('hnd-exp-modal-open');
     },
 
     /* ─────────────────────────────────────────────────────────
@@ -42072,21 +42240,24 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       });
       var net = rev - totalExp;
       var margin = rev > 0 ? Math.round((net / rev) * 100) : 0;
-      var netClass = net >= 0 ? 'pos' : 'neg';
+      var netClass = net >= 0 ? '' : 'neg';
+      var marginClass = net >= 0 ? '' : 'neg';
+
+      /* Compact single-line layout (May 2026 redesign):
+         "THIS MONTH SO FAR · Revenue ₹X − Expenses ₹Y = Net profit ₹Z · 59% margin"
+         Falls back to the old 3-card layout if .compact class can't apply for
+         some reason (non-desktop, older builds). */
+      el.classList.add('compact');
+      var netLabel = net >= 0 ? 'Net profit' : 'Net loss';
+      var marginLabel = rev > 0 ? (margin + '% margin') : 'No sales yet';
       el.innerHTML = ''
-        + '<div class="hnd-exp-pnl-strip-cell">'
-          + '<div class="hnd-exp-pnl-strip-lbl">📊 Revenue this month</div>'
-          + '<div class="hnd-exp-pnl-strip-val">' + fmtINR(rev) + '</div>'
-        + '</div>'
-        + '<div class="hnd-exp-pnl-strip-cell">'
-          + '<div class="hnd-exp-pnl-strip-lbl">💸 Expenses this month</div>'
-          + '<div class="hnd-exp-pnl-strip-val">' + fmtINR(totalExp) + '</div>'
-        + '</div>'
-        + '<div class="hnd-exp-pnl-strip-cell">'
-          + '<div class="hnd-exp-pnl-strip-lbl">' + (net >= 0 ? '✓ Net profit' : '⚠ Net loss') + ' (so far)</div>'
-          + '<div class="hnd-exp-pnl-strip-val ' + netClass + '">' + fmtINR(Math.abs(net)) + '</div>'
-          + '<div class="hnd-exp-pnl-strip-sub">' + (rev > 0 ? margin + '% margin' : 'No sales yet') + '</div>'
-        + '</div>';
+        + '<span class="pnl-eyebrow">This month so far</span>'
+        + '<span class="pnl-piece">Revenue <b>' + fmtINR(rev) + '</b></span>'
+        + '<span class="pnl-op">−</span>'
+        + '<span class="pnl-piece">Expenses <b>' + fmtINR(totalExp) + '</b></span>'
+        + '<span class="pnl-op">=</span>'
+        + '<span class="pnl-piece profit ' + netClass + '">' + netLabel + ' <b>' + fmtINR(Math.abs(net)) + '</b></span>'
+        + '<span class="pnl-margin ' + marginClass + '">' + marginLabel + '</span>';
     },
 
     /* ─────────────────────────────────────────────────────────
@@ -42172,9 +42343,10 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
     document.body.classList.toggle('hnd-on-exp', on);
     if (on){
       Exp.render();
-      if (!wasOn){
-        setTimeout(function(){ var a = $('hnd-exp-amt'); if (a) a.focus(); }, 100);
-      }
+      /* May 2026: no auto-focus on entry — user clicks +Add expense to open modal */
+    } else if (wasOn){
+      /* Leaving expenses page — make sure modal isn't stuck open */
+      document.body.classList.remove('hnd-exp-modal-open');
     }
   }
 
@@ -42293,6 +42465,22 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
     if ((e.metaKey || e.ctrlKey) && e.key && e.key.toLowerCase() === 's'){
       e.preventDefault();
       Exp.save();
+    }
+    /* ESC closes the Add expense modal */
+    if (e.key === 'Escape' && document.body.classList.contains('hnd-exp-modal-open')){
+      Exp.closeForm();
+    }
+  });
+
+  /* Backdrop click closes the modal — the ::before pseudo on body
+     creates the backdrop; we detect clicks on body itself (not on the
+     form) when modal is open. */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnd-exp-modal-open')) return;
+    var form = document.getElementById('hnd-exp-form-aside');
+    /* If click is outside the form and not on the +Add expense CTA, close */
+    if (form && !form.contains(e.target) && !e.target.closest('#hnd-exp-add-cta')){
+      Exp.closeForm();
     }
   });
 
