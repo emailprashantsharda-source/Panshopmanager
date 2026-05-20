@@ -41339,16 +41339,21 @@ html[data-shell="desktop"] body.hnd-on-exp .hnd-exp-form { display: none; }
 /* Modal mode — body.hnd-exp-modal-open shows the form as a centered overlay.
    We use a real <div> for the backdrop (injected via JS) instead of ::before
    to avoid stacking context bugs. */
-@keyframes hnd-exp-fade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes hnd-exp-slide-up { from { opacity: 0; transform: translate(-50%, -45%) } to { opacity: 1; transform: translate(-50%, -50%) } }
 
 .hnd-exp-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  z-index: 4998;
-  animation: hnd-exp-fade .2s ease-out;
-  cursor: pointer;
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(10, 10, 10, 0.78) !important;
+  z-index: 4998 !important;
+  cursor: pointer !important;
+  /* HARD reset — kill any inherited filter from parent */
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+  /* New stacking context so children can't be affected by parent */
+  isolation: isolate !important;
 }
 
 html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
@@ -41362,24 +41367,21 @@ html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
   overflow-y: auto !important;
   z-index: 5000 !important;
   border-radius: 16px !important;
-  /* Crisp pure-white background for max contrast against dim backdrop */
   background: #FFFFFF !important;
   border: 1px solid #E5E2D8 !important;
-  /* Hard shadow + ring to clearly lift modal off the dim layer */
   box-shadow:
     0 0 0 1px rgba(0,0,0,.04),
-    0 24px 60px -10px rgba(20, 17, 12, 0.55),
-    0 8px 24px -6px rgba(20, 17, 12, 0.25) !important;
-  animation: hnd-exp-slide-up .22s cubic-bezier(.2,.7,.2,1);
-  isolation: isolate;
+    0 24px 60px -10px rgba(0, 0, 0, 0.5) !important;
+  /* NO animation — instant appearance to avoid any transient haze */
+  animation: none !important;
+  transition: none !important;
+  isolation: isolate !important;
   opacity: 1 !important;
   filter: none !important;
   -webkit-filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   padding: 24px 22px !important;
-  /* Override sticky top from base CSS — modal uses fixed positioning */
-  top: 50% !important;
   margin: 0 !important;
 }
 
@@ -42212,15 +42214,25 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
     ───────────────────────────────────────────────────────── */
     focusForm: function(){
       /* May 2026: form is hidden by default and opens as a modal.
-         We append a real backdrop <div> to body (more reliable than
-         ::before pseudo for stacking contexts) and add the
-         hnd-exp-modal-open class which CSS uses to position the form
-         as a centered overlay. */
+         Portal pattern — move the form to body root when opening so it
+         escapes any parent's stacking context / filter / transform that
+         could affect its rendering. Restore on close. */
       var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
       var form = document.getElementById('hnd-exp-form-aside');
       var amt = $('hnd-exp-amt');
       if (isDesktop && form){
         document.body.classList.add('hnd-exp-modal-open');
+
+        /* Remember original parent so we can restore on close */
+        if (!form.__hnd_origParent){
+          form.__hnd_origParent = form.parentNode;
+          form.__hnd_origNext = form.nextSibling;
+        }
+        /* Portal: append form directly to body */
+        if (form.parentNode !== document.body){
+          document.body.appendChild(form);
+        }
+
         /* Inject a real backdrop element */
         var existing = document.getElementById('hnd-exp-backdrop');
         if (!existing){
@@ -42254,13 +42266,24 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
         void form.offsetWidth;
         form.classList.add('hnd-exp-form-pulse');
       }
-      setTimeout(function(){ if (amt) amt.focus(); }, 200);
+      setTimeout(function(){ if (amt) amt.focus(); }, 100);
     },
 
     closeForm: function(){
       document.body.classList.remove('hnd-exp-modal-open');
       var bd = document.getElementById('hnd-exp-backdrop');
       if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+      /* Restore form to its original parent in the DOM so non-modal flows still work */
+      var form = document.getElementById('hnd-exp-form-aside');
+      if (form && form.__hnd_origParent && form.parentNode !== form.__hnd_origParent){
+        try {
+          if (form.__hnd_origNext && form.__hnd_origNext.parentNode === form.__hnd_origParent){
+            form.__hnd_origParent.insertBefore(form, form.__hnd_origNext);
+          } else {
+            form.__hnd_origParent.appendChild(form);
+          }
+        } catch(e){}
+      }
     },
 
     /* ─────────────────────────────────────────────────────────
