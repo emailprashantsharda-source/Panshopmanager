@@ -3495,6 +3495,14 @@ html[data-current-role="manager"] body{
     <button class="icon-btn" onclick="App.openIngredientSheet()" aria-label="Add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
   </header>
 
+  <!-- Desktop-only prominent Add CTA at the top of Supplies page (May 2026) -->
+  <div class="ig-desktop-top-cta">
+    <button class="ig-add-supply-cta" onclick="App.openIngredientSheet()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span id="ig-add-cta-top-label">Add a supply</span>
+    </button>
+  </div>
+
   <div class="stat-strip three" id="ig-stats">
     <div class="stat-card"><div class="stat-lbl" data-i18n="common.items">Items</div><div class="stat-val">0</div></div>
     <div class="stat-card"><div class="stat-lbl" data-i18n="common.lowOut">Low / Out</div><div class="stat-val">0</div></div>
@@ -19745,7 +19753,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }, 100);
   },
 
-  openProductSheet(id){
+  openProductSheet(id, opts){
+    /* opts.forceRetail=true → bypass salon service wizard, open plain product
+       form even on salon vertical. Used by "+ Add retail product" button on
+       Product Sales page. */
+    var forceRetail = !!(opts && opts.forceRetail);
     const isEdit = id != null;
     const item = isEdit ? Store.get('prods', id) : null;
     if (isEdit && !item) { this.toast(this._T('toast.itemNotFound', 'Item not found')); return; }
@@ -19754,7 +19766,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var _vKey = (typeof this._supplyVerticalKey === 'function')
       ? this._supplyVerticalKey() : this.vertical;
     var _wizardVerts = { 'salon': true, 'cafe': true, 'restaurant': true, 'bakery': true, 'sweets': true };
-    if (typeof this.openServiceWizard === 'function') {
+    /* Skip wizard if caller explicitly asked for retail (Product Sales page) */
+    if (!forceRetail && typeof this.openServiceWizard === 'function') {
       if (!isEdit) {
 
         if (_wizardVerts[_vKey]) {
@@ -19786,7 +19799,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const sheet = document.getElementById('prod-sheet-body');
     if (!sheet) return;
 
-    const v = item || { name:'', emoji:'📦', stock:0, unit:'kg', cp:0, value:0, min:0, cat: cats[0] || '' };
+    /* For "Add retail product" button on salon Product Sales — default
+       the category to "Retail" so the new product lands on the right page. */
+    var _defaultCat = cats[0] || '';
+    if (forceRetail) _defaultCat = 'Retail';
+    const v = item || { name:'', emoji:'🛍️', stock:0, unit:'pc', cp:0, value:0, min:0, cat: _defaultCat };
 
     const verticalDefault = cfg && cfg.tracksStock !== false;
     const tracksStock = (typeof v.tracksStock === 'boolean') ? v.tracksStock : verticalDefault;
@@ -39137,7 +39154,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       <p>Take-home retail products customers can buy at the counter</p>
     </div>
     <div class="hnd-pgh-r">
-      <button class="hnd-btn dark" onclick="window.App && App.openProductSheet && App.openProductSheet()">
+      <button class="hnd-btn dark" onclick="window.App && App.openProductSheet && App.openProductSheet(null, {forceRetail:true})">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         <span>Add retail product</span>
       </button>
@@ -40087,6 +40104,18 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     if (on) Services.render();
   }
 
+  /* Belt-and-suspenders: also listen directly to sidebar nav clicks for the
+     inventory button. Sometimes App.nav hooks fire out of order; this ensures
+     the salon Services screen mounts reliably on the first click. */
+  document.addEventListener('click', function(e){
+    var navBtn = e.target.closest('[data-hnd-nav="inventory"]');
+    if (navBtn){
+      /* Defer to let App.nav set App.current first */
+      setTimeout(syncShellClass, 50);
+      setTimeout(syncShellClass, 150);  /* double-tap to catch slow renders */
+    }
+  });
+
   /* ── Event delegation ── */
   document.addEventListener('click', function(e){
     if (!document.body.classList.contains('hnd-on-services')) return;
@@ -40443,6 +40472,15 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     }
   }
 
+  /* Belt-and-suspenders: listen directly to sidebar nav clicks for catalog */
+  document.addEventListener('click', function(e){
+    var navBtn = e.target.closest('[data-hnd-nav="catalog"]');
+    if (navBtn){
+      setTimeout(syncShellClass, 50);
+      setTimeout(syncShellClass, 150);
+    }
+  });
+
   document.addEventListener('click', function(e){
     if (!document.body.classList.contains('hnd-on-prodsales')) return;
     var chip = e.target.closest('#hnd-prodsales-chips [data-prod-type]');
@@ -40462,14 +40500,14 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     if (edit){
       e.stopPropagation();
       var pid = edit.getAttribute('data-prod-edit');
-      if (window.App && App.openProductSheet) App.openProductSheet(pid);
+      if (window.App && App.openProductSheet) App.openProductSheet(pid, {forceRetail:true});
       return;
     }
     var act = e.target.closest('[data-prod-activate]');
     if (act){
       e.stopPropagation();
       var pid2 = act.getAttribute('data-prod-activate');
-      if (window.App && App.openProductSheet) App.openProductSheet(pid2);
+      if (window.App && App.openProductSheet) App.openProductSheet(pid2, {forceRetail:true});
       return;
     }
   });
@@ -40908,6 +40946,11 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
   function fmtINR(n){ try { return '₹' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
   function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
   function currentPageKey(){
+    /* Prefer App.current (set by App.nav) — it's the source of truth.
+       Falls back to DOM detection only if App not ready yet. */
+    try {
+      if (window.App && window.App.current) return window.App.current;
+    } catch(e){}
     try {
       var pages = document.querySelectorAll('.page');
       for (var i = 0; i < pages.length; i++){
@@ -41427,6 +41470,16 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp {
       }
     }
   }
+
+  /* Belt-and-suspenders: listen directly to sidebar nav click for expenses.
+     Bypasses race conditions when multiple modules wrap App.nav. */
+  document.addEventListener('click', function(e){
+    var navBtn = e.target.closest('[data-hnd-nav="expenses"]');
+    if (navBtn){
+      setTimeout(syncShellClass, 50);
+      setTimeout(syncShellClass, 150);
+    }
+  });
 
   /* ── Event delegation ── */
   document.addEventListener('click', function(e){
@@ -55311,6 +55364,44 @@ html[data-shell="desktop"] .hnd-sb-shop-info .hnd-sb-shop-sync {
 .hnd-sb-vert-tag:hover {
   background: rgba(212,165,116,0.32);
   border-color: var(--hnd-gold, #D4A574);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Desktop-only Add CTA at top of Supplies page (May 2026)
+   Makes "Add a supply" prominent without scrolling to bottom.
+═══════════════════════════════════════════════════════════ */
+.ig-desktop-top-cta { display: none; }
+html[data-shell="desktop"] .ig-desktop-top-cta {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 24px 0;
+}
+.ig-add-supply-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  background: #0A0A0A;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
+  box-shadow: 0 4px 12px -3px rgba(10,10,10,.25);
+}
+.ig-add-supply-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -3px rgba(10,10,10,.35);
+}
+.ig-add-supply-cta:active { transform: scale(.97); }
+/* On desktop, also hide the small + icon button in mobile-style header since
+   we now have the prominent CTA at the top */
+html[data-shell="desktop"] #pg-ingredients > header.hdr > button.icon-btn:last-child {
+  display: none;
 }
 </style>
 
