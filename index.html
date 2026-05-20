@@ -41336,47 +41336,54 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-cats-wrap {
    .hnd-exp-modal-open class to body which transforms it into a modal. */
 html[data-shell="desktop"] body.hnd-on-exp .hnd-exp-form { display: none; }
 
-/* Modal mode — body.hnd-exp-modal-open turns the aside into a centered overlay */
-html[data-shell="desktop"] body.hnd-exp-modal-open::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  /* Note: backdrop-filter REMOVED. It created a stacking context
-     that visually blurred the modal form itself (browser quirk with
-     position:fixed siblings). The dark dim alone is sufficient. */
-  z-index: 199;
-  animation: hnd-exp-fade .22s cubic-bezier(.4,0,.2,1);
-}
+/* Modal mode — body.hnd-exp-modal-open shows the form as a centered overlay.
+   We use a real <div> for the backdrop (injected via JS) instead of ::before
+   to avoid stacking context bugs. */
 @keyframes hnd-exp-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes hnd-exp-slide-up { from { opacity: 0; transform: translate(-50%, -45%) } to { opacity: 1; transform: translate(-50%, -50%) } }
 
-html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
-  display: block !important;
+.hnd-exp-backdrop {
   position: fixed;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(520px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  z-index: 200;
-  border-radius: 16px;
-  /* Crisp pure-white background for max contrast against dim backdrop.
-     Cream blended with the dim too much (felt blurry). */
-  background: #FFFFFF !important;
-  border: 1px solid #E5E2D8 !important;
-  /* Stronger shadow to lift the modal off the dim layer */
-  box-shadow: 0 30px 80px -10px rgba(20, 17, 12, 0.5), 0 0 0 1px rgba(0,0,0,.03) !important;
-  animation: hnd-exp-slide-up .26s cubic-bezier(.2,.7,.2,1);
-  isolation: isolate;
-  opacity: 1 !important;
-  /* Reset the .hnd-exp-form-pulse animation in case it was applied */
-  padding: 24px 22px !important;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 4998;
+  animation: hnd-exp-fade .2s ease-out;
+  cursor: pointer;
 }
 
-/* Close X button injected via JS — STICKY so it stays in view while
-   scrolling. Was position:absolute which scrolled out of view inside
-   the scrollable modal. */
+html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
+  display: block !important;
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(520px, calc(100vw - 32px)) !important;
+  max-height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+  z-index: 5000 !important;
+  border-radius: 16px !important;
+  /* Crisp pure-white background for max contrast against dim backdrop */
+  background: #FFFFFF !important;
+  border: 1px solid #E5E2D8 !important;
+  /* Hard shadow + ring to clearly lift modal off the dim layer */
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.04),
+    0 24px 60px -10px rgba(20, 17, 12, 0.55),
+    0 8px 24px -6px rgba(20, 17, 12, 0.25) !important;
+  animation: hnd-exp-slide-up .22s cubic-bezier(.2,.7,.2,1);
+  isolation: isolate;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 24px 22px !important;
+  /* Override sticky top from base CSS — modal uses fixed positioning */
+  top: 50% !important;
+  margin: 0 !important;
+}
+
+/* Close X button injected via JS — sticky so it stays in view while scrolling */
 .hnd-exp-form-close {
   position: sticky;
   top: 0;
@@ -41396,13 +41403,7 @@ html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form {
 .hnd-exp-form-close:hover { background: #EAE3D0; color: #0A0A0A; }
 html[data-shell="desktop"] body:not(.hnd-exp-modal-open) .hnd-exp-form-close { display: none; }
 
-/* The form's first child (header) needs space to clear the floated close btn */
-html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form .hnd-exp-form-h {
-  clear: none;
-}
-
-/* The Save button at the bottom of the modal — make it a sticky footer
-   so user always sees it without scrolling */
+/* Sticky Save button at bottom of modal */
 html[data-shell="desktop"] body.hnd-exp-modal-open.hnd-on-exp .hnd-exp-form .hnd-exp-save {
   position: sticky;
   bottom: -24px;
@@ -42211,16 +42212,26 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
     ───────────────────────────────────────────────────────── */
     focusForm: function(){
       /* May 2026: form is hidden by default and opens as a modal.
-         Adding body.hnd-exp-modal-open triggers CSS that fixes the
-         aside as a centered overlay with backdrop. */
+         We append a real backdrop <div> to body (more reliable than
+         ::before pseudo for stacking contexts) and add the
+         hnd-exp-modal-open class which CSS uses to position the form
+         as a centered overlay. */
       var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
       var form = document.getElementById('hnd-exp-form-aside');
       var amt = $('hnd-exp-amt');
       if (isDesktop && form){
         document.body.classList.add('hnd-exp-modal-open');
-        /* Inject close button as the FIRST child so it floats right at the top.
-           Using float so it sits next to the existing form header without
-           changing the form's internal markup. */
+        /* Inject a real backdrop element */
+        var existing = document.getElementById('hnd-exp-backdrop');
+        if (!existing){
+          var bd = document.createElement('div');
+          bd.id = 'hnd-exp-backdrop';
+          bd.className = 'hnd-exp-backdrop';
+          bd.setAttribute('aria-hidden', 'true');
+          bd.addEventListener('click', function(){ Exp.closeForm(); });
+          document.body.appendChild(bd);
+        }
+        /* Inject close button as the FIRST child so it floats right at the top */
         if (!form.querySelector('.hnd-exp-form-close')){
           var closeBtn = document.createElement('button');
           closeBtn.type = 'button';
@@ -42232,7 +42243,6 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
             e.stopPropagation();
             Exp.closeForm();
           });
-          /* Insert at the very top so it stays sticky-visible while user scrolls */
           form.insertBefore(closeBtn, form.firstChild);
         }
         /* Reset modal scroll so user always sees the top (Amount field) when opening */
@@ -42249,6 +42259,8 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
 
     closeForm: function(){
       document.body.classList.remove('hnd-exp-modal-open');
+      var bd = document.getElementById('hnd-exp-backdrop');
+      if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
     },
 
     /* ─────────────────────────────────────────────────────────
@@ -42383,6 +42395,8 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
     } else if (wasOn){
       /* Leaving expenses page — make sure modal isn't stuck open */
       document.body.classList.remove('hnd-exp-modal-open');
+      var bd = document.getElementById('hnd-exp-backdrop');
+      if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
     }
   }
 
@@ -42504,18 +42518,6 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
     }
     /* ESC closes the Add expense modal */
     if (e.key === 'Escape' && document.body.classList.contains('hnd-exp-modal-open')){
-      Exp.closeForm();
-    }
-  });
-
-  /* Backdrop click closes the modal — the ::before pseudo on body
-     creates the backdrop; we detect clicks on body itself (not on the
-     form) when modal is open. */
-  document.addEventListener('click', function(e){
-    if (!document.body.classList.contains('hnd-exp-modal-open')) return;
-    var form = document.getElementById('hnd-exp-form-aside');
-    /* If click is outside the form and not on the +Add expense CTA, close */
-    if (form && !form.contains(e.target) && !e.target.closest('#hnd-exp-add-cta')){
       Exp.closeForm();
     }
   });
