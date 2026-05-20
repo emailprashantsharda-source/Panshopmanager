@@ -1963,50 +1963,68 @@ html[data-current-role="manager"] body{
   <div id="ls-state"></div>
 </div>
 
-<div id="login-screen" class="ls-root" style="display:none">
-  <div class="ls-cream-half"></div>
+<div id="login-screen" class="ls-root mk1" style="display:none">
   <div class="ls-shell">
 
     <!-- STEP 1: Phone entry (default visible) -->
     <div id="ls-step-phone" class="ls-step ls-step-active">
 
-      <div class="ls-top">
-        <div class="ls-logo-frame">
-          <span class="ls-bars" aria-hidden="true"></span>
-          <span class="ls-spark" aria-hidden="true">✦</span>
-        </div>
-        <div class="ls-brand-name"><span class="wm1">Hisaab</span><span class="wm2">Now</span></div>
-        <div class="ls-tagline">Smart Billing &amp;<br><span class="ls-tagline-accent" data-i18n="rep.profitInsights">Profit Insights</span> for Shops</div>
+      <div class="mk1-status">
+        <span class="mk1-status-num" data-i18n="login.stepIndicator">01 / 02 · Sign in</span>
       </div>
 
-      <div class="ls-card">
-
-        <div class="ls-section-label" data-i18n="login.mobile">Mobile number</div>
-
-        <div class="ls-input-wrap">
-          <div class="ls-prefix-block">+91</div>
-          <input id="phone-input" type="tel" inputmode="numeric" autocomplete="tel" aria-label="10-digit mobile number" maxlength="10" placeholder="98XXX XXXXX" data-i18n-ph="login.phone.ph" class="ls-input">
+      <div class="mk1-brand">
+        <div class="mk1-brand-row">
+          <div class="mk1-logo">
+            <span class="mk1-logo-bars" aria-hidden="true"></span>
+            <span class="mk1-logo-spark" aria-hidden="true">✦</span>
+          </div>
+          <div class="mk1-wordmark"><span class="mk1-wm1">Hisaab</span><span class="mk1-wm2">Now</span></div>
         </div>
+        <div class="mk1-tagline-wrap">
+          <div class="mk1-tagline">
+            <span data-i18n="login.smartBilling">Smart Billing &amp;</span><br>
+            <em data-i18n="login.profitInsightsSerif">Profit Insights</em>
+            <span data-i18n="login.forShopkeepers">for Shops</span>
+          </div>
+        </div>
+      </div>
 
-        <button id="send-otp-btn" onclick="window.sendOTP()" type="button" class="ls-btn-primary">
+      <div class="mk1-card">
+        <div class="mk1-label" data-i18n="login.mobile">Mobile number</div>
+        <div class="mk1-input-row">
+          <div class="mk1-country">+91</div>
+          <input id="phone-input" type="tel" inputmode="numeric" autocomplete="tel" aria-label="10-digit mobile number" maxlength="10" placeholder="98XXX XXXXX" data-i18n-ph="login.phone.ph" class="mk1-input">
+        </div>
+        <button id="send-otp-btn" onclick="window.sendOTP()" type="button" class="mk1-cta">
           <span data-i18n="login.continue">Continue</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
-
-        <div class="ls-trust-line">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <span data-i18n="login.secureOtp">Secure OTP login &middot; No password needed</span>
+        <div class="mk1-trust">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span data-i18n="login.secureOtp">Secure OTP login · No password needed</span>
         </div>
 
-      </div>
-
-      <!-- Compact single-line USPs (replaces the old expanded section) -->
-      <div class="ls-usps-mini">
-        <span class="ls-usp-mini">🎤 <span data-i18n="common.voiceBilling">Voice billing</span></span>
-        <span class="ls-usps-sep">·</span>
-        <span class="ls-usp-mini">💰 <span data-i18n="rep.netProfitInsights">Net profit insights</span></span>
-        <span class="ls-usps-sep">·</span>
-        <span class="ls-usp-mini">📊 <span data-i18n="more.reports">Reports</span></span>
+        <div class="mk1-features">
+          <div class="mk1-feature">
+            <div class="mk1-feature-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+            </div>
+            <div class="mk1-feature-label" data-i18n="login.feat.voice">Voice<br>Billing</div>
+          </div>
+          <div class="mk1-feature">
+            <div class="mk1-feature-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            </div>
+            <div class="mk1-feature-label" data-i18n="login.feat.profit">Profit<br>Insights</div>
+          </div>
+          <div class="mk1-feature">
+            <div class="mk1-feature-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+            <div class="mk1-feature-label" data-i18n="login.feat.reports">Daily<br>Reports</div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -2014,37 +2032,49 @@ html[data-current-role="manager"] body{
     <!-- STEP 2: OTP entry (hidden by default) -->
     <div id="ls-step-otp" class="ls-step" style="display:none">
 
-      <!-- Back arrow header -->
-      <div class="ls-otp-header">
-        <button type="button" class="ls-back-btn" onclick="window.resetLogin()" aria-label="Back">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <div class="mk1-topbar">
+        <button type="button" class="mk1-back" onclick="window.resetLogin()" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <div class="ls-brand-name ls-brand-name-sm"><span class="wm1">Hisaab</span><span class="wm2">Now</span></div>
-        <div style="width:36px"></div><!-- spacer for centering -->
+        <div class="mk1-brand-mini">
+          <div class="mk1-brand-mini-mark">
+            <span class="mk1-brand-mini-bars" aria-hidden="true"></span>
+            <span class="mk1-brand-mini-spark" aria-hidden="true">✦</span>
+          </div>
+          <div class="mk1-brand-mini-name"><span class="mk1-wm1">Hisaab</span><span class="mk1-wm2">Now</span></div>
+        </div>
+        <div class="mk1-step-num">02 / 02</div>
       </div>
 
-      <div class="ls-card">
+      <div class="mk1-hero">
+        <h1 class="mk1-hero-title">
+          <span data-i18n="login.enterThe">Enter the</span> <em data-i18n="login.codeSerif">code</em>
+        </h1>
+        <p class="mk1-hero-sub">
+          <span data-i18n="login.weSentTo">We sent a 6-digit code to</span>
+          <span class="mk1-phone-display" id="ls-otp-phone-display">+91 ••••• •••••</span>
+        </p>
+      </div>
 
-        <div class="ls-otp-title" data-i18n="login.enterOtp">Enter OTP</div>
-        <div class="ls-otp-sub">
-          <span data-i18n="login.sentTo">OTP sent to</span>
-          <b id="ls-otp-phone-display">+91 ••••• •••••</b>
-        </div>
+      <input id="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" aria-label="One-time password" placeholder="000000" class="mk1-otp-input">
 
-        <input id="otp-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" aria-label="One-time password" placeholder="000000" class="ls-otp-input">
+      <button id="verify-otp-btn" onclick="window.verifyOTP()" type="button" class="mk1-cta" style="margin-top:14px">
+        <span data-i18n="login.verify">Verify &amp; continue</span>
+      </button>
 
-        <button id="verify-otp-btn" onclick="window.verifyOTP()" type="button" class="ls-btn-primary" style="margin-top:14px">
-          <span data-i18n="login.verify">Verify &amp; continue</span>
+      <div class="mk1-otp-actions">
+        <button class="mk1-resend" id="ls-resend-otp-btn" onclick="window.resendOTP()" disabled>
+          <span data-i18n="login.resend">Resend OTP</span> <span id="ls-resend-cd"></span>
         </button>
+        <span class="mk1-otp-sep">·</span>
+        <button class="mk1-resend" id="ls-resend-btn" onclick="window.resetLogin()" data-i18n="login.changeNum">Change number</button>
+      </div>
 
-        <div class="ls-otp-actions">
-          <button class="ls-resend" id="ls-resend-otp-btn" onclick="window.resendOTP()" disabled>
-            <span data-i18n="login.resend">Resend OTP</span> <span id="ls-resend-cd"></span>
-          </button>
-          <span class="ls-otp-actions-sep">·</span>
-          <button class="ls-resend" id="ls-resend-btn" onclick="window.resetLogin()" data-i18n="login.changeNum">Change number</button>
+      <div class="mk1-auto-hint">
+        <div class="mk1-auto-hint-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
-
+        <div><b data-i18n="login.autoVerifyTitle">Auto-verify enabled</b> · <span data-i18n="login.autoVerifySub">we'll log you in as soon as the code arrives</span></div>
       </div>
 
     </div>
@@ -2052,16 +2082,14 @@ html[data-current-role="manager"] body{
     <div id="login-msg" class="ls-msg" style="display:none"></div>
     <div id="recaptcha-container"></div>
 
-    <!-- Footer (compact, always visible at bottom) -->
-    <div class="ls-foot ls-foot-compact">
-      <div class="ls-legal-links">
-        <a href="https://hisaabnow.com/legal/terms.html" target="_blank" rel="noopener" data-i18n="common.terms">Terms</a>
-        <span class="sep">·</span>
-        <a href="https://hisaabnow.com/legal/privacy.html" target="_blank" rel="noopener" data-i18n="settings.privPolicy">Privacy Policy</a>
-        <span class="sep">·</span>
-        <span class="ls-dpdp-mini">🛡️ DPDP &middot; India hosted</span>
-      </div>
-      <div class="ls-build">build v33.7</div>
+    <!-- Footer -->
+    <div class="mk1-footer">
+      <a href="https://hisaabnow.com/legal/terms.html" target="_blank" rel="noopener" data-i18n="common.terms">Terms</a>
+      <span class="mk1-foot-sep">·</span>
+      <a href="https://hisaabnow.com/legal/privacy.html" target="_blank" rel="noopener" data-i18n="settings.privPolicy">Privacy</a>
+      <span class="mk1-foot-sep">·</span>
+      <span data-i18n="login.dpdpCompliant">DPDP compliant</span>
+      <div class="mk1-build">build v33.8</div>
     </div>
 
   </div>
@@ -4647,6 +4675,21 @@ html[data-current-role="manager"] body{
     'common.assignStaff': { en: 'Assign Staff', hi: 'स्टाफ असाइन करें' },
     'common.bookAppt': { en: 'Book Appointment', hi: 'अपॉइंटमेंट बुक करें' },
     'common.bookedLbl': { en: 'Booked', hi: 'बुक हुए' },
+
+    /* Mock 1 "Refined Bank" login screen keys (May 2026) */
+    'login.stepIndicator':      { en: '01 / 02 · Sign in',                 hi: '01 / 02 · साइन इन' },
+    'login.smartBilling':       { en: 'Smart Billing &',                   hi: 'स्मार्ट बिलिंग और' },
+    'login.profitInsightsSerif':{ en: 'Profit Insights',                   hi: 'प्रॉफिट इनसाइट्स' },
+    'login.forShopkeepers':     { en: 'for Shops',                         hi: 'दुकानों के लिए' },
+    'login.feat.voice':         { en: 'Voice<br>Billing',                  hi: 'वॉइस<br>बिलिंग' },
+    'login.feat.profit':        { en: 'Profit<br>Insights',                hi: 'प्रॉफिट<br>इनसाइट्स' },
+    'login.feat.reports':       { en: 'Daily<br>Reports',                  hi: 'रोज़ की<br>रिपोर्ट' },
+    'login.enterThe':           { en: 'Enter the',                         hi: 'डालें' },
+    'login.codeSerif':          { en: 'code',                              hi: 'कोड' },
+    'login.weSentTo':           { en: 'We sent a 6-digit code to',         hi: '6-अंकों का कोड भेजा गया' },
+    'login.autoVerifyTitle':    { en: 'Auto-verify enabled',               hi: 'ऑटो-वेरिफाई चालू' },
+    'login.autoVerifySub':      { en: "we'll log you in as soon as the code arrives", hi: 'कोड आते ही आप लॉगिन हो जाएंगे' },
+    'login.dpdpCompliant':      { en: 'DPDP compliant',                    hi: 'DPDP कम्प्लायंट' },
     'login.sentTo': { en: 'OTP sent to', hi: 'OTP भेजा गया' },
 
     /* Tranche F · Remaining low-traffic HTML */
@@ -57508,9 +57551,560 @@ html[data-shell="desktop"] body.hnd-on-dash .hnd-d-chart {
 
 
 <!-- ============================================================
-     HisaabNow Step SS · iOS Safari compatibility patch
+     HisaabNow · Login Refresh · Mock 1 "Refined Bank" (May 2026)
      ─────────────────────────────────────────────────────────────
-     Addresses 4 categories of iOS/macOS Safari issues:
+     Premium fintech aesthetic: Instrument Serif + Geist typography,
+     real HisaabNow logo (gradient + bars + sparkle), no-scroll
+     two-step flow (phone → OTP). All previous #login-screen styles
+     are superseded by the .mk1 high-specificity selectors below.
+============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset old login styles ── */
+/* Only style/show login when data-auth allows it ('no' = needs login).
+   When 'unknown' (splash) or 'yes' (logged in), the earlier auth-state
+   rules win and hide the login screen entirely. */
+html[data-auth="no"] #login-screen.ls-root.mk1 {
+  background: #F5F1E8 !important;
+  font-family: 'Geist', -apple-system, sans-serif !important;
+  color: #0A0A0A !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+/* Base styling that applies regardless (for when JS toggles display manually) */
+#login-screen.ls-root.mk1 {
+  background: #F5F1E8;
+  font-family: 'Geist', -apple-system, sans-serif;
+  color: #0A0A0A;
+  overflow: hidden;
+  flex-direction: column;
+  align-items: center;
+}
+#login-screen.ls-root.mk1::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(201,169,97,.10) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(201,169,97,.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+/* Hide any leftover legacy elements */
+.mk1 .ls-cream-half,
+.mk1 .ls-bg-orb,
+.mk1 .ls-brand,
+.mk1 .ls-hero,
+.mk1 .ls-proof,
+.mk1 .ls-below,
+.mk1 .ls-form,
+.mk1 .ls-top,
+.mk1 .ls-card,
+.mk1 .ls-foot,
+.mk1 .ls-usps-mini,
+.mk1 .ls-otp-header { display: none !important; }
+
+#login-screen.mk1 .ls-shell {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 430px !important;
+  height: 100% !important;
+  padding: 8px 24px 0 !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 1 !important;
+  background: var(--warm-white, #FAF8F2) !important;
+}
+
+/* ── Step transitions ── */
+#login-screen.mk1 .ls-step {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  animation: mk1StepIn .3s cubic-bezier(.2,.7,.2,1) both;
+}
+#login-screen.mk1 .ls-step.ls-step-active { display: flex; }
+@keyframes mk1StepIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Status indicator (top eyebrow) ── */
+.mk1-status {
+  padding: 10px 0 16px;
+  display: flex; justify-content: flex-end;
+}
+.mk1-status-num {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  color: #6B6557;
+  text-transform: uppercase;
+}
+
+/* ── Brand block ── */
+.mk1-brand {
+  text-align: center;
+  padding: 8px 0 20px;
+  animation: mk1Rise .55s .04s cubic-bezier(.2,.7,.2,1) both;
+}
+/* Horizontal layout: logo + wordmark side-by-side, like the live build */
+.mk1-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+@keyframes mk1Rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The HisaabNow logo — gradient + 3 white bars + gold sparkle */
+.mk1-logo {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, #000000 0%, #FFC043 100%);
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow:
+    0 12px 32px -10px rgba(255,192,67,.5),
+    0 4px 12px -4px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.08);
+  position: relative;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.mk1-logo-bars {
+  width: 36px;
+  height: 28px;
+  background:
+    linear-gradient(to top, #fff 30%, transparent 30%) 0   100% / 7px 100% no-repeat,
+    linear-gradient(to top, #fff 60%, transparent 60%) 14px 100% / 7px 100% no-repeat,
+    linear-gradient(to top, #fff 90%, transparent 90%) 28px 100% / 7px 100% no-repeat;
+  display: block;
+}
+.mk1-logo-spark {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  font-size: 22px;
+  color: #FFC043;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  line-height: 1;
+}
+
+/* Wordmark — matches live build (sans-serif bold, NOT serif) */
+.mk1-wordmark {
+  font-family: 'Geist', -apple-system, sans-serif;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+.mk1-wm1 { color: #0A0A0A; }
+.mk1-wm2 {
+  color: #B88A56;
+  font-weight: 800;
+  font-style: normal;
+}
+
+/* Tagline — matches live build (italic accent on "Profit Insights") */
+.mk1-tagline-wrap {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  text-align: center;
+}
+.mk1-tagline-rule { display: none; }
+.mk1-tagline {
+  font-family: 'Geist', -apple-system, sans-serif;
+  font-size: 17px !important;
+  color: #0A0A0A !important;
+  font-weight: 600 !important;
+  letter-spacing: -.01em;
+  line-height: 1.4;
+  max-width: 320px;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.mk1-tagline em {
+  font-style: italic;
+  color: #B88A56 !important;
+  font-weight: 700;
+}
+.mk1-tagline span {
+  display: inline !important;
+  color: #0A0A0A !important;
+}
+
+/* ── Card ── */
+.mk1-card {
+  flex: 1;
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 28px 24px 24px;
+  margin-top: 8px;
+  box-shadow:
+    0 24px 48px -16px rgba(10,10,10,.10),
+    0 0 0 1px rgba(10,10,10,.08);
+  display: flex; flex-direction: column;
+  animation: mk1Rise .55s .12s cubic-bezier(.2,.7,.2,1) both;
+}
+
+.mk1-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #6B6557;
+  margin-bottom: 12px;
+}
+
+.mk1-input-row {
+  display: flex;
+  border: 1.5px solid rgba(10,10,10,.08);
+  border-radius: 14px;
+  background: #FAF8F2;
+  overflow: hidden;
+  transition: border-color .2s, background .2s;
+}
+.mk1-input-row:focus-within {
+  border-color: #8B6F2A;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(201,169,97,.10);
+}
+.mk1-country {
+  padding: 16px 14px 16px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A0A0A;
+  border-right: 1px solid rgba(10,10,10,.08);
+  letter-spacing: -.01em;
+  font-family: 'Geist', sans-serif;
+}
+.mk1-input {
+  flex: 1;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  background: transparent;
+  border: none; outline: none;
+  font-family: 'Geist', sans-serif;
+  letter-spacing: -.005em;
+  color: #0A0A0A;
+}
+.mk1-input::placeholder { color: rgba(10,10,10,.25); font-weight: 400; }
+
+.mk1-cta {
+  margin-top: 16px;
+  padding: 17px 20px;
+  background: #0A0A0A;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-family: 'Geist', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 8px 24px -8px rgba(10,10,10,.4);
+  width: 100%;
+}
+.mk1-cta:active { transform: scale(.985); }
+.mk1-cta svg { transition: transform .2s; }
+.mk1-cta:hover svg { transform: translateX(2px); }
+.mk1-cta:disabled { opacity: .6; cursor: not-allowed; }
+
+.mk1-trust {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11.5px;
+  color: #6B6557;
+  font-weight: 500;
+  letter-spacing: -.005em;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.mk1-trust svg { opacity: .5; }
+
+/* Feature row (3 columns at bottom of card) */
+.mk1-features {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(10,10,10,.08);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.mk1-feature {
+  text-align: center;
+}
+.mk1-feature-icon {
+  width: 32px; height: 32px;
+  margin: 0 auto 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: #FAF8F2;
+  border: 1px solid rgba(10,10,10,.08);
+  border-radius: 10px;
+  color: #8B6F2A;
+}
+.mk1-feature-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #0A0A0A;
+  letter-spacing: -.005em;
+  line-height: 1.25;
+}
+
+/* ── OTP screen ── */
+.mk1-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0 20px;
+  animation: mk1Rise .55s .04s cubic-bezier(.2,.7,.2,1) both;
+}
+.mk1-back {
+  width: 38px; height: 38px;
+  background: rgba(10,10,10,.04);
+  border: 1px solid rgba(10,10,10,.08);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform .15s, background .15s;
+  color: #0A0A0A;
+}
+.mk1-back:active { transform: scale(.92); background: rgba(10,10,10,.08); }
+.mk1-brand-mini {
+  display: flex; align-items: center; gap: 8px;
+}
+.mk1-brand-mini-mark {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #000000 0%, #FFC043 100%);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: 0 4px 12px -4px rgba(255,192,67,.4);
+}
+.mk1-brand-mini-bars {
+  width: 14px;
+  height: 11px;
+  background:
+    linear-gradient(to top, #fff 30%, transparent 30%) 0   100% / 3px 100% no-repeat,
+    linear-gradient(to top, #fff 60%, transparent 60%) 5.5px 100% / 3px 100% no-repeat,
+    linear-gradient(to top, #fff 90%, transparent 90%) 11px 100% / 3px 100% no-repeat;
+  display: block;
+}
+.mk1-brand-mini-spark {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 9px;
+  color: #FFC043;
+  line-height: 1;
+}
+.mk1-brand-mini-name {
+  font-family: 'Geist', -apple-system, sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+.mk1-step-num {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  color: #6B6557;
+  text-transform: uppercase;
+}
+
+.mk1-hero {
+  padding: 4px 0 24px;
+  animation: mk1Rise .55s .12s cubic-bezier(.2,.7,.2,1) both;
+}
+.mk1-hero-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1.05;
+  margin-bottom: 14px;
+}
+.mk1-hero-title em {
+  color: #8B6F2A;
+  font-style: italic;
+}
+.mk1-hero-sub {
+  font-size: 14px;
+  color: #6B6557;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -.005em;
+}
+.mk1-phone-display {
+  font-family: 'Geist Mono', monospace;
+  font-weight: 600;
+  color: #0A0A0A;
+  background: rgba(201,169,97,.12);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  letter-spacing: 0;
+  display: inline-block;
+  margin-left: 2px;
+}
+
+/* Override the legacy .ls-otp-input style for OTP entry */
+#login-screen.mk1 .mk1-otp-input,
+#login-screen.mk1 #otp-input {
+  width: 100% !important;
+  font-family: 'Instrument Serif', serif !important;
+  font-size: 32px !important;
+  font-weight: 400 !important;
+  text-align: center !important;
+  letter-spacing: 12px !important;
+  padding: 20px 14px !important;
+  background: #fff !important;
+  border: 1.5px solid rgba(10,10,10,.08) !important;
+  border-radius: 14px !important;
+  color: #0A0A0A !important;
+  outline: none !important;
+  transition: all .2s !important;
+  box-shadow: 0 2px 8px -2px rgba(10,10,10,.06) !important;
+}
+#login-screen.mk1 #otp-input:focus {
+  border-color: #8B6F2A !important;
+  box-shadow: 0 0 0 4px rgba(201,169,97,.12) !important;
+}
+#login-screen.mk1 #otp-input::placeholder {
+  color: rgba(10,10,10,.18) !important;
+  letter-spacing: 12px !important;
+  font-weight: 400 !important;
+}
+
+.mk1-otp-actions {
+  margin-top: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  font-size: 13px;
+}
+.mk1-resend {
+  background: none;
+  border: none;
+  color: #0A0A0A;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  letter-spacing: -.005em;
+}
+.mk1-resend:disabled {
+  color: #6B6557;
+  text-decoration: none;
+  cursor: default;
+}
+.mk1-otp-sep {
+  color: #6B6557; opacity: .5;
+}
+
+.mk1-auto-hint {
+  margin-top: auto;
+  margin-bottom: 8px;
+  padding: 14px;
+  background: rgba(201,169,97,.06);
+  border: 1px solid rgba(201,169,97,.15);
+  border-radius: 12px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11.5px;
+  color: #6B6557;
+  font-weight: 500;
+  letter-spacing: -.005em;
+  line-height: 1.4;
+}
+.mk1-auto-hint-icon {
+  width: 26px; height: 26px;
+  background: rgba(201,169,97,.15);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: #8B6F2A;
+  flex-shrink: 0;
+}
+.mk1-auto-hint b { color: #0A0A0A; font-weight: 700; }
+
+/* ── Footer ── */
+.mk1-footer {
+  flex-shrink: 0;
+  padding: 14px 0 16px;
+  text-align: center;
+  font-size: 10.5px;
+  color: #6B6557;
+  letter-spacing: -.005em;
+}
+.mk1-footer a {
+  color: #0A0A0A;
+  text-decoration: none;
+  font-weight: 500;
+}
+.mk1-foot-sep { margin: 0 6px; opacity: .4; }
+.mk1-build {
+  margin-top: 4px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 9.5px;
+  opacity: .5;
+}
+
+/* Login message override (errors, status) */
+#login-screen.mk1 .ls-msg {
+  margin: 14px 0 0 !important;
+  padding: 12px 14px !important;
+  font-family: 'Geist', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  border-radius: 10px !important;
+  background: rgba(220,38,38,.06) !important;
+  color: #991B1B !important;
+  border: 1px solid rgba(220,38,38,.15) !important;
+  letter-spacing: -.005em !important;
+}
+
+/* ── Small phones (height < 700px) ── */
+@media (max-height: 700px) {
+  .mk1-brand { padding: 4px 0 14px; }
+  .mk1-brand-row { gap: 14px; margin-bottom: 10px; }
+  .mk1-logo { width: 56px; height: 56px; }
+  .mk1-logo-bars { width: 28px; height: 21px; background-size: 5.5px 100%, 5.5px 100%, 5.5px 100%; background-position: 0 100%, 11px 100%, 22.5px 100%; }
+  .mk1-logo-spark { font-size: 17px; }
+  .mk1-wordmark { font-size: 30px; }
+  .mk1-tagline { font-size: 15px !important; }
+  .mk1-card { padding: 22px 20px 18px; }
+  .mk1-hero-title { font-size: 30px; }
+}
+/* Tighter for tiny phones — but tagline ALWAYS stays visible */
+@media (max-height: 580px) {
+  .mk1-brand-row { margin-bottom: 6px; }
+  .mk1-logo { width: 44px; height: 44px; }
+  .mk1-logo-bars { width: 22px; height: 16px; background-size: 4.5px 100%, 4.5px 100%, 4.5px 100%; background-position: 0 100%, 8.5px 100%, 17.5px 100%; }
+  .mk1-logo-spark { font-size: 13px; top: -2px; right: -3px; }
+  .mk1-wordmark { font-size: 24px; }
+  .mk1-tagline { font-size: 13px !important; line-height: 1.3; }
+  .mk1-features { display: none; }
+  .mk1-auto-hint { display: none; }
+}
+</style>
+
+
+<!-- ============================================================
+     HisaabNow Step SS · iOS Safari compatibility patch · (unchanged)
 
      1. 100vh problem — Safari URL bar covers bottom content
         → Replace with 100dvh (dynamic viewport height)
