@@ -40066,6 +40066,20 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       this.renderSubchips();
       this.renderViewToggle();
       this.renderList();
+      /* CRITICAL: body has display:flex which causes absolute children NOT to
+         automatically extend body's scrollHeight in some browser/layout paths.
+         Force body's min-height to match content so the page scrollbar works
+         on the Starter view (100+ cards). Runs after layout settles. */
+      try {
+        requestAnimationFrame(function(){
+          var el = document.getElementById('hnd-services');
+          if (el && document.body.classList.contains('hnd-on-services')){
+            var contentH = el.scrollHeight;
+            var tb = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hnd-tb-h')) || 56;
+            document.body.style.minHeight = (contentH + tb + 40) + 'px';
+          }
+        });
+      } catch(e){}
     },
 
     refresh: function(){ this.render(); }
@@ -40102,6 +40116,15 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     var on = isDesktop && key === 'inventory' && isSalon();
     document.body.classList.toggle('hnd-on-services', on);
     if (on) Services.render();
+    else {
+      /* Cleanup: reset body min-height we set during Services render so other
+         screens aren't affected by the inflated value. */
+      try {
+        if (document.body.style.minHeight && !document.body.classList.contains('hnd-on-prodsales')){
+          document.body.style.minHeight = '';
+        }
+      } catch(e){}
+    }
   }
 
   /* Belt-and-suspenders: also listen directly to sidebar nav clicks for the
@@ -40430,6 +40453,17 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       this.renderChips();
       this.renderViewToggle();
       this.renderList();
+      /* Same body grow-with-content fix as Services screen */
+      try {
+        requestAnimationFrame(function(){
+          var el = document.getElementById('hnd-prodsales');
+          if (el && document.body.classList.contains('hnd-on-prodsales')){
+            var contentH = el.scrollHeight;
+            var tb = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hnd-tb-h')) || 56;
+            document.body.style.minHeight = (contentH + tb + 40) + 'px';
+          }
+        });
+      } catch(e){}
     },
 
     refresh: function(){ this.render(); }
@@ -40469,6 +40503,13 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       /* Suppress the default hnd-cat (generic catalog) so we don't double-mount */
       document.body.classList.remove('hnd-on-cat');
       ProdSales.render();
+    } else {
+      /* Cleanup body min-height when leaving */
+      try {
+        if (document.body.style.minHeight && !document.body.classList.contains('hnd-on-services')){
+          document.body.style.minHeight = '';
+        }
+      } catch(e){}
     }
   }
 
