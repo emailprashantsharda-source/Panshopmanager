@@ -36351,11 +36351,11 @@ html[data-shell="desktop"] .hnd-tb {
   <div class="hnd-sb-group">
     <div class="hnd-sb-group-title">MANAGE</div>
     <button class="hnd-nav-item" type="button" data-hnd-nav="catalog" onclick="window.App && window.App.nav && window.App.nav('catalog')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12h20M2 6h20M2 18h20"/></svg>
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
       <span class="lbl" data-i18n="nav.catalog">Catalog</span>
     </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="inventory" onclick="window.App && window.App.nav && window.App.nav('inventory')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       <span class="lbl" data-i18n="more.inventory">Inventory</span>
     </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="ingredients" onclick="window.App && window.App.nav && window.App.nav('ingredients')">
@@ -39193,6 +39193,11 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     return '#DC2626';
   }
   function currentPageKey(){
+    /* Prefer App.current (set by App.nav) — it's the source of truth.
+       Falls back to DOM detection only if App not ready yet. */
+    try {
+      if (window.App && window.App.current) return window.App.current;
+    } catch(e){}
     try {
       var pages = document.querySelectorAll('.page');
       for (var i = 0; i < pages.length; i++){
@@ -39639,11 +39644,24 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
     document.body.classList.toggle('hnd-on-sales', isDesktop && key === 'sales');
     document.body.classList.toggle('hnd-on-custs', isDesktop && key === 'customers');
-    document.body.classList.toggle('hnd-on-cat',   isDesktop && key === 'catalog');
+
+    /* CATALOG ROUTING (May 2026 fix for race condition):
+       For salon vertical, the catalog page is replaced by the new
+       #hnd-prodsales screen (managed by a separate module). This module
+       must NOT mount #hnd-cat for salon, otherwise both screens render
+       simultaneously. */
+    var isSalon = false;
+    try {
+      isSalon = ((window.App && window.App.vertical) === 'salon')
+             || ((window.S && window.S.prof) === 'salon');
+    } catch(e){}
+    var shouldMountCat = isDesktop && key === 'catalog' && !isSalon;
+    document.body.classList.toggle('hnd-on-cat', shouldMountCat);
+
     if (isDesktop){
       if (key === 'sales') Bills.render();
       if (key === 'customers') Custs.render();
-      if (key === 'catalog') Cat.render();
+      if (shouldMountCat) Cat.render();
     }
   }
 
@@ -40038,6 +40056,11 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 
   /* ── Routing — show #hnd-services for salon, fall back to inventory page for other verticals ── */
   function currentPageKey(){
+    /* Prefer App.current (set by App.nav) — it's the source of truth.
+       Falls back to DOM detection only if App not ready yet. */
+    try {
+      if (window.App && window.App.current) return window.App.current;
+    } catch(e){}
     try {
       var pages = document.querySelectorAll('.page');
       for (var i = 0; i < pages.length; i++){
@@ -40385,6 +40408,11 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 
   /* ── Routing — show #hnd-prodsales for salon on catalog page ── */
   function currentPageKey(){
+    /* Prefer App.current (set by App.nav) — it's the source of truth.
+       Falls back to DOM detection only if App not ready yet. */
+    try {
+      if (window.App && window.App.current) return window.App.current;
+    } catch(e){}
     try {
       var pages = document.querySelectorAll('.page');
       for (var i = 0; i < pages.length; i++){
@@ -45020,6 +45048,18 @@ html[data-shell="desktop"] #pg-home {
   function fmtINR(n){ try { return '₹' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
 
   function injectStarterEnhancements(){
+    /* Salon has its own #hnd-prodsales empty state — skip this banner injection
+       to avoid orphaned banners appearing outside the salon page. */
+    try {
+      var _vsalon = (window.App && window.App.vertical) === 'salon';
+      if (_vsalon) {
+        /* Also clean up any existing banner from a previous render */
+        var stale = document.getElementById('hnd-cat-starter-banner');
+        if (stale) stale.remove();
+        return;
+      }
+    } catch(e){}
+
     var seededCount = getSeededCount();
     var catWrap = document.getElementById('hnd-cat');
     if (!catWrap) return;
