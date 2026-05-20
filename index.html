@@ -39110,8 +39110,6 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     </div>
   </div>
 
-  <div class="hnd-kpi-strip" id="hnd-services-kpis"></div>
-
   <div class="hnd-svc-tabs" id="hnd-services-tabs">
     <button class="hnd-svc-tab active" data-svc-tab="men"><span class="ic">👨</span> <span>Men</span> <span class="ct" data-svc-ct="men">0</span></button>
     <button class="hnd-svc-tab" data-svc-tab="women"><span class="ic">👩</span> <span>Women</span> <span class="ct" data-svc-ct="women">0</span></button>
@@ -39126,8 +39124,8 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       <input id="hnd-services-search" placeholder="Search services…" autocomplete="off">
     </div>
     <div class="hnd-svc-toggle">
-      <button class="hnd-svc-tg active" data-svc-view="active">Active <span class="cc" id="hnd-svc-active-ct">0</span></button>
-      <button class="hnd-svc-tg" data-svc-view="suggested">Starter <span class="cc" id="hnd-svc-sug-ct">0</span></button>
+      <button class="hnd-svc-tg active" data-svc-view="active" title="Services that have a price set and are ready to bill">Ready <span class="cc" id="hnd-svc-active-ct">0</span></button>
+      <button class="hnd-svc-tg" data-svc-view="suggested" title="Pre-loaded service suggestions — set a price to make them billable">To set up <span class="cc" id="hnd-svc-sug-ct">0</span></button>
     </div>
   </div>
 
@@ -40009,11 +40007,11 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
         var info = areaInfo(this.area);
         var emptyHtml = '';
         if (this.view === 'suggested'){
-          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">✓</div><b>No starter services left</b><p>You\'ve activated all the suggested services for ' + escHtml(this.tab) + ' · ' + escHtml(info.lbl) + '. Add custom services with the "Add service" button above.</p></div>';
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">✓</div><b>All set up here</b><p>You\'ve set prices for all suggested services in ' + escHtml(this.tab) + ' · ' + escHtml(info.lbl) + '. Add custom services with the "Add service" button above.</p></div>';
         } else if (this.search) {
           emptyHtml = '<div class="hnd-svc-empty"><div class="ic">🔍</div><b>No matching services</b><p>Try a different search term or switch tabs.</p></div>';
         } else {
-          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">' + info.em + '</div><b>No active services in ' + escHtml(this.tab) + ' · ' + escHtml(info.lbl) + '</b><p>Switch to the <b>Starter</b> tab on the right to activate pre-made services, or add your own.</p></div>';
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">' + info.em + '</div><b>No ready services in ' + escHtml(this.tab) + ' · ' + escHtml(info.lbl) + ' yet</b><p>Switch to <b>To set up</b> tab on the right to set prices for pre-loaded services, or add your own.</p></div>';
         }
         wrap.innerHTML = emptyHtml;
         return;
@@ -40027,15 +40025,15 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
         var info = areaInfo(p._area);
         var isActive = p.active !== false;
         var statusBadge = isActive
-          ? '<span class="hnd-svc-card-status active">● Active</span>'
-          : '<span class="hnd-svc-card-status starter">★ Starter</span>';
+          ? '<span class="hnd-svc-card-status active">● Ready</span>'
+          : '<span class="hnd-svc-card-status starter">★ Tap to set up</span>';
         var priceCell = sp > 0
           ? '<div class="hnd-svc-card-price">' + fmtINR(sp) + '</div>'
-          : '<div class="hnd-svc-card-price unset">No price</div>';
+          : '<div class="hnd-svc-card-price unset">Set price →</div>';
         var actions = isActive
           ? '<button class="hnd-svc-card-btn-edit" data-svc-edit="' + escAttr(id) + '">✎ Edit</button>'
           : '<button class="hnd-svc-card-btn-edit" data-svc-edit="' + escAttr(id) + '">✎ Edit</button>'
-            + '<button class="hnd-svc-card-btn-activate" data-svc-activate="' + escAttr(id) + '">⚡ Activate</button>';
+            + '<button class="hnd-svc-card-btn-activate" data-svc-activate="' + escAttr(id) + '">⚡ Set price</button>';
 
         return '<div class="hnd-svc-card' + (isActive ? '' : ' suggested') + '" data-svc-id="' + escAttr(id) + '">'
           +   '<div class="hnd-svc-card-h">'
@@ -40056,7 +40054,6 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     },
 
     render: function(){
-      this.renderKPIs();
       this.renderTabs();
       this.renderSubchips();
       this.renderViewToggle();
