@@ -38587,6 +38587,298 @@ html[data-shell="desktop"] body.hnd-on-cat #hnd-cat {
 .hnd-tbl-empty b { display: block; font-size: 15px; color: var(--hnd-ink); margin-bottom: 6px; }
 .hnd-tbl-empty p { font-size: 12.5px; margin: 0 0 14px; max-width: 380px; margin-left: auto; margin-right: auto; }
 
+/* ════════════════════════════════════════════════════════════
+   SERVICES desktop screen (May 2026)
+   Clean 2-column tab layout for salon vertical.
+   Single scrollbar (page-level only) — no nested overflow.
+════════════════════════════════════════════════════════════ */
+#hnd-services { display: none; }
+html[data-shell="desktop"] body.hnd-on-services #hnd-services {
+  display: block;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
+  padding: 24px 28px 32px;
+  background: var(--hnd-bg);
+  min-height: calc(100vh - var(--hnd-tb-h));
+  z-index: 9;
+}
+/* When services screen is active, hide the mobile inventory page completely */
+html[data-shell="desktop"] body.hnd-on-services #pg-inventory {
+  display: none !important;
+}
+
+/* Product Sales screen — same shell pattern as Services, mounted on catalog page for salon */
+#hnd-prodsales { display: none; }
+html[data-shell="desktop"] body.hnd-on-prodsales #hnd-prodsales {
+  display: block;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
+  padding: 24px 28px 32px;
+  background: var(--hnd-bg);
+  min-height: calc(100vh - var(--hnd-tb-h));
+  z-index: 9;
+}
+html[data-shell="desktop"] body.hnd-on-prodsales #hnd-cat,
+html[data-shell="desktop"] body.hnd-on-prodsales #pg-catalog {
+  display: none !important;
+}
+
+/* Main tabs: Men | Women | Common */
+.hnd-svc-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 6px;
+  margin: 14px 0;
+}
+.hnd-svc-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hnd-muted);
+  transition: all .15s;
+}
+.hnd-svc-tab:hover { background: var(--hnd-bg); color: var(--hnd-ink); }
+.hnd-svc-tab.active {
+  background: #0A0A0A;
+  color: #fff;
+  box-shadow: 0 4px 12px -2px rgba(10,10,10,.15);
+}
+.hnd-svc-tab .ic { font-size: 18px; line-height: 1; }
+.hnd-svc-tab .ct {
+  display: inline-block;
+  padding: 1px 7px;
+  background: rgba(0,0,0,.06);
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hnd-muted);
+  font-variant-numeric: tabular-nums;
+}
+.hnd-svc-tab.active .ct {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+
+/* Sub-area chips: Hair · Face · Body · Threading · Nails · Waxing · Bridal */
+.hnd-svc-subchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.hnd-svc-subchip {
+  padding: 7px 14px;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 99px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hnd-muted);
+  transition: all .12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.hnd-svc-subchip:hover { border-color: var(--hnd-gold); color: var(--hnd-ink); }
+.hnd-svc-subchip.active {
+  background: var(--hnd-ink);
+  border-color: var(--hnd-ink);
+  color: #fff;
+}
+.hnd-svc-subchip .ct {
+  font-size: 10.5px;
+  opacity: 0.7;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Search + active/starter toggle row */
+.hnd-svc-search-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+.hnd-svc-search { width: 100%; }
+.hnd-svc-toggle {
+  display: flex;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.hnd-svc-tg {
+  padding: 9px 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hnd-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hnd-svc-tg:hover { color: var(--hnd-ink); }
+.hnd-svc-tg.active { background: var(--hnd-ink); color: #fff; }
+.hnd-svc-tg .cc {
+  display: inline-block;
+  padding: 1px 7px;
+  background: rgba(0,0,0,.08);
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hnd-svc-tg.active .cc {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+
+/* Service card grid - 3 columns at 1100+, 2 at 800-1100, 1 below */
+.hnd-svc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+.hnd-svc-card {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all .12s;
+  cursor: pointer;
+}
+.hnd-svc-card:hover {
+  border-color: var(--hnd-gold);
+  box-shadow: 0 6px 20px -10px rgba(184,138,86,.4);
+  transform: translateY(-1px);
+}
+.hnd-svc-card.suggested {
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 60%);
+  border-style: dashed;
+}
+.hnd-svc-card-h {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  justify-content: space-between;
+}
+.hnd-svc-card-l { flex: 1; min-width: 0; }
+.hnd-svc-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--hnd-ink);
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hnd-svc-card-name .em { font-size: 16px; }
+.hnd-svc-card-cat {
+  font-size: 11.5px;
+  color: var(--hnd-muted);
+  margin-top: 3px;
+  font-weight: 500;
+}
+.hnd-svc-card-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--hnd-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.hnd-svc-card-price.unset { color: var(--hnd-muted); font-size: 13px; font-weight: 600; }
+.hnd-svc-card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--hnd-muted);
+  padding-top: 8px;
+  border-top: 1px dashed var(--hnd-line);
+}
+.hnd-svc-card-meta b { color: var(--hnd-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.hnd-svc-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.hnd-svc-card-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all .12s;
+}
+.hnd-svc-card-btn-edit {
+  background: var(--hnd-bg);
+  border: 1px solid var(--hnd-line);
+  color: var(--hnd-ink);
+}
+.hnd-svc-card-btn-edit:hover { background: var(--hnd-card); border-color: var(--hnd-gold); }
+.hnd-svc-card-btn-activate {
+  background: linear-gradient(180deg, #FF6B35 0%, #EA580C 100%);
+  border: 0;
+  color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(255,107,53,.4);
+}
+.hnd-svc-card-btn-activate:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -3px rgba(255,107,53,.5); }
+.hnd-svc-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.hnd-svc-card-status.active { background: #F0FDF4; color: #15803D; }
+.hnd-svc-card-status.starter { background: #FEF3C7; color: #B45309; }
+
+/* Empty state for services */
+.hnd-svc-empty {
+  grid-column: 1 / -1;
+  padding: 60px 24px;
+  text-align: center;
+  background: var(--hnd-card);
+  border: 1px dashed var(--hnd-line);
+  border-radius: 12px;
+  color: var(--hnd-muted);
+}
+.hnd-svc-empty .ic { font-size: 40px; opacity: .5; margin-bottom: 10px; }
+.hnd-svc-empty b { display: block; font-size: 14px; color: var(--hnd-ink); margin-bottom: 4px; }
+.hnd-svc-empty p { font-size: 12px; margin: 0 0 14px; max-width: 380px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+
 /* Inline +/- stock controls for catalog */
 .hnd-stock-ctrl { display: inline-flex; align-items: center; gap: 1px; background: var(--hnd-bg); border-radius: 6px; padding: 1px; }
 .hnd-stock-btn { width: 22px; height: 22px; font-size: 13px; font-weight: 700; color: var(--hnd-ink); background: none; border: 0; cursor: pointer; border-radius: 5px; display: grid; place-items: center; font-family: inherit; }
@@ -38781,6 +39073,94 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       </table>
     </div>
   </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     SERVICES desktop screen (May 2026 · salon vertical)
+     ────────────────────────────────────────────────────────────
+     New 2-column tab layout for the salon Services page. Replaces
+     the cluttered Inventory mobile-in-desktop render. Shows only
+     non-Retail items (services like Hair Color, Threading, Facials).
+     Single scrollbar (page-level only). KPI strip + Men/Women/Common
+     tabs + area sub-chips + clean card grid.
+════════════════════════════════════════════════════════════ -->
+<div id="hnd-services">
+  <div class="hnd-pgh">
+    <div class="hnd-pgh-l">
+      <h1>Services</h1>
+      <p id="hnd-services-sub">Hair, skin, beauty services you offer</p>
+    </div>
+    <div class="hnd-pgh-r">
+      <button class="hnd-btn dark" onclick="window.App && App.openProductSheet && App.openProductSheet()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Add service</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hnd-kpi-strip" id="hnd-services-kpis"></div>
+
+  <div class="hnd-svc-tabs" id="hnd-services-tabs">
+    <button class="hnd-svc-tab active" data-svc-tab="men"><span class="ic">👨</span> <span>Men</span> <span class="ct" data-svc-ct="men">0</span></button>
+    <button class="hnd-svc-tab" data-svc-tab="women"><span class="ic">👩</span> <span>Women</span> <span class="ct" data-svc-ct="women">0</span></button>
+    <button class="hnd-svc-tab" data-svc-tab="common"><span class="ic">⚪</span> <span>Common</span> <span class="ct" data-svc-ct="common">0</span></button>
+  </div>
+
+  <div class="hnd-svc-subchips" id="hnd-services-subchips"></div>
+
+  <div class="hnd-svc-search-wrap">
+    <div class="hnd-search-box hnd-svc-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="hnd-services-search" placeholder="Search services…" autocomplete="off">
+    </div>
+    <div class="hnd-svc-toggle">
+      <button class="hnd-svc-tg active" data-svc-view="active">Active <span class="cc" id="hnd-svc-active-ct">0</span></button>
+      <button class="hnd-svc-tg" data-svc-view="suggested">Starter <span class="cc" id="hnd-svc-sug-ct">0</span></button>
+    </div>
+  </div>
+
+  <div class="hnd-svc-list" id="hnd-services-list"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PRODUCT SALES desktop screen (May 2026 · salon vertical)
+     ────────────────────────────────────────────────────────────
+     Clean retail-only catalog page for salon. Shows take-home
+     products (Shampoo bottles, Hair Oil, Gift Sets etc.) — items
+     where cat === 'Retail'. Mirrors Services screen design for
+     visual consistency. Single page-level scrollbar.
+════════════════════════════════════════════════════════════ -->
+<div id="hnd-prodsales">
+  <div class="hnd-pgh">
+    <div class="hnd-pgh-l">
+      <h1>Product Sales</h1>
+      <p>Take-home retail products customers can buy at the counter</p>
+    </div>
+    <div class="hnd-pgh-r">
+      <button class="hnd-btn dark" onclick="window.App && App.openProductSheet && App.openProductSheet()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Add retail product</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hnd-kpi-strip" id="hnd-prodsales-kpis"></div>
+
+  <!-- Type chips: All · Hair Care · Skin Care · Tools · Premium · Gift Sets -->
+  <div class="hnd-svc-subchips" id="hnd-prodsales-chips"></div>
+
+  <div class="hnd-svc-search-wrap">
+    <div class="hnd-search-box hnd-svc-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="hnd-prodsales-search" placeholder="Search retail products…" autocomplete="off">
+    </div>
+    <div class="hnd-svc-toggle">
+      <button class="hnd-svc-tg active" data-prod-view="active">Active <span class="cc" id="hnd-prod-active-ct">0</span></button>
+      <button class="hnd-svc-tg" data-prod-view="suggested">Starter <span class="cc" id="hnd-prod-sug-ct">0</span></button>
+    </div>
+  </div>
+
+  <div class="hnd-svc-list" id="hnd-prodsales-list"></div>
 </div>
 
 <script>
@@ -39133,10 +39513,26 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     sortBy: 'name',
     sortDir: 'asc',
 
+    /* Apply vertical catalog filter (May 2026):
+       Salon → Product Sales page shows only retail items.
+       Other verticals → no filter, all products shown. */
+    _verticalFilter: function(p){
+      try {
+        var v = (window.App && window.App.vertical) || 'cafe';
+        var cfg = (typeof window.VERTICAL_CONFIG !== 'undefined') ? VERTICAL_CONFIG[v] : null;
+        if (cfg && typeof cfg.catalogFilter === 'function'){
+          return cfg.catalogFilter(p);
+        }
+      } catch(e){}
+      return true;  /* no filter → pass through */
+    },
+
     cats: function(){
       var seen = {}, out = ['All'];
+      var self = this;
       getProds().forEach(function(p){
         if (p.active === false) return;
+        if (!self._verticalFilter(p)) return;   /* respect vertical filter */
         var c = (p.cat || p.category || 'Other');
         if (!seen[c]){ seen[c] = true; out.push(c); }
       });
@@ -39144,7 +39540,10 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     },
 
     filtered: function(){
+      var self = this;
       var list = getProds().filter(function(p){ return p.active !== false; });
+      /* Vertical catalog filter — salon Product Sales shows retail only */
+      list = list.filter(function(p){ return self._verticalFilter(p); });
       if (this.cat !== 'All'){
         list = list.filter(function(p){ return (p.cat || p.category) === Cat.cat; });
       }
@@ -39174,7 +39573,10 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     },
 
     renderKPIs: function(){
-      var all = getProds().filter(function(p){ return p.active !== false; });
+      var self = this;
+      var all = getProds()
+        .filter(function(p){ return p.active !== false; })
+        .filter(function(p){ return self._verticalFilter(p); });   /* respect vertical filter */
       var total = all.length;
       var lowStock = all.filter(function(p){ return p.stock != null && p.reorderAt != null && +p.stock <= +p.reorderAt; }).length;
       var outOfStock = all.filter(function(p){ return p.stock != null && +p.stock === 0; }).length;
@@ -39380,6 +39782,720 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 })();
 </script>
 <!-- =================== END Step F block =================== -->
+
+
+<!-- ============================================================
+     HisaabNow Step F-S · Salon Services desktop module (May 2026)
+     ─────────────────────────────────────────────────────────────
+     Powers the new #hnd-services screen. Only active when vertical
+     is 'salon'. Filters /prods to non-Retail items, groups them by
+     gender (Men/Women/Common) parsed from the cat field which uses
+     the convention "Men · Hair", "Women · Bridal", "Common".
+============================================================ -->
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function escAttr(s){ return escHtml(s).replace(/"/g,'&quot;'); }
+  function fmtINR(n){ try { return '₹' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+
+  /* Parse a category string like "Men · Hair" into { gender, area }.
+     "Common" stays as gender='common', area='all'. Plain unknown
+     categories go to gender='common', area=normalized. */
+  function parseCat(cat){
+    var c = (cat || '').trim();
+    if (!c || c === 'Retail') return { gender: null, area: null };  /* excluded */
+    if (/^common$/i.test(c)) return { gender: 'common', area: 'all' };
+    var m = c.match(/^(men|women)\s*[·•-]\s*(.+)$/i);
+    if (m) return { gender: m[1].toLowerCase(), area: m[2].trim().toLowerCase() };
+    return { gender: 'common', area: c.toLowerCase() };
+  }
+
+  /* Friendly area labels with emoji */
+  var AREA_LABELS = {
+    'all':       { lbl: 'All',       em: '✨' },
+    'hair':      { lbl: 'Hair',      em: '💇' },
+    'face':      { lbl: 'Face',      em: '🧖' },
+    'body':      { lbl: 'Body',      em: '💆' },
+    'threading': { lbl: 'Threading', em: '👁' },
+    'nails':     { lbl: 'Nails',     em: '💅' },
+    'waxing':    { lbl: 'Waxing',    em: '🌸' },
+    'bridal':    { lbl: 'Bridal',    em: '💍' }
+  };
+  function areaInfo(key){ return AREA_LABELS[key] || { lbl: key.charAt(0).toUpperCase() + key.slice(1), em: '✨' }; }
+
+  var Services = {
+    tab: 'women',           /* men | women | common */
+    area: 'all',            /* 'all' or specific area key */
+    search: '',
+    view: 'active',         /* active | suggested */
+
+    /* Returns list of non-Retail products with parsed gender/area metadata */
+    allServices: function(){
+      return safeList('prods')
+        .map(function(p){
+          var info = parseCat(p.cat || p.category);
+          return Object.assign({}, p, { _gender: info.gender, _area: info.area });
+        })
+        .filter(function(p){ return p._gender !== null; });   /* exclude Retail */
+    },
+
+    /* Returns services filtered by current tab + area + search + view */
+    filtered: function(){
+      var list = this.allServices();
+      list = list.filter(function(p){ return p._gender === Services.tab; });
+      if (this.area !== 'all'){
+        list = list.filter(function(p){ return p._area === Services.area; });
+      }
+      var q = (this.search || '').trim().toLowerCase();
+      if (q){
+        list = list.filter(function(p){
+          return (p.name || '').toLowerCase().indexOf(q) >= 0
+              || (p.cat || '').toLowerCase().indexOf(q) >= 0;
+        });
+      }
+      if (this.view === 'active')    list = list.filter(function(p){ return p.active !== false; });
+      else if (this.view === 'suggested') list = list.filter(function(p){ return p.active === false; });
+      /* Sort: active by name, suggested by name */
+      list.sort(function(a,b){ return (a.name || '').localeCompare(b.name || ''); });
+      return list;
+    },
+
+    /* Count services per gender (for tab badges) */
+    countsByGender: function(){
+      var all = this.allServices().filter(function(p){ return p.active !== false; });
+      var c = { men: 0, women: 0, common: 0 };
+      all.forEach(function(p){ if (c[p._gender] != null) c[p._gender]++; });
+      return c;
+    },
+
+    /* Count active + suggested for current tab (for toggle badges) */
+    countsByView: function(){
+      var inTab = this.allServices().filter(function(p){ return p._gender === Services.tab; });
+      return {
+        active: inTab.filter(function(p){ return p.active !== false; }).length,
+        suggested: inTab.filter(function(p){ return p.active === false; }).length
+      };
+    },
+
+    /* Count services per area within current tab */
+    countsByArea: function(){
+      var inTab = this.allServices()
+        .filter(function(p){ return p._gender === Services.tab; })
+        .filter(function(p){ return Services.view === 'active' ? p.active !== false : p.active === false; });
+      var c = { all: inTab.length };
+      inTab.forEach(function(p){ c[p._area] = (c[p._area] || 0) + 1; });
+      return c;
+    },
+
+    /* Areas that should be shown as sub-chips for current tab */
+    activeAreas: function(){
+      var counts = this.countsByArea();
+      /* Always include 'all', then any area with at least 1 item */
+      var areas = ['all'];
+      ['hair','face','body','threading','nails','waxing','bridal'].forEach(function(k){
+        if (counts[k] && counts[k] > 0) areas.push(k);
+      });
+      /* Append any unknown areas */
+      Object.keys(counts).forEach(function(k){
+        if (k === 'all' || areas.indexOf(k) !== -1) return;
+        if (counts[k] > 0) areas.push(k);
+      });
+      return areas;
+    },
+
+    /* Render KPI strip — Active Services / Avg Price / Top Category / Pending Activation */
+    renderKPIs: function(){
+      var all = this.allServices();
+      var active = all.filter(function(p){ return p.active !== false; });
+      var priced = active.filter(function(p){ return (+p.sp || +p.price || 0) > 0; });
+      var avg = priced.length ? Math.round(priced.reduce(function(a,p){ return a + (+p.sp || +p.price || 0); }, 0) / priced.length) : 0;
+      var pending = all.filter(function(p){ return p.active === false; }).length;
+
+      /* Top category by count */
+      var catCount = {};
+      active.forEach(function(p){ var c = p.cat || 'Other'; catCount[c] = (catCount[c] || 0) + 1; });
+      var topCat = '—', topN = 0;
+      Object.keys(catCount).forEach(function(k){ if (catCount[k] > topN){ topN = catCount[k]; topCat = k; } });
+
+      var k = function(lbl, val, sub){
+        return '<div class="hnd-d-kpi"><div class="hnd-d-kpi-lbl">' + escHtml(lbl) + '</div><div class="hnd-d-kpi-val">' + escHtml(val) + '</div><div class="hnd-d-kpi-delta neutral">' + escHtml(sub) + '</div></div>';
+      };
+      $('hnd-services-kpis').innerHTML =
+          k('Active services', String(active.length), active.length ? 'live & billable' : 'activate starter list')
+        + k('Avg price', avg ? fmtINR(avg) : '—', priced.length + ' priced')
+        + k('Top category', topN ? topCat : '—', topN ? topN + ' services' : 'none yet')
+        + k('Pending activation', String(pending), pending ? 'starter services waiting' : 'all done');
+    },
+
+    /* Render the 3 main tabs with live counts */
+    renderTabs: function(){
+      var c = this.countsByGender();
+      ['men','women','common'].forEach(function(g){
+        var ctEl = document.querySelector('[data-svc-ct="' + g + '"]');
+        if (ctEl) ctEl.textContent = String(c[g]);
+      });
+      var tabs = document.querySelectorAll('#hnd-services-tabs .hnd-svc-tab');
+      tabs.forEach(function(t){
+        t.classList.toggle('active', t.getAttribute('data-svc-tab') === Services.tab);
+      });
+    },
+
+    /* Render area sub-chips for currently selected tab */
+    renderSubchips: function(){
+      var wrap = $('hnd-services-subchips');
+      var areas = this.activeAreas();
+      var counts = this.countsByArea();
+      var html = areas.map(function(a){
+        var info = areaInfo(a);
+        var isActive = (a === Services.area);
+        return '<button class="hnd-svc-subchip' + (isActive ? ' active' : '') + '" data-svc-area="' + escAttr(a) + '">'
+             +   '<span>' + info.em + '</span>'
+             +   '<span>' + escHtml(info.lbl) + '</span>'
+             +   '<span class="ct">' + (counts[a] || 0) + '</span>'
+             + '</button>';
+      }).join('');
+      wrap.innerHTML = html;
+    },
+
+    /* Render Active/Starter view toggle with counts */
+    renderViewToggle: function(){
+      var c = this.countsByView();
+      var actEl = $('hnd-svc-active-ct');
+      var sugEl = $('hnd-svc-sug-ct');
+      if (actEl) actEl.textContent = String(c.active);
+      if (sugEl) sugEl.textContent = String(c.suggested);
+      document.querySelectorAll('#hnd-services .hnd-svc-tg').forEach(function(t){
+        t.classList.toggle('active', t.getAttribute('data-svc-view') === Services.view);
+      });
+    },
+
+    /* Render the actual service cards */
+    renderList: function(){
+      var list = this.filtered();
+      var wrap = $('hnd-services-list');
+      if (!list.length){
+        var info = areaInfo(this.area);
+        var emptyHtml = '';
+        if (this.view === 'suggested'){
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">✓</div><b>No starter services left</b><p>You\'ve activated all the suggested services for ' + escHtml(this.tab) + ' · ' + escHtml(info.lbl) + '. Add custom services with the "Add service" button above.</p></div>';
+        } else if (this.search) {
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">🔍</div><b>No matching services</b><p>Try a different search term or switch tabs.</p></div>';
+        } else {
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">' + info.em + '</div><b>No active services in ' + escHtml(this.tab) + ' · ' + escHtml(info.lbl) + '</b><p>Switch to the <b>Starter</b> tab on the right to activate pre-made services, or add your own.</p></div>';
+        }
+        wrap.innerHTML = emptyHtml;
+        return;
+      }
+
+      wrap.innerHTML = list.map(function(p){
+        var id = p.id || p.name;
+        var sp = +p.sp || +p.price || 0;
+        var cp = +p.cp || 0;
+        var marginPct = sp > 0 && cp > 0 ? Math.round(((sp - cp) / sp) * 100) : null;
+        var info = areaInfo(p._area);
+        var isActive = p.active !== false;
+        var statusBadge = isActive
+          ? '<span class="hnd-svc-card-status active">● Active</span>'
+          : '<span class="hnd-svc-card-status starter">★ Starter</span>';
+        var priceCell = sp > 0
+          ? '<div class="hnd-svc-card-price">' + fmtINR(sp) + '</div>'
+          : '<div class="hnd-svc-card-price unset">No price</div>';
+        var actions = isActive
+          ? '<button class="hnd-svc-card-btn-edit" data-svc-edit="' + escAttr(id) + '">✎ Edit</button>'
+          : '<button class="hnd-svc-card-btn-edit" data-svc-edit="' + escAttr(id) + '">✎ Edit</button>'
+            + '<button class="hnd-svc-card-btn-activate" data-svc-activate="' + escAttr(id) + '">⚡ Activate</button>';
+
+        return '<div class="hnd-svc-card' + (isActive ? '' : ' suggested') + '" data-svc-id="' + escAttr(id) + '">'
+          +   '<div class="hnd-svc-card-h">'
+          +     '<div class="hnd-svc-card-l">'
+          +       '<div class="hnd-svc-card-name"><span class="em">' + info.em + '</span><span>' + escHtml(p.name || '—') + '</span></div>'
+          +       '<div class="hnd-svc-card-cat">' + escHtml(p.cat || 'Uncategorized') + '</div>'
+          +     '</div>'
+          +     priceCell
+          +   '</div>'
+          +   '<div class="hnd-svc-card-meta">'
+          +     statusBadge
+          +     (cp > 0 ? '<span>Cost: <b>' + fmtINR(cp) + '</b></span>' : '')
+          +     (marginPct != null ? '<span>Margin: <b style="color:#15803D">' + marginPct + '%</b></span>' : '')
+          +   '</div>'
+          +   '<div class="hnd-svc-card-actions">' + actions + '</div>'
+          + '</div>';
+      }).join('');
+    },
+
+    render: function(){
+      this.renderKPIs();
+      this.renderTabs();
+      this.renderSubchips();
+      this.renderViewToggle();
+      this.renderList();
+    },
+
+    refresh: function(){ this.render(); }
+  };
+
+  /* ── Routing — show #hnd-services for salon, fall back to inventory page for other verticals ── */
+  function currentPageKey(){
+    try {
+      var pages = document.querySelectorAll('.page');
+      for (var i = 0; i < pages.length; i++){
+        var p = pages[i];
+        if (getComputedStyle(p).display !== 'none' && p.getBoundingClientRect().width > 0){
+          return (p.id || '').replace(/^pg-/, '') || 'home';
+        }
+      }
+    } catch(e){}
+    return 'home';
+  }
+  function isSalon(){
+    try {
+      return ((window.App && window.App.vertical) === 'salon')
+          || ((window.S && window.S.prof) === 'salon');
+    } catch(e){ return false; }
+  }
+  function syncShellClass(){
+    var key = currentPageKey();
+    var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+    /* Only mount #hnd-services on inventory page AND when vertical is salon */
+    var on = isDesktop && key === 'inventory' && isSalon();
+    document.body.classList.toggle('hnd-on-services', on);
+    if (on) Services.render();
+  }
+
+  /* ── Event delegation ── */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnd-on-services')) return;
+    /* Main tab switch */
+    var tab = e.target.closest('#hnd-services-tabs [data-svc-tab]');
+    if (tab){
+      Services.tab = tab.getAttribute('data-svc-tab');
+      Services.area = 'all';  /* reset area when switching tabs */
+      Services.render();
+      return;
+    }
+    /* Area sub-chip */
+    var sub = e.target.closest('#hnd-services-subchips [data-svc-area]');
+    if (sub){
+      Services.area = sub.getAttribute('data-svc-area');
+      Services.render();
+      return;
+    }
+    /* View toggle */
+    var vbtn = e.target.closest('#hnd-services .hnd-svc-tg');
+    if (vbtn){
+      Services.view = vbtn.getAttribute('data-svc-view');
+      Services.area = 'all';  /* reset to all when switching view */
+      Services.render();
+      return;
+    }
+    /* Edit a service */
+    var edit = e.target.closest('[data-svc-edit]');
+    if (edit){
+      e.stopPropagation();
+      var pid = edit.getAttribute('data-svc-edit');
+      if (window.App && App.openProductSheet) App.openProductSheet(pid);
+      return;
+    }
+    /* Activate a starter service */
+    var act = e.target.closest('[data-svc-activate]');
+    if (act){
+      e.stopPropagation();
+      var pid2 = act.getAttribute('data-svc-activate');
+      if (window.App && App.openProductSheet) App.openProductSheet(pid2);
+      return;
+    }
+  });
+
+  /* Search input */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnd-services-search'){
+      Services.search = e.target.value;
+      Services.renderList();
+    }
+  });
+
+  /* Subscribe to data changes */
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hnd_servicesSubbed) return;
+    window.__hnd_servicesSubbed = true;
+    try {
+      Store.on('prods', function(){
+        if (document.body.classList.contains('hnd-on-services')) Services.render();
+      });
+    } catch(e){}
+  }
+
+  function hookAppNav(){
+    if (!window.App || typeof window.App.nav !== 'function') return;
+    if (window.App.__hnd_servicesNavHooked) return;
+    var orig = window.App.nav;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 80);
+      return r;
+    };
+    window.App.__hnd_servicesNavHooked = true;
+    syncShellClass();
+  }
+
+  function boot(retry){
+    hookAppNav();
+    subscribe();
+    syncShellClass();
+    if (retry > 0 && (!window.App || !window.App.__hnd_servicesNavHooked || !window.__hnd_servicesSubbed)){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(8); });
+  } else {
+    boot(8);
+  }
+  window.addEventListener('hn:shellchange', function(){ setTimeout(syncShellClass, 100); });
+
+  window.HND = window.HND || {};
+  window.HND.services = Services;
+})();
+</script>
+<!-- =================== END Salon Services block =================== -->
+
+
+<!-- ============================================================
+     HisaabNow Step F-PS · Salon Product Sales desktop module (May 2026)
+     ─────────────────────────────────────────────────────────────
+     Powers the new #hnd-prodsales screen. Only active when vertical
+     is 'salon'. Filters /prods to Retail items only (take-home
+     products like Shampoo bottles, Hair Oil, Gift Sets).
+     Mirrors Services screen design for visual consistency.
+============================================================ -->
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function escAttr(s){ return escHtml(s).replace(/"/g,'&quot;'); }
+  function fmtINR(n){ try { return '₹' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+
+  /* Classify retail products into friendly sub-types based on name keywords.
+     Used for chip filtering. Pre-loaded list has 8 items all under "Retail"
+     so we infer type from name. Custom products default to 'other'. */
+  function classifyRetail(name){
+    var n = (name || '').toLowerCase();
+    if (/(shampoo|conditioner|serum|spa|color|colour|gel|hair|henna|beard.*oil)/i.test(n)) return 'hair';
+    if (/(face|skin|cream|moisturi|sunscreen|pack)/i.test(n)) return 'skin';
+    if (/(gift|set|combo|hamper|kit)/i.test(n)) return 'gift';
+    if (/(razor|brush|tool|comb|trimmer)/i.test(n)) return 'tools';
+    return 'other';
+  }
+
+  var TYPE_LABELS = {
+    'all':   { lbl: 'All',         em: '🛍️' },
+    'hair':  { lbl: 'Hair Care',   em: '💇' },
+    'skin':  { lbl: 'Skin Care',   em: '🧴' },
+    'gift':  { lbl: 'Gift Sets',   em: '🎁' },
+    'tools': { lbl: 'Tools',       em: '🪒' },
+    'other': { lbl: 'Other',       em: '✨' }
+  };
+  function typeInfo(key){ return TYPE_LABELS[key] || { lbl: key, em: '✨' }; }
+
+  var ProdSales = {
+    type: 'all',          /* all | hair | skin | gift | tools | other */
+    search: '',
+    view: 'active',       /* active | suggested */
+
+    /* All retail products (cat === 'Retail') with inferred type */
+    allRetail: function(){
+      return safeList('prods')
+        .filter(function(p){ return (p.cat || p.category) === 'Retail'; })
+        .map(function(p){ return Object.assign({}, p, { _type: classifyRetail(p.name) }); });
+    },
+
+    filtered: function(){
+      var list = this.allRetail();
+      if (this.type !== 'all'){
+        list = list.filter(function(p){ return p._type === ProdSales.type; });
+      }
+      var q = (this.search || '').trim().toLowerCase();
+      if (q){
+        list = list.filter(function(p){
+          return (p.name || '').toLowerCase().indexOf(q) >= 0;
+        });
+      }
+      if (this.view === 'active') list = list.filter(function(p){ return p.active !== false; });
+      else if (this.view === 'suggested') list = list.filter(function(p){ return p.active === false; });
+      list.sort(function(a,b){ return (a.name || '').localeCompare(b.name || ''); });
+      return list;
+    },
+
+    countsByType: function(){
+      var all = this.allRetail()
+        .filter(function(p){ return ProdSales.view === 'active' ? p.active !== false : p.active === false; });
+      var c = { all: all.length };
+      all.forEach(function(p){ c[p._type] = (c[p._type] || 0) + 1; });
+      return c;
+    },
+
+    countsByView: function(){
+      var all = this.allRetail();
+      return {
+        active: all.filter(function(p){ return p.active !== false; }).length,
+        suggested: all.filter(function(p){ return p.active === false; }).length
+      };
+    },
+
+    activeTypes: function(){
+      var counts = this.countsByType();
+      var types = ['all'];
+      ['hair','skin','gift','tools','other'].forEach(function(k){
+        if (counts[k] && counts[k] > 0) types.push(k);
+      });
+      return types;
+    },
+
+    renderKPIs: function(){
+      var all = this.allRetail();
+      var active = all.filter(function(p){ return p.active !== false; });
+      var priced = active.filter(function(p){ return (+p.sp || +p.price || 0) > 0; });
+      var avg = priced.length ? Math.round(priced.reduce(function(a,p){ return a + (+p.sp || +p.price || 0); }, 0) / priced.length) : 0;
+      var avgMargin = 0;
+      var marginItems = active.filter(function(p){
+        var sp = +p.sp || +p.price || 0; var cp = +p.cp || 0;
+        return sp > 0 && cp > 0;
+      });
+      if (marginItems.length){
+        avgMargin = Math.round(marginItems.reduce(function(a,p){
+          var sp = +p.sp || +p.price; var cp = +p.cp;
+          return a + ((sp - cp) / sp) * 100;
+        }, 0) / marginItems.length);
+      }
+      var pending = all.filter(function(p){ return p.active === false; }).length;
+      var inventoryValue = active.reduce(function(a,p){ return a + ((+p.cp || 0) * (+p.stock || 0)); }, 0);
+
+      var k = function(lbl, val, sub){
+        return '<div class="hnd-d-kpi"><div class="hnd-d-kpi-lbl">' + escHtml(lbl) + '</div><div class="hnd-d-kpi-val">' + escHtml(val) + '</div><div class="hnd-d-kpi-delta neutral">' + escHtml(sub) + '</div></div>';
+      };
+      $('hnd-prodsales-kpis').innerHTML =
+          k('Active products', String(active.length), active.length ? 'on shelf for sale' : 'add your first retail item')
+        + k('Avg sell price', avg ? fmtINR(avg) : '—', priced.length + ' priced')
+        + k('Avg margin', avgMargin ? avgMargin + '%' : '—', marginItems.length ? 'with cost set' : 'set costs to track')
+        + k('Stock value', inventoryValue ? fmtINR(inventoryValue) : '—', 'at cost price');
+    },
+
+    renderChips: function(){
+      var wrap = $('hnd-prodsales-chips');
+      var types = this.activeTypes();
+      var counts = this.countsByType();
+      var html = types.map(function(t){
+        var info = typeInfo(t);
+        var isActive = (t === ProdSales.type);
+        return '<button class="hnd-svc-subchip' + (isActive ? ' active' : '') + '" data-prod-type="' + escAttr(t) + '">'
+             +   '<span>' + info.em + '</span>'
+             +   '<span>' + escHtml(info.lbl) + '</span>'
+             +   '<span class="ct">' + (counts[t] || 0) + '</span>'
+             + '</button>';
+      }).join('');
+      wrap.innerHTML = html;
+    },
+
+    renderViewToggle: function(){
+      var c = this.countsByView();
+      var actEl = $('hnd-prod-active-ct');
+      var sugEl = $('hnd-prod-sug-ct');
+      if (actEl) actEl.textContent = String(c.active);
+      if (sugEl) sugEl.textContent = String(c.suggested);
+      document.querySelectorAll('#hnd-prodsales .hnd-svc-tg').forEach(function(t){
+        t.classList.toggle('active', t.getAttribute('data-prod-view') === ProdSales.view);
+      });
+    },
+
+    renderList: function(){
+      var list = this.filtered();
+      var wrap = $('hnd-prodsales-list');
+      if (!list.length){
+        var emptyHtml = '';
+        if (this.view === 'suggested' && this.search){
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">🔍</div><b>No matching starter products</b><p>Try a different search.</p></div>';
+        } else if (this.view === 'suggested'){
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">✓</div><b>No starter products left</b><p>You\'ve activated all the suggested retail products. Add custom retail products with the button above.</p></div>';
+        } else if (this.search){
+          emptyHtml = '<div class="hnd-svc-empty"><div class="ic">🔍</div><b>No matching products</b><p>Try a different search or switch to the <b>Starter</b> tab.</p></div>';
+        } else {
+          emptyHtml = '<div class="hnd-svc-empty">'
+            +   '<div class="ic">🛍️</div>'
+            +   '<b>No retail products yet</b>'
+            +   '<p>Add take-home products your customers can buy at the counter — shampoo bottles, hair oils, gift hampers. Or switch to <b>Starter</b> tab to activate pre-made suggestions.</p>'
+            + '</div>';
+        }
+        wrap.innerHTML = emptyHtml;
+        return;
+      }
+
+      wrap.innerHTML = list.map(function(p){
+        var id = p.id || p.name;
+        var sp = +p.sp || +p.price || 0;
+        var cp = +p.cp || 0;
+        var stock = +p.stock || 0;
+        var marginPct = sp > 0 && cp > 0 ? Math.round(((sp - cp) / sp) * 100) : null;
+        var info = typeInfo(p._type);
+        var isActive = p.active !== false;
+        var statusBadge = isActive
+          ? '<span class="hnd-svc-card-status active">● Active</span>'
+          : '<span class="hnd-svc-card-status starter">★ Starter</span>';
+        var priceCell = sp > 0
+          ? '<div class="hnd-svc-card-price">' + fmtINR(sp) + '</div>'
+          : '<div class="hnd-svc-card-price unset">No price</div>';
+        var stockChip = isActive && p.stock != null
+          ? '<span>Stock: <b' + (stock === 0 ? ' style="color:#DC2626"' : '') + '>' + stock + '</b></span>'
+          : '';
+        var actions = isActive
+          ? '<button class="hnd-svc-card-btn-edit" data-prod-edit="' + escAttr(id) + '">✎ Edit</button>'
+          : '<button class="hnd-svc-card-btn-edit" data-prod-edit="' + escAttr(id) + '">✎ Edit</button>'
+            + '<button class="hnd-svc-card-btn-activate" data-prod-activate="' + escAttr(id) + '">⚡ Activate</button>';
+
+        return '<div class="hnd-svc-card' + (isActive ? '' : ' suggested') + '" data-prod-id="' + escAttr(id) + '">'
+          +   '<div class="hnd-svc-card-h">'
+          +     '<div class="hnd-svc-card-l">'
+          +       '<div class="hnd-svc-card-name"><span class="em">' + (p.emoji || info.em) + '</span><span>' + escHtml(p.name || '—') + '</span></div>'
+          +       '<div class="hnd-svc-card-cat">' + escHtml(info.lbl) + '</div>'
+          +     '</div>'
+          +     priceCell
+          +   '</div>'
+          +   '<div class="hnd-svc-card-meta">'
+          +     statusBadge
+          +     (cp > 0 ? '<span>Cost: <b>' + fmtINR(cp) + '</b></span>' : '')
+          +     (marginPct != null ? '<span>Margin: <b style="color:#15803D">' + marginPct + '%</b></span>' : '')
+          +     stockChip
+          +   '</div>'
+          +   '<div class="hnd-svc-card-actions">' + actions + '</div>'
+          + '</div>';
+      }).join('');
+    },
+
+    render: function(){
+      this.renderKPIs();
+      this.renderChips();
+      this.renderViewToggle();
+      this.renderList();
+    },
+
+    refresh: function(){ this.render(); }
+  };
+
+  /* ── Routing — show #hnd-prodsales for salon on catalog page ── */
+  function currentPageKey(){
+    try {
+      var pages = document.querySelectorAll('.page');
+      for (var i = 0; i < pages.length; i++){
+        var p = pages[i];
+        if (getComputedStyle(p).display !== 'none' && p.getBoundingClientRect().width > 0){
+          return (p.id || '').replace(/^pg-/, '') || 'home';
+        }
+      }
+    } catch(e){}
+    return 'home';
+  }
+  function isSalon(){
+    try {
+      return ((window.App && window.App.vertical) === 'salon')
+          || ((window.S && window.S.prof) === 'salon');
+    } catch(e){ return false; }
+  }
+  function syncShellClass(){
+    var key = currentPageKey();
+    var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+    /* Only mount #hnd-prodsales on catalog page AND when vertical is salon */
+    var on = isDesktop && key === 'catalog' && isSalon();
+    document.body.classList.toggle('hnd-on-prodsales', on);
+    if (on){
+      /* Suppress the default hnd-cat (generic catalog) so we don't double-mount */
+      document.body.classList.remove('hnd-on-cat');
+      ProdSales.render();
+    }
+  }
+
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnd-on-prodsales')) return;
+    var chip = e.target.closest('#hnd-prodsales-chips [data-prod-type]');
+    if (chip){
+      ProdSales.type = chip.getAttribute('data-prod-type');
+      ProdSales.render();
+      return;
+    }
+    var vbtn = e.target.closest('#hnd-prodsales .hnd-svc-tg');
+    if (vbtn){
+      ProdSales.view = vbtn.getAttribute('data-prod-view');
+      ProdSales.type = 'all';
+      ProdSales.render();
+      return;
+    }
+    var edit = e.target.closest('[data-prod-edit]');
+    if (edit){
+      e.stopPropagation();
+      var pid = edit.getAttribute('data-prod-edit');
+      if (window.App && App.openProductSheet) App.openProductSheet(pid);
+      return;
+    }
+    var act = e.target.closest('[data-prod-activate]');
+    if (act){
+      e.stopPropagation();
+      var pid2 = act.getAttribute('data-prod-activate');
+      if (window.App && App.openProductSheet) App.openProductSheet(pid2);
+      return;
+    }
+  });
+
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnd-prodsales-search'){
+      ProdSales.search = e.target.value;
+      ProdSales.renderList();
+    }
+  });
+
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hnd_prodsalesSubbed) return;
+    window.__hnd_prodsalesSubbed = true;
+    try {
+      Store.on('prods', function(){
+        if (document.body.classList.contains('hnd-on-prodsales')) ProdSales.render();
+      });
+    } catch(e){}
+  }
+
+  function hookAppNav(){
+    if (!window.App || typeof window.App.nav !== 'function') return;
+    if (window.App.__hnd_prodsalesNavHooked) return;
+    var orig = window.App.nav;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 80);
+      return r;
+    };
+    window.App.__hnd_prodsalesNavHooked = true;
+    syncShellClass();
+  }
+
+  function boot(retry){
+    hookAppNav();
+    subscribe();
+    syncShellClass();
+    if (retry > 0 && (!window.App || !window.App.__hnd_prodsalesNavHooked || !window.__hnd_prodsalesSubbed)){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(8); });
+  } else {
+    boot(8);
+  }
+  window.addEventListener('hn:shellchange', function(){ setTimeout(syncShellClass, 100); });
+
+  window.HND = window.HND || {};
+  window.HND.prodsales = ProdSales;
+})();
+</script>
+<!-- =================== END Salon Product Sales block =================== -->
 
 
 <!-- ============================================================
@@ -55605,6 +56721,31 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
         if (igItem.textContent !== igCorrect){
           igItem.textContent = igCorrect;
           igItem.removeAttribute('data-i18n');
+        }
+      }
+
+      /* Page header titles (so they update even if renderCatalogScreen
+         hasn't run yet — eg user navigated direct to /#catalog without
+         hitting the screen-update lifecycle). */
+      if (v === 'salon'){
+        var catTitle = document.getElementById('catalog-title');
+        if (catTitle && catTitle.textContent !== 'Product Sales'){
+          catTitle.textContent = 'Product Sales';
+        }
+        var hndCatH1 = document.querySelector('#hnd-cat .hnd-pgh h1');
+        if (hndCatH1 && hndCatH1.textContent !== 'Product Sales'){
+          hndCatH1.textContent = 'Product Sales';
+          hndCatH1.removeAttribute('data-i18n');
+        }
+        var hndCatSub = document.getElementById('hnd-cat-sub');
+        if (hndCatSub && hndCatSub.textContent !== 'Take-home products customers can buy'){
+          hndCatSub.textContent = 'Take-home products customers can buy';
+          hndCatSub.removeAttribute('data-i18n');
+        }
+        var invTitle = document.querySelector('#pg-inventory .hdr-title');
+        if (invTitle && invTitle.textContent !== 'Services'){
+          invTitle.textContent = 'Services';
+          invTitle.removeAttribute('data-i18n');
         }
       }
     } catch(e){}
