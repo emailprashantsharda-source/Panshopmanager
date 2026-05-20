@@ -17653,7 +17653,11 @@ const App = {
           packPrice:      Number(s.price) || 0,
           packQtyInBase:  packQtyInBase,
           stock:          0,
-          min:            0
+          min:            0,
+          /* May 2026: new supplies start as inactive (live in Browse tab).
+             User taps "Start tracking" to move them into "In stock" view. */
+          active:         false,
+          seeded:         true
         });
         added++;
       } catch(e){
@@ -40633,6 +40637,638 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 })();
 </script>
 <!-- =================== END Salon Product Sales block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     SUPPLIES desktop screen (Step F-SU · May 2026)
+     ────────────────────────────────────────────────────────────
+     Salon-only backbar/consumables tracker. Mirrors Services screen:
+     category chips (Hair/Color/Skin/Tools/Disposables) + In stock /
+     Browse toggle + card grid with stock bars. Hidden by default
+     for non-salon verticals (they continue using #pg-ingredients).
+════════════════════════════════════════════════════════════ -->
+<style>
+html[data-shell="desktop"] body.hnd-on-supplies #pg-ingredients,
+html[data-shell="desktop"] body.hnd-on-supplies #cart-summary { display: none !important; }
+#hnd-supplies { display: none; }
+html[data-shell="desktop"] body.hnd-on-supplies #hnd-supplies {
+  display: block;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
+  padding: 24px 28px 32px;
+  background: var(--hnd-bg);
+  z-index: 8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnd-ink);
+  min-height: calc(100vh - var(--hnd-tb-h));
+}
+
+/* Inventory-value strip (replaces the old KPI strip) */
+.hnd-su-valstrip {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px;
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+}
+.hnd-su-valstrip-l { color: var(--hnd-muted); font-weight: 600; letter-spacing: .02em; text-transform: uppercase; font-size: 11px; }
+.hnd-su-valstrip-v { font-size: 16px; font-weight: 700; color: var(--hnd-ink); font-variant-numeric: tabular-nums; }
+.hnd-su-valstrip-sep { width: 1px; height: 16px; background: var(--hnd-line); }
+.hnd-su-valstrip-low { color: #B45309; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.hnd-su-valstrip-low.danger { color: #DC2626; }
+.hnd-su-valstrip-low.healthy { color: #15803D; }
+
+/* Supply card */
+.hnd-su-card {
+  background: var(--hnd-card);
+  border: 1px solid var(--hnd-line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex; flex-direction: column;
+  gap: 10px;
+  transition: all .12s;
+  cursor: pointer;
+}
+.hnd-su-card:hover {
+  border-color: var(--hnd-gold);
+  box-shadow: 0 6px 20px -10px rgba(184,138,86,.4);
+  transform: translateY(-1px);
+}
+.hnd-su-card.browse {
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 60%);
+  border-style: dashed;
+}
+.hnd-su-card-h { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
+.hnd-su-card-l { flex: 1; min-width: 0; }
+.hnd-su-card-name {
+  font-size: 14px; font-weight: 700;
+  color: var(--hnd-ink); line-height: 1.3;
+  display: flex; align-items: center; gap: 6px;
+}
+.hnd-su-card-name .em { font-size: 16px; }
+.hnd-su-card-meta {
+  font-size: 11.5px; color: var(--hnd-muted);
+  margin-top: 3px; font-weight: 500;
+}
+.hnd-su-card-status {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .03em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.hnd-su-card-status.instock { background: #F0FDF4; color: #15803D; }
+.hnd-su-card-status.low     { background: #FEF3C7; color: #B45309; }
+.hnd-su-card-status.out     { background: #FEF2F2; color: #991B1B; }
+.hnd-su-card-status.browse  { background: #FFF7ED; color: #C2410C; }
+
+/* Stock row + bar */
+.hnd-su-stock { padding-top: 6px; }
+.hnd-su-stock-row {
+  display: flex; justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 5px;
+}
+.hnd-su-stock-lbl { font-size: 11.5px; color: var(--hnd-muted); }
+.hnd-su-stock-amt { font-size: 13px; font-weight: 600; color: var(--hnd-ink); font-variant-numeric: tabular-nums; }
+.hnd-su-stock-amt.danger { color: #991B1B; }
+.hnd-su-bar { height: 5px; background: #F4F0E8; border-radius: 99px; overflow: hidden; }
+.hnd-su-bar-fill { height: 100%; transition: width .25s ease, background .15s; }
+.hnd-su-bar-fill.healthy { background: #15803D; }
+.hnd-su-bar-fill.low     { background: #B45309; }
+.hnd-su-bar-fill.out     { background: #991B1B; }
+
+/* Action buttons */
+.hnd-su-card-actions { display: flex; gap: 6px; margin-top: 4px; }
+.hnd-su-card-actions button {
+  flex: 1; padding: 8px 12px;
+  font-size: 12px; font-weight: 600;
+  font-family: inherit;
+  border-radius: 7px; cursor: pointer;
+  transition: all .12s;
+  border: 0;
+}
+.hnd-su-btn-edit { background: var(--hnd-bg); border: 1px solid var(--hnd-line) !important; color: var(--hnd-ink); }
+.hnd-su-btn-edit:hover { background: var(--hnd-card); border-color: var(--hnd-gold) !important; }
+.hnd-su-btn-add { background: #fff; border: 1px solid var(--hnd-line) !important; color: var(--hnd-ink); }
+.hnd-su-btn-add:hover { border-color: var(--hnd-gold) !important; }
+.hnd-su-btn-refill {
+  background: linear-gradient(180deg, #FF6B35 0%, #EA580C 100%);
+  color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(255,107,53,.4);
+}
+.hnd-su-btn-refill:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -3px rgba(255,107,53,.5); }
+.hnd-su-btn-track {
+  background: linear-gradient(180deg, #FF6B35 0%, #EA580C 100%);
+  color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(255,107,53,.4);
+}
+.hnd-su-btn-track:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -3px rgba(255,107,53,.5); }
+
+/* Empty / browse-nudge banner */
+.hnd-su-nudge {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #FFF7ED;
+  border: 1px dashed #FED7AA;
+  border-radius: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hnd-su-nudge-ic { font-size: 22px; }
+.hnd-su-nudge-mid { flex: 1; }
+.hnd-su-nudge-t { font-size: 13px; font-weight: 700; color: #9A3412; }
+.hnd-su-nudge-s { font-size: 11.5px; color: #C2410C; margin-top: 2px; line-height: 1.4; }
+.hnd-su-nudge-btn {
+  padding: 8px 16px;
+  background: #0A0A0A; color: #fff;
+  border: 0; border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+.hnd-su-nudge-btn:hover { background: #1F1F1F; }
+</style>
+
+<div id="hnd-supplies">
+  <div class="hnd-pgh">
+    <div class="hnd-pgh-l">
+      <h1>Supplies</h1>
+      <p>Hair color, shampoo, wax — what your services use up</p>
+    </div>
+    <div class="hnd-pgh-r">
+      <button class="hnd-btn dark" onclick="window.HND && HND.supplies && HND.supplies.openAdd()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Add a supply</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="hnd-su-valstrip" id="hnd-su-valstrip"></div>
+
+  <div class="hnd-svc-tabs" id="hnd-su-tabs"></div>
+
+  <div class="hnd-svc-search-wrap">
+    <div class="hnd-search-box hnd-svc-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="hnd-su-search" placeholder="Search supplies…" autocomplete="off">
+    </div>
+    <div class="hnd-svc-toggle">
+      <button class="hnd-svc-tg active" data-su-view="active" title="Supplies you're currently tracking">In stock <span class="cc" id="hnd-su-active-ct">0</span></button>
+      <button class="hnd-svc-tg" data-su-view="browse" title="Ready-made supply suggestions waiting to be activated">Browse <span class="cc" id="hnd-su-browse-ct">0</span></button>
+    </div>
+  </div>
+
+  <div class="hnd-svc-list" id="hnd-supplies-list"></div>
+
+  <div id="hnd-supplies-nudge-slot"></div>
+</div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function escAttr(s){ return escHtml(s).replace(/"/g,'&quot;'); }
+  function fmtINR(n){ try { return '₹' + Math.round(+n || 0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n||0); } }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+
+  /* Category labels */
+  var CAT_LABELS = {
+    'all':         { lbl: 'All',         em: '✨' },
+    'hair':        { lbl: 'Hair Care',   em: '💇' },
+    'color':       { lbl: 'Color',       em: '🎨' },
+    'skin':        { lbl: 'Skin',        em: '🧖' },
+    'tools':       { lbl: 'Tools',       em: '🪒' },
+    'disposables': { lbl: 'Disposables', em: '🧻' },
+    'other':       { lbl: 'Other',       em: '📦' }
+  };
+  function catInfo(key){ return CAT_LABELS[key] || { lbl: key, em: '📦' }; }
+
+  /* Format a quantity in the unit (e.g. 350 ml, 1.2 kg) */
+  function fmtQty(qty, unit){
+    try {
+      if (window.UNITS && UNITS.format) return UNITS.format(qty, unit);
+    } catch(e){}
+    return (Math.round((+qty || 0) * 100) / 100) + (unit || '');
+  }
+
+  var Supplies = {
+    cat: 'all',           /* all | hair | color | skin | tools | disposables */
+    view: 'active',       /* active (In stock) | browse */
+    search: '',
+
+    /* Returns all supply items (from 'ingredients' collection) */
+    all: function(){
+      return safeList('ingredients');
+    },
+
+    /* Is this item active (tracked by user) or browse-only? */
+    isActive: function(item){
+      /* For existing data without `active` field, default to TRUE
+         (backwards compat — items already in user's collection stay visible). */
+      return item.active !== false;
+    },
+
+    /* Items shown based on current tab + cat + search */
+    filtered: function(){
+      var self = this;
+      var list = this.all().filter(function(it){
+        return self.view === 'active' ? self.isActive(it) : !self.isActive(it);
+      });
+      if (this.cat !== 'all'){
+        list = list.filter(function(it){ return (it.cat || 'other') === self.cat; });
+      }
+      var q = (this.search || '').trim().toLowerCase();
+      if (q){
+        list = list.filter(function(it){
+          var hay = ((it.name || '') + ' ' + (it.brand || '')).toLowerCase();
+          return hay.indexOf(q) >= 0;
+        });
+      }
+      list.sort(function(a, b){ return (a.name || '').localeCompare(b.name || ''); });
+      return list;
+    },
+
+    /* Counts for category chips (within current view) */
+    countsByCat: function(){
+      var self = this;
+      var list = this.all().filter(function(it){
+        return self.view === 'active' ? self.isActive(it) : !self.isActive(it);
+      });
+      var c = { all: list.length };
+      list.forEach(function(it){
+        var k = it.cat || 'other';
+        c[k] = (c[k] || 0) + 1;
+      });
+      return c;
+    },
+
+    /* Counts for view toggle (across all categories) */
+    countsByView: function(){
+      var self = this;
+      var all = this.all();
+      return {
+        active: all.filter(function(it){ return self.isActive(it); }).length,
+        browse: all.filter(function(it){ return !self.isActive(it); }).length
+      };
+    },
+
+    /* Inventory value summary */
+    summary: function(){
+      var self = this;
+      var active = this.all().filter(function(it){ return self.isActive(it); });
+      var totalValue = 0;
+      var lowCount = 0;
+      var outCount = 0;
+      active.forEach(function(it){
+        var stock = +it.stock || 0;
+        var packQty = +it.packQtyInBase || 0;
+        var packPrice = +it.packPrice || 0;
+        var pricePerUnit = packQty > 0 ? packPrice / packQty : 0;
+        totalValue += stock * pricePerUnit;
+        if (stock <= 0) outCount++;
+        else if (packQty > 0 && stock < packQty * 0.25) lowCount++;
+      });
+      return {
+        total: active.length,
+        value: totalValue,
+        low: lowCount,
+        out: outCount
+      };
+    },
+
+    /* Compute stock status for one item */
+    stockStatus: function(item){
+      var stock = +item.stock || 0;
+      var packQty = +item.packQtyInBase || 0;
+      if (stock <= 0) return 'out';
+      if (packQty > 0 && stock < packQty * 0.25) return 'low';
+      return 'healthy';
+    },
+
+    renderValStrip: function(){
+      var s = this.summary();
+      var html = '';
+      html += '<span class="hnd-su-valstrip-l">Inventory value</span>';
+      html += '<span class="hnd-su-valstrip-v">' + (s.value > 0 ? fmtINR(s.value) : '—') + '</span>';
+      html += '<span class="hnd-su-valstrip-sep"></span>';
+      html += '<span class="hnd-su-valstrip-l">Tracking</span>';
+      html += '<span class="hnd-su-valstrip-v">' + s.total + '</span>';
+      if (s.out > 0){
+        html += '<span class="hnd-su-valstrip-sep"></span>';
+        html += '<span class="hnd-su-valstrip-low danger">○ ' + s.out + ' out of stock</span>';
+      } else if (s.low > 0){
+        html += '<span class="hnd-su-valstrip-sep"></span>';
+        html += '<span class="hnd-su-valstrip-low">⚠ ' + s.low + ' low</span>';
+      } else if (s.total > 0){
+        html += '<span class="hnd-su-valstrip-sep"></span>';
+        html += '<span class="hnd-su-valstrip-low healthy">● All healthy</span>';
+      }
+      $('hnd-su-valstrip').innerHTML = html;
+    },
+
+    renderTabs: function(){
+      var counts = this.countsByCat();
+      var cats = ['all','hair','color','skin','tools','disposables'];
+      var seen = {};
+      cats.forEach(function(k){ seen[k] = true; });
+      /* Add any unknown categories present in data */
+      Object.keys(counts).forEach(function(k){
+        if (!seen[k] && k !== 'all') cats.push(k);
+      });
+      /* Only show cats with items (except 'all' which is always shown) */
+      cats = cats.filter(function(k){ return k === 'all' || (counts[k] || 0) > 0; });
+      var self = this;
+      $('hnd-su-tabs').innerHTML = cats.map(function(k){
+        var info = catInfo(k);
+        var isActive = (k === self.cat);
+        return '<button class="hnd-svc-tab' + (isActive ? ' active' : '') + '" data-su-cat="' + escAttr(k) + '">'
+          + '<span class="ic">' + info.em + '</span>'
+          + '<span>' + escHtml(info.lbl) + '</span>'
+          + '<span class="ct">' + (counts[k] || 0) + '</span>'
+          + '</button>';
+      }).join('');
+    },
+
+    renderToggle: function(){
+      var c = this.countsByView();
+      $('hnd-su-active-ct').textContent = c.active;
+      $('hnd-su-browse-ct').textContent = c.browse;
+      document.querySelectorAll('#hnd-supplies .hnd-svc-tg').forEach(function(t){
+        t.classList.toggle('active', t.getAttribute('data-su-view') === Supplies.view);
+      });
+    },
+
+    renderList: function(){
+      var list = this.filtered();
+      var wrap = $('hnd-supplies-list');
+      var isBrowseView = (this.view === 'browse');
+      var info = catInfo(this.cat);
+
+      if (!list.length){
+        var html = '';
+        if (isBrowseView){
+          html = '<div class="hnd-svc-empty"><div class="ic">✓</div><b>No suggestions left</b><p>You\'ve activated all the suggested supplies. Use the "Add a supply" button above to add your own.</p></div>';
+        } else if (this.search){
+          html = '<div class="hnd-svc-empty"><div class="ic">🔍</div><b>No matching supplies</b><p>Try a different search term or switch categories.</p></div>';
+        } else if (this.cat === 'all'){
+          /* No active items at all → invite to browse */
+          var browseCount = this.countsByView().browse;
+          html = '<div class="hnd-svc-empty">'
+            +   '<div class="ic">📦</div>'
+            +   '<b>No supplies in stock yet</b>'
+            +   '<p>Switch to the <b>Browse</b> tab to activate ' + browseCount + ' ready-made supplies — shampoo, color, wax, tools — or add your own with the button above.</p>'
+            + '</div>';
+        } else {
+          html = '<div class="hnd-svc-empty"><div class="ic">' + info.em + '</div><b>No supplies tracked in ' + escHtml(info.lbl) + '</b><p>Switch to <b>Browse</b> to activate suggestions for this category.</p></div>';
+        }
+        wrap.innerHTML = html;
+        this.renderNudge();
+        return;
+      }
+
+      wrap.innerHTML = list.map(function(it){
+        var id = it.id;
+        var stock = +it.stock || 0;
+        var packQty = +it.packQtyInBase || 0;
+        var packPrice = +it.packPrice || 0;
+        var pricePerUnit = packQty > 0 ? packPrice / packQty : 0;
+        var unit = it.baseUnit || '';
+        var status = Supplies.stockStatus(it);
+        var info = catInfo(it.cat || 'other');
+
+        var statusBadge, actions, stockSection;
+
+        if (isBrowseView){
+          statusBadge = '<span class="hnd-su-card-status browse">★ Tap to track</span>';
+          stockSection = '<div class="hnd-su-stock">'
+            + '<div class="hnd-su-stock-row">'
+            +   '<span class="hnd-su-stock-lbl">Pack price</span>'
+            +   '<span class="hnd-su-stock-amt">' + fmtINR(packPrice) + ' / ' + fmtQty(packQty, unit) + '</span>'
+            + '</div>'
+            + '</div>';
+          actions = '<button class="hnd-su-btn-edit" data-su-edit="' + escAttr(id) + '">✎ Edit</button>'
+            + '<button class="hnd-su-btn-track" data-su-track="' + escAttr(id) + '">⚡ Start tracking</button>';
+        } else {
+          if (status === 'out'){
+            statusBadge = '<span class="hnd-su-card-status out">○ Out</span>';
+          } else if (status === 'low'){
+            statusBadge = '<span class="hnd-su-card-status low">⚠ Low</span>';
+          } else {
+            statusBadge = '<span class="hnd-su-card-status instock">● In stock</span>';
+          }
+          var stockPct = packQty > 0 ? Math.min(100, (stock / packQty) * 100) : (stock > 0 ? 100 : 0);
+          stockSection = '<div class="hnd-su-stock">'
+            + '<div class="hnd-su-stock-row">'
+            +   '<span class="hnd-su-stock-lbl">Stock on hand</span>'
+            +   '<span class="hnd-su-stock-amt' + (status === 'out' ? ' danger' : '') + '">' + fmtQty(stock, unit) + (packQty > 0 ? ' / ' + fmtQty(packQty, unit) : '') + '</span>'
+            + '</div>'
+            + '<div class="hnd-su-bar"><div class="hnd-su-bar-fill ' + status + '" style="width:' + stockPct + '%"></div></div>'
+            + '</div>';
+          if (status === 'out' || status === 'low'){
+            actions = '<button class="hnd-su-btn-edit" data-su-edit="' + escAttr(id) + '">✎ Edit</button>'
+              + '<button class="hnd-su-btn-refill" data-su-edit="' + escAttr(id) + '">↑ Refill now</button>';
+          } else {
+            actions = '<button class="hnd-su-btn-edit" data-su-edit="' + escAttr(id) + '">✎ Edit</button>'
+              + '<button class="hnd-su-btn-add" data-su-edit="' + escAttr(id) + '">+ Add stock</button>';
+          }
+        }
+
+        var subText = (it.brand && it.brand !== 'Generic' ? it.brand + ' · ' : '')
+                    + (packQty > 0 ? fmtQty(packQty, unit) + ' pack' : 'No pack info')
+                    + (packPrice > 0 ? ' · ' + fmtINR(packPrice) : '');
+
+        return '<div class="hnd-su-card' + (isBrowseView ? ' browse' : '') + '" data-su-id="' + escAttr(id) + '">'
+          + '<div class="hnd-su-card-h">'
+          +   '<div class="hnd-su-card-l">'
+          +     '<div class="hnd-su-card-name"><span class="em">' + (it.emoji || info.em) + '</span><span>' + escHtml(it.name || '—') + '</span></div>'
+          +     '<div class="hnd-su-card-meta">' + escHtml(subText) + '</div>'
+          +   '</div>'
+          +   statusBadge
+          + '</div>'
+          + stockSection
+          + '<div class="hnd-su-card-actions">' + actions + '</div>'
+          + '</div>';
+      }).join('');
+
+      this.renderNudge();
+    },
+
+    /* Soft nudge inviting user to browse when active view is sparse */
+    renderNudge: function(){
+      var slot = $('hnd-supplies-nudge-slot');
+      var counts = this.countsByView();
+      if (this.view === 'active' && counts.browse > 0 && counts.active < 10 && !this.search){
+        slot.innerHTML = '<div class="hnd-su-nudge">'
+          + '<span class="hnd-su-nudge-ic">📦</span>'
+          + '<div class="hnd-su-nudge-mid">'
+          +   '<div class="hnd-su-nudge-t">' + counts.browse + ' more ready-made supplies waiting</div>'
+          +   '<div class="hnd-su-nudge-s">Switch to <b>Browse</b> tab to add backbar items you stock — shampoo, wax, color, tools</div>'
+          + '</div>'
+          + '<button class="hnd-su-nudge-btn" data-su-goto-browse>Browse →</button>'
+          + '</div>';
+      } else {
+        slot.innerHTML = '';
+      }
+    },
+
+    render: function(){
+      this.renderValStrip();
+      this.renderTabs();
+      this.renderToggle();
+      this.renderList();
+    },
+
+    refresh: function(){ this.render(); },
+
+    /* Open the existing ingredient sheet for new add */
+    openAdd: function(){
+      if (window.App && App.openIngredientSheet) App.openIngredientSheet();
+    },
+
+    /* Mark a browse item as actively tracked */
+    activate: function(id){
+      if (!id) return;
+      try {
+        if (window.Store && Store.update){
+          Store.update('ingredients', id, { active: true });
+        }
+        if (window.App && App.toast) App.toast('Now tracking — set your stock level');
+        this.view = 'active';
+        this.render();
+        /* Auto-open the edit sheet so user can set initial stock */
+        setTimeout(function(){
+          if (window.App && App.openSupplyDetail) App.openSupplyDetail(id);
+          else if (window.App && App.openIngredientSheet) App.openIngredientSheet(id);
+        }, 80);
+      } catch(e){ console.warn('[Supplies] activate failed', e); }
+    }
+  };
+
+  /* ── Routing ─────────────────────────────────────────────── */
+  function currentPageKey(){
+    try { if (window.App && window.App.current) return window.App.current; } catch(e){}
+    return 'home';
+  }
+  function isSalon(){
+    try {
+      return ((window.App && window.App.vertical) === 'salon')
+          || ((window.S && window.S.prof) === 'salon');
+    } catch(e){ return false; }
+  }
+  function syncShellClass(){
+    var key = currentPageKey();
+    var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+    var on = isDesktop && key === 'ingredients' && isSalon();
+    document.body.classList.toggle('hnd-on-supplies', on);
+    if (on) Supplies.render();
+  }
+
+  /* Direct nav listener as belt-and-suspenders */
+  document.addEventListener('click', function(e){
+    var navBtn = e.target.closest('[data-hnd-nav="ingredients"]');
+    if (navBtn){
+      setTimeout(syncShellClass, 50);
+      setTimeout(syncShellClass, 150);
+    }
+  });
+
+  /* Event delegation inside the new screen */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnd-on-supplies')) return;
+    /* Category chip */
+    var tab = e.target.closest('#hnd-su-tabs [data-su-cat]');
+    if (tab){
+      Supplies.cat = tab.getAttribute('data-su-cat');
+      Supplies.render();
+      return;
+    }
+    /* View toggle */
+    var vbtn = e.target.closest('#hnd-supplies .hnd-svc-tg');
+    if (vbtn){
+      Supplies.view = vbtn.getAttribute('data-su-view');
+      Supplies.cat = 'all';
+      Supplies.render();
+      return;
+    }
+    /* Nudge → switch to browse */
+    if (e.target.closest('[data-su-goto-browse]')){
+      Supplies.view = 'browse';
+      Supplies.cat = 'all';
+      Supplies.render();
+      return;
+    }
+    /* Edit existing supply */
+    var edit = e.target.closest('[data-su-edit]');
+    if (edit){
+      e.stopPropagation();
+      var pid = edit.getAttribute('data-su-edit');
+      if (window.App && App.openSupplyDetail) App.openSupplyDetail(pid);
+      else if (window.App && App.openIngredientSheet) App.openIngredientSheet(pid);
+      return;
+    }
+    /* Start tracking a browse item */
+    var trk = e.target.closest('[data-su-track]');
+    if (trk){
+      e.stopPropagation();
+      Supplies.activate(trk.getAttribute('data-su-track'));
+      return;
+    }
+  });
+
+  /* Search input */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnd-su-search'){
+      Supplies.search = e.target.value;
+      Supplies.renderList();
+    }
+  });
+
+  /* Hook into App.nav */
+  function hookNav(){
+    if (!window.App || window.App.__hndSuppliesHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 60);
+      return r;
+    };
+    window.App.__hndSuppliesHooked = true;
+    syncShellClass();
+    return true;
+  }
+
+  /* Subscribe to ingredients data changes */
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hndSuppliesSubbed) return;
+    window.__hndSuppliesSubbed = true;
+    try {
+      Store.on('ingredients', function(){
+        if (document.body.classList.contains('hnd-on-supplies')) Supplies.render();
+      });
+    } catch(e){}
+  }
+
+  function boot(retry){
+    subscribe();
+    syncShellClass();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(10); });
+  } else { boot(10); }
+
+  window.HND = window.HND || {};
+  window.HND.supplies = Supplies;
+})();
+</script>
+<!-- =================== END Salon Supplies block =================== -->
 
 
 <!-- ============================================================
