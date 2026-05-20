@@ -38605,41 +38605,40 @@ html[data-shell="desktop"] body.hnd-on-cat #hnd-cat {
    Single scrollbar (page-level only) — no nested overflow.
 ════════════════════════════════════════════════════════════ */
 #hnd-services { display: none; }
+html[data-shell="desktop"] body.hnd-on-services #pg-inventory,
+html[data-shell="desktop"] body.hnd-on-services #cart-summary { display: none !important; }
 html[data-shell="desktop"] body.hnd-on-services #hnd-services {
-  /* Static positioning so the element flows in body and content extends
-     body scroll height. position:absolute would take it out of flow → body
-     wouldn't grow → no page scrollbar for 108+ service cards. (May 2026 fix) */
+  /* Match dashboard pattern (#hnd-dash) exactly — position:absolute on body
+     (which is position:relative) makes the element part of body's scrollable
+     area. The browser scrollbar appears on viewport and scrolls naturally. */
   display: block;
-  position: relative;
-  width: 100%;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
   padding: 24px 28px 32px;
   background: var(--hnd-bg);
+  z-index: 8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnd-ink);
   min-height: calc(100vh - var(--hnd-tb-h));
-  box-sizing: border-box;
-}
-/* When services screen is active, hide the mobile inventory page completely.
-   Also hide the .app container (mobile shell) so the new screen has the full
-   body content area and body grows naturally with the card list height. */
-html[data-shell="desktop"] body.hnd-on-services #pg-inventory,
-html[data-shell="desktop"] body.hnd-on-services .app {
-  display: none !important;
 }
 
-/* Product Sales screen — same shell pattern as Services, mounted on catalog page for salon */
+/* Product Sales screen — same shell pattern as dashboard */
 #hnd-prodsales { display: none; }
+html[data-shell="desktop"] body.hnd-on-prodsales #pg-catalog,
+html[data-shell="desktop"] body.hnd-on-prodsales #hnd-cat,
+html[data-shell="desktop"] body.hnd-on-prodsales #cart-summary { display: none !important; }
 html[data-shell="desktop"] body.hnd-on-prodsales #hnd-prodsales {
   display: block;
-  position: relative;
-  width: 100%;
+  position: absolute;
+  left: var(--hnd-sb-w); right: 0;
+  top: var(--hnd-tb-h);
   padding: 24px 28px 32px;
   background: var(--hnd-bg);
+  z-index: 8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnd-ink);
   min-height: calc(100vh - var(--hnd-tb-h));
-  box-sizing: border-box;
-}
-html[data-shell="desktop"] body.hnd-on-prodsales #hnd-cat,
-html[data-shell="desktop"] body.hnd-on-prodsales #pg-catalog,
-html[data-shell="desktop"] body.hnd-on-prodsales .app {
-  display: none !important;
 }
 html[data-shell="desktop"] body.hnd-on-prodsales #hnd-cat,
 html[data-shell="desktop"] body.hnd-on-prodsales #pg-catalog {
