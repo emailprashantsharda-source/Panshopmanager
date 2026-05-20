@@ -8402,6 +8402,16 @@ const App = {
 
     this._syncFromStore();
 
+    /* Clear any inflated body.style.minHeight left behind by Services /
+       Product Sales / Supplies screens so subsequent pages aren't affected
+       by an outdated content-height value. The destination page's render
+       will re-set it if it needs the page-scroll fix. */
+    try {
+      if (document.body && document.body.style && document.body.style.minHeight){
+        document.body.style.minHeight = '';
+      }
+    } catch(e){}
+
     try {
       const role = (window.AppRole && AppRole.getCurrentRole && AppRole.getCurrentRole()) || 'owner';
 
@@ -17517,6 +17527,26 @@ const App = {
     } else {
       try { this.renderCostAnalysisSection(); } catch(e){ console.warn('[CostAnalysis] render failed:', e); }
     }
+
+    /* DESKTOP SCROLL FIX (May 2026):
+       Body has display:flex which prevents normal block flow from extending
+       body's scrollHeight when content overflows viewport. Force body's
+       min-height to match the supplies page content height so the page-level
+       scrollbar appears and works with 38+ supply items. Mirrors the same
+       fix used by Services and Product Sales modules. */
+    try {
+      var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+      if (isDesktop && this.current === 'ingredients'){
+        requestAnimationFrame(function(){
+          var pg = document.getElementById('pg-ingredients');
+          if (pg && pg.classList.contains('active')){
+            var contentH = pg.scrollHeight;
+            var tb = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hnd-tb-h')) || 56;
+            document.body.style.minHeight = (contentH + tb + 40) + 'px';
+          }
+        });
+      }
+    } catch(e){}
   },
 
   supSetCat(catId){
@@ -64835,6 +64865,663 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 }
 </style>
 <!-- =================== END Step KKK block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     NEW RETAIL PRODUCT modal (NRP · May 2026)
+     ────────────────────────────────────────────────────────────
+     Clean single-screen modal to replace the old prod-sheet popup
+     when adding/editing retail products on salon Product Sales.
+     Compact form: name + type chips + sell/cost prices (with live
+     margin) + stock stepper. Optional brand/pack under expander.
+     Centered modal on desktop, bottom-sheet on mobile.
+════════════════════════════════════════════════════════════ -->
+<div id="nrp-modal" class="nrp-modal" aria-hidden="true">
+  <div class="nrp-mask" data-nrp-close></div>
+  <div class="nrp-dialog" role="dialog" aria-labelledby="nrp-title">
+    <header class="nrp-h">
+      <div class="nrp-h-l">
+        <div class="nrp-h-ic">🛍️</div>
+        <div>
+          <h2 class="nrp-title" id="nrp-title">Add retail product</h2>
+          <p class="nrp-sub" id="nrp-sub">Take-home items customers buy at the counter</p>
+        </div>
+      </div>
+      <button class="nrp-close" data-nrp-close aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </header>
+
+    <main class="nrp-body">
+      <!-- Product name -->
+      <div class="nrp-field">
+        <label class="nrp-lbl" for="nrp-name">Product name <span class="nrp-req">required</span></label>
+        <input class="nrp-input" id="nrp-name" type="text" placeholder="e.g., L'Oréal Hair Color 500ml" autocomplete="off" maxlength="80">
+      </div>
+
+      <!-- Type chips -->
+      <div class="nrp-field">
+        <label class="nrp-lbl">Type</label>
+        <div class="nrp-chips" id="nrp-type-chips">
+          <button type="button" class="nrp-chip active" data-nrp-type="hair">💇 Hair Care</button>
+          <button type="button" class="nrp-chip" data-nrp-type="skin">🧴 Skin Care</button>
+          <button type="button" class="nrp-chip" data-nrp-type="gift">🎁 Gift Sets</button>
+          <button type="button" class="nrp-chip" data-nrp-type="tools">🪒 Tools</button>
+          <button type="button" class="nrp-chip" data-nrp-type="other">✨ Other</button>
+        </div>
+      </div>
+
+      <!-- Prices row -->
+      <div class="nrp-row-2">
+        <div class="nrp-field">
+          <label class="nrp-lbl" for="nrp-sp">Sell price <span class="nrp-req">required</span></label>
+          <div class="nrp-input-wrap nrp-prefix">
+            <span class="nrp-prefix-sym">₹</span>
+            <input class="nrp-input" id="nrp-sp" type="number" inputmode="decimal" placeholder="0" min="0" step="1">
+          </div>
+        </div>
+        <div class="nrp-field">
+          <label class="nrp-lbl" for="nrp-cp">Cost price <span class="nrp-opt">optional</span></label>
+          <div class="nrp-input-wrap nrp-prefix">
+            <span class="nrp-prefix-sym">₹</span>
+            <input class="nrp-input" id="nrp-cp" type="number" inputmode="decimal" placeholder="0" min="0" step="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Live margin preview -->
+      <div class="nrp-margin" id="nrp-margin" style="display:none">
+        <div class="nrp-margin-l">
+          <span class="nrp-margin-ic">📈</span>
+          <span>Profit per item</span>
+        </div>
+        <div class="nrp-margin-r">
+          <span class="nrp-margin-amt" id="nrp-margin-amt">₹0</span>
+          <span class="nrp-margin-pct" id="nrp-margin-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- Stock stepper -->
+      <div class="nrp-field">
+        <label class="nrp-lbl" for="nrp-stock">Stock on hand</label>
+        <div class="nrp-stepper">
+          <button type="button" class="nrp-step-btn" data-nrp-stock="-10">−10</button>
+          <button type="button" class="nrp-step-btn" data-nrp-stock="-1">−1</button>
+          <input class="nrp-input nrp-stepper-input" id="nrp-stock" type="number" inputmode="numeric" value="0" min="0" step="1">
+          <button type="button" class="nrp-step-btn" data-nrp-stock="1">+1</button>
+          <button type="button" class="nrp-step-btn" data-nrp-stock="10">+10</button>
+        </div>
+        <p class="nrp-hint">Track inventory so you know when to reorder</p>
+      </div>
+
+      <!-- Expandable: more details -->
+      <button type="button" class="nrp-expand" id="nrp-expand-btn" data-nrp-expand>
+        <span>+ Add more details (brand, pack size)</span>
+        <svg class="nrp-expand-ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="nrp-more" id="nrp-more" style="display:none">
+        <div class="nrp-row-2">
+          <div class="nrp-field">
+            <label class="nrp-lbl" for="nrp-brand">Brand</label>
+            <input class="nrp-input" id="nrp-brand" type="text" placeholder="e.g., L'Oréal" autocomplete="off" maxlength="40">
+          </div>
+          <div class="nrp-field">
+            <label class="nrp-lbl" for="nrp-pack">Pack size</label>
+            <input class="nrp-input" id="nrp-pack" type="text" placeholder="e.g., 500ml, 200g" autocomplete="off" maxlength="20">
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="nrp-foot">
+      <button type="button" class="nrp-btn nrp-btn-ghost" data-nrp-close>Cancel</button>
+      <button type="button" class="nrp-btn nrp-btn-primary" id="nrp-save" disabled>+ Add to Product Sales</button>
+    </footer>
+  </div>
+</div>
+
+<style>
+/* ── Modal scrim + dialog shell ───────────────────────────── */
+.nrp-modal {
+  position: fixed; inset: 0;
+  display: none;
+  z-index: 200;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+.nrp-modal.open { display: block; }
+.nrp-mask {
+  position: absolute; inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: nrp-fade .22s cubic-bezier(.4,0,.2,1);
+}
+@keyframes nrp-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes nrp-slide-up { from { opacity: 0; transform: translate(-50%, 20px) } to { opacity: 1; transform: translate(-50%, 0) } }
+@keyframes nrp-slide-up-mobile { from { transform: translateY(100%) } to { transform: translateY(0) } }
+
+.nrp-dialog {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(500px, calc(100% - 32px));
+  max-height: calc(100vh - 48px);
+  background: #FFFBF5;
+  border-radius: 18px;
+  box-shadow: 0 30px 80px -20px rgba(20, 17, 12, 0.4);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: nrp-slide-up .28s cubic-bezier(.2,.7,.2,1);
+  color: #0A0A0A;
+}
+/* Mobile: bottom sheet */
+@media (max-width: 640px) {
+  .nrp-dialog {
+    top: auto; bottom: 0; left: 0;
+    transform: none;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 22px 22px 0 0;
+    animation: nrp-slide-up-mobile .3s cubic-bezier(.2,.7,.2,1);
+  }
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.nrp-h {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid #F2EDDF;
+  flex-shrink: 0;
+}
+.nrp-h-l { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
+.nrp-h-ic {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%);
+  display: grid; place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.nrp-title { font-size: 17px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 2px; line-height: 1.2; }
+.nrp-sub { font-size: 12.5px; color: #71717A; margin: 0; line-height: 1.35; }
+.nrp-close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: #F4F0E8; border: 0;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: #525252;
+  font-family: inherit;
+  transition: background .12s;
+  flex-shrink: 0;
+}
+.nrp-close:hover { background: #EAE3D0; color: #0A0A0A; }
+
+/* ── Body / fields ──────────────────────────────────────── */
+.nrp-body {
+  padding: 18px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.nrp-field { margin-bottom: 14px; }
+.nrp-field:last-child { margin-bottom: 0; }
+.nrp-lbl {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 700;
+  color: #525252;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.nrp-req {
+  background: #DC2626; color: #fff;
+  padding: 1px 6px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.nrp-opt {
+  background: #E4E4E7; color: #525252;
+  padding: 1px 6px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.nrp-input {
+  width: 100%;
+  padding: 11px 13px;
+  background: #fff;
+  border: 1.5px solid #E5E2D8;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #0A0A0A;
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+  box-sizing: border-box;
+}
+.nrp-input::placeholder { color: #A1A1AA; font-weight: 400; }
+.nrp-input:hover { border-color: #D4CCB5; }
+.nrp-input:focus { border-color: #FF6B35; box-shadow: 0 0 0 3px rgba(255, 107, 53, .14); }
+
+.nrp-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Price input prefix */
+.nrp-input-wrap { position: relative; }
+.nrp-prefix .nrp-input { padding-left: 28px; }
+.nrp-prefix-sym {
+  position: absolute;
+  left: 13px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 14.5px; font-weight: 600;
+  color: #71717A;
+  pointer-events: none;
+}
+
+/* Type chips */
+.nrp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nrp-chip {
+  padding: 7px 12px;
+  background: #fff;
+  border: 1.5px solid #E5E2D8;
+  border-radius: 99px;
+  font-family: inherit;
+  font-size: 12.5px; font-weight: 600;
+  color: #525252;
+  cursor: pointer;
+  transition: all .12s;
+}
+.nrp-chip:hover { border-color: #B88A56; color: #0A0A0A; }
+.nrp-chip.active {
+  background: #0A0A0A;
+  border-color: #0A0A0A;
+  color: #fff;
+}
+
+/* Margin preview card */
+.nrp-margin {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+  border: 1px solid #BBF7D0;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  animation: nrp-fade .18s ease-out;
+}
+.nrp-margin-l { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: #166534; }
+.nrp-margin-ic { font-size: 16px; }
+.nrp-margin-r { display: flex; align-items: baseline; gap: 8px; }
+.nrp-margin-amt { font-size: 16px; font-weight: 800; color: #166534; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.nrp-margin-pct { font-size: 12px; font-weight: 700; color: #15803D; font-variant-numeric: tabular-nums; }
+.nrp-margin.warn { background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); border-color: #FCD34D; }
+.nrp-margin.warn .nrp-margin-l { color: #92400E; }
+.nrp-margin.warn .nrp-margin-amt { color: #92400E; }
+.nrp-margin.warn .nrp-margin-pct { color: #B45309; }
+.nrp-margin.loss { background: linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%); border-color: #FCA5A5; }
+.nrp-margin.loss .nrp-margin-l { color: #991B1B; }
+.nrp-margin.loss .nrp-margin-amt { color: #991B1B; }
+.nrp-margin.loss .nrp-margin-pct { color: #B91C1C; }
+
+/* Stock stepper */
+.nrp-stepper { display: flex; align-items: stretch; gap: 4px; }
+.nrp-step-btn {
+  padding: 0 12px;
+  height: 44px;
+  background: #fff;
+  border: 1.5px solid #E5E2D8;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px; font-weight: 700;
+  color: #525252;
+  cursor: pointer;
+  min-width: 44px;
+  transition: all .12s;
+}
+.nrp-step-btn:hover { border-color: #B88A56; color: #0A0A0A; }
+.nrp-step-btn:active { transform: scale(.95); }
+.nrp-stepper-input {
+  flex: 1; min-width: 0;
+  text-align: center;
+  font-weight: 700; font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.nrp-hint {
+  font-size: 11.5px;
+  color: #71717A;
+  margin: 6px 0 0;
+  line-height: 1.35;
+}
+
+/* Expand "more details" toggle */
+.nrp-expand {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1.5px dashed #D4CCB5;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px; font-weight: 600;
+  color: #71717A;
+  cursor: pointer;
+  margin-bottom: 14px;
+  transition: all .12s;
+}
+.nrp-expand:hover { border-color: #B88A56; color: #0A0A0A; background: rgba(184,138,86,.04); }
+.nrp-expand-ic { transition: transform .2s; }
+.nrp-expand.open .nrp-expand-ic { transform: rotate(180deg); }
+.nrp-more {
+  animation: nrp-fade .25s ease-out;
+}
+
+/* Footer */
+.nrp-foot {
+  display: flex; gap: 10px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid #F2EDDF;
+  background: #FFFBF5;
+  flex-shrink: 0;
+}
+.nrp-btn {
+  flex: 1;
+  padding: 13px 18px;
+  border-radius: 11px;
+  font-family: inherit;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: transform .12s, box-shadow .12s, background .12s;
+}
+.nrp-btn-ghost {
+  flex: 0 0 auto;
+  background: #fff;
+  border-color: #E5E2D8;
+  color: #525252;
+}
+.nrp-btn-ghost:hover { background: #F4F0E8; color: #0A0A0A; }
+.nrp-btn-primary {
+  background: linear-gradient(180deg, #FF6B35 0%, #EA580C 100%);
+  color: #fff;
+  box-shadow: 0 6px 14px -4px rgba(255, 107, 53, .42);
+}
+.nrp-btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px -4px rgba(255, 107, 53, .5); }
+.nrp-btn-primary:active:not(:disabled) { transform: scale(.98); }
+.nrp-btn-primary:disabled {
+  background: #E5E2D8; color: #A1A1AA;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+</style>
+
+<script>
+/* === HisaabNow · NRP (New Retail Product) modal · May 2026 === */
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function fmtINR(n){ try { return '₹' + Math.round(+n || 0).toLocaleString('en-IN'); } catch(e){ return '₹' + (n || 0); } }
+  function classifyByName(name){
+    var n = (name || '').toLowerCase();
+    if (/(shampoo|conditioner|serum|spa|color|colour|gel|hair|henna|beard.*oil)/.test(n)) return 'hair';
+    if (/(face|skin|cream|moisturi|sunscreen|pack)/.test(n)) return 'skin';
+    if (/(gift|set|combo|hamper|kit)/.test(n)) return 'gift';
+    if (/(razor|brush|tool|comb|trimmer)/.test(n)) return 'tools';
+    return 'other';
+  }
+
+  /* Friendly type → emoji mapping for the saved product */
+  var TYPE_EMOJI = { hair: '💇', skin: '🧴', gift: '🎁', tools: '🪒', other: '🛍️' };
+
+  var NRP = {
+    editingId: null,
+    type: 'hair',
+
+    open: function(id){
+      this.editingId = id || null;
+      this.type = 'hair';
+      var modal = $('nrp-modal');
+      if (!modal){ console.error('[NRP] modal HTML missing'); return; }
+
+      var existing = null;
+      if (id){
+        try { existing = window.Store && Store.get ? Store.get('prods', id) : null; } catch(e){}
+      }
+
+      /* Reset form fields */
+      $('nrp-name').value = existing ? (existing.name || '') : '';
+      $('nrp-sp').value   = existing && (+existing.sp || +existing.price) ? (+existing.sp || +existing.price) : '';
+      $('nrp-cp').value   = existing && +existing.cp ? +existing.cp : '';
+      $('nrp-stock').value = existing && existing.stock != null ? +existing.stock : 0;
+      $('nrp-brand').value = existing && existing.brand ? existing.brand : '';
+      $('nrp-pack').value  = existing && existing.pack ? existing.pack : '';
+
+      /* Resolve initial type — from existing._type or classify name */
+      var initialType = 'hair';
+      if (existing){
+        if (existing._type) initialType = existing._type;
+        else if (existing.name) initialType = classifyByName(existing.name);
+      }
+      this.type = initialType;
+      this.applyTypeUI();
+
+      /* Title + button text */
+      if (id){
+        $('nrp-title').textContent = 'Edit retail product';
+        $('nrp-sub').textContent = 'Update details, price or stock';
+        $('nrp-save').textContent = existing && existing.active === false ? 'Activate product' : 'Save changes';
+      } else {
+        $('nrp-title').textContent = 'Add retail product';
+        $('nrp-sub').textContent = 'Take-home items customers buy at the counter';
+        $('nrp-save').textContent = '+ Add to Product Sales';
+      }
+
+      /* Collapse "more details" by default unless brand/pack exist */
+      var hasMore = existing && (existing.brand || existing.pack);
+      $('nrp-more').style.display = hasMore ? 'block' : 'none';
+      $('nrp-expand-btn').classList.toggle('open', !!hasMore);
+      $('nrp-expand-btn').style.display = hasMore ? 'none' : 'flex';
+
+      /* Refresh margin + save state */
+      this.updateMargin();
+      this.updateSaveState();
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      /* Lock body scroll while modal open */
+      document.body.style.overflow = 'hidden';
+
+      setTimeout(function(){ $('nrp-name').focus(); }, 120);
+    },
+
+    close: function(){
+      var modal = $('nrp-modal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      this.editingId = null;
+    },
+
+    applyTypeUI: function(){
+      var self = this;
+      document.querySelectorAll('#nrp-type-chips .nrp-chip').forEach(function(c){
+        c.classList.toggle('active', c.getAttribute('data-nrp-type') === self.type);
+      });
+    },
+
+    updateMargin: function(){
+      var sp = +$('nrp-sp').value || 0;
+      var cp = +$('nrp-cp').value || 0;
+      var card = $('nrp-margin');
+      if (sp <= 0 || cp <= 0){
+        card.style.display = 'none';
+        return;
+      }
+      var diff = sp - cp;
+      var pct = sp > 0 ? Math.round((diff / sp) * 100) : 0;
+      card.style.display = 'flex';
+      card.classList.remove('warn', 'loss');
+      if (diff < 0) card.classList.add('loss');
+      else if (pct < 10) card.classList.add('warn');
+      var sign = diff >= 0 ? '' : '−';
+      $('nrp-margin-amt').textContent = sign + fmtINR(Math.abs(diff));
+      $('nrp-margin-pct').textContent = (diff < 0 ? 'LOSS ' : '') + pct + '%';
+    },
+
+    updateSaveState: function(){
+      var name = ($('nrp-name').value || '').trim();
+      var sp = +$('nrp-sp').value || 0;
+      var valid = name.length >= 2 && sp > 0;
+      $('nrp-save').disabled = !valid;
+    },
+
+    save: function(){
+      var name = ($('nrp-name').value || '').trim();
+      var sp = +$('nrp-sp').value || 0;
+      var cp = +$('nrp-cp').value || 0;
+      var stock = +$('nrp-stock').value || 0;
+      var brand = ($('nrp-brand').value || '').trim();
+      var pack = ($('nrp-pack').value || '').trim();
+      if (name.length < 2 || sp <= 0){ this.updateSaveState(); return; }
+
+      var payload = {
+        name: name,
+        sp: sp,
+        price: sp,            /* legacy compat */
+        cp: cp,
+        cat: 'Retail',         /* MUST be Retail so it appears on Product Sales */
+        emoji: TYPE_EMOJI[this.type] || '🛍️',
+        stock: stock,
+        tracksStock: true,
+        active: true,
+        _type: this.type
+      };
+      if (brand) payload.brand = brand;
+      if (pack)  payload.pack = pack;
+
+      try {
+        if (this.editingId && window.Store && Store.update){
+          Store.update('prods', this.editingId, payload);
+        } else if (window.Store && Store.add){
+          Store.add('prods', payload);
+        }
+        if (window.App && App.toast){
+          App.toast(this.editingId ? 'Product updated' : 'Product added');
+        }
+        /* Refresh whichever salon screen is open */
+        if (window.HND){
+          if (window.HND.prodsales && window.HND.prodsales.refresh) window.HND.prodsales.refresh();
+          if (window.HND.services && window.HND.services.refresh)   window.HND.services.refresh();
+        }
+        this.close();
+      } catch(e){
+        console.error('[NRP] save failed', e);
+        if (window.App && App.toast) App.toast('Could not save — try again');
+      }
+    },
+
+    bind: function(){
+      var modal = $('nrp-modal');
+      if (!modal || modal.__nrpBound) return;
+      modal.__nrpBound = true;
+
+      /* Close handlers */
+      modal.addEventListener('click', function(e){
+        if (e.target.closest('[data-nrp-close]')){
+          NRP.close();
+        }
+      });
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && modal.classList.contains('open')) NRP.close();
+      });
+
+      /* Type chip selection */
+      $('nrp-type-chips').addEventListener('click', function(e){
+        var chip = e.target.closest('[data-nrp-type]');
+        if (!chip) return;
+        NRP.type = chip.getAttribute('data-nrp-type');
+        NRP.applyTypeUI();
+      });
+
+      /* Live margin + save state updates */
+      ['nrp-name','nrp-sp','nrp-cp'].forEach(function(id){
+        var el = $(id);
+        if (el) el.addEventListener('input', function(){
+          NRP.updateMargin();
+          NRP.updateSaveState();
+        });
+      });
+
+      /* Stock stepper */
+      modal.querySelectorAll('[data-nrp-stock]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var delta = parseInt(btn.getAttribute('data-nrp-stock'), 10) || 0;
+          var input = $('nrp-stock');
+          var v = (parseInt(input.value, 10) || 0) + delta;
+          input.value = Math.max(0, v);
+        });
+      });
+
+      /* Expand toggle */
+      $('nrp-expand-btn').addEventListener('click', function(){
+        $('nrp-more').style.display = 'block';
+        $('nrp-expand-btn').style.display = 'none';
+      });
+
+      /* Save */
+      $('nrp-save').addEventListener('click', function(){ NRP.save(); });
+
+      /* Auto-classify type from name as user types — only on new add */
+      $('nrp-name').addEventListener('input', function(){
+        if (NRP.editingId) return;   /* don't override on edit */
+        var inferred = classifyByName(this.value);
+        if (inferred !== NRP.type){
+          NRP.type = inferred;
+          NRP.applyTypeUI();
+        }
+      });
+    }
+  };
+
+  /* Hook into App.openProductSheet so forceRetail:true uses NRP instead of old sheet */
+  function hookApp(){
+    if (!window.App || window.App.__nrpHooked) return false;
+    var origOpen = window.App.openProductSheet;
+    window.App.openProductSheet = function(id, opts){
+      try {
+        if (opts && opts.forceRetail){
+          NRP.open(id);
+          return;
+        }
+      } catch(e){}
+      if (typeof origOpen === 'function') return origOpen.apply(this, arguments);
+    };
+    window.App.__nrpHooked = true;
+    return true;
+  }
+
+  function boot(retry){
+    NRP.bind();
+    if (!hookApp() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(10); });
+  } else { boot(10); }
+
+  window.NRP = NRP;
+})();
+</script>
+<!-- =================== END NRP block =================== -->
 
 </body>
 </html>
