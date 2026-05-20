@@ -38606,14 +38606,14 @@ html[data-shell="desktop"] body.hnd-on-cat #hnd-cat {
 ════════════════════════════════════════════════════════════ */
 #hnd-services { display: none; }
 html[data-shell="desktop"] body.hnd-on-services #hnd-services {
+  /* Static positioning so the element flows in body and content extends
+     body scroll height. position:absolute would take it out of flow → body
+     wouldn't grow → no page scrollbar for 108+ service cards. (May 2026 fix) */
   display: block;
-  position: absolute;
-  left: var(--hnd-sb-w); right: 0;
-  top: var(--hnd-tb-h);
+  position: relative;
   padding: 24px 28px 32px;
   background: var(--hnd-bg);
   min-height: calc(100vh - var(--hnd-tb-h));
-  z-index: 9;
 }
 /* When services screen is active, hide the mobile inventory page completely */
 html[data-shell="desktop"] body.hnd-on-services #pg-inventory {
@@ -38624,13 +38624,10 @@ html[data-shell="desktop"] body.hnd-on-services #pg-inventory {
 #hnd-prodsales { display: none; }
 html[data-shell="desktop"] body.hnd-on-prodsales #hnd-prodsales {
   display: block;
-  position: absolute;
-  left: var(--hnd-sb-w); right: 0;
-  top: var(--hnd-tb-h);
+  position: relative;
   padding: 24px 28px 32px;
   background: var(--hnd-bg);
   min-height: calc(100vh - var(--hnd-tb-h));
-  z-index: 9;
 }
 html[data-shell="desktop"] body.hnd-on-prodsales #hnd-cat,
 html[data-shell="desktop"] body.hnd-on-prodsales #pg-catalog {
