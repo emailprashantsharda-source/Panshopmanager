@@ -52177,20 +52177,29 @@ html[data-shell="desktop"] #pg-home {
     var foodPrep = ['cafe','restaurant','bakery','sweets'].indexOf(v) >= 0;
     var isSalon = (v === 'salon');
 
-    /* Build rules with CORRECT keys (matching data-hnd-nav attributes) */
+    /* Build rules with CORRECT keys (matching data-hnd-nav attributes).
+       (May 2026 update — kept in sync with visibilityRules() at line ~51270.
+       Both filters run; they must agree or one will hide what the other shows.) */
     var rules = {
       home: true,
       sales: true,
       customers: true,
       catalog: true,
-      inventory: tracksStock && !isSalon,
-      ingredients: foodPrep || (isSalon && cfg.hasConsumables) ? true : false,
+      /* Salon: Inventory page renders the Services screen (primary sell surface) */
+      inventory: tracksStock || isSalon,
+      /* Salon: always show Supplies — consumables tracker is core to salon ops */
+      ingredients: foodPrep || isSalon,
       expenses: true,
       coupons: true,
       udhaar: cfg.showUdhar !== false || hasOpenUdhaar,
       reports: true,
       staff: cfg.hasStaff !== false,           /* ← key is 'staff', not 'team' */
       appointments: !!(cfg.timeSlots && cfg.timeSlots.enabled),
+      /* New modules (May 2026) — Phases A/B/C. Visible for all verticals. */
+      packs:         true,
+      subscriptions: true,
+      campaigns:     true,
+      cashflow:      true,
       settings: true
     };
 
