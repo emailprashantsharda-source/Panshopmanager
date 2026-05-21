@@ -2139,7 +2139,7 @@ html[data-current-role="manager"] body{
   <section class="greet">
     <div class="greet-text">
       <h1><span id="greet-time">Good morning</span>, <span id="greet-name">there</span>! <span class="wave">👋</span></h1>
-      <p id="greet-sub" data-i18n="dash.cafeOverview">Here's your café overview for today.</p>
+      <p id="greet-sub">Here's your shop overview for today.</p>
     </div>
   </section>
 
@@ -8747,9 +8747,14 @@ const App = {
     }
     const greetSub = document.getElementById('greet-sub');
     if (greetSub) {
-
+      /* (May 2026) Defensive: strip any stale data-i18n so the i18n
+         auto-translator can't overwrite vertical-specific text with
+         the legacy `dash.cafeOverview` key. */
+      greetSub.removeAttribute('data-i18n');
       if (skipOwnerData) {
         greetSub.textContent = 'Loading your dashboard…';
+      } else if (cfg && cfg.greetingSub) {
+        greetSub.textContent = cfg.greetingSub;
       } else {
         const shopName = (window.S && S.store) || cfg.bizName || 'your shop';
         greetSub.textContent = `Here's ${shopName} today.`;
@@ -8868,8 +8873,12 @@ const App = {
 
     const gs = document.getElementById('greet-sub');
     if (gs){
+      /* (May 2026) Defensive strip — see note in earlier setter. */
+      gs.removeAttribute('data-i18n');
       if (isEmptyDay) {
         gs.textContent = "Welcome — let's start your day";
+      } else if (cfg && cfg.greetingSub) {
+        gs.textContent = cfg.greetingSub;
       } else {
         let _shopName = '';
         try {
@@ -31151,9 +31160,12 @@ function _recomputeTier(){
     '9AV0qb9zfLakdw0oua4cBV7YF6Z2'   /* Prashant — primary admin */
   ];
   var ADMIN_PHONES = [
-    '7838361200',    /* Dev test number */
+    '7838361200',    /* Dev test number — Prashant */
     '+917838361200',
-    '917838361200'
+    '917838361200',
+    '9999999995',    /* Dev test number — King access bypass */
+    '+919999999995',
+    '919999999995'
   ];
 
   try {
@@ -63906,7 +63918,7 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
     ═══════════════════════════════════════════════════════════════ */
     try {
       var ADMIN_UIDS = ['9AV0qb9zfLakdw0oua4cBV7YF6Z2'];
-      var ADMIN_PHONES_RAW = ['7838361200'];
+      var ADMIN_PHONES_RAW = ['7838361200', '9999999995'];
       var uid = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid) || window.currentUserId || null;
       var phone = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || null;
       var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
@@ -64107,7 +64119,7 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
     ═══════════════════════════════════════════════════════════════ */
     try {
       var ADMIN_UIDS = ['9AV0qb9zfLakdw0oua4cBV7YF6Z2'];
-      var ADMIN_PHONES_RAW = ['7838361200'];
+      var ADMIN_PHONES_RAW = ['7838361200', '9999999995'];
       var uid = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid) || window.currentUserId || null;
       var phone = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || null;
       var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
