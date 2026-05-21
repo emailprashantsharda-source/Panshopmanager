@@ -908,26 +908,85 @@ select.ps-input{appearance:none;-webkit-appearance:none;background-image:url("da
    - Discount + Notes as expandable chips
    - Bottom nav hidden on this page (see App.nav)
 ═══════════════════════════════════════════════════════════════ */
-.ck-items-card{background:var(--card);margin:12px 16px;border-radius:16px;padding:14px 16px;border:0.5px solid var(--border);box-shadow:var(--shadow-sm)}
-.ck-items-eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--t2);text-transform:uppercase;margin-bottom:10px}
+.ck-items-card{background:var(--card);margin:12px 16px;border-radius:16px;padding:14px 16px;border:0.5px solid var(--border);box-shadow:var(--shadow-sm);font-feature-settings:"cv11","ss01","ss03"}
+.ck-items-eyebrow{font-size:11px;font-weight:800;letter-spacing:.09em;color:var(--t2);text-transform:uppercase;margin-bottom:10px;font-variant-numeric:tabular-nums}
 .ck-summary{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-strong)}
-.ck-summary .bill-line{padding:5px 0;font-size:13.5px}
-.ck-summary .bill-line.total{font-size:17px;font-weight:800;padding-top:8px;border-top:0.5px solid var(--border);margin-top:4px}
-.ck-row-label{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-left:2px}
+.ck-summary .bill-line{padding:5px 0;font-size:13.5px;letter-spacing:-.005em}
+.ck-summary .bill-line.total{font-size:18px;font-weight:800;letter-spacing:-.02em;padding-top:10px;border-top:0.5px solid var(--border);margin-top:6px}
+.ck-summary .bill-line.total .r{font-variant-numeric:tabular-nums}
+.ck-row-label{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;padding-left:2px}
 .ck-chip-row{display:flex;gap:8px;flex-wrap:wrap}
-.ck-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--t1);background:var(--card);border:1px solid var(--border);padding:9px 13px;border-radius:99px;cursor:pointer;font-family:inherit;transition:transform .12s ease}
+.ck-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;letter-spacing:-.005em;color:var(--t1);background:var(--card);border:1px solid var(--border);padding:9px 13px;border-radius:99px;cursor:pointer;font-family:inherit;transition:transform .12s ease}
 .ck-chip:active{transform:scale(.96)}
 .ck-chip.active{background:var(--p-50);border-color:var(--p-200);color:var(--p-deep)}
 .ck-chip-pill{background:var(--p);color:#fff;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:800;margin-left:2px;font-variant-numeric:tabular-nums}
-.ck-sticky{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(255,255,255,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:90;box-shadow:0 -8px 24px -10px rgba(0,0,0,.08)}
-.ck-pay-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-.ck-pay-tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;background:#fff;border:1px solid var(--border);border-radius:11px;font-size:11px;font-weight:700;font-family:inherit;color:var(--t1);cursor:pointer;transition:transform .12s ease}
-.ck-pay-tab:active{transform:scale(.96)}
-.ck-pay-tab.selected{background:var(--n);color:#fff;border-color:var(--n)}
-.ck-pay-tab-emoji{font-size:16px;line-height:1}
-.ck-collect-btn{width:100%;background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%);color:#fff;border:none;padding:15px 16px;border-radius:13px;font-size:16px;font-weight:800;letter-spacing:-.01em;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 8px 24px -8px rgba(255,107,53,.55);transition:transform .12s ease}
-.ck-collect-btn:active{transform:scale(.98)}
-.ck-hdr-total{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--t1);min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
+.ck-sticky{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(255,255,255,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:14px 16px calc(14px + env(safe-area-inset-bottom));z-index:90;box-shadow:0 -8px 24px -10px rgba(0,0,0,.08)}
+/* ─── Payment method pills (beautified May 2026) ────────────────
+   Four equal pills with iconography, smooth selection states,
+   and proper text/icon contrast. Forced specificity with `body.on-checkout`
+   prefix so they win against legacy .vert-card cascading. */
+.ck-pay-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+body.on-checkout .ck-pay-tab{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:11px 4px 9px;
+  background:#FFFFFF;
+  border:1.5px solid #E5E2D8;
+  border-radius:14px;
+  font-family:'Inter',-apple-system,system-ui,sans-serif;
+  font-size:11.5px;
+  font-weight:700;
+  letter-spacing:.01em;
+  color:#0A0A0A;
+  cursor:pointer;
+  transition:all .18s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 1px 2px rgba(10,10,10,.04);
+  position:relative;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+body.on-checkout .ck-pay-tab:active{transform:scale(.96)}
+body.on-checkout .ck-pay-tab:hover{border-color:#D9D2C0}
+
+body.on-checkout .ck-pay-tab.selected{
+  background:linear-gradient(180deg,#0A0A0A 0%,#1A1A1A 100%);
+  color:#FFFFFF !important;
+  border-color:#0A0A0A;
+  box-shadow:0 6px 16px -4px rgba(10,10,10,.35),0 1px 2px rgba(10,10,10,.1);
+  transform:translateY(-1px);
+}
+body.on-checkout .ck-pay-tab.selected .ck-pay-tab-icon{
+  background:rgba(255,255,255,.14);
+  color:#FFFFFF;
+}
+body.on-checkout .ck-pay-tab.selected::after{
+  content:"";position:absolute;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:#FF6B35;
+  box-shadow:0 0 0 2px rgba(255,107,53,.25);
+}
+
+body.on-checkout .ck-pay-tab-icon{
+  width:32px;height:32px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:#F9F6EE;
+  color:#0A0A0A;
+  transition:all .18s cubic-bezier(.4,0,.2,1);
+  flex-shrink:0;
+}
+body.on-checkout .ck-pay-tab-label{
+  font-size:11.5px;font-weight:700;line-height:1.1;letter-spacing:.005em;
+}
+
+/* Pre-selection accent colors per method (unselected state) */
+body.on-checkout .ck-pay-tab[data-pay="cash"] .ck-pay-tab-icon{background:#E8F5EC;color:#15803D}
+body.on-checkout .ck-pay-tab[data-pay="upi"] .ck-pay-tab-icon{background:#F0E7FF;color:#6B21A8}
+body.on-checkout .ck-pay-tab[data-pay="card"] .ck-pay-tab-icon{background:#FFF7ED;color:#C2410C}
+body.on-checkout .ck-pay-tab[data-pay="udhaar"] .ck-pay-tab-icon{background:#FEF3C7;color:#92400E}
+/* When selected, all icons go translucent-white for unified look */
+body.on-checkout .ck-pay-tab.selected[data-pay] .ck-pay-tab-icon{background:rgba(255,255,255,.18);color:#FFFFFF}
+.ck-collect-btn{width:100%;background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%);color:#fff;border:none;padding:16px 16px;border-radius:14px;font-size:16.5px;font-weight:800;letter-spacing:-.015em;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 8px 24px -8px rgba(255,107,53,.55),0 1px 0 rgba(255,255,255,.15) inset;transition:all .18s cubic-bezier(.4,0,.2,1);font-variant-numeric:tabular-nums}
+.ck-collect-btn:hover{transform:translateY(-1px);box-shadow:0 12px 28px -8px rgba(255,107,53,.6),0 1px 0 rgba(255,255,255,.15) inset}
+.ck-collect-btn:active{transform:scale(.98);box-shadow:0 4px 12px -4px rgba(255,107,53,.5)}
+.ck-hdr-total{font-size:18px;font-weight:800;letter-spacing:-.025em;color:var(--t1);min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
 body.on-checkout .nav{display:none !important}
 
 /* Compact "Served by" trigger row (replaces the legacy big orange tile card) */
@@ -2569,17 +2628,29 @@ html[data-current-role="manager"] body{
       ⚠ Tag a customer name to track this udhaar. Add phone for WhatsApp reminders.
     </div>
     <div class="ck-pay-tabs">
-      <button type="button" class="ck-pay-tab vert-card" onclick="App.payMethod(this,'cash')">
-        <span class="ck-pay-tab-emoji">💵</span><span>Cash</span>
+      <button type="button" class="ck-pay-tab" data-pay="cash" onclick="App.payMethod(this,'cash')">
+        <div class="ck-pay-tab-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v.01"/><path d="M18 14v.01"/></svg>
+        </div>
+        <span class="ck-pay-tab-label">Cash</span>
       </button>
-      <button type="button" class="ck-pay-tab vert-card selected" onclick="App.payMethod(this,'upi')">
-        <span class="ck-pay-tab-emoji">📱</span><span>UPI</span>
+      <button type="button" class="ck-pay-tab selected" data-pay="upi" onclick="App.payMethod(this,'upi')">
+        <div class="ck-pay-tab-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+        </div>
+        <span class="ck-pay-tab-label">UPI</span>
       </button>
-      <button type="button" class="ck-pay-tab vert-card" onclick="App.payMethod(this,'card')">
-        <span class="ck-pay-tab-emoji">💳</span><span>Card</span>
+      <button type="button" class="ck-pay-tab" data-pay="card" onclick="App.payMethod(this,'card')">
+        <div class="ck-pay-tab-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="9" y2="15"/></svg>
+        </div>
+        <span class="ck-pay-tab-label">Card</span>
       </button>
-      <button type="button" class="ck-pay-tab vert-card" id="checkout-pay-udhaar" onclick="App.payMethod(this,'udhaar')">
-        <span class="ck-pay-tab-emoji">🧾</span><span data-i18n="nav.udhaar">Udhaar</span>
+      <button type="button" class="ck-pay-tab" id="checkout-pay-udhaar" data-pay="udhaar" onclick="App.payMethod(this,'udhaar')">
+        <div class="ck-pay-tab-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <span class="ck-pay-tab-label" data-i18n="nav.udhaar">Udhaar</span>
       </button>
     </div>
     <button type="button" class="ck-collect-btn" onclick="App.completeSale()">
@@ -13240,8 +13311,8 @@ const App = {
   },
 
   payMethod(el, m){
-    /* (May 2026) Works with both legacy .vert-card and new .ck-pay-tab */
-    el.parentElement.querySelectorAll('.vert-card, .ck-pay-tab').forEach(c => c.classList.remove('selected'));
+    /* (May 2026) Only ck-pay-tab now — vert-card class was removed for visual clarity */
+    el.parentElement.querySelectorAll('.ck-pay-tab').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
     this.paymentMode = m;
 
@@ -16528,7 +16599,7 @@ const App = {
     const cRes = document.getElementById('checkout-cust-results');
     if (cRes) cRes.style.display = 'none';
 
-    document.querySelectorAll('#pg-checkout .vert-card').forEach((c, i) => c.classList.toggle('selected', i === 1));
+    document.querySelectorAll('#pg-checkout .ck-pay-tab').forEach((c, i) => c.classList.toggle('selected', i === 1));
     this.paymentMode = 'upi';
 
     this._billStaff = null;
