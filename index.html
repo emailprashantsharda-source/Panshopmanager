@@ -36533,6 +36533,10 @@ html[data-shell="desktop"] .hnd-tb {
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
       <span class="lbl" data-i18n="nav.bills">Bills</span>
     </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="appointments" onclick="window.App && window.App.nav && window.App.nav('appointments')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="lbl" data-i18n="nav.appointments">Reservations</span>
+    </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="customers" onclick="window.App && window.App.nav && window.App.nav('customers')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span class="lbl" data-i18n="nav.customers">Customers</span>
@@ -36540,62 +36544,62 @@ html[data-shell="desktop"] .hnd-tb {
   </div>
 
   <div class="hnd-sb-group">
-    <div class="hnd-sb-group-title">MANAGE</div>
+    <div class="hnd-sb-group-title">SELL</div>
     <button class="hnd-nav-item" type="button" data-hnd-nav="inventory" onclick="window.App && window.App.nav && window.App.nav('inventory')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       <span class="lbl" data-i18n="more.inventory">Inventory</span>
-    </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="ingredients" onclick="window.App && window.App.nav && window.App.nav('ingredients')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 2v6M5 12V8a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v4M5 12h14M7 22V14M17 22V14M5 22h14"/></svg>
-      <span class="lbl" data-i18n="nav.supplies">Ingredients</span>
-    </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="expenses" onclick="window.App && window.App.nav && window.App.nav('expenses')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      <span class="lbl" data-i18n="nav.expenses">Expenses</span>
-    </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="coupons" onclick="window.App && window.App.nav && window.App.nav('coupons')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
-      <span class="lbl">Coupons</span>
-    </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="udhaar" onclick="window.App && window.App.nav && window.App.nav('udhaar')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
-      <span class="lbl" data-i18n="nav.udhaar">Udhaar</span>
-    </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="catalog" onclick="window.App && window.App.nav && window.App.nav('catalog')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-      <span class="lbl" data-i18n="nav.catalog">Catalog</span>
-    </button>
-  </div>
-
-  <div class="hnd-sb-group">
-    <div class="hnd-sb-group-title">INSIGHTS &amp; TEAM</div>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="cashflow" onclick="window.App && window.App.nav && window.App.nav('cashflow')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg>
-      <span class="lbl">Cashflow</span>
-    </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="campaigns" onclick="window.App && window.App.nav && window.App.nav('campaigns')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>
-      <span class="lbl">Campaigns</span>
     </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="packs" onclick="window.App && window.App.nav && window.App.nav('packs')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       <span class="lbl">Packs</span>
     </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="catalog" onclick="window.App && window.App.nav && window.App.nav('catalog')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span class="lbl" data-i18n="nav.catalog">Catalog</span>
+    </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="ingredients" onclick="window.App && window.App.nav && window.App.nav('ingredients')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 2v6M5 12V8a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v4M5 12h14M7 22V14M17 22V14M5 22h14"/></svg>
+      <span class="lbl" data-i18n="nav.supplies">Ingredients</span>
+    </button>
+  </div>
+
+  <div class="hnd-sb-group">
+    <div class="hnd-sb-group-title">MONEY</div>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="expenses" onclick="window.App && window.App.nav && window.App.nav('expenses')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span class="lbl" data-i18n="nav.expenses">Expenses</span>
+    </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="udhaar" onclick="window.App && window.App.nav && window.App.nav('udhaar')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+      <span class="lbl" data-i18n="nav.udhaar">Udhaar</span>
+    </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="coupons" onclick="window.App && window.App.nav && window.App.nav('coupons')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+      <span class="lbl">Coupons</span>
+    </button>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="cashflow" onclick="window.App && window.App.nav && window.App.nav('cashflow')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg>
+      <span class="lbl">Cashflow</span>
+    </button>
+  </div>
+
+  <div class="hnd-sb-group">
+    <div class="hnd-sb-group-title">GROW</div>
     <button class="hnd-nav-item" type="button" data-hnd-nav="subscriptions" onclick="window.App && window.App.nav && window.App.nav('subscriptions')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span class="lbl">Subscriptions</span>
     </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="reports" onclick="window.App && window.App.nav && window.App.nav('reports')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      <span class="lbl" data-i18n="nav.reports">Reports</span>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="campaigns" onclick="window.App && window.App.nav && window.App.nav('campaigns')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z"/></svg>
+      <span class="lbl">Campaigns</span>
     </button>
     <button class="hnd-nav-item" type="button" data-hnd-nav="staff" onclick="window.App && window.App.nav && window.App.nav('staff')">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
       <span class="lbl" data-i18n="nav.staff">Team</span>
     </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="appointments" onclick="window.App && window.App.nav && window.App.nav('appointments')">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span class="lbl" data-i18n="nav.appointments">Reservations</span>
+    <button class="hnd-nav-item" type="button" data-hnd-nav="reports" onclick="window.App && window.App.nav && window.App.nav('reports')">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="lbl" data-i18n="nav.reports">Reports</span>
     </button>
   </div>
 
@@ -63628,6 +63632,18 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
         if (igItem.textContent !== igCorrect){
           igItem.textContent = igCorrect;
           igItem.removeAttribute('data-i18n');
+        }
+      }
+      /* (May 2026) Salon-specific appointments label.
+         Default is "Reservations" (cafe vocab). For salon shopkeepers,
+         "Appointments" is the standard industry term. */
+      var apItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="appointments"] .lbl');
+      if (apItem){
+        var apCorrect = 'Reservations';
+        if (v === 'salon') apCorrect = 'Appointments';
+        if (apItem.textContent !== apCorrect){
+          apItem.textContent = apCorrect;
+          apItem.removeAttribute('data-i18n');
         }
       }
 
