@@ -1018,6 +1018,84 @@ body.on-checkout .nav{display:none !important}
 #checkout-items .bill-line-block{counter-increment:ck-sno;position:relative;padding-left:22px}
 #checkout-items .bill-line-block::before{content:counter(ck-sno) ".";position:absolute;left:0;top:11px;font-size:13px;font-weight:700;color:var(--t2);font-variant-numeric:tabular-nums}
 
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE CASHFLOW (May 2026)
+   Port of desktop Cashflow module — stacked layout, smaller chart,
+   mobile-optimized typography. Lives under .mcf-* namespace.
+═══════════════════════════════════════════════════════════════ */
+.mcf-hero{background:linear-gradient(135deg,#0A0A0A 0%,#1A1A1A 60%,#2A1810 100%);color:#fff;border-radius:18px;padding:18px 18px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 8px 24px -8px rgba(0,0,0,.35)}
+.mcf-hero::before{content:"";position:absolute;top:-30%;right:-20%;width:240px;height:240px;background:radial-gradient(circle,rgba(255,107,53,.22) 0%,transparent 65%);pointer-events:none}
+.mcf-hero-lbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);position:relative;z-index:1}
+.mcf-hero-val{font-size:32px;font-weight:800;letter-spacing:-.025em;margin:6px 0 4px;font-variant-numeric:tabular-nums;position:relative;z-index:1}
+.mcf-hero-val.neg{color:#FCA5A5}
+.mcf-hero-delta{font-size:12px;font-weight:600;color:rgba(255,255,255,.75);position:relative;z-index:1}
+.mcf-hero-delta.up{color:#86EFAC}
+.mcf-hero-delta.down{color:#FCA5A5}
+
+.mcf-periods{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.mcf-periods::-webkit-scrollbar{display:none}
+.mcf-period{flex:1;min-width:74px;padding:9px 12px;background:#fff;border:1px solid var(--border);border-radius:11px;font-size:12.5px;font-weight:700;color:var(--t1);cursor:pointer;font-family:inherit;transition:all .15s ease;white-space:nowrap}
+.mcf-period:active{transform:scale(.97)}
+.mcf-period.active{background:#0A0A0A;color:#fff;border-color:#0A0A0A}
+
+.mcf-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.mcf-kpi{background:#fff;border:1px solid var(--border);border-radius:13px;padding:11px 10px;min-width:0}
+.mcf-kpi-lbl{font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--t2);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcf-kpi-val{font-size:15px;font-weight:800;letter-spacing:-.015em;color:var(--t1);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcf-kpi-val.pos{color:#15803D}
+.mcf-kpi-val.neg{color:#DC2626}
+.mcf-kpi-delta{font-size:10px;font-weight:700;color:var(--t2);margin-top:3px;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.mcf-kpi-delta.up{color:#15803D}
+.mcf-kpi-delta.down{color:#DC2626}
+.mcf-kpi-delta.neutral{color:var(--t3)}
+
+.mcf-chart-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;margin-bottom:14px;position:relative}
+.mcf-chart-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.mcf-chart-t{font-size:13.5px;font-weight:800;letter-spacing:-.005em;color:var(--t1)}
+.mcf-chart-sub{font-size:10.5px;font-weight:600;color:var(--t2);text-align:right}
+.mcf-chart-legend{display:flex;gap:14px;font-size:10.5px;font-weight:600;color:var(--t2);margin:6px 0 2px}
+.mcf-chart-legend .dot{display:inline-block;width:14px;height:2.5px;border-radius:99px;margin-right:5px;vertical-align:middle}
+.mcf-chart-legend .dot.solid{background:#15803D}
+.mcf-chart-legend .dot.dashed{background:repeating-linear-gradient(to right,#C2410C 0,#C2410C 3px,transparent 3px,transparent 5px);height:2.5px}
+.mcf-chart-svg{width:100%;height:200px;display:block;touch-action:none}
+
+.mcf-panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+.mcf-panel-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--border-strong)}
+.mcf-panel-t{font-size:13.5px;font-weight:800;letter-spacing:-.005em;color:var(--t1)}
+.mcf-panel-sub{font-size:10.5px;font-weight:600;color:var(--t2);text-transform:capitalize}
+.mcf-row{display:grid;grid-template-columns:24px 1fr auto;grid-template-rows:auto auto;column-gap:10px;row-gap:5px;align-items:center;padding:7px 0;border-bottom:1px solid #F4F0E8}
+.mcf-row:last-of-type{border-bottom:none}
+.mcf-row-ic{grid-row:span 2;font-size:18px;line-height:1}
+.mcf-row-lbl{font-size:13px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcf-row-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;text-align:right}
+.mcf-row-val.pos{color:#15803D}
+.mcf-row-val.neg{color:#DC2626}
+.mcf-row-bar{grid-column:2/4;height:5px;background:#F4F0E8;border-radius:99px;overflow:hidden;position:relative}
+.mcf-row-bar-fill{height:100%;border-radius:99px;transition:width .35s ease}
+.mcf-row-bar-fill.pos{background:linear-gradient(90deg,#22C55E 0%,#15803D 100%)}
+.mcf-row-bar-fill.neg{background:linear-gradient(90deg,#F87171 0%,#DC2626 100%)}
+.mcf-row-pct{font-size:10.5px;font-weight:700;color:var(--t2);grid-column:3;grid-row:2;text-align:right;font-variant-numeric:tabular-nums;margin-top:-3px}
+.mcf-panel-empty{text-align:center;padding:18px 8px;font-size:12.5px;color:var(--t2);font-weight:500}
+.mcf-panel-total{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-strong);font-size:13px;font-weight:800;color:var(--t1)}
+.mcf-panel-total b{font-variant-numeric:tabular-nums}
+
+.mcf-obls{background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);border:1px solid #FCD34D;border-radius:14px;padding:14px;margin-bottom:14px}
+.mcf-obls.empty{background:linear-gradient(135deg,#D1FAE5 0%,#A7F3D0 100%);border-color:#6EE7B7}
+.mcf-obls-h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.mcf-obls-t{font-size:13px;font-weight:800;color:#7C2D12}
+.mcf-obls.empty .mcf-obls-t{color:#065F46}
+.mcf-obl{background:#fff;border-radius:10px;padding:10px 11px;margin-bottom:7px;display:grid;grid-template-columns:24px 1fr auto;column-gap:10px;align-items:center}
+.mcf-obl:last-child{margin-bottom:0}
+.mcf-obl-ic{font-size:18px;line-height:1;grid-row:span 2}
+.mcf-obl-lbl{font-size:13px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcf-obl-sub{font-size:10.5px;font-weight:600;color:var(--t2);margin-top:1px}
+.mcf-obl-when{font-size:9.5px;font-weight:800;letter-spacing:.04em;color:#92400E;background:#FEF3C7;padding:2px 6px;border-radius:99px;text-transform:uppercase;grid-column:3;grid-row:1}
+.mcf-obl-when.urgent{background:#FECACA;color:#991B1B}
+.mcf-obl-amt{font-size:12.5px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums;grid-column:3;grid-row:2;text-align:right;margin-top:1px}
+.mcf-obls-total{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(124,45,18,.25);font-size:13px;font-weight:800;color:#7C2D12}
+.mcf-obls-total b{font-variant-numeric:tabular-nums}
+.mcf-obls-empty-sub{font-size:12px;color:#065F46;font-weight:600;padding-left:30px;margin-top:-4px}
+
 .chips{display:flex;gap:8px;padding:0 18px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
 .chips::-webkit-scrollbar{display:none}
 .chips::-webkit-scrollbar{display:none}
@@ -2957,16 +3035,44 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title">Cashflow</div>
-    <div style="width:40px"></div>
-  </header>
-  <div style="padding:42px 20px;text-align:center">
-    <div style="font-size:54px;margin-bottom:18px">📊</div>
-    <div style="font-size:18px;font-weight:700;margin-bottom:10px;color:var(--t1)">Cashflow dashboard</div>
-    <div style="font-size:13.5px;color:var(--t2);line-height:1.5;max-width:300px;margin:0 auto 24px">Open HisaabNow on desktop or tablet for the full cashflow view with charts, breakdowns and 30-day forecast.</div>
-    <button class="btn btn-secondary btn-block" style="max-width:280px;margin:0 auto" onclick="App.nav('reports')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      View Reports
+    <button class="icon-btn" onclick="window.HND && HND.mcf && HND.mcf.refresh()" aria-label="Refresh">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     </button>
+  </header>
+
+  <div style="padding:14px 16px 100px">
+
+    <div class="mcf-hero" id="mcf-hero">
+      <div class="mcf-hero-lbl">💰 Cash in hand</div>
+      <div class="mcf-hero-val" id="mcf-hero-val">—</div>
+      <div class="mcf-hero-delta" id="mcf-hero-delta">—</div>
+    </div>
+
+    <div class="mcf-periods" id="mcf-periods">
+      <button class="mcf-period" data-mcf-period="today">Today</button>
+      <button class="mcf-period" data-mcf-period="week">Week</button>
+      <button class="mcf-period active" data-mcf-period="month">Month</button>
+      <button class="mcf-period" data-mcf-period="year">Year</button>
+    </div>
+
+    <div class="mcf-kpis" id="mcf-kpis"></div>
+
+    <div class="mcf-chart-card">
+      <div class="mcf-chart-h">
+        <div class="mcf-chart-t">Cash position</div>
+        <div class="mcf-chart-sub">Last 30 days + 30-day forecast</div>
+      </div>
+      <div class="mcf-chart-legend">
+        <span><span class="dot solid"></span>Actual</span>
+        <span><span class="dot dashed"></span>Forecast</span>
+      </div>
+      <svg class="mcf-chart-svg" id="mcf-chart" viewBox="0 0 360 200" preserveAspectRatio="none"></svg>
+    </div>
+
+    <div class="mcf-panel" id="mcf-inflows"></div>
+    <div class="mcf-panel" id="mcf-outflows"></div>
+    <div id="mcf-obligations-slot"></div>
+
   </div>
 </div>
 
@@ -27132,6 +27238,471 @@ window.App = App;
     setup();
   }
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILE CASHFLOW MODULE (May 2026) — window.HND.mcf
+   Port of desktop HND.cashflow IIFE. Data functions duplicated (read-only,
+   safe). Renderers target mobile DOM (#pg-cashflow → .mcf-*).
+   Triggered by App.nav('cashflow'); subscribes to Store changes.
+═══════════════════════════════════════════════════════════════════════ */
+(function _initMobileCashflow(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+  function fmtINR(n){
+    n = Math.round(+n || 0);
+    var abs = Math.abs(n);
+    if (abs >= 10000000) return (n < 0 ? '-' : '') + '₹' + (abs/10000000).toFixed(1) + 'Cr';
+    if (abs >= 100000)   return (n < 0 ? '-' : '') + '₹' + (abs/100000).toFixed(1) + 'L';
+    if (abs >= 1000)     return (n < 0 ? '-' : '') + '₹' + (abs/1000).toFixed(abs >= 10000 ? 0 : 1) + 'K';
+    return (n < 0 ? '-' : '') + '₹' + abs.toLocaleString('en-IN');
+  }
+  function fmtINRFull(n){
+    n = Math.round(+n || 0);
+    try { return (n < 0 ? '-' : '') + '₹' + Math.abs(n).toLocaleString('en-IN'); } catch(e){ return '₹' + n; }
+  }
+  var DAY_MS = 24 * 60 * 60 * 1000;
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  /* ─── Period helpers ─── */
+  function periodRange(period){
+    var now = Date.now();
+    var d = new Date(); d.setHours(0,0,0,0);
+    var startOfToday = d.getTime();
+    var range, prevRange;
+    switch(period){
+      case 'today':
+        range = { from: startOfToday, to: startOfToday + DAY_MS - 1, label: 'today' };
+        prevRange = { from: startOfToday - DAY_MS, to: startOfToday - 1, label: 'yesterday' };
+        break;
+      case 'week':
+        var dow = new Date(startOfToday).getDay();
+        var weekStart = startOfToday - (dow * DAY_MS);
+        range = { from: weekStart, to: now, label: 'this week' };
+        prevRange = { from: weekStart - 7 * DAY_MS, to: weekStart - 1, label: 'last week' };
+        break;
+      case 'month':
+        var nd = new Date();
+        var monthStart = new Date(nd.getFullYear(), nd.getMonth(), 1).getTime();
+        var prevMonthStart = new Date(nd.getFullYear(), nd.getMonth() - 1, 1).getTime();
+        range = { from: monthStart, to: now, label: 'this month' };
+        prevRange = { from: prevMonthStart, to: monthStart - 1, label: 'last month' };
+        break;
+      case 'year':
+        var yd = new Date();
+        var yearStart = new Date(yd.getFullYear(), 0, 1).getTime();
+        var prevYearStart = new Date(yd.getFullYear() - 1, 0, 1).getTime();
+        range = { from: yearStart, to: now, label: 'this year' };
+        prevRange = { from: prevYearStart, to: yearStart - 1, label: 'last year' };
+        break;
+    }
+    return { current: range, previous: prevRange };
+  }
+
+  /* ─── Aggregations (duplicated read-only from desktop CF) ─── */
+  function inflows(fromT, toT){
+    var sales = safeList('sales');
+    var udhars = safeList('udhar');
+    var result = { total: 0, byMode: { cash: 0, upi: 0, card: 0, bank: 0 }, udharCollected: 0 };
+    sales.forEach(function(s){
+      var t = Number(s.t || s.time || 0);
+      if (t < fromT || t > toT) return;
+      var amt = Number(s.total || s.amt || 0);
+      var mode = (s.mode || s.paymentMode || 'cash').toLowerCase();
+      if (mode === 'udhar' || mode === 'credit' || mode === 'udhaar') return;
+      if (!result.byMode.hasOwnProperty(mode)) mode = 'cash';
+      result.byMode[mode] += amt;
+      result.total += amt;
+    });
+    udhars.forEach(function(u){
+      var payments = u.payments || u.collections || [];
+      if (!Array.isArray(payments)) return;
+      payments.forEach(function(p){
+        var t = Number(p.t || p.time || 0);
+        if (t < fromT || t > toT) return;
+        var amt = Number(p.amt || p.amount || 0);
+        var mode = (p.mode || 'cash').toLowerCase();
+        if (!result.byMode.hasOwnProperty(mode)) mode = 'cash';
+        result.byMode[mode] += amt;
+        result.udharCollected += amt;
+        result.total += amt;
+      });
+    });
+    return result;
+  }
+  function outflows(fromT, toT){
+    var exps = safeList('exps');
+    var result = { total: 0, byCat: {} };
+    exps.forEach(function(e){
+      var t = Number(e.t || 0);
+      if (t < fromT || t > toT) return;
+      var amt = Number(e.amt || 0);
+      var cat = e.cat || e.category || 'other';
+      var catLabel = e.catLabel || cat;
+      var emoji = e.emoji || '💰';
+      if (!result.byCat[cat]) result.byCat[cat] = { amt: 0, label: catLabel, emoji: emoji };
+      result.byCat[cat].amt += amt;
+      result.total += amt;
+    });
+    return result;
+  }
+  function cashPositionAt(asOfT){
+    var cash = 0;
+    try {
+      var opening = safeList('cashOpening');
+      if (opening.length > 0) cash += Number(opening[0].amount || opening[0].amt || 0);
+    } catch(e){}
+    var sales = safeList('sales');
+    sales.forEach(function(s){
+      var t = Number(s.t || s.time || 0);
+      if (t > asOfT) return;
+      var mode = (s.mode || s.paymentMode || 'cash').toLowerCase();
+      if (mode === 'cash') cash += Number(s.total || s.amt || 0);
+    });
+    var udhars = safeList('udhar');
+    udhars.forEach(function(u){
+      var payments = u.payments || u.collections || [];
+      if (!Array.isArray(payments)) return;
+      payments.forEach(function(p){
+        var t = Number(p.t || p.time || 0);
+        if (t > asOfT) return;
+        var mode = (p.mode || 'cash').toLowerCase();
+        if (mode === 'cash') cash += Number(p.amt || p.amount || 0);
+      });
+    });
+    var exps = safeList('exps');
+    exps.forEach(function(e){
+      var t = Number(e.t || 0);
+      if (t > asOfT) return;
+      var mode = (e.mode || 'cash').toLowerCase();
+      if (mode === 'cash') cash -= Number(e.amt || 0);
+    });
+    return cash;
+  }
+  function upcomingObligations(daysAhead){
+    var rules = safeList('recurring');
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var result = [];
+    rules.forEach(function(rule){
+      if (!rule || rule.active === false) return;
+      if ((rule.kind || 'expense') !== 'expense') return;
+      var dom = parseInt(rule.dayOfMonth, 10);
+      if (!dom || dom < 1 || dom > 31) return;
+      var thisMonth = new Date(today.getFullYear(), today.getMonth(), dom);
+      var nextOccurrence = (thisMonth >= today) ? thisMonth : new Date(today.getFullYear(), today.getMonth() + 1, dom);
+      var daysFromNow = Math.floor((nextOccurrence - today) / DAY_MS);
+      if (daysFromNow >= 0 && daysFromNow <= daysAhead){
+        result.push({
+          ruleId: rule.id,
+          name: rule.desc || rule.subcatLabel || rule.catLabel || 'Recurring expense',
+          emoji: rule.emoji || '🔁',
+          amount: Number(rule.amt || 0),
+          daysFromNow: daysFromNow,
+          due: nextOccurrence,
+          cat: rule.cat || 'other'
+        });
+      }
+    });
+    result.sort(function(a, b){ return a.daysFromNow - b.daysFromNow; });
+    return result;
+  }
+  function buildSeries(){
+    var now = Date.now();
+    var startOfToday = (function(){ var d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+    var historical = [];
+    for (var i = 30; i >= 0; i--){
+      var dayEnd = startOfToday + DAY_MS - 1 - (i * DAY_MS);
+      historical.push({ t: dayEnd, date: new Date(dayEnd), value: cashPositionAt(dayEnd), isForecast: false });
+    }
+    var inflow30 = inflows(now - 30 * DAY_MS, now);
+    var outflow30 = outflows(now - 30 * DAY_MS, now);
+    var avgDailyNet = (inflow30.total - outflow30.total) / 30;
+    var obligations = upcomingObligations(30);
+    var oblByDay = {};
+    obligations.forEach(function(o){ oblByDay[o.daysFromNow] = (oblByDay[o.daysFromNow] || 0) + o.amount; });
+    var currentCash = historical[historical.length - 1].value;
+    var forecast = [];
+    for (var d = 1; d <= 30; d++){
+      var futureT = startOfToday + (d * DAY_MS) - 1;
+      var projected = currentCash + (avgDailyNet * d);
+      for (var dd = 1; dd <= d; dd++){ if (oblByDay[dd]) projected -= oblByDay[dd]; }
+      forecast.push({ t: futureT, date: new Date(futureT), value: projected, isForecast: true, obligationToday: oblByDay[d] || 0 });
+    }
+    return { historical: historical, forecast: forecast, avgDailyNet: avgDailyNet };
+  }
+
+  /* ─── Mobile SVG chart (smaller viewBox, no hover tooltip — touch tap shows briefly) ─── */
+  function renderChart(){
+    var svg = $('mcf-chart');
+    if (!svg) return;
+    var series = buildSeries();
+    var all = series.historical.concat(series.forecast);
+    if (!all.length) return;
+    var W = 360, H = 200;
+    var padL = 38, padR = 8, padT = 12, padB = 26;
+    var chartW = W - padL - padR;
+    var chartH = H - padT - padB;
+    var values = all.map(function(p){ return p.value; });
+    var minV = Math.min.apply(null, values);
+    var maxV = Math.max.apply(null, values);
+    if (minV > 0) minV = 0;
+    var range = (maxV - minV) || 1;
+    minV = minV - range * 0.05;
+    maxV = maxV + range * 0.1;
+    range = maxV - minV;
+    var xStep = chartW / (all.length - 1);
+    var pts = all.map(function(p, i){
+      return {
+        x: padL + i * xStep,
+        y: padT + chartH - ((p.value - minV) / range) * chartH,
+        value: p.value, date: p.date, isForecast: p.isForecast, idx: i,
+        obligationToday: p.obligationToday || 0
+      };
+    });
+    var todayIdx = series.historical.length - 1;
+    var todayX = pts[todayIdx].x, todayY = pts[todayIdx].y;
+    function makePath(points){ return points.map(function(p, i){ return (i === 0 ? 'M' : 'L') + ' ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1); }).join(' '); }
+    var pastPts = pts.slice(0, todayIdx + 1);
+    var fcPts = pts.slice(todayIdx);
+    var pastPath = makePath(pastPts);
+    var fcPath = makePath(fcPts);
+    var zeroY = padT + chartH - ((0 - minV) / range) * chartH;
+    var pastArea = pastPath + ' L ' + todayX.toFixed(1) + ' ' + zeroY.toFixed(1) + ' L ' + pts[0].x.toFixed(1) + ' ' + zeroY.toFixed(1) + ' Z';
+    var yTicks = [];
+    for (var ti = 0; ti <= 3; ti++){
+      var v = minV + (range * ti / 3);
+      yTicks.push({ y: padT + chartH - (ti / 3) * chartH, value: v });
+    }
+    /* Mobile: 3 X labels — start, today, end */
+    var xLabels = [
+      { x: pts[0].x, label: all[0].date.getDate() + ' ' + MONTHS[all[0].date.getMonth()] },
+      { x: todayX, label: 'Today' },
+      { x: pts[all.length-1].x, label: all[all.length-1].date.getDate() + ' ' + MONTHS[all[all.length-1].date.getMonth()] }
+    ];
+    var html = '';
+    html += '<defs><linearGradient id="mcf-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#15803D" stop-opacity="0.18"/><stop offset="100%" stop-color="#15803D" stop-opacity="0"/></linearGradient></defs>';
+    yTicks.forEach(function(tk){ html += '<line x1="' + padL + '" y1="' + tk.y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + tk.y.toFixed(1) + '" stroke="#F4F0E8" stroke-width="1"/>'; });
+    if (minV < 0 && maxV > 0){ html += '<line x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) + '" stroke="#0A0A0A" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>'; }
+    yTicks.forEach(function(tk){ html += '<text x="' + (padL - 4) + '" y="' + (tk.y + 3).toFixed(1) + '" font-size="8.5" fill="#8B8276" text-anchor="end" font-weight="700">' + fmtINR(tk.value) + '</text>'; });
+    html += '<rect x="' + todayX.toFixed(1) + '" y="' + padT + '" width="' + (W - padR - todayX).toFixed(1) + '" height="' + chartH + '" fill="#FFF7ED" opacity="0.55"/>';
+    html += '<line x1="' + todayX.toFixed(1) + '" y1="' + padT + '" x2="' + todayX.toFixed(1) + '" y2="' + (padT + chartH) + '" stroke="#C2410C" stroke-width="1.2" stroke-dasharray="3 2" opacity="0.55"/>';
+    html += '<path d="' + pastArea + '" fill="url(#mcf-grad)"/>';
+    html += '<path d="' + pastPath + '" fill="none" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+    html += '<path d="' + fcPath + '" fill="none" stroke="#C2410C" stroke-width="2.2" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round"/>';
+    html += '<circle cx="' + todayX.toFixed(1) + '" cy="' + todayY.toFixed(1) + '" r="5" fill="#fff" stroke="#15803D" stroke-width="2.5"/>';
+    pts.slice(todayIdx + 1).forEach(function(p){ if (p.obligationToday > 0){ html += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.5" fill="#DC2626" stroke="#fff" stroke-width="1.5"/>'; } });
+    xLabels.forEach(function(xl){ html += '<text x="' + xl.x.toFixed(1) + '" y="' + (H - 8) + '" font-size="9" fill="#8B8276" text-anchor="middle" font-weight="700">' + xl.label + '</text>'; });
+    svg.innerHTML = html;
+  }
+
+  /* ─── Renderers ─── */
+  var MCF = {
+    period: 'month',
+
+    renderHero: function(){
+      var heroEl = $('mcf-hero');
+      var valEl = $('mcf-hero-val');
+      var delEl = $('mcf-hero-delta');
+      if (!heroEl || !valEl || !delEl) return;
+      var cashInHand = cashPositionAt(Date.now());
+      var lastWeekCash = cashPositionAt(Date.now() - 7 * DAY_MS);
+      var deltaAbs = cashInHand - lastWeekCash;
+      var deltaPct = lastWeekCash !== 0 ? Math.round(((cashInHand - lastWeekCash) / Math.abs(lastWeekCash)) * 100) : 0;
+      valEl.textContent = fmtINRFull(cashInHand);
+      valEl.classList.toggle('neg', cashInHand < 0);
+      if (deltaPct === 0 || lastWeekCash === 0){
+        delEl.className = 'mcf-hero-delta';
+        delEl.textContent = (lastWeekCash === 0 && cashInHand > 0) ? 'New tracking · build up history' : '— vs 7 days ago';
+      } else {
+        delEl.className = 'mcf-hero-delta ' + (deltaPct > 0 ? 'up' : 'down');
+        var arrow = deltaPct > 0 ? '↑' : '↓';
+        delEl.textContent = arrow + ' ' + Math.abs(deltaPct) + '% (' + fmtINRFull(Math.abs(deltaAbs)) + ') vs 7 days ago';
+      }
+    },
+
+    renderKpis: function(){
+      var pr = periodRange(this.period);
+      var inflowCur = inflows(pr.current.from, pr.current.to);
+      var outflowCur = outflows(pr.current.from, pr.current.to);
+      var inflowPrev = inflows(pr.previous.from, pr.previous.to);
+      var outflowPrev = outflows(pr.previous.from, pr.previous.to);
+      var inflowDeltaPct = inflowPrev.total > 0 ? Math.round(((inflowCur.total - inflowPrev.total) / inflowPrev.total) * 100) : (inflowCur.total > 0 ? 100 : 0);
+      var outflowDeltaPct = outflowPrev.total > 0 ? Math.round(((outflowCur.total - outflowPrev.total) / outflowPrev.total) * 100) : (outflowCur.total > 0 ? 100 : 0);
+      var net = inflowCur.total - outflowCur.total;
+      var margin = inflowCur.total > 0 ? Math.round((net / inflowCur.total) * 100) : 0;
+      function deltaHTML(pct, inverse){
+        if (pct === 0) return '<div class="mcf-kpi-delta neutral">—</div>';
+        var isUp = pct > 0;
+        var goodDirection = inverse ? !isUp : isUp;
+        var cls = goodDirection ? 'up' : 'down';
+        var arrow = isUp ? '↑' : '↓';
+        return '<div class="mcf-kpi-delta ' + cls + '">' + arrow + ' ' + Math.abs(pct) + '%</div>';
+      }
+      var html = ''
+        + '<div class="mcf-kpi"><div class="mcf-kpi-lbl">📈 In</div><div class="mcf-kpi-val pos">' + fmtINR(inflowCur.total) + '</div>' + deltaHTML(inflowDeltaPct, false) + '</div>'
+        + '<div class="mcf-kpi"><div class="mcf-kpi-lbl">📉 Out</div><div class="mcf-kpi-val neg">' + fmtINR(outflowCur.total) + '</div>' + deltaHTML(outflowDeltaPct, true) + '</div>'
+        + '<div class="mcf-kpi"><div class="mcf-kpi-lbl">⚡ Net</div><div class="mcf-kpi-val ' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtINR(net) + '</div><div class="mcf-kpi-delta ' + (margin >= 0 ? 'up' : 'down') + '">' + margin + '% margin</div></div>';
+      $('mcf-kpis').innerHTML = html;
+    },
+
+    renderInflows: function(){
+      var pr = periodRange(this.period);
+      var inflow = inflows(pr.current.from, pr.current.to);
+      var modes = [
+        { key: 'cash', emoji: '💵', label: 'Cash sales' },
+        { key: 'upi',  emoji: '📱', label: 'UPI sales' },
+        { key: 'card', emoji: '💳', label: 'Card sales' },
+        { key: 'bank', emoji: '🏦', label: 'Bank transfer' }
+      ];
+      var allRows = modes.map(function(m){ return { emoji: m.emoji, label: m.label, amt: inflow.byMode[m.key] || 0 }; });
+      allRows = allRows.filter(function(r){ return r.amt > 0; });
+      allRows.sort(function(a, b){ return b.amt - a.amt; });
+      var html = '<div class="mcf-panel-h"><div class="mcf-panel-t">📈 Money In</div><div class="mcf-panel-sub">' + pr.current.label + '</div></div>';
+      if (!allRows.length){
+        html += '<div class="mcf-panel-empty">No income recorded for this period</div>';
+      } else {
+        allRows.forEach(function(r){
+          var pct = inflow.total > 0 ? Math.round((r.amt / inflow.total) * 100) : 0;
+          html += '<div class="mcf-row">'
+            +   '<div class="mcf-row-ic">' + r.emoji + '</div>'
+            +   '<div class="mcf-row-lbl">' + escHtml(r.label) + '</div>'
+            +   '<div class="mcf-row-val pos">' + fmtINRFull(r.amt) + '</div>'
+            +   '<div class="mcf-row-bar"><div class="mcf-row-bar-fill pos" style="width:' + pct + '%"></div></div>'
+            +   '<div class="mcf-row-pct">' + pct + '%</div>'
+            + '</div>';
+        });
+        html += '<div class="mcf-panel-total"><span>Total in</span><b>' + fmtINRFull(inflow.total) + '</b></div>';
+      }
+      $('mcf-inflows').innerHTML = html;
+    },
+
+    renderOutflows: function(){
+      var pr = periodRange(this.period);
+      var outflow = outflows(pr.current.from, pr.current.to);
+      var rows = [];
+      Object.keys(outflow.byCat).forEach(function(k){ var v = outflow.byCat[k]; rows.push({ emoji: v.emoji, label: v.label, amt: v.amt }); });
+      rows.sort(function(a, b){ return b.amt - a.amt; });
+      var html = '<div class="mcf-panel-h"><div class="mcf-panel-t">📉 Money Out</div><div class="mcf-panel-sub">' + pr.current.label + '</div></div>';
+      if (!rows.length){
+        html += '<div class="mcf-panel-empty">No expenses recorded for this period</div>';
+      } else {
+        rows.forEach(function(r){
+          var pct = outflow.total > 0 ? Math.round((r.amt / outflow.total) * 100) : 0;
+          html += '<div class="mcf-row">'
+            +   '<div class="mcf-row-ic">' + r.emoji + '</div>'
+            +   '<div class="mcf-row-lbl">' + escHtml(r.label) + '</div>'
+            +   '<div class="mcf-row-val neg">' + fmtINRFull(r.amt) + '</div>'
+            +   '<div class="mcf-row-bar"><div class="mcf-row-bar-fill neg" style="width:' + pct + '%"></div></div>'
+            +   '<div class="mcf-row-pct">' + pct + '%</div>'
+            + '</div>';
+        });
+        html += '<div class="mcf-panel-total"><span>Total out</span><b>' + fmtINRFull(outflow.total) + '</b></div>';
+      }
+      $('mcf-outflows').innerHTML = html;
+    },
+
+    renderObligations: function(){
+      var obls = upcomingObligations(7);
+      var slot = $('mcf-obligations-slot');
+      if (!slot) return;
+      if (!obls.length){
+        slot.innerHTML = '<div class="mcf-obls empty"><div class="mcf-obls-h"><span style="font-size:18px">✓</span><span class="mcf-obls-t">No bills due in next 7 days</span></div><div class="mcf-obls-empty-sub">You\'re clear of scheduled obligations.</div></div>';
+        return;
+      }
+      var total = obls.reduce(function(a, b){ return a + b.amount; }, 0);
+      var html = '<div class="mcf-obls"><div class="mcf-obls-h"><span style="font-size:18px">⚠</span><span class="mcf-obls-t">Upcoming · next 7 days</span></div>';
+      obls.forEach(function(o){
+        var when = (o.daysFromNow === 0) ? 'TODAY' : (o.daysFromNow === 1) ? 'TOMORROW' : ('IN ' + o.daysFromNow + 'D');
+        var urgent = (o.daysFromNow <= 1);
+        html += '<div class="mcf-obl">'
+          +   '<div class="mcf-obl-ic">' + o.emoji + '</div>'
+          +   '<div class="mcf-obl-when ' + (urgent ? 'urgent' : '') + '">' + when + '</div>'
+          +   '<div><div class="mcf-obl-lbl">' + escHtml(o.name) + '</div><div class="mcf-obl-sub">' + o.due.getDate() + ' ' + MONTHS[o.due.getMonth()] + '</div></div>'
+          +   '<div class="mcf-obl-amt">' + fmtINRFull(o.amount) + '</div>'
+          + '</div>';
+      });
+      html += '<div class="mcf-obls-total"><span>Total upcoming</span><b>' + fmtINRFull(total) + '</b></div></div>';
+      slot.innerHTML = html;
+    },
+
+    render: function(){
+      this.renderHero();
+      this.renderKpis();
+      renderChart();
+      this.renderInflows();
+      this.renderOutflows();
+      this.renderObligations();
+    },
+
+    refresh: function(){
+      this.render();
+      try { if (window.App && App.toast) App.toast('✓ Cashflow refreshed'); } catch(e){}
+    },
+
+    setPeriod: function(p){
+      this.period = p;
+      document.querySelectorAll('#mcf-periods .mcf-period').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-mcf-period') === p);
+      });
+      this.render();
+    }
+  };
+
+  /* ─── Hook App.nav to render on entry ─── */
+  function shouldRender(){
+    try { return window.App && App.current === 'cashflow'; } catch(e){ return false; }
+  }
+  function tryRender(){ if (shouldRender()) MCF.render(); }
+
+  function hookNav(retry){
+    if (!window.App || window.App.__mcfHooked){
+      tryRender();
+      return;
+    }
+    var orig = window.App.nav;
+    if (typeof orig !== 'function'){
+      if (retry > 0) setTimeout(function(){ hookNav(retry - 1); }, 200);
+      return;
+    }
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(tryRender, 50);
+      return r;
+    };
+    window.App.__mcfHooked = true;
+    tryRender();
+  }
+
+  /* ─── Period chip clicks ─── */
+  document.addEventListener('click', function(e){
+    if (!shouldRender()) return;
+    var btn = e.target.closest('[data-mcf-period]');
+    if (btn) MCF.setPeriod(btn.getAttribute('data-mcf-period'));
+  });
+
+  /* ─── Subscribe to Store changes ─── */
+  function subscribe(retry){
+    if (!window.Store || !Store.on){
+      if (retry > 0) setTimeout(function(){ subscribe(retry - 1); }, 200);
+      return;
+    }
+    if (window.__mcfSubbed) return;
+    window.__mcfSubbed = true;
+    ['sales','exps','udhar','recurring','cashOpening'].forEach(function(c){
+      try { Store.on(c, function(){ if (shouldRender()) MCF.render(); }); } catch(e){}
+    });
+  }
+
+  function boot(){ subscribe(10); hookNav(10); }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else { boot(); }
+
+  window.HND = window.HND || {};
+  window.HND.mcf = MCF;
+})();
+/* End Mobile Cashflow block */
 
 // Initial render — for non-active pages, prepare lazy data
 window.addEventListener('DOMContentLoaded', () => {
