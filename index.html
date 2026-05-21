@@ -51281,13 +51281,24 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
     var isSalon = (v === 'salon');
 
     return {
-      inventory:    tracksStock && !isSalon,
-      ingredients:  foodPrep || (isSalon && cfg.hasConsumables) ? true : false,
+      /* (May 2026) Salon: Inventory page renders the Services screen,
+         which is now the primary "sell" surface. Keep visible. */
+      inventory:    tracksStock || isSalon,
+      /* (May 2026) Salon: always show Supplies — the consumables tracker
+         is core to salon ops, regardless of cfg.hasConsumables flag. */
+      ingredients:  foodPrep || isSalon,
       coupons:      true,
       /* Show udhaar if config allows OR there are open entries that need attention */
       udhaar:       cfg.showUdhar !== false || hasOpenUdhaar(),
       team:         cfg.hasStaff !== false,
       appointments: !!(cfg.timeSlots && cfg.timeSlots.enabled),
+      /* New modules (May 2026) — visible for all verticals.
+         Packs / Subscriptions especially shine for salon but cafe could
+         use "10 coffee pack" too; we don't gate. */
+      packs:         true,
+      subscriptions: true,
+      campaigns:     true,
+      cashflow:      true,
       /* Always-on */
       home: true, sales: true, customers: true, catalog: true, expenses: true, reports: true, settings: true
     };
