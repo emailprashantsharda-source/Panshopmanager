@@ -17742,9 +17742,19 @@ const App = {
     try { localStorage.setItem(this._salonSeedKey(), 'applied'); } catch(e){}
 
     this._closeSalonSeedSheet();
-    this.toast('✓ ' + added + ' supplies added · tap any to edit price or stock');
-    /* Re-render to show the new list */
-    setTimeout(function(){ self.renderIngredients(); }, 50);
+    this.toast('✓ ' + added + ' supplies added · switch to Browse tab to start tracking');
+    /* Re-render. On desktop the new HND.supplies module owns the UI; on
+       mobile, the legacy renderIngredients still works. (May 2026 fix —
+       calling only renderIngredients caused a blank screen on desktop
+       because #pg-ingredients is hidden when body.hnd-on-supplies is set.) */
+    setTimeout(function(){
+      try { if (window.HND && window.HND.supplies && typeof HND.supplies.render === 'function'){
+        /* Switch the new module to Browse view so user sees the just-added items */
+        HND.supplies.view = 'browse';
+        HND.supplies.render();
+      } } catch(e){ console.warn('[salon seed] HND.supplies render failed', e); }
+      try { if (typeof self.renderIngredients === 'function') self.renderIngredients(); } catch(e){}
+    }, 50);
   },
 
   igFilter(q){ this._igFilter = q; this.renderIngredients(); },
@@ -19877,8 +19887,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         }
       } else {
 
-        var isRetail = item && (item.cat === 'Retail' || item.tracksStock === true);
-        if (item && !isRetail) {
+        /* (May 2026 fix · Bug 2)
+           For salon vertical: route ANY non-Retail item to the wizard.
+           Previously we checked `tracksStock === true` to detect retail
+           but seeded services may have tracksStock=true too, which caused
+           Services items to incorrectly fall through to the old prod
+           sheet. The old sheet is hidden on desktop salon → user perceived
+           "routing to retail" because the hidden form left them stranded
+           on whatever screen they came from / the wrong screen flickered.
+           Strict rule: cat === 'Retail' → old sheet (Retail catalog item).
+                        otherwise → wizard (service-flavour). */
+        var isRetail = item && (item.cat === 'Retail');
+        if (item && !isRetail && _wizardVerts[_vKey]) {
           if (window.console) console.info('[NSW] Routing EDIT/ACTIVATE → wizard',
             { id: id, cat: item.cat, tracksStock: item.tracksStock, active: item.active, vertical: _vKey });
           return this.openServiceWizard(id);
@@ -31092,6 +31112,53 @@ function _load(){
 
 function _recomputeTier(){
   var now = Date.now();
+
+  /* ═══════════════════════════════════════════════════════════════
+     ADMIN BYPASS (May 2026)
+     ─────────────────────────────────────────────────────────────
+     Force King tier for known admin UIDs and test phone numbers.
+     This bypasses all trial/paid expiry logic and runs first so
+     no other branch can override it.
+
+     To add a new test account: append to ADMIN_UIDS or ADMIN_PHONES.
+     The check is intentionally permissive (matches on either) so
+     login flows that haven't yet resolved currentUserId (e.g. just
+     after OTP verify) still match via the phone number.
+  ═══════════════════════════════════════════════════════════════ */
+  var ADMIN_UIDS = [
+    '9AV0qb9zfLakdw0oua4cBV7YF6Z2'   /* Prashant — primary admin */
+  ];
+  var ADMIN_PHONES = [
+    '7838361200',    /* Dev test number */
+    '+917838361200',
+    '917838361200'
+  ];
+
+  try {
+    var uid = window.currentUserId || null;
+    var phone = null;
+    if (window.kfAuth && window.kfAuth.currentUser){
+      phone = window.kfAuth.currentUser.phoneNumber || null;
+      if (!uid) uid = window.kfAuth.currentUser.uid || null;
+    }
+    var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
+
+    var isAdminUid = uid && ADMIN_UIDS.indexOf(uid) >= 0;
+    var isAdminPhone = ADMIN_PHONES.some(function(p){
+      var pc = String(p).replace(/[^\d]/g, '');
+      return phoneClean && (phoneClean === pc || phoneClean.endsWith(pc));
+    });
+
+    if (isAdminUid || isAdminPhone){
+      state.tier = 'king';
+      state.cycle = 'annual';
+      state.paidExpiryMs = now + (10 * 365 * 24 * 60 * 60 * 1000); /* +10 years */
+      state.purchaseToken = 'ADMIN-BYPASS';
+      _save();
+      return;
+    }
+  } catch(e){ /* Don't let bypass logic throw — fall through to normal logic */ }
+  /* ═══════════════════════════════════════════════════════════════ */
 
   if (state.paidExpiryMs && state.purchaseToken) {
     if (now < state.paidExpiryMs) {
@@ -46740,6 +46807,239 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
 })();
 </script>
 <!-- =================== END Subscription Engine block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     PACKS STRIP for new-sale screen (Phase C+ · May 2026)
+     ────────────────────────────────────────────────────────────
+     Injects a horizontally-scrolling row of pack tiles above the
+     service grid on #pg-addsale (salon vertical only). Clicking a
+     pack tile opens the existing Sell Pack modal pre-filled with
+     the currently selected bill customer (if any).
+════════════════════════════════════════════════════════════ -->
+<style>
+.hnd-pkstrip-wrap {
+  margin: 0 16px 12px;
+  padding: 4px 0 0;
+  display: none;
+}
+.hnd-pkstrip-wrap.show { display: block; }
+.hnd-pkstrip-h {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+.hnd-pkstrip-t {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--t2, #6B6557);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hnd-pkstrip-link {
+  font-size: 11px;
+  color: #EA580C;
+  font-weight: 700;
+  cursor: pointer;
+  background: none; border: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: inherit;
+}
+.hnd-pkstrip-link:hover { background: #FFF7ED; }
+.hnd-pkstrip-row {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 6px;
+  scrollbar-width: none;
+}
+.hnd-pkstrip-row::-webkit-scrollbar { display: none; }
+.hnd-pkstrip-tile {
+  flex-shrink: 0;
+  width: 138px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+  border: 1.5px solid #FED7AA;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .12s;
+  font-family: inherit;
+  text-align: left;
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative;
+}
+.hnd-pkstrip-tile:hover {
+  border-color: #EA580C;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -4px rgba(234,88,12,.3);
+}
+.hnd-pkstrip-tile-em { font-size: 22px; line-height: 1; }
+.hnd-pkstrip-tile-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0A0A0A;
+  line-height: 1.25;
+  letter-spacing: -.005em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.hnd-pkstrip-tile-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: #EA580C;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.hnd-pkstrip-tile-meta {
+  font-size: 10px;
+  color: #9A3412;
+  font-weight: 600;
+}
+.hnd-pkstrip-empty {
+  padding: 14px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--t2, #6B6557);
+  background: #FFFBF5;
+  border: 1px dashed var(--bd, #E5E2D8);
+  border-radius: 10px;
+}
+.hnd-pkstrip-empty a {
+  color: #EA580C;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+</style>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+  function fmtINR(n){
+    n = Math.round(+n || 0);
+    try { return '₹' + n.toLocaleString('en-IN'); } catch(e){ return '₹' + n; }
+  }
+  function isSalonVertical(){
+    try {
+      return (window.App && window.App.vertical === 'salon')
+          || (window.S && window.S.prof === 'salon');
+    } catch(e){ return false; }
+  }
+
+  /* Inject the strip wrapper above #svc-grid if not present */
+  function ensureMounted(){
+    if (document.getElementById('hnd-pkstrip-wrap')) return true;
+    var grid = document.getElementById('svc-grid');
+    if (!grid) return false;
+    var wrap = document.createElement('div');
+    wrap.id = 'hnd-pkstrip-wrap';
+    wrap.className = 'hnd-pkstrip-wrap';
+    wrap.innerHTML = ''
+      + '<div class="hnd-pkstrip-h">'
+      +   '<span class="hnd-pkstrip-t">🎁 Subscription packs</span>'
+      +   '<button class="hnd-pkstrip-link" onclick="window.App && App.nav && App.nav(\'packs\')">Manage packs →</button>'
+      + '</div>'
+      + '<div class="hnd-pkstrip-row" id="hnd-pkstrip-row"></div>';
+    grid.parentNode.insertBefore(wrap, grid);
+    return true;
+  }
+
+  function render(){
+    if (!ensureMounted()) return;
+    var wrap = $('hnd-pkstrip-wrap');
+    var row = $('hnd-pkstrip-row');
+    if (!wrap || !row) return;
+
+    /* Only show on new-sale screen + salon vertical */
+    if (!window.App || window.App.current !== 'addsale' || !isSalonVertical()){
+      wrap.classList.remove('show');
+      return;
+    }
+
+    var packs = safeList('packs').filter(function(p){ return p && p.active !== false; });
+    if (!packs.length){
+      wrap.classList.add('show');
+      row.innerHTML = '<div class="hnd-pkstrip-empty">'
+        + 'No subscription packs yet. <a onclick="window.App && App.nav && App.nav(\'packs\')">Create a pack</a> to start selling prepaid bundles.'
+        + '</div>';
+      return;
+    }
+
+    wrap.classList.add('show');
+    row.innerHTML = packs.map(function(pk){
+      var validityLbl = pk.validityDays ? (pk.validityDays + 'd') : 'No exp';
+      var contentCt = (pk.contents || []).length;
+      return '<button class="hnd-pkstrip-tile" data-pkstrip-id="' + pk.id + '" type="button">'
+        + '<div class="hnd-pkstrip-tile-em">' + (pk.emoji || '📦') + '</div>'
+        + '<div class="hnd-pkstrip-tile-name">' + escHtml(pk.name || 'Pack') + '</div>'
+        + '<div class="hnd-pkstrip-tile-price">' + fmtINR(pk.price) + '</div>'
+        + '<div class="hnd-pkstrip-tile-meta">' + contentCt + ' service' + (contentCt === 1 ? '' : 's') + ' · ' + validityLbl + '</div>'
+        + '</button>';
+    }).join('');
+  }
+
+  /* Click handler — open Sell Pack modal pre-filled with bill customer */
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-pkstrip-id]');
+    if (!t) return;
+    var pid = t.getAttribute('data-pkstrip-id');
+    if (!window.HND || !window.HND.subs || !window.HND.subs.openSellModal){
+      if (window.App && App.toast) App.toast('Pack module not ready yet');
+      return;
+    }
+    /* Open sell modal */
+    window.HND.subs.openSellModal(pid);
+    /* If the current bill has a customer set, pre-fill it */
+    try {
+      var billCust = (window.App && window.App._billCustomer) || null;
+      if (billCust && window.HND.subs._sellState){
+        window.HND.subs._sellState.customer = billCust;
+        /* Re-render the sell modal so the customer field shows the pre-filled value */
+        setTimeout(function(){
+          if (window.HND.subs._renderSellModal) window.HND.subs._renderSellModal();
+        }, 50);
+      }
+    } catch(err){}
+  });
+
+  /* Re-render on nav / data change */
+  function hookNav(){
+    if (!window.App || window.App.__hndPkStripHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(render, 60);
+      return r;
+    };
+    window.App.__hndPkStripHooked = true;
+    render();
+    return true;
+  }
+
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hndPkStripSubbed) return;
+    window.__hndPkStripSubbed = true;
+    try { Store.on('packs', function(){ render(); }); } catch(e){}
+  }
+
+  function boot(retry){
+    subscribe();
+    render();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else { boot(15); }
+})();
+</script>
+<!-- =================== END Packs strip block =================== -->
 
 
 <!-- ============================================================
@@ -63493,6 +63793,40 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
 
   function applyAnchor(){
     if (!window.Subs || !Subs._state) return false;
+
+    /* ═══════════════════════════════════════════════════════════════
+       ADMIN BYPASS — short-circuit anchor logic for admin/test users.
+       Same identity check as _recomputeTier + TrialSync.
+    ═══════════════════════════════════════════════════════════════ */
+    try {
+      var ADMIN_UIDS = ['9AV0qb9zfLakdw0oua4cBV7YF6Z2'];
+      var ADMIN_PHONES_RAW = ['7838361200'];
+      var uid = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid) || window.currentUserId || null;
+      var phone = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || null;
+      var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
+      var isAdminUid = uid && ADMIN_UIDS.indexOf(uid) >= 0;
+      var isAdminPhone = ADMIN_PHONES_RAW.some(function(p){
+        return phoneClean && (phoneClean === p || phoneClean.endsWith(p));
+      });
+      if (isAdminUid || isAdminPhone){
+        Subs._state.tier = 'king';
+        Subs._state.cycle = 'annual';
+        Subs._state.paidExpiryMs = Date.now() + (10 * 365 * 24 * 60 * 60 * 1000);
+        Subs._state.purchaseToken = 'ADMIN-BYPASS';
+        try {
+          localStorage.setItem('kf_subs', JSON.stringify({
+            tier: 'king',
+            cycle: 'annual',
+            trialStartMs: Subs._state.trialStartMs || Date.now(),
+            paidExpiryMs: Subs._state.paidExpiryMs,
+            purchaseToken: 'ADMIN-BYPASS'
+          }));
+        } catch(e){}
+        return true;
+      }
+    } catch(e){}
+    /* ═══════════════════════════════════════════════════════════════ */
+
     var signals = gatherSignals();
     var anchor = pickBestAnchor(signals);
     if (anchor === 0) return false; /* No signal yet — leave alone */
@@ -63658,6 +63992,48 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
   /* Set trial start everywhere (state + localStorage + widget refresh) */
   function lockInTrialStart(ms, source){
     if (!ms || ms <= 0) return;
+
+    /* ═══════════════════════════════════════════════════════════════
+       ADMIN BYPASS (May 2026) — short-circuit before any trial logic
+       ─────────────────────────────────────────────────────────────
+       Identical check to the one in Subs._recomputeTier — ensures
+       TrialSync v2 doesn't overwrite the bypass after auth resolves.
+    ═══════════════════════════════════════════════════════════════ */
+    try {
+      var ADMIN_UIDS = ['9AV0qb9zfLakdw0oua4cBV7YF6Z2'];
+      var ADMIN_PHONES_RAW = ['7838361200'];
+      var uid = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid) || window.currentUserId || null;
+      var phone = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || null;
+      var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
+      var isAdminUid = uid && ADMIN_UIDS.indexOf(uid) >= 0;
+      var isAdminPhone = ADMIN_PHONES_RAW.some(function(p){
+        return phoneClean && (phoneClean === p || phoneClean.endsWith(p));
+      });
+      if (isAdminUid || isAdminPhone){
+        log('ADMIN BYPASS — granting King tier (+10yr), skipping TrialSync', uid || phone);
+        if (window.Subs && Subs._state){
+          Subs._state.tier = 'king';
+          Subs._state.cycle = 'annual';
+          Subs._state.paidExpiryMs = Date.now() + (10 * 365 * 24 * 60 * 60 * 1000);
+          Subs._state.purchaseToken = 'ADMIN-BYPASS';
+        }
+        try {
+          localStorage.setItem('kf_subs', JSON.stringify({
+            tier: 'king',
+            cycle: 'annual',
+            trialStartMs: ms,
+            paidExpiryMs: Date.now() + (10 * 365 * 24 * 60 * 60 * 1000),
+            purchaseToken: 'ADMIN-BYPASS'
+          }));
+        } catch(e){}
+        /* Refresh widgets so the UI reflects unlocked state */
+        try { if (window.Subs && typeof Subs.refreshUI === 'function') Subs.refreshUI(); } catch(e){}
+        try { if (window.App && typeof App.toast === 'function') App.toast('✓ Admin access · King tier active'); } catch(e){}
+        return;
+      }
+    } catch(e){ /* fall through */ }
+    /* ═══════════════════════════════════════════════════════════════ */
+
     log('Locking in trial start from ' + source + ':', new Date(ms).toLocaleString());
 
     /* Update Subs state */
