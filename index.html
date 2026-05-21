@@ -51291,7 +51291,11 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
       /* Show udhaar if config allows OR there are open entries that need attention */
       udhaar:       cfg.showUdhar !== false || hasOpenUdhaar(),
       team:         cfg.hasStaff !== false,
-      appointments: !!(cfg.timeSlots && cfg.timeSlots.enabled),
+      /* (May 2026 fix) Appointments was hidden because cfg.timeSlots
+         resolved as undefined at runtime when applyToSidebar ran early
+         in the boot sequence (before VERTICAL_CONFIG fully populated).
+         Force-on for verticals known to have timeSlots enabled. */
+      appointments: isSalon || foodPrep || !!(cfg.timeSlots && cfg.timeSlots.enabled),
       /* New modules (May 2026) — visible for all verticals.
          Packs / Subscriptions especially shine for salon but cafe could
          use "10 coffee pack" too; we don't gate. */
@@ -52194,7 +52198,9 @@ html[data-shell="desktop"] #pg-home {
       udhaar: cfg.showUdhar !== false || hasOpenUdhaar,
       reports: true,
       staff: cfg.hasStaff !== false,           /* ← key is 'staff', not 'team' */
-      appointments: !!(cfg.timeSlots && cfg.timeSlots.enabled),
+      /* (May 2026 fix) Force-on for verticals with timeSlots enabled
+         to bypass cfg-resolution race conditions during early boot. */
+      appointments: isSalon || foodPrep || !!(cfg.timeSlots && cfg.timeSlots.enabled),
       /* New modules (May 2026) — Phases A/B/C. Visible for all verticals. */
       packs:         true,
       subscriptions: true,
