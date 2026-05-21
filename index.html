@@ -47089,6 +47089,2705 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pkstrip-wrap {
 <!-- =================== END Packs strip block =================== -->
 
 
+<!-- ════════════════════════════════════════════════════════════
+     HISAABNOW MOBILE · FOUNDATION (May 2026)
+     ────────────────────────────────────────────────────────────
+     Phase 1 of the mobile redesign sprint. This block establishes
+     the mobile design system tokens, modal/bottom-sheet primitives,
+     and the FIRST redesigned screen: Mobile Add Sale.
+
+     Architecture:
+       - All mobile-specific styles use the `hnm-` (HisaabNow Mobile)
+         CSS prefix so they never clash with `hnd-` (desktop) or the
+         legacy mobile `pg-*` classes.
+       - Each redesigned mobile screen lives under window.HND.m.<name>
+         and activates via body.hnm-on-<name> shell class.
+       - Mobile shell only triggers when data-shell="mobile" (i.e. the
+         user's viewport is < tablet break). Desktop continues to use
+         its own modular screens.
+       - Old `#pg-*` screens stay in DOM. When the new mobile screen
+         is active, the legacy page hides via the body.hnm-on-* rule.
+         If anything breaks, removing the body class instantly reverts
+         to the old screen — zero-risk rollout.
+
+     Design tokens (same as desktop):
+       - Orange #FF6B35, orange-dark #C2410C
+       - Cream backgrounds, navy ink, Inter font
+       - Generous tap targets (44px minimum), bottom-sheet modals
+═══════════════════════════════════════════════════════════════ -->
+<style>
+/* ─────────────────────────────────────────────────────────
+   MOBILE DESIGN TOKENS · CSS vars scoped to body.hnm-*
+───────────────────────────────────────────────────────── */
+:root {
+  /* Mobile-specific tokens.  These echo the desktop hnd-* vars but
+     are tuned for small-screen contrast and tap-target sizing. */
+  --hnm-bg:        #F9FAFB;        /* Page background */
+  --hnm-card:      #FFFFFF;        /* Card / surface */
+  --hnm-ink:       #0A0A0A;        /* Primary text (navy) */
+  --hnm-muted:     #6B6557;        /* Secondary text */
+  --hnm-line:      #E5E2D8;        /* Borders, dividers */
+  --hnm-line-soft: #F4F0E8;        /* Soft hairlines */
+  --hnm-orange:    #FF6B35;        /* Primary brand orange */
+  --hnm-orange-d:  #C2410C;        /* Pressed / dark orange */
+  --hnm-orange-bg: #FFF7ED;        /* Tinted bg */
+  --hnm-orange-bd: #FED7AA;        /* Tinted border */
+  --hnm-green:     #15803D;        /* Success */
+  --hnm-green-bg:  #F0FDF4;
+  --hnm-red:       #DC2626;        /* Danger */
+  --hnm-amber:     #D97706;        /* Warning */
+  --hnm-gold:      #B88A56;        /* Brand wordmark */
+  --hnm-hov:       rgba(184,138,86,.07);
+
+  --hnm-radius-sm: 8px;
+  --hnm-radius-md: 12px;
+  --hnm-radius-lg: 16px;
+  --hnm-radius-xl: 20px;
+
+  --hnm-shadow-sm: 0 1px 2px rgba(10,10,10,.04);
+  --hnm-shadow-md: 0 4px 16px -4px rgba(10,10,10,.08);
+  --hnm-shadow-lg: 0 8px 24px -6px rgba(10,10,10,.14);
+}
+
+/* ─────────────────────────────────────────────────────────
+   MOBILE SHELL HOST · The base mobile screen container
+───────────────────────────────────────────────────────── */
+/* Every mobile screen mounts inside #hnm-* element using this pattern */
+[id^="hnm-"] {
+  display: none;
+}
+
+/* When the mobile shell class is active on body, the matching screen
+   appears and any legacy mobile #pg-* page is hidden. */
+html[data-shell="mobile"] body[class*="hnm-on-"] .nav { /* Bottom nav stays visible */ }
+
+/* ─────────────────────────────────────────────────────────
+   BOTTOM-SHEET MODAL primitive (reusable)
+   Usage: A backdrop + sheet pair. JS toggles .show class.
+───────────────────────────────────────────────────────── */
+.hnm-bs-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(10,10,10,.55);
+  z-index: 4998;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .22s ease, visibility .22s;
+}
+.hnm-bs-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+}
+.hnm-bs {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: #fff;
+  border-radius: var(--hnm-radius-xl) var(--hnm-radius-xl) 0 0;
+  box-shadow: 0 -8px 32px -8px rgba(0,0,0,.18);
+  z-index: 5000;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.2,.7,.2,1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnm-ink);
+}
+.hnm-bs.show {
+  transform: translateY(0);
+}
+.hnm-bs-grab {
+  width: 40px; height: 4px;
+  background: var(--hnm-line);
+  border-radius: 99px;
+  margin: 10px auto 8px;
+  flex-shrink: 0;
+}
+.hnm-bs-h {
+  padding: 8px 20px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--hnm-line-soft);
+  flex-shrink: 0;
+}
+.hnm-bs-h-l b {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.01em;
+  display: block;
+}
+.hnm-bs-h-l div {
+  font-size: 11.5px;
+  color: var(--hnm-muted);
+  font-weight: 600;
+  margin-top: 2px;
+}
+.hnm-bs-close {
+  width: 32px; height: 32px;
+  background: var(--hnm-line-soft);
+  border: 0;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: var(--hnm-muted);
+}
+.hnm-bs-close:active { background: var(--hnm-line); }
+.hnm-bs-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 20px 24px;
+}
+.hnm-bs-footer {
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hnm-line-soft);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────────────────
+   MOBILE ADD SALE — the screen
+═══════════════════════════════════════════════════════════════ */
+/* Activation: body.hnm-on-addsale on mobile shell hides the legacy
+   #pg-addsale and shows our new #hnm-addsale. */
+html[data-shell="mobile"] body.hnm-on-addsale #pg-addsale,
+html[data-shell="mobile"] body.hnm-on-addsale #cart-summary {
+  display: none !important;
+}
+html[data-shell="mobile"] body.hnm-on-addsale #hnm-addsale {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; right: 0;
+  top: 0;
+  bottom: 60px;   /* room for bottom nav */
+  background: var(--hnm-bg);
+  z-index: 20;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnm-ink);
+}
+
+/* Top app bar */
+.hnm-as-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 8px calc(10px + env(safe-area-inset-left));
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: #fff;
+  border-bottom: 1px solid var(--hnm-line);
+  flex-shrink: 0;
+}
+.hnm-as-back {
+  width: 36px; height: 36px;
+  background: var(--hnm-bg);
+  border: 0;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: var(--hnm-ink);
+  flex-shrink: 0;
+}
+.hnm-as-back:active { background: var(--hnm-line); }
+.hnm-as-title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.015em;
+}
+.hnm-as-ic-btn {
+  width: 36px; height: 36px;
+  background: var(--hnm-orange-bg);
+  border: 1px solid var(--hnm-orange-bd);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: var(--hnm-orange-d);
+  flex-shrink: 0;
+}
+.hnm-as-ic-btn:active { background: var(--hnm-orange-bd); transform: scale(.96); }
+.hnm-as-ic-btn.dark {
+  background: var(--hnm-ink);
+  border-color: var(--hnm-ink);
+  color: #fff;
+}
+.hnm-as-ic-btn.dark:active { background: #1F1F1F; }
+
+/* Customer pill (clickable to attach customer) */
+.hnm-as-cust {
+  margin: 10px 14px 6px;
+  padding: 11px 14px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  cursor: pointer;
+  transition: border-color .12s;
+}
+.hnm-as-cust:active { background: var(--hnm-bg); }
+.hnm-as-cust.attached {
+  background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+  border-color: #BBF7D0;
+}
+.hnm-as-cust-av {
+  width: 36px; height: 36px;
+  background: var(--hnm-line-soft);
+  color: var(--hnm-muted);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.hnm-as-cust.attached .hnm-as-cust-av {
+  background: var(--hnm-green);
+  color: #fff;
+}
+.hnm-as-cust-info { flex: 1; min-width: 0; }
+.hnm-as-cust-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--hnm-ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hnm-as-cust-meta {
+  font-size: 11.5px;
+  color: var(--hnm-muted);
+  font-weight: 500;
+  margin-top: 1px;
+}
+.hnm-as-cust-action {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hnm-orange-d);
+  padding: 6px 10px;
+  background: var(--hnm-orange-bg);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.hnm-as-cust.attached .hnm-as-cust-action {
+  color: var(--hnm-green);
+  background: rgba(21, 128, 61, .12);
+}
+
+/* Search row */
+.hnm-as-search {
+  margin: 4px 14px 8px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color .12s;
+}
+.hnm-as-search:focus-within { border-color: var(--hnm-orange); }
+.hnm-as-search svg { color: var(--hnm-muted); flex-shrink: 0; }
+.hnm-as-search input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: none;
+  font-size: 14.5px;
+  color: var(--hnm-ink);
+  font-family: inherit;
+  font-weight: 500;
+  min-width: 0;
+}
+.hnm-as-search input::placeholder { color: var(--hnm-muted); }
+.hnm-as-search-clear {
+  background: var(--hnm-line-soft);
+  border: 0;
+  border-radius: 50%;
+  width: 22px; height: 22px;
+  display: none;
+  cursor: pointer;
+  color: var(--hnm-muted);
+  align-items: center;
+  justify-content: center;
+}
+.hnm-as-search-clear.show { display: flex; }
+
+/* Category chips */
+.hnm-as-chips {
+  margin: 0 0 8px;
+  padding: 0 14px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.hnm-as-chips::-webkit-scrollbar { display: none; }
+.hnm-as-chip {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hnm-muted);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all .12s;
+}
+.hnm-as-chip:active { transform: scale(.95); }
+.hnm-as-chip.active {
+  background: var(--hnm-ink);
+  color: #fff;
+  border-color: var(--hnm-ink);
+}
+
+/* Pack strip (salon-only, mounts above grid) */
+.hnm-as-packs {
+  margin: 4px 14px 10px;
+  display: none;
+}
+.hnm-as-packs.show { display: block; }
+.hnm-as-packs-h {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--hnm-muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-left: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.hnm-as-packs-link {
+  font-size: 11px;
+  color: var(--hnm-orange-d);
+  font-weight: 700;
+  cursor: pointer;
+  background: none; border: 0;
+  padding: 0;
+  font-family: inherit;
+}
+.hnm-as-packs-row {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.hnm-as-packs-row::-webkit-scrollbar { display: none; }
+.hnm-as-pack {
+  flex-shrink: 0;
+  width: 130px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+  border: 1.5px solid var(--hnm-orange-bd);
+  border-radius: var(--hnm-radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+.hnm-as-pack:active { transform: scale(.97); }
+.hnm-as-pack-em { font-size: 22px; line-height: 1; margin-bottom: 2px; }
+.hnm-as-pack-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hnm-ink);
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 30px;
+}
+.hnm-as-pack-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--hnm-orange-d);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+
+/* Service / product tile grid */
+.hnm-as-grid {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 14px 90px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  align-content: start;
+}
+.hnm-as-tile {
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 10px 8px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: all .12s;
+  font-family: inherit;
+  min-height: 110px;
+  justify-content: space-between;
+}
+.hnm-as-tile:active {
+  transform: scale(.96);
+  border-color: var(--hnm-orange);
+}
+.hnm-as-tile.in-cart {
+  border: 1.5px solid var(--hnm-orange);
+  background: var(--hnm-orange-bg);
+}
+.hnm-as-tile-em { font-size: 26px; line-height: 1; margin-bottom: 4px; }
+.hnm-as-tile-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--hnm-ink);
+  line-height: 1.25;
+  letter-spacing: -.005em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 28px;
+  padding: 0 2px;
+}
+.hnm-as-tile-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  margin-top: 4px;
+}
+.hnm-as-tile.in-cart .hnm-as-tile-price { color: var(--hnm-orange-d); }
+.hnm-as-tile-qty {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: var(--hnm-orange);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  box-shadow: 0 2px 6px rgba(255,107,53,.4);
+}
+.hnm-as-tile-inactive {
+  opacity: .55;
+}
+.hnm-as-tile-inactive .hnm-as-tile-price {
+  color: var(--hnm-amber);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Empty state in grid */
+.hnm-as-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 50px 24px;
+}
+.hnm-as-empty-em { font-size: 48px; margin-bottom: 12px; line-height: 1; }
+.hnm-as-empty-t {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.01em;
+  margin-bottom: 6px;
+}
+.hnm-as-empty-s {
+  font-size: 13px;
+  color: var(--hnm-muted);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto 16px;
+}
+.hnm-as-empty-cta {
+  padding: 11px 22px;
+  background: var(--hnm-ink);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Cart bar (Zepto-style, collapsed at bottom) */
+.hnm-cart-bar {
+  position: fixed;
+  left: 12px; right: 12px;
+  bottom: calc(70px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, var(--hnm-ink) 0%, #1F1F1F 100%);
+  border-radius: 14px;
+  padding: 13px 18px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  z-index: 30;
+  box-shadow: 0 12px 28px -8px rgba(0,0,0,.45);
+  cursor: pointer;
+  animation: hnm-cart-up .25s cubic-bezier(.2,.7,.2,1);
+  font-family: 'Inter', sans-serif;
+}
+.hnm-cart-bar.show { display: flex; }
+@keyframes hnm-cart-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hnm-cart-bar-l { color: #fff; min-width: 0; }
+.hnm-cart-bar-count {
+  font-size: 11px;
+  color: rgba(255,255,255,.65);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.hnm-cart-bar-total {
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+  margin-top: 1px;
+}
+.hnm-cart-bar-cta {
+  background: linear-gradient(180deg, var(--hnm-orange) 0%, var(--hnm-orange-d) 100%);
+  color: #fff;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.005em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px -2px rgba(255,107,53,.5);
+}
+
+/* Cart sheet (expanded) — uses bottom-sheet primitive */
+#hnm-cart-sheet { max-height: 78vh; }
+.hnm-cs-line {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hnm-line-soft);
+}
+.hnm-cs-line:last-child { border-bottom: 0; }
+.hnm-cs-line-em {
+  width: 42px; height: 42px;
+  background: var(--hnm-line-soft);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 22px;
+}
+.hnm-cs-line-info { min-width: 0; }
+.hnm-cs-line-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--hnm-ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hnm-cs-line-meta {
+  font-size: 11.5px;
+  color: var(--hnm-muted);
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.hnm-cs-line-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--hnm-line-soft);
+  border-radius: 10px;
+  padding: 2px;
+}
+.hnm-cs-step-btn {
+  width: 30px; height: 30px;
+  background: #fff;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  display: grid; place-items: center;
+}
+.hnm-cs-step-btn:active { background: var(--hnm-line); }
+.hnm-cs-step-qty {
+  min-width: 30px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hnm-cs-totals {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--hnm-bg);
+  border-radius: var(--hnm-radius-md);
+}
+.hnm-cs-totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--hnm-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.hnm-cs-totals-row b {
+  color: var(--hnm-ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hnm-cs-totals-grand {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hnm-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+}
+.hnm-cs-totals-grand b {
+  font-size: 22px;
+  color: var(--hnm-orange-d);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+}
+
+.hnm-cs-checkout {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(180deg, var(--hnm-orange) 0%, var(--hnm-orange-d) 100%);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -4px rgba(255,107,53,.5);
+}
+.hnm-cs-checkout:active { transform: scale(.98); }
+</style>
+
+<!-- ── MOBILE ADD SALE screen ── -->
+<div id="hnm-addsale">
+  <div class="hnm-as-hdr">
+    <button class="hnm-as-back" id="hnm-as-back" aria-label="Back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <div class="hnm-as-title">New Sale</div>
+    <button class="hnm-as-ic-btn" id="hnm-as-cw" aria-label="Custom weight">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+    </button>
+    <button class="hnm-as-ic-btn dark" id="hnm-as-mic" aria-label="Voice billing">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+  </div>
+
+  <div class="hnm-as-cust" id="hnm-as-cust">
+    <div class="hnm-as-cust-av" id="hnm-as-cust-av">W</div>
+    <div class="hnm-as-cust-info">
+      <div class="hnm-as-cust-name" id="hnm-as-cust-name">Walk-in customer</div>
+      <div class="hnm-as-cust-meta" id="hnm-as-cust-meta">Tap to attach customer</div>
+    </div>
+    <div class="hnm-as-cust-action" id="hnm-as-cust-action">+ Add</div>
+  </div>
+
+  <div class="hnm-as-search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="hnm-as-search-input" placeholder="Search service or product…" autocomplete="off">
+    <button class="hnm-as-search-clear" id="hnm-as-search-clear" aria-label="Clear">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="hnm-as-chips" id="hnm-as-chips"></div>
+
+  <div class="hnm-as-packs" id="hnm-as-packs">
+    <div class="hnm-as-packs-h">
+      <span>🎁 Subscription packs</span>
+      <button class="hnm-as-packs-link" id="hnm-as-packs-link">Manage →</button>
+    </div>
+    <div class="hnm-as-packs-row" id="hnm-as-packs-row"></div>
+  </div>
+
+  <div class="hnm-as-grid" id="hnm-as-grid"></div>
+</div>
+
+<!-- ── Floating cart bar (visible only when cart has items) ── -->
+<div class="hnm-cart-bar" id="hnm-cart-bar">
+  <div class="hnm-cart-bar-l">
+    <div class="hnm-cart-bar-count" id="hnm-cart-bar-count">0 items</div>
+    <div class="hnm-cart-bar-total" id="hnm-cart-bar-total">₹0</div>
+  </div>
+  <div class="hnm-cart-bar-cta">
+    <span>View cart</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+</div>
+
+<!-- ── Cart sheet (expanded bottom sheet showing line items + totals) ── -->
+<div class="hnm-bs-backdrop" id="hnm-cart-backdrop"></div>
+<div class="hnm-bs" id="hnm-cart-sheet">
+  <div class="hnm-bs-grab"></div>
+  <div class="hnm-bs-h">
+    <div class="hnm-bs-h-l">
+      <b>Your cart</b>
+      <div id="hnm-cs-meta">0 items</div>
+    </div>
+    <button class="hnm-bs-close" id="hnm-cs-close" aria-label="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="hnm-bs-body" id="hnm-cs-body"></div>
+  <div class="hnm-bs-footer">
+    <button class="hnm-cs-checkout" id="hnm-cs-checkout">
+      <span>Checkout</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="vertical-align:middle;margin-left:6px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+  function fmtINR(n){
+    n = Math.round(+n || 0);
+    try { return '₹' + n.toLocaleString('en-IN'); } catch(e){ return '₹' + n; }
+  }
+
+  function isMobileShell(){
+    return document.documentElement.getAttribute('data-shell') === 'mobile';
+  }
+  function isSalonVertical(){
+    try { return (window.App && window.App.vertical === 'salon'); } catch(e){ return false; }
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Cart bridge — read from App.cart, write via App methods
+     so we never diverge from the existing sale logic.
+  ───────────────────────────────────────────────────────── */
+  function cartCount(){
+    try {
+      var ct = 0;
+      Object.keys(App.cart || {}).forEach(function(k){ ct += Math.max(0, Number(App.cart[k]) || 0); });
+      /* Include customLines (custom-weight items) too */
+      if (Array.isArray(App.customLines)) ct += App.customLines.length;
+      return ct;
+    } catch(e){ return 0; }
+  }
+  function cartTotalNum(){
+    try {
+      if (typeof App.cartTotal === 'function'){
+        var r = App.cartTotal();
+        return Number(r && r.total) || 0;
+      }
+    } catch(e){}
+    return 0;
+  }
+  function cartLineItems(){
+    /* Build display lines from App.cart + App.customLines */
+    var lines = [];
+    try {
+      var prods = safeList('prods');
+      var cart = App.cart || {};
+      Object.keys(cart).forEach(function(key){
+        var qty = Number(cart[key]) || 0;
+        if (qty <= 0) return;
+        /* Resolve product. Key may be plain id OR "id::sizeName" for sized */
+        var prod = null, sizeName = null;
+        if (key.indexOf('::') > 0){
+          var parts = key.split('::');
+          prod = prods.find(function(p){ return p.id === parts[0]; });
+          sizeName = parts[1];
+        } else {
+          prod = prods.find(function(p){ return p.id === key; });
+        }
+        if (!prod) return;
+        var price = Number(prod.sp || prod.price || 0);
+        if (sizeName && Array.isArray(prod.sizes)){
+          var sz = prod.sizes.find(function(s){ return s.name === sizeName; });
+          if (sz) price = Number(sz.price) || price;
+        }
+        lines.push({
+          key: key,
+          pid: prod.id,
+          name: prod.name + (sizeName ? ' · ' + sizeName : ''),
+          emoji: prod.emoji || '🛍️',
+          qty: qty,
+          price: price,
+          total: price * qty
+        });
+      });
+      /* Custom-weight lines */
+      (App.customLines || []).forEach(function(cl, i){
+        lines.push({
+          key: 'cw:' + cl.prodId + ':' + i,
+          isCustom: true,
+          customIdx: i,
+          pid: cl.prodId,
+          name: cl.name || 'Custom item',
+          emoji: cl.emoji || '⚖️',
+          qty: 1,
+          price: Number(cl.total) || 0,
+          total: Number(cl.total) || 0
+        });
+      });
+    } catch(e){ console.warn('[hnm-addsale] cartLineItems failed', e); }
+    return lines;
+  }
+
+  function addToCart(prodId, sizeName){
+    var key = sizeName ? (prodId + '::' + sizeName) : prodId;
+    App.cart = App.cart || {};
+    App.cart[key] = (Number(App.cart[key]) || 0) + 1;
+    /* Trigger any existing app side-effects */
+    if (typeof App.updateCartSummary === 'function') { try { App.updateCartSummary(); } catch(e){} }
+    refreshAll();
+  }
+  function removeFromCart(key){
+    if (!App.cart) return;
+    var current = Number(App.cart[key]) || 0;
+    if (current <= 1) delete App.cart[key];
+    else App.cart[key] = current - 1;
+    if (typeof App.updateCartSummary === 'function') { try { App.updateCartSummary(); } catch(e){} }
+    refreshAll();
+  }
+  function removeCustomLine(idx){
+    if (!Array.isArray(App.customLines)) return;
+    App.customLines.splice(idx, 1);
+    if (typeof App.updateCartSummary === 'function') { try { App.updateCartSummary(); } catch(e){} }
+    refreshAll();
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Customer bridge
+  ───────────────────────────────────────────────────────── */
+  function billCust(){
+    try { return App._billCustomer || null; } catch(e){ return null; }
+  }
+  function openCustomerSheet(){
+    /* Reuse the existing add-customer flow on mobile */
+    if (typeof App.openCustomerPicker === 'function'){ App.openCustomerPicker(); return; }
+    if (typeof App.attachCustomer === 'function'){ App.attachCustomer(); return; }
+    /* Fallback: navigate to customers page */
+    if (App.toast) App.toast('Tap a customer in your list to attach to this bill');
+    if (App.nav) App.nav('customers');
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Tile rendering
+  ───────────────────────────────────────────────────────── */
+  var state = {
+    search: '',
+    cat: 'All'
+  };
+
+  function getProducts(){
+    /* SERVICES is the in-memory product cache used by the legacy
+       renderServiceGrid. Fall back to Store.list('prods'). */
+    var p = (window.SERVICES && Array.isArray(window.SERVICES)) ? window.SERVICES : safeList('prods');
+    return p;
+  }
+
+  function getCategoriesForChips(){
+    var cfg = (window.VERTICAL_CONFIG && App && App.vertical && window.VERTICAL_CONFIG[App.vertical]) || {};
+    if (cfg.inventory && Array.isArray(cfg.inventory.chips)) return cfg.inventory.chips;
+    /* Build from product cats */
+    var cats = ['All'];
+    getProducts().forEach(function(p){
+      if (p && p.cat && cats.indexOf(p.cat) < 0) cats.push(p.cat);
+    });
+    return cats;
+  }
+
+  function filterProducts(){
+    var list = getProducts().slice();
+    /* By active */
+    list = list.filter(function(p){ return p && p.active !== false; });
+    /* By search */
+    if (state.search){
+      var q = state.search.toLowerCase();
+      list = list.filter(function(p){
+        return (p.name || '').toLowerCase().indexOf(q) >= 0
+            || (p.cat  || '').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    /* By category */
+    if (state.cat && state.cat !== 'All'){
+      var cl = state.cat.toLowerCase();
+      list = list.filter(function(p){ return (p.cat || '').toLowerCase() === cl; });
+    }
+    return list;
+  }
+
+  function renderChips(){
+    var box = $('hnm-as-chips');
+    if (!box) return;
+    var cats = getCategoriesForChips();
+    box.innerHTML = cats.map(function(c){
+      var active = (state.cat === c) ? 'active' : '';
+      return '<button class="hnm-as-chip ' + active + '" data-cat="' + escHtml(c) + '" type="button">' + escHtml(c) + '</button>';
+    }).join('');
+  }
+
+  function renderGrid(){
+    var box = $('hnm-as-grid');
+    if (!box) return;
+    var prods = filterProducts();
+    if (!prods.length){
+      var inactiveCount = getProducts().filter(function(p){ return p && p.active === false; }).length;
+      var emptyMsg, emptyCta, emptyCtaNav;
+      if (state.search){
+        emptyMsg = 'No items match "' + escHtml(state.search) + '"';
+        emptyCta = 'Clear search';
+        emptyCtaNav = 'clear';
+      } else if (inactiveCount > 0){
+        var v = (App && App.vertical) || 'cafe';
+        emptyMsg = inactiveCount + ' ' + (v === 'salon' ? 'starter services' : 'starter items') + ' waiting';
+        emptyCta = (v === 'salon') ? 'Open services · set prices' : 'Set prices';
+        emptyCtaNav = (v === 'salon') ? 'inventory' : 'catalog';
+      } else {
+        emptyMsg = 'Add items to start billing';
+        emptyCta = 'Set up menu';
+        emptyCtaNav = 'catalog';
+      }
+      box.innerHTML = '<div class="hnm-as-empty">'
+        + '<div class="hnm-as-empty-em">🎁</div>'
+        + '<div class="hnm-as-empty-t">' + emptyMsg + '</div>'
+        + '<div class="hnm-as-empty-s">Tap an item below to add to cart. Items appear once their prices are set.</div>'
+        + '<button class="hnm-as-empty-cta" data-empty-cta="' + emptyCtaNav + '">' + emptyCta + '</button>'
+        + '</div>';
+      return;
+    }
+    box.innerHTML = prods.map(function(p){
+      var id = p.id || p.name;
+      var inCart = 0;
+      try {
+        var prefix = id + '::';
+        Object.keys(App.cart || {}).forEach(function(k){
+          if (k === id || k.indexOf(prefix) === 0) inCart += Number(App.cart[k]) || 0;
+        });
+      } catch(e){}
+
+      var price = Number(p.sp || p.price || 0);
+      var priceDisplay = price > 0 ? fmtINR(price) : 'Set price';
+      var inactiveCls = price > 0 ? '' : 'hnm-as-tile-inactive';
+      return '<button class="hnm-as-tile ' + inactiveCls + (inCart ? ' in-cart' : '') + '" data-tile-id="' + escHtml(id) + '" type="button">'
+        + (inCart ? '<div class="hnm-as-tile-qty">' + inCart + '</div>' : '')
+        + '<div class="hnm-as-tile-em">' + escHtml(p.emoji || '🛍️') + '</div>'
+        + '<div class="hnm-as-tile-name">' + escHtml(p.name || 'Item') + '</div>'
+        + '<div class="hnm-as-tile-price">' + priceDisplay + '</div>'
+        + '</button>';
+    }).join('');
+  }
+
+  function renderCustomer(){
+    var c = billCust();
+    var pill = $('hnm-as-cust');
+    var av   = $('hnm-as-cust-av');
+    var name = $('hnm-as-cust-name');
+    var meta = $('hnm-as-cust-meta');
+    var act  = $('hnm-as-cust-action');
+    if (!pill) return;
+    if (c && c.name){
+      pill.classList.add('attached');
+      av.textContent = (c.name.charAt(0) || 'C').toUpperCase();
+      name.textContent = c.name;
+      meta.textContent = c.phone || 'Attached';
+      act.textContent = 'Change';
+    } else {
+      pill.classList.remove('attached');
+      av.textContent = 'W';
+      name.textContent = 'Walk-in customer';
+      meta.textContent = 'Tap to attach customer';
+      act.textContent = '+ Add';
+    }
+  }
+
+  function renderCartBar(){
+    var bar   = $('hnm-cart-bar');
+    var count = $('hnm-cart-bar-count');
+    var total = $('hnm-cart-bar-total');
+    if (!bar) return;
+    var ct = cartCount();
+    if (ct <= 0){ bar.classList.remove('show'); return; }
+    bar.classList.add('show');
+    count.textContent = ct + (ct === 1 ? ' item' : ' items');
+    total.textContent = fmtINR(cartTotalNum());
+  }
+
+  function renderCartSheetBody(){
+    var body = $('hnm-cs-body');
+    var meta = $('hnm-cs-meta');
+    if (!body) return;
+    var lines = cartLineItems();
+    var total = cartTotalNum();
+    var ct = cartCount();
+
+    if (meta) meta.textContent = ct + (ct === 1 ? ' item' : ' items');
+
+    if (!lines.length){
+      body.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--hnm-muted)">'
+        + '<div style="font-size:42px;margin-bottom:10px">🛒</div>'
+        + '<div style="font-size:14px;font-weight:600">Cart is empty</div>'
+        + '</div>';
+      return;
+    }
+
+    var html = '';
+    lines.forEach(function(L){
+      var step = '';
+      if (L.isCustom){
+        step = '<div class="hnm-cs-line-stepper">'
+          + '<button class="hnm-cs-step-btn" data-cs-rm-custom="' + L.customIdx + '">×</button>'
+          + '</div>';
+      } else {
+        step = '<div class="hnm-cs-line-stepper">'
+          + '<button class="hnm-cs-step-btn" data-cs-dec="' + escHtml(L.key) + '">−</button>'
+          + '<div class="hnm-cs-step-qty">' + L.qty + '</div>'
+          + '<button class="hnm-cs-step-btn" data-cs-inc="' + escHtml(L.pid) + '">+</button>'
+          + '</div>';
+      }
+      html += '<div class="hnm-cs-line">'
+        + '<div class="hnm-cs-line-em">' + escHtml(L.emoji) + '</div>'
+        + '<div class="hnm-cs-line-info">'
+        +   '<div class="hnm-cs-line-name">' + escHtml(L.name) + '</div>'
+        +   '<div class="hnm-cs-line-meta">' + fmtINR(L.price) + ' × ' + L.qty + ' = ' + fmtINR(L.total) + '</div>'
+        + '</div>'
+        + step
+        + '</div>';
+    });
+    html += '<div class="hnm-cs-totals">'
+      + '<div class="hnm-cs-totals-row"><span>Subtotal</span><b>' + fmtINR(total) + '</b></div>'
+      + '<div class="hnm-cs-totals-grand"><span>Total</span><b>' + fmtINR(total) + '</b></div>'
+      + '</div>'
+      + '<div style="font-size:11.5px;color:var(--hnm-muted);text-align:center;margin-top:10px">Discount, GST, and payment mode on next screen</div>';
+    body.innerHTML = html;
+  }
+
+  function renderPacks(){
+    var box = $('hnm-as-packs');
+    var row = $('hnm-as-packs-row');
+    if (!box || !row) return;
+    if (!isSalonVertical()){ box.classList.remove('show'); return; }
+    var packs = safeList('packs').filter(function(p){ return p && p.active !== false; });
+    if (!packs.length){ box.classList.remove('show'); return; }
+    box.classList.add('show');
+    row.innerHTML = packs.map(function(pk){
+      var contentCt = (pk.contents || []).length;
+      return '<button class="hnm-as-pack" data-pack-id="' + pk.id + '" type="button">'
+        + '<div class="hnm-as-pack-em">' + escHtml(pk.emoji || '📦') + '</div>'
+        + '<div class="hnm-as-pack-name">' + escHtml(pk.name || 'Pack') + '</div>'
+        + '<div class="hnm-as-pack-price">' + fmtINR(pk.price) + '</div>'
+        + '</button>';
+    }).join('');
+  }
+
+  function refreshAll(){
+    renderCustomer();
+    renderCartBar();
+    if ($('hnm-cart-sheet').classList.contains('show')) renderCartSheetBody();
+    /* Update tile in-cart badges */
+    renderGrid();
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Open/close cart sheet
+  ───────────────────────────────────────────────────────── */
+  function openCartSheet(){
+    if (cartCount() <= 0) return;
+    renderCartSheetBody();
+    $('hnm-cart-backdrop').classList.add('show');
+    $('hnm-cart-sheet').classList.add('show');
+  }
+  function closeCartSheet(){
+    $('hnm-cart-backdrop').classList.remove('show');
+    $('hnm-cart-sheet').classList.remove('show');
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     EVENT BINDING (single global delegate)
+  ───────────────────────────────────────────────────────── */
+  document.addEventListener('click', function(e){
+    /* Bail if mobile addsale isn't active */
+    if (!document.body.classList.contains('hnm-on-addsale')) return;
+
+    /* Header buttons */
+    if (e.target.closest('#hnm-as-back')){
+      if (typeof App.cancelSale === 'function') App.cancelSale();
+      else if (App.nav) App.nav('home');
+      return;
+    }
+    if (e.target.closest('#hnm-as-cw')){
+      if (typeof App.openCustomWeight === 'function') App.openCustomWeight();
+      return;
+    }
+    if (e.target.closest('#hnm-as-mic')){
+      if (typeof App.startVoiceBill === 'function') App.startVoiceBill();
+      return;
+    }
+    /* Customer pill */
+    if (e.target.closest('#hnm-as-cust')){
+      openCustomerSheet();
+      return;
+    }
+    /* Search clear */
+    if (e.target.closest('#hnm-as-search-clear')){
+      state.search = '';
+      $('hnm-as-search-input').value = '';
+      $('hnm-as-search-clear').classList.remove('show');
+      renderGrid();
+      return;
+    }
+    /* Category chip */
+    var chip = e.target.closest('[data-cat]');
+    if (chip){
+      state.cat = chip.getAttribute('data-cat');
+      renderChips();
+      renderGrid();
+      return;
+    }
+    /* Empty state CTA */
+    var emptyCta = e.target.closest('[data-empty-cta]');
+    if (emptyCta){
+      var dest = emptyCta.getAttribute('data-empty-cta');
+      if (dest === 'clear'){
+        state.search = '';
+        $('hnm-as-search-input').value = '';
+        $('hnm-as-search-clear').classList.remove('show');
+        renderGrid();
+      } else {
+        if (App.nav) App.nav(dest);
+      }
+      return;
+    }
+    /* Pack tile */
+    var packTile = e.target.closest('[data-pack-id]');
+    if (packTile){
+      var pid = packTile.getAttribute('data-pack-id');
+      if (window.HND && window.HND.subs && typeof HND.subs.openSellModal === 'function'){
+        HND.subs.openSellModal(pid);
+        try {
+          var bc = billCust();
+          if (bc && HND.subs._sellState){
+            HND.subs._sellState.customer = bc;
+            if (HND.subs._renderSellModal) setTimeout(HND.subs._renderSellModal.bind(HND.subs), 50);
+          }
+        } catch(err){}
+      }
+      return;
+    }
+    if (e.target.closest('#hnm-as-packs-link')){
+      if (App.nav) App.nav('packs');
+      return;
+    }
+    /* Service tile tap */
+    var tile = e.target.closest('[data-tile-id]');
+    if (tile){
+      var tid = tile.getAttribute('data-tile-id');
+      var prod = getProducts().find(function(p){ return (p.id || p.name) === tid; });
+      if (!prod){ return; }
+      /* Inactive (no price set) → route to edit instead */
+      var price = Number(prod.sp || prod.price || 0);
+      if (price <= 0){
+        if (typeof App.openProductSheet === 'function') App.openProductSheet(prod.id);
+        return;
+      }
+      /* Sized item → open size picker */
+      if (prod.hasSizes && Array.isArray(prod.sizes) && prod.sizes.length >= 2){
+        if (typeof App.openSizePicker === 'function') { App.openSizePicker(prod.id); return; }
+      }
+      addToCart(prod.id);
+      return;
+    }
+  });
+
+  /* Cart bar → open sheet */
+  document.addEventListener('click', function(e){
+    if (e.target.closest('#hnm-cart-bar')){
+      openCartSheet();
+      return;
+    }
+    if (e.target.closest('#hnm-cs-close') || e.target.closest('#hnm-cart-backdrop')){
+      closeCartSheet();
+      return;
+    }
+    /* Cart sheet inc/dec */
+    var dec = e.target.closest('[data-cs-dec]');
+    if (dec){ removeFromCart(dec.getAttribute('data-cs-dec')); return; }
+    var inc = e.target.closest('[data-cs-inc]');
+    if (inc){ addToCart(inc.getAttribute('data-cs-inc')); return; }
+    var rmc = e.target.closest('[data-cs-rm-custom]');
+    if (rmc){ removeCustomLine(parseInt(rmc.getAttribute('data-cs-rm-custom'), 10)); return; }
+    /* Checkout */
+    if (e.target.closest('#hnm-cs-checkout')){
+      closeCartSheet();
+      if (typeof App.checkout === 'function') App.checkout();
+      return;
+    }
+  });
+
+  /* Search input */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnm-as-search-input'){
+      state.search = e.target.value || '';
+      var clr = $('hnm-as-search-clear');
+      if (clr) clr.classList.toggle('show', !!state.search);
+      renderGrid();
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────
+     Shell activation
+  ───────────────────────────────────────────────────────── */
+  function currentPageKey(){
+    try { if (window.App && window.App.current) return window.App.current; } catch(e){}
+    return 'home';
+  }
+  function syncShellClass(){
+    var on = isMobileShell() && (currentPageKey() === 'addsale');
+    var wasOn = document.body.classList.contains('hnm-on-addsale');
+    document.body.classList.toggle('hnm-on-addsale', on);
+    if (on){
+      /* Reset state on each entry */
+      state.search = '';
+      state.cat = 'All';
+      var inp = $('hnm-as-search-input'); if (inp) inp.value = '';
+      var clr = $('hnm-as-search-clear'); if (clr) clr.classList.remove('show');
+      renderChips();
+      renderPacks();
+      renderGrid();
+      renderCustomer();
+      renderCartBar();
+    } else if (wasOn){
+      closeCartSheet();
+    }
+  }
+
+  /* Hook into App.nav */
+  function hookNav(){
+    if (!window.App || window.App.__hnmAddsaleNavHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 50);
+      return r;
+    };
+    window.App.__hnmAddsaleNavHooked = true;
+    syncShellClass();
+    return true;
+  }
+
+  /* Re-render on store updates */
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hnmAddsaleSubbed) return;
+    window.__hnmAddsaleSubbed = true;
+    ['prods','custs','packs'].forEach(function(c){
+      try { Store.on(c, function(){
+        if (document.body.classList.contains('hnm-on-addsale')){
+          if (c === 'packs') renderPacks();
+          else if (c === 'custs') renderCustomer();
+          else renderGrid();
+        }
+      }); } catch(e){}
+    });
+  }
+
+  /* Poll cart state changes (since App.cart mutations don't all go through Store) */
+  var lastCartSig = '';
+  setInterval(function(){
+    if (!document.body.classList.contains('hnm-on-addsale')) return;
+    var sig = '';
+    try { sig = JSON.stringify(App.cart || {}) + ':' + ((App.customLines || []).length) + ':' + ((billCust() || {}).id || ''); } catch(e){}
+    if (sig !== lastCartSig){
+      lastCartSig = sig;
+      renderCustomer();
+      renderCartBar();
+      renderGrid();
+      if ($('hnm-cart-sheet').classList.contains('show')) renderCartSheetBody();
+    }
+  }, 500);
+
+  /* ESC closes sheet (mostly relevant if user has external keyboard) */
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && $('hnm-cart-sheet').classList.contains('show')){
+      closeCartSheet();
+    }
+  });
+
+  function boot(retry){
+    subscribe();
+    syncShellClass();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else { boot(15); }
+
+  /* Expose */
+  window.HND = window.HND || {};
+  window.HND.m = window.HND.m || {};
+  window.HND.m.addsale = {
+    refresh: refreshAll,
+    openCart: openCartSheet,
+    closeCart: closeCartSheet
+  };
+})();
+</script>
+<!-- =================== END Mobile Add Sale block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     HISAABNOW MOBILE · BILLS screen (May 2026 · Phase 2)
+     ────────────────────────────────────────────────────────────
+     Mobile-first redesign of the Sales (Bills) page.
+     - Sticky header
+     - Period chips (Today / Yesterday / Week / Month / All)
+     - Compact stat strip (count + revenue)
+     - Date-grouped timeline of bills
+     - Each bill: bill # · customer · time · items · total · pay mode
+     - Tap → opens existing bill detail sheet via App.openBillDetail
+═══════════════════════════════════════════════════════════════ -->
+<style>
+/* Activation guard */
+html[data-shell="mobile"] body.hnm-on-sales #pg-sales {
+  display: none !important;
+}
+html[data-shell="mobile"] body.hnm-on-sales #hnm-bills {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; right: 0;
+  top: 0; bottom: 60px;
+  background: var(--hnm-bg);
+  z-index: 20;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnm-ink);
+}
+
+/* Header bar */
+.hnm-bl-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 8px calc(10px + env(safe-area-inset-left));
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: #fff;
+  border-bottom: 1px solid var(--hnm-line);
+  flex-shrink: 0;
+}
+.hnm-bl-hdr-title {
+  flex: 1;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.015em;
+}
+.hnm-bl-hdr-ic {
+  width: 36px; height: 36px;
+  background: var(--hnm-bg);
+  border: 1px solid var(--hnm-line);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: var(--hnm-ink);
+  flex-shrink: 0;
+}
+.hnm-bl-hdr-ic:active { background: var(--hnm-line); transform: scale(.95); }
+.hnm-bl-hdr-ic.primary {
+  background: linear-gradient(180deg, var(--hnm-orange) 0%, var(--hnm-orange-d) 100%);
+  color: #fff;
+  border-color: var(--hnm-orange-d);
+  box-shadow: 0 4px 12px -3px rgba(255,107,53,.42);
+}
+
+/* Period chips */
+.hnm-bl-chips {
+  padding: 12px 14px 8px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: #fff;
+  flex-shrink: 0;
+}
+.hnm-bl-chips::-webkit-scrollbar { display: none; }
+.hnm-bl-chip {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hnm-muted);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all .12s;
+}
+.hnm-bl-chip:active { transform: scale(.95); }
+.hnm-bl-chip.active {
+  background: var(--hnm-ink);
+  color: #fff;
+  border-color: var(--hnm-ink);
+}
+
+/* Stat strip */
+.hnm-bl-stats {
+  padding: 8px 14px 12px;
+  background: #fff;
+  border-bottom: 1px solid var(--hnm-line);
+  flex-shrink: 0;
+}
+.hnm-bl-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.hnm-bl-stat {
+  background: var(--hnm-bg);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 10px 12px;
+  text-align: center;
+}
+.hnm-bl-stat-hero {
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+  border-color: var(--hnm-orange-bd);
+}
+.hnm-bl-stat-lbl {
+  font-size: 10px;
+  color: var(--hnm-muted);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.hnm-bl-stat-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+  line-height: 1;
+}
+.hnm-bl-stat-hero .hnm-bl-stat-val { color: var(--hnm-orange-d); }
+.hnm-bl-stat-sub {
+  font-size: 10.5px;
+  color: var(--hnm-muted);
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+/* Timeline list */
+.hnm-bl-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0 24px;
+}
+.hnm-bl-date-h {
+  padding: 14px 16px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, var(--hnm-bg) 0%, var(--hnm-bg) 75%, rgba(249,250,251,0) 100%);
+  z-index: 1;
+}
+.hnm-bl-date-h-l {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.005em;
+}
+.hnm-bl-date-h-r {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--hnm-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hnm-bl-card {
+  margin: 6px 14px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  cursor: pointer;
+  transition: all .12s;
+}
+.hnm-bl-card:active {
+  transform: scale(.98);
+  border-color: var(--hnm-orange);
+}
+.hnm-bl-card-l { min-width: 0; }
+.hnm-bl-card-cust {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--hnm-ink);
+  letter-spacing: -.005em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hnm-bl-card-meta {
+  font-size: 11.5px;
+  color: var(--hnm-muted);
+  margin-top: 2px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hnm-bl-card-meta .sep { color: var(--hnm-line); }
+.hnm-bl-card-meta .pay-pill {
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.hnm-bl-card-meta .pay-pill.cash    { background: #DCFCE7; color: #15803D; }
+.hnm-bl-card-meta .pay-pill.upi     { background: #DBEAFE; color: #1E40AF; }
+.hnm-bl-card-meta .pay-pill.card    { background: #EDE9FE; color: #5B21B6; }
+.hnm-bl-card-meta .pay-pill.bank    { background: #FEF3C7; color: #92400E; }
+.hnm-bl-card-meta .pay-pill.udhaar,
+.hnm-bl-card-meta .pay-pill.udhar   { background: #FEE2E2; color: #991B1B; }
+.hnm-bl-card-meta .pay-pill.split   { background: #FCE7F3; color: #831843; }
+
+.hnm-bl-card-r {
+  text-align: right;
+  min-width: 0;
+}
+.hnm-bl-card-amt {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em;
+  line-height: 1;
+}
+.hnm-bl-card-time {
+  font-size: 10.5px;
+  color: var(--hnm-muted);
+  font-weight: 600;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.hnm-bl-card-items {
+  grid-column: 1 / -1;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px dashed var(--hnm-line-soft);
+  font-size: 11.5px;
+  color: var(--hnm-muted);
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Search bar (when search mode is active) */
+.hnm-bl-search {
+  margin: 0 14px 8px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 11px 14px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+.hnm-bl-search.show { display: flex; }
+.hnm-bl-search input {
+  flex: 1;
+  border: 0; outline: none; background: none;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--hnm-ink);
+}
+
+/* Empty state */
+.hnm-bl-empty {
+  padding: 60px 24px;
+  text-align: center;
+}
+.hnm-bl-empty-em { font-size: 56px; margin-bottom: 12px; line-height: 1; }
+.hnm-bl-empty-t {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.01em;
+  margin-bottom: 6px;
+}
+.hnm-bl-empty-s {
+  font-size: 13px;
+  color: var(--hnm-muted);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto 18px;
+}
+.hnm-bl-empty-cta {
+  padding: 12px 22px;
+  background: linear-gradient(180deg, var(--hnm-orange) 0%, var(--hnm-orange-d) 100%);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: -.005em;
+  box-shadow: 0 4px 14px -3px rgba(255,107,53,.45);
+}
+</style>
+
+<!-- ── MOBILE BILLS screen ── -->
+<div id="hnm-bills">
+  <div class="hnm-bl-hdr">
+    <div class="hnm-bl-hdr-title">Bills</div>
+    <button class="hnm-bl-hdr-ic" id="hnm-bl-search-btn" aria-label="Search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="hnm-bl-hdr-ic primary" id="hnm-bl-add" aria-label="New sale">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <div class="hnm-bl-chips" id="hnm-bl-chips"></div>
+
+  <div class="hnm-bl-search" id="hnm-bl-search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--hnm-muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="hnm-bl-search-input" placeholder="Search bills, customers, amounts…" autocomplete="off">
+    <button class="hnm-bl-hdr-ic" id="hnm-bl-search-close" style="background:transparent;border:0;width:24px;height:24px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="hnm-bl-stats" id="hnm-bl-stats"></div>
+
+  <div class="hnm-bl-list" id="hnm-bl-list"></div>
+</div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+  function fmtINR(n){
+    n = Math.round(+n || 0);
+    try { return '₹' + n.toLocaleString('en-IN'); } catch(e){ return '₹' + n; }
+  }
+  function isMobileShell(){
+    return document.documentElement.getAttribute('data-shell') === 'mobile';
+  }
+
+  var DAY_MS = 24 * 3600 * 1000;
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  /* ─────────────────────────────────────────────────────────
+     State
+  ───────────────────────────────────────────────────────── */
+  var state = {
+    range: 'Today',   /* Today | Yesterday | This Week | This Month | All */
+    search: ''
+  };
+
+  var RANGES = ['Today','Yesterday','This Week','This Month','All'];
+
+  /* ─────────────────────────────────────────────────────────
+     Sales data — reuse legacy logic by setting App._salesRange
+     then calling App._salesInRange().  This guarantees the
+     same role-filtering and date logic as the legacy screen.
+  ───────────────────────────────────────────────────────── */
+  function getBills(){
+    if (!window.App || typeof App._salesInRange !== 'function') return [];
+    /* Set the legacy range so _salesInRange filters correctly */
+    var legacyRange = state.range === 'All' ? 'All' : state.range;
+    App._salesRange = legacyRange;
+    var bills = App._salesInRange() || [];
+    /* For 'All' the legacy returns everything (fallthrough), good. */
+    /* Sort newest first */
+    bills = bills.slice().sort(function(a, b){
+      var ta = a.t || (a.date ? new Date(a.date).getTime() : 0);
+      var tb = b.t || (b.date ? new Date(b.date).getTime() : 0);
+      return tb - ta;
+    });
+    /* Search filter */
+    if (state.search){
+      var q = state.search.toLowerCase();
+      bills = bills.filter(function(b){
+        var name = (b.cn || b.name || '').toLowerCase();
+        var phone = (b.cph || '').toLowerCase();
+        var amount = String(b.total || 0);
+        var items = (b.items || []).map(function(it){ return (it.name || '').toLowerCase(); }).join(' ');
+        return name.indexOf(q) >= 0
+            || phone.indexOf(q) >= 0
+            || amount.indexOf(q) >= 0
+            || items.indexOf(q) >= 0;
+      });
+    }
+    return bills;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Render
+  ───────────────────────────────────────────────────────── */
+  function renderChips(){
+    var box = $('hnm-bl-chips');
+    if (!box) return;
+    var labels = {
+      'Today': 'Today',
+      'Yesterday': 'Yesterday',
+      'This Week': 'This week',
+      'This Month': 'This month',
+      'All': 'All time'
+    };
+    box.innerHTML = RANGES.map(function(r){
+      return '<button class="hnm-bl-chip ' + (state.range === r ? 'active' : '') + '" data-range="' + r + '" type="button">' + escHtml(labels[r]) + '</button>';
+    }).join('');
+  }
+
+  function renderStats(bills){
+    var box = $('hnm-bl-stats');
+    if (!box) return;
+    var count = bills.length;
+    var revenue = bills.reduce(function(s, b){ return s + (Number(b.total) || 0); }, 0);
+    var avg = count > 0 ? Math.round(revenue / count) : 0;
+
+    box.innerHTML = '<div class="hnm-bl-stats-row">'
+      + '<div class="hnm-bl-stat"><div class="hnm-bl-stat-lbl">Bills</div><div class="hnm-bl-stat-val">' + count + '</div></div>'
+      + '<div class="hnm-bl-stat hnm-bl-stat-hero"><div class="hnm-bl-stat-lbl">Revenue</div><div class="hnm-bl-stat-val">' + fmtINR(revenue) + '</div></div>'
+      + '<div class="hnm-bl-stat"><div class="hnm-bl-stat-lbl">Avg bill</div><div class="hnm-bl-stat-val">' + fmtINR(avg) + '</div></div>'
+      + '</div>';
+  }
+
+  function dateKey(bill){
+    var t = bill.t || (bill.date ? new Date(bill.date).getTime() : 0);
+    var d = new Date(t);
+    return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  }
+
+  function dateLabel(bill){
+    var t = bill.t || (bill.date ? new Date(bill.date).getTime() : 0);
+    var d = new Date(t);
+    var today = new Date();
+    var yest = new Date(Date.now() - DAY_MS);
+    var sameDay = function(a, b){
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    };
+    if (sameDay(d, today)) return 'Today';
+    if (sameDay(d, yest)) return 'Yesterday';
+    /* If within last 7 days, show weekday name */
+    var dayDiff = Math.floor((today.getTime() - t) / DAY_MS);
+    if (dayDiff < 7) return DAYS[d.getDay()];
+    /* Otherwise, "12 Mar" or "12 Mar 2025" if old year */
+    var s = d.getDate() + ' ' + MONTHS[d.getMonth()];
+    if (d.getFullYear() !== today.getFullYear()) s += ' ' + d.getFullYear();
+    return s;
+  }
+
+  function timeLabel(bill){
+    var t = bill.t || (bill.date ? new Date(bill.date).getTime() : 0);
+    if (!t) return '';
+    var d = new Date(t);
+    var h = d.getHours();
+    var m = String(d.getMinutes()).padStart(2, '0');
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ':' + m + ' ' + ampm;
+  }
+
+  function payModeKey(bill){
+    var raw = String(bill.payMode || bill.mode || bill.pt || 'cash').toLowerCase();
+    if (raw === 'udhar' || raw === 'udhaar' || raw === 'credit') return 'udhaar';
+    if (raw === 'split' || raw === 'mixed') return 'split';
+    if (['cash','upi','card','bank'].indexOf(raw) >= 0) return raw;
+    return 'cash';
+  }
+
+  function billItemsSummary(bill){
+    var items = bill.items || [];
+    if (!items.length) return '—';
+    var names = items.map(function(it){
+      var q = Number(it.qty) > 1 ? (' ×' + it.qty) : '';
+      return (it.name || 'Item') + q;
+    });
+    return names.join(' · ');
+  }
+
+  function renderList(){
+    var bills = getBills();
+    renderStats(bills);
+    var box = $('hnm-bl-list');
+    if (!box) return;
+
+    if (!bills.length){
+      var rangeLbl = state.range.toLowerCase();
+      if (state.search){
+        rangeLbl = 'matching "' + escHtml(state.search) + '"';
+      } else if (state.range === 'All') {
+        rangeLbl = 'yet';
+      } else {
+        rangeLbl = state.range === 'Today' ? 'today'
+                 : state.range === 'Yesterday' ? 'yesterday'
+                 : state.range === 'This Week' ? 'this week'
+                 : state.range === 'This Month' ? 'this month'
+                 : 'in this range';
+      }
+      box.innerHTML = '<div class="hnm-bl-empty">'
+        + '<div class="hnm-bl-empty-em">🧾</div>'
+        + '<div class="hnm-bl-empty-t">No bills ' + rangeLbl + '</div>'
+        + '<div class="hnm-bl-empty-s">Tap the + button below to start a bill. Bills appear here as you save them.</div>'
+        + '<button class="hnm-bl-empty-cta" id="hnm-bl-empty-cta">+ Start a bill</button>'
+        + '</div>';
+      return;
+    }
+
+    /* Group by date */
+    var groups = [];
+    var lastKey = null;
+    bills.forEach(function(b){
+      var k = dateKey(b);
+      if (k !== lastKey){
+        groups.push({ key: k, label: dateLabel(b), bills: [], total: 0 });
+        lastKey = k;
+      }
+      var g = groups[groups.length - 1];
+      g.bills.push(b);
+      g.total += Number(b.total) || 0;
+    });
+
+    var html = '';
+    groups.forEach(function(g){
+      html += '<div class="hnm-bl-date-h">'
+        + '<div class="hnm-bl-date-h-l">' + escHtml(g.label) + '</div>'
+        + '<div class="hnm-bl-date-h-r">' + g.bills.length + ' bills · ' + fmtINR(g.total) + '</div>'
+        + '</div>';
+      g.bills.forEach(function(b, idx){
+        var name = b.cn || b.name || 'Walk-in customer';
+        var pay = payModeKey(b);
+        var payLbl = pay.charAt(0).toUpperCase() + pay.slice(1);
+        var itemCt = (b.items || []).length;
+        var itemsSum = billItemsSummary(b);
+
+        /* Compute the global index in the legacy list — used by openBillDetail */
+        var globalIdx = -1;
+        try {
+          var all = (App && App._salesInRange) ? App._salesInRange() : [];
+          all = all.slice().sort(function(x, y){
+            var tx = x.t || (x.date ? new Date(x.date).getTime() : 0);
+            var ty = y.t || (y.date ? new Date(y.date).getTime() : 0);
+            return ty - tx;
+          });
+          globalIdx = all.indexOf(b);
+        } catch(e){}
+
+        html += '<div class="hnm-bl-card" data-bill-idx="' + globalIdx + '">'
+          + '<div class="hnm-bl-card-l">'
+          +   '<div class="hnm-bl-card-cust">' + escHtml(name) + '</div>'
+          +   '<div class="hnm-bl-card-meta">'
+          +     '<span>' + itemCt + ' item' + (itemCt === 1 ? '' : 's') + '</span>'
+          +     '<span class="sep">·</span>'
+          +     '<span class="pay-pill ' + pay + '">' + payLbl + '</span>'
+          +   '</div>'
+          + '</div>'
+          + '<div class="hnm-bl-card-r">'
+          +   '<div class="hnm-bl-card-amt">' + fmtINR(b.total) + '</div>'
+          +   '<div class="hnm-bl-card-time">' + escHtml(timeLabel(b)) + '</div>'
+          + '</div>'
+          + '<div class="hnm-bl-card-items">' + escHtml(itemsSum) + '</div>'
+          + '</div>';
+      });
+    });
+    box.innerHTML = html;
+  }
+
+  function render(){
+    renderChips();
+    renderList();
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Event bindings (delegated)
+  ───────────────────────────────────────────────────────── */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnm-on-sales')) return;
+
+    /* Header: new sale */
+    if (e.target.closest('#hnm-bl-add')){
+      if (window.App && App.nav) App.nav('addsale');
+      return;
+    }
+    /* Header: toggle search */
+    if (e.target.closest('#hnm-bl-search-btn')){
+      var sb = $('hnm-bl-search');
+      var inp = $('hnm-bl-search-input');
+      if (sb && inp){
+        sb.classList.add('show');
+        setTimeout(function(){ inp.focus(); }, 50);
+      }
+      return;
+    }
+    if (e.target.closest('#hnm-bl-search-close')){
+      var sb2 = $('hnm-bl-search');
+      var inp2 = $('hnm-bl-search-input');
+      if (sb2) sb2.classList.remove('show');
+      if (inp2) inp2.value = '';
+      state.search = '';
+      render();
+      return;
+    }
+    /* Period chip */
+    var chip = e.target.closest('[data-range]');
+    if (chip){
+      state.range = chip.getAttribute('data-range');
+      render();
+      return;
+    }
+    /* Empty CTA */
+    if (e.target.closest('#hnm-bl-empty-cta')){
+      if (App.nav) App.nav('addsale');
+      return;
+    }
+    /* Bill card → open detail */
+    var card = e.target.closest('[data-bill-idx]');
+    if (card){
+      var idx = parseInt(card.getAttribute('data-bill-idx'), 10);
+      if (idx >= 0 && typeof App.openBillDetail === 'function'){
+        /* Match legacy source string — 'today' is the bill-list source. */
+        App.openBillDetail(idx, 'today');
+      }
+      return;
+    }
+  });
+
+  /* Search input */
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnm-bl-search-input'){
+      state.search = (e.target.value || '').trim();
+      render();
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────
+     Shell activation
+  ───────────────────────────────────────────────────────── */
+  function currentPageKey(){
+    try { if (window.App && window.App.current) return window.App.current; } catch(e){}
+    return 'home';
+  }
+  function syncShellClass(){
+    var on = isMobileShell() && (currentPageKey() === 'sales');
+    var wasOn = document.body.classList.contains('hnm-on-sales');
+    document.body.classList.toggle('hnm-on-sales', on);
+    if (on){
+      render();
+    } else if (wasOn){
+      /* Close search if open */
+      var sb = $('hnm-bl-search');
+      if (sb) sb.classList.remove('show');
+      state.search = '';
+    }
+  }
+
+  function hookNav(){
+    if (!window.App || window.App.__hnmBillsNavHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 50);
+      return r;
+    };
+    window.App.__hnmBillsNavHooked = true;
+    syncShellClass();
+    return true;
+  }
+
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hnmBillsSubbed) return;
+    window.__hnmBillsSubbed = true;
+    try { Store.on('sales', function(){
+      if (document.body.classList.contains('hnm-on-sales')) render();
+    }); } catch(e){}
+  }
+
+  function boot(retry){
+    subscribe();
+    syncShellClass();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else { boot(15); }
+
+  window.HND = window.HND || {};
+  window.HND.m = window.HND.m || {};
+  window.HND.m.bills = { refresh: render };
+})();
+</script>
+<!-- =================== END Mobile Bills block =================== -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     HISAABNOW MOBILE · CUSTOMERS screen (May 2026 · Phase 2)
+     ────────────────────────────────────────────────────────────
+     Mobile-first redesign of the Customers page.
+     - Sticky header with Add button
+     - Search bar (top-level, not toggled — primary action)
+     - Filter chips (All / Loyal / Repeat / New / Inactive)
+     - Stat strip (Total / Repeat / New 30d)
+     - Customer card list with avatar, name, last visit, total spent
+     - Tap → opens existing detail page via App.openCustomerDetail
+═══════════════════════════════════════════════════════════════ -->
+<style>
+html[data-shell="mobile"] body.hnm-on-customers #pg-customers {
+  display: none !important;
+}
+html[data-shell="mobile"] body.hnm-on-customers #hnm-custs {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; right: 0;
+  top: 0; bottom: 60px;
+  background: var(--hnm-bg);
+  z-index: 20;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--hnm-ink);
+}
+
+.hnm-cu-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 8px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: #fff;
+  border-bottom: 1px solid var(--hnm-line);
+  flex-shrink: 0;
+}
+.hnm-cu-hdr-back {
+  width: 36px; height: 36px;
+  background: var(--hnm-bg);
+  border: 0;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  cursor: pointer;
+  color: var(--hnm-ink);
+  flex-shrink: 0;
+}
+.hnm-cu-hdr-back:active { background: var(--hnm-line); }
+.hnm-cu-hdr-title {
+  flex: 1;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.015em;
+}
+.hnm-cu-hdr-add {
+  width: 36px; height: 36px;
+  background: linear-gradient(180deg, var(--hnm-orange) 0%, var(--hnm-orange-d) 100%);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px -3px rgba(255,107,53,.42);
+}
+.hnm-cu-hdr-add:active { transform: scale(.95); }
+
+/* Search bar (always visible) */
+.hnm-cu-search {
+  margin: 12px 14px 8px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.hnm-cu-search:focus-within { border-color: var(--hnm-orange); }
+.hnm-cu-search svg { color: var(--hnm-muted); flex-shrink: 0; }
+.hnm-cu-search input {
+  flex: 1;
+  border: 0; outline: none; background: none;
+  font-size: 14px;
+  color: var(--hnm-ink);
+  font-family: inherit;
+}
+
+/* Filter chips */
+.hnm-cu-chips {
+  padding: 0 14px 10px;
+  display: flex; gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.hnm-cu-chips::-webkit-scrollbar { display: none; }
+.hnm-cu-chip {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hnm-muted);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.hnm-cu-chip:active { transform: scale(.95); }
+.hnm-cu-chip.active {
+  background: var(--hnm-ink);
+  color: #fff;
+  border-color: var(--hnm-ink);
+}
+.hnm-cu-chip-ct {
+  margin-left: 4px;
+  padding: 1px 6px;
+  background: rgba(0,0,0,.06);
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.hnm-cu-chip.active .hnm-cu-chip-ct {
+  background: rgba(255,255,255,.18);
+  color: #FBBF24;
+}
+
+/* Stat strip */
+.hnm-cu-stats {
+  padding: 0 14px 12px;
+  flex-shrink: 0;
+}
+.hnm-cu-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.hnm-cu-stat {
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 10px 12px;
+}
+.hnm-cu-stat-lbl {
+  font-size: 10px;
+  color: var(--hnm-muted);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.hnm-cu-stat-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -.015em;
+}
+
+/* Customer list */
+.hnm-cu-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 24px;
+  background: var(--hnm-bg);
+}
+.hnm-cu-card {
+  margin: 0 14px 8px;
+  background: var(--hnm-card);
+  border: 1px solid var(--hnm-line);
+  border-radius: var(--hnm-radius-md);
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 11px;
+  align-items: center;
+  cursor: pointer;
+  transition: all .12s;
+}
+.hnm-cu-card:active {
+  transform: scale(.98);
+  border-color: var(--hnm-orange);
+}
+.hnm-cu-card-av {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.hnm-cu-card-info { min-width: 0; }
+.hnm-cu-card-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--hnm-ink);
+  letter-spacing: -.005em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hnm-cu-card-meta {
+  font-size: 11.5px;
+  color: var(--hnm-muted);
+  font-weight: 500;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hnm-cu-card-meta .sep { color: var(--hnm-line); }
+.hnm-cu-card-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hnm-cu-card-tag.loyal    { background: #FEF3C7; color: #92400E; }
+.hnm-cu-card-tag.repeat   { background: #DBEAFE; color: #1E40AF; }
+.hnm-cu-card-tag.new      { background: #DCFCE7; color: #15803D; }
+.hnm-cu-card-tag.inactive { background: #FEE2E2; color: #991B1B; }
+
+.hnm-cu-card-r {
+  text-align: right;
+  min-width: 0;
+}
+.hnm-cu-card-spent {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.hnm-cu-card-visits {
+  font-size: 10.5px;
+  color: var(--hnm-muted);
+  font-weight: 600;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hnm-cu-empty {
+  padding: 56px 24px;
+  text-align: center;
+}
+.hnm-cu-empty-em { font-size: 56px; margin-bottom: 12px; line-height: 1; }
+.hnm-cu-empty-t {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hnm-ink);
+  letter-spacing: -.01em;
+  margin-bottom: 6px;
+}
+.hnm-cu-empty-s {
+  font-size: 13px;
+  color: var(--hnm-muted);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto 18px;
+}
+.hnm-cu-empty-cta {
+  padding: 12px 22px;
+  background: linear-gradient(180deg, var(--hnm-orange) 0%, var(--hnm-orange-d) 100%);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -3px rgba(255,107,53,.45);
+}
+</style>
+
+<!-- ── MOBILE CUSTOMERS screen ── -->
+<div id="hnm-custs">
+  <div class="hnm-cu-hdr">
+    <button class="hnm-cu-hdr-back" id="hnm-cu-back" aria-label="Back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <div class="hnm-cu-hdr-title">Customers</div>
+    <button class="hnm-cu-hdr-add" id="hnm-cu-add" aria-label="Add customer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <div class="hnm-cu-search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="hnm-cu-search-input" placeholder="Search by name or phone…" autocomplete="off">
+  </div>
+
+  <div class="hnm-cu-chips" id="hnm-cu-chips"></div>
+
+  <div class="hnm-cu-stats" id="hnm-cu-stats"></div>
+
+  <div class="hnm-cu-list" id="hnm-cu-list"></div>
+</div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
+  function fmtINR(n){
+    n = Math.round(+n || 0);
+    try { return '₹' + n.toLocaleString('en-IN'); } catch(e){ return '₹' + n; }
+  }
+  function isMobileShell(){
+    return document.documentElement.getAttribute('data-shell') === 'mobile';
+  }
+
+  var DAY_MS = 24 * 3600 * 1000;
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var AV_PALETTE = ['#FF6B35','#15803D','#1E40AF','#5B21B6','#B45309','#0F766E','#9A3412','#0891B2','#7C3AED','#BE123C'];
+
+  var state = {
+    filter: 'all',  /* all | loyal | repeat | new | inactive */
+    search: ''
+  };
+
+  function getLastVisitTs(c){
+    if (c.lastT) return Number(c.lastT);
+    if (c.lastDate){
+      var d = new Date(c.lastDate);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    if (c.firstSeenT) return Number(c.firstSeenT);
+    return 0;
+  }
+
+  function classify(c){
+    var visits = Number(c.visits) || 0;
+    var spent = Number(c.spent) || 0;
+    var lt = getLastVisitTs(c);
+    var now = Date.now();
+    var newCutoff = now - 30 * DAY_MS;
+    var inactiveCutoff = now - 60 * DAY_MS;
+    if (visits >= 10 || spent >= 5000) return 'loyal';
+    if (visits >= 3) return 'repeat';
+    if (lt > 0 && lt < inactiveCutoff) return 'inactive';
+    if (lt > newCutoff || (c.firstSeenT && c.firstSeenT > newCutoff)) return 'new';
+    return null;
+  }
+
+  function avColor(name){
+    var s = String(name || '').toUpperCase();
+    var h = 0;
+    for (var i = 0; i < s.length; i++){ h = (h * 31 + s.charCodeAt(i)) | 0; }
+    return AV_PALETTE[Math.abs(h) % AV_PALETTE.length];
+  }
+
+  function lastVisitLabel(c){
+    var t = getLastVisitTs(c);
+    if (!t) return 'No visits yet';
+    var diff = Date.now() - t;
+    var days = Math.floor(diff / DAY_MS);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return days + ' days ago';
+    if (days < 30) return Math.floor(days/7) + ' week' + (days < 14 ? '' : 's') + ' ago';
+    if (days < 365){
+      var d = new Date(t);
+      return d.getDate() + ' ' + MONTHS[d.getMonth()];
+    }
+    var d2 = new Date(t);
+    return MONTHS[d2.getMonth()] + ' ' + d2.getFullYear();
+  }
+
+  function filteredCusts(){
+    var all = safeList('custs');
+    var list = all.slice();
+    if (state.search){
+      var q = state.search.toLowerCase();
+      list = list.filter(function(c){
+        return (c.name || '').toLowerCase().indexOf(q) >= 0
+            || (c.phone || '').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (state.filter !== 'all'){
+      list = list.filter(function(c){ return classify(c) === state.filter; });
+    }
+    /* Sort: most recent visit first; new customers (no visits) at top within their tier */
+    list.sort(function(a, b){
+      return getLastVisitTs(b) - getLastVisitTs(a);
+    });
+    return list;
+  }
+
+  function renderChips(){
+    var box = $('hnm-cu-chips');
+    if (!box) return;
+    var all = safeList('custs');
+    var counts = { all: all.length, loyal: 0, repeat: 0, new: 0, inactive: 0 };
+    all.forEach(function(c){
+      var cls = classify(c);
+      if (cls && counts[cls] !== undefined) counts[cls]++;
+    });
+    var chips = [
+      { key: 'all',      label: 'All' },
+      { key: 'loyal',    label: 'Loyal' },
+      { key: 'repeat',   label: 'Repeat' },
+      { key: 'new',      label: 'New' },
+      { key: 'inactive', label: 'Inactive' }
+    ];
+    box.innerHTML = chips.map(function(c){
+      var ct = counts[c.key];
+      var ctHtml = ct > 0 ? '<span class="hnm-cu-chip-ct">' + ct + '</span>' : '';
+      return '<button class="hnm-cu-chip ' + (state.filter === c.key ? 'active' : '') + '" data-filter="' + c.key + '" type="button">' + escHtml(c.label) + ctHtml + '</button>';
+    }).join('');
+  }
+
+  function renderStats(){
+    var box = $('hnm-cu-stats');
+    if (!box) return;
+    var all = safeList('custs');
+    var now = Date.now();
+    var newCutoff = now - 30 * DAY_MS;
+    var total = all.length;
+    var repeat = all.filter(function(c){ return (Number(c.visits) || 0) >= 2; }).length;
+    var new30 = all.filter(function(c){
+      var ft = Number(c.firstSeenT) || 0;
+      return ft >= newCutoff;
+    }).length;
+
+    box.innerHTML = '<div class="hnm-cu-stats-row">'
+      + '<div class="hnm-cu-stat"><div class="hnm-cu-stat-lbl">Total</div><div class="hnm-cu-stat-val">' + total + '</div></div>'
+      + '<div class="hnm-cu-stat"><div class="hnm-cu-stat-lbl">Repeat</div><div class="hnm-cu-stat-val">' + repeat + '</div></div>'
+      + '<div class="hnm-cu-stat"><div class="hnm-cu-stat-lbl">New (30d)</div><div class="hnm-cu-stat-val">' + new30 + '</div></div>'
+      + '</div>';
+  }
+
+  function renderList(){
+    var box = $('hnm-cu-list');
+    if (!box) return;
+    var list = filteredCusts();
+
+    if (!list.length){
+      var emptyMsg, emptyCta;
+      if (state.search){
+        emptyMsg = 'No customers match "' + escHtml(state.search) + '"';
+        emptyCta = 'Add ' + escHtml(state.search) + ' as new';
+      } else if (state.filter !== 'all'){
+        emptyMsg = 'No customers in this filter';
+        emptyCta = '';
+      } else {
+        emptyMsg = 'No customers yet';
+        emptyCta = '+ Add first customer';
+      }
+      box.innerHTML = '<div class="hnm-cu-empty">'
+        + '<div class="hnm-cu-empty-em">👥</div>'
+        + '<div class="hnm-cu-empty-t">' + emptyMsg + '</div>'
+        + '<div class="hnm-cu-empty-s">Add customers and attach them to bills. Their visits and spending track automatically.</div>'
+        + (emptyCta ? '<button class="hnm-cu-empty-cta" id="hnm-cu-empty-cta">' + emptyCta + '</button>' : '')
+        + '</div>';
+      return;
+    }
+
+    var customers = safeList('custs');
+    var html = list.map(function(c){
+      var idx = customers.indexOf(c);
+      var name = c.name || 'Unnamed';
+      var initial = (name.charAt(0) || '?').toUpperCase();
+      var color = avColor(name);
+      var visits = Number(c.visits) || 0;
+      var spent = Number(c.spent) || 0;
+      var cls = classify(c);
+      var phone = (c.phone || '').replace(/^\+91\s*/, '');
+      var lastV = lastVisitLabel(c);
+      var tag = cls && cls !== 'all' ? '<span class="hnm-cu-card-tag ' + cls + '">' + cls + '</span>' : '';
+      return '<div class="hnm-cu-card" data-cust-idx="' + idx + '">'
+        + '<div class="hnm-cu-card-av" style="background:' + color + '">' + escHtml(initial) + '</div>'
+        + '<div class="hnm-cu-card-info">'
+        +   '<div class="hnm-cu-card-name">' + escHtml(name) + '</div>'
+        +   '<div class="hnm-cu-card-meta">'
+        +     (phone ? '<span>' + escHtml(phone) + '</span><span class="sep">·</span>' : '')
+        +     '<span>' + escHtml(lastV) + '</span>'
+        +     (tag ? '<span class="sep">·</span>' + tag : '')
+        +   '</div>'
+        + '</div>'
+        + '<div class="hnm-cu-card-r">'
+        +   '<div class="hnm-cu-card-spent">' + fmtINR(spent) + '</div>'
+        +   '<div class="hnm-cu-card-visits">' + visits + ' visit' + (visits === 1 ? '' : 's') + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+    box.innerHTML = html;
+  }
+
+  function render(){
+    renderChips();
+    renderStats();
+    renderList();
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     Events
+  ───────────────────────────────────────────────────────── */
+  document.addEventListener('click', function(e){
+    if (!document.body.classList.contains('hnm-on-customers')) return;
+
+    if (e.target.closest('#hnm-cu-back')){
+      if (App.nav) App.nav('home');
+      return;
+    }
+    if (e.target.closest('#hnm-cu-add') || e.target.closest('#hnm-cu-empty-cta')){
+      if (typeof App.openAddCustomer === 'function'){
+        /* If empty-cta + search has value, pre-fill name with the search query */
+        if (e.target.closest('#hnm-cu-empty-cta') && state.search){
+          App._prefillCustomerName = state.search;
+        }
+        App.openAddCustomer();
+      }
+      return;
+    }
+    var chip = e.target.closest('[data-filter]');
+    if (chip){
+      state.filter = chip.getAttribute('data-filter');
+      render();
+      return;
+    }
+    var card = e.target.closest('[data-cust-idx]');
+    if (card){
+      var idx = parseInt(card.getAttribute('data-cust-idx'), 10);
+      if (typeof App.openCustomerDetail === 'function'){
+        App.openCustomerDetail(idx);
+      }
+      return;
+    }
+  });
+
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'hnm-cu-search-input'){
+      state.search = (e.target.value || '').trim();
+      renderList();
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────
+     Shell activation
+  ───────────────────────────────────────────────────────── */
+  function currentPageKey(){
+    try { if (window.App && window.App.current) return window.App.current; } catch(e){}
+    return 'home';
+  }
+  function syncShellClass(){
+    var on = isMobileShell() && (currentPageKey() === 'customers');
+    var wasOn = document.body.classList.contains('hnm-on-customers');
+    document.body.classList.toggle('hnm-on-customers', on);
+    if (on){
+      var inp = $('hnm-cu-search-input');
+      if (inp) inp.value = state.search;
+      render();
+    }
+  }
+
+  function hookNav(){
+    if (!window.App || window.App.__hnmCustsNavHooked) return false;
+    var orig = window.App.nav;
+    if (typeof orig !== 'function') return false;
+    window.App.nav = function(){
+      var r = orig.apply(this, arguments);
+      setTimeout(syncShellClass, 50);
+      return r;
+    };
+    window.App.__hnmCustsNavHooked = true;
+    syncShellClass();
+    return true;
+  }
+
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__hnmCustsSubbed) return;
+    window.__hnmCustsSubbed = true;
+    try { Store.on('custs', function(){
+      if (document.body.classList.contains('hnm-on-customers')) render();
+    }); } catch(e){}
+  }
+
+  function boot(retry){
+    subscribe();
+    syncShellClass();
+    if (!hookNav() && retry > 0){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else { boot(15); }
+
+  window.HND = window.HND || {};
+  window.HND.m = window.HND.m || {};
+  window.HND.m.custs = { refresh: render };
+})();
+</script>
+<!-- =================== END Mobile Customers block =================== -->
+
+
 <!-- ============================================================
      HisaabNow Desktop Step G · Expenses
      ─────────────────────────────────────────────────────────────
