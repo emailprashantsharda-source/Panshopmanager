@@ -13581,6 +13581,12 @@ const App = {
         return;
       }
 
+      /* (May 2026 fix) Salon vertical splits catalog → Retail / Services.
+         The "items waiting" empty state is most likely Services (since
+         retail items don't tend to be seeded with `active:false`), but
+         we route per vertical to be safe. */
+      var _emptyNav = (this.vertical === 'salon') ? 'inventory' : 'catalog';
+      var _emptyCtaLabel = (this.vertical === 'salon') ? 'Open services' : 'Set prices';
       if (inactiveCount > 0) {
 
         target.innerHTML = `
@@ -13588,9 +13594,9 @@ const App = {
             <div class="empty-emoji">🎁</div>
             <div class="empty-title">${inactiveCount} items waiting</div>
             <div class="empty-sub">We've added a starter menu for you. Tap an item in your menu, set the price, and it'll appear here ready to bill in one tap.</div>
-            <button class="empty-cta" onclick="App.nav('catalog')">
+            <button class="empty-cta" onclick="App.nav('${_emptyNav}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              Set prices
+              ${_emptyCtaLabel}
             </button>
           </div>`;
       } else {
@@ -13599,9 +13605,9 @@ const App = {
             <div class="empty-emoji">📋</div>
             <div class="empty-title" data-i18n="empty.addToStart">Add items to start billing</div>
             <div class="empty-sub">Set up your menu first — name, price, and emoji. Then come back here to bill in one tap per item.</div>
-            <button class="empty-cta" onclick="App.nav('catalog')">
+            <button class="empty-cta" onclick="App.nav('${_emptyNav}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Set up menu
+              ${this.vertical === 'salon' ? 'Open services' : 'Set up menu'}
             </button>
           </div>`;
       }
@@ -46819,11 +46825,24 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
 ════════════════════════════════════════════════════════════ -->
 <style>
 .hnd-pkstrip-wrap {
+  /* On mobile (svc-grid context) we need horizontal padding.
+     On desktop POS (#hnd-pos-l flex container) the parent already has padding,
+     so margin should be zero. We detect by parent class via descendant CSS below. */
   margin: 0 16px 12px;
   padding: 4px 0 0;
   display: none;
+  flex-shrink: 0;
 }
 .hnd-pkstrip-wrap.show { display: block; }
+
+/* Desktop POS variant — strip lives inside .hnd-pos-l flex column.
+   Remove horizontal margin so it spans the column width.
+   Cap height so it doesn't push the product grid off-screen. */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pkstrip-wrap {
+  margin: 0 0 4px;
+  padding: 0;
+  max-height: 130px;
+}
 .hnd-pkstrip-h {
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 8px;
@@ -46930,10 +46949,30 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
     } catch(e){ return false; }
   }
 
-  /* Inject the strip wrapper above #svc-grid if not present */
+  /* Inject the strip wrapper above the product grid if not present.
+     Desktop POS uses #hnd-pos-grid; mobile uses #svc-grid. We mount above
+     whichever is currently being rendered. */
   function ensureMounted(){
-    if (document.getElementById('hnd-pkstrip-wrap')) return true;
-    var grid = document.getElementById('svc-grid');
+    if (document.getElementById('hnd-pkstrip-wrap')) {
+      /* Already mounted — but if it's mounted to the wrong grid (e.g. user
+         resized from mobile → desktop), reparent it. */
+      var existing = document.getElementById('hnd-pkstrip-wrap');
+      var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+      var preferredGrid = isDesktop
+        ? document.getElementById('hnd-pos-grid')
+        : document.getElementById('svc-grid');
+      if (preferredGrid && existing.nextElementSibling !== preferredGrid){
+        try { preferredGrid.parentNode.insertBefore(existing, preferredGrid); } catch(e){}
+      }
+      return true;
+    }
+    var isDesktop = document.documentElement.getAttribute('data-shell') === 'desktop';
+    /* Prefer the active grid based on which shell is in use */
+    var grid = isDesktop
+      ? document.getElementById('hnd-pos-grid')
+      : document.getElementById('svc-grid');
+    /* Fallback: pick whichever one exists */
+    if (!grid) grid = document.getElementById('hnd-pos-grid') || document.getElementById('svc-grid');
     if (!grid) return false;
     var wrap = document.createElement('div');
     wrap.id = 'hnd-pkstrip-wrap';
@@ -46954,8 +46993,12 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
     var row = $('hnd-pkstrip-row');
     if (!wrap || !row) return;
 
-    /* Only show on new-sale screen + salon vertical */
-    if (!window.App || window.App.current !== 'addsale' || !isSalonVertical()){
+    /* Only show on new-sale screen + salon vertical.
+       Desktop uses App.current === 'pos' or 'addsale'; mobile only 'addsale'.
+       Be permissive — show when either is true. */
+    var cur = (window.App && window.App.current) || '';
+    var isAddSale = (cur === 'addsale' || cur === 'pos');
+    if (!isAddSale || !isSalonVertical()){
       wrap.classList.remove('show');
       return;
     }
@@ -51939,10 +51982,15 @@ html[data-shell="desktop"] #pg-home {
       var _word = 'starter products';
       var _sub  = "We've preloaded a menu for your vertical. Open Catalog to set prices and activate them — they'll appear here ready to bill.";
       var _ctaText = 'Open catalog · set prices';
+      /* (May 2026 fix) Salon vertical splits catalog → Retail / Services.
+         The seeded SERVICES live under nav('inventory'), Retail items
+         under nav('catalog'). Route by what we're actually pointing at. */
+      var _ctaNav = 'catalog';
       if (_v === 'salon') {
         _word = 'starter services';
         _sub  = "We've preloaded common services. Open Services to set prices and activate them — they'll appear here ready to bill.";
         _ctaText = 'Open services · set prices';
+        _ctaNav = 'inventory'; /* salon: inventory == Services screen */
       } else if (_v === 'cafe' || _v === 'restaurant') {
         _word = 'starter menu items';
       } else if (_v === 'bakery') {
@@ -51951,7 +51999,7 @@ html[data-shell="desktop"] #pg-home {
       empty.innerHTML = ''
         + '<div class="hnd-pos-empty-title">🎁 ' + seededCount + ' ' + _word + ' waiting</div>'
         + '<div class="hnd-pos-empty-sub">' + _sub + '</div>'
-        + '<button class="hnd-pos-empty-cta" onclick="window.App && App.nav && App.nav(\'catalog\')">' + _ctaText + '</button>';
+        + '<button class="hnd-pos-empty-cta" onclick="window.App && App.nav && App.nav(\'' + _ctaNav + '\')">' + _ctaText + '</button>';
     });
     obs.observe(grid, { childList: true, subtree: false });
   }
