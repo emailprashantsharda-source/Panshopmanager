@@ -8745,19 +8745,66 @@ const App = {
       const firstName = ownerName.split(' ')[0] || 'there';
       greetName.textContent = firstName;
     }
+    /* ─────────────────────────────────────────────────────────────
+       Greet-subline helper (May 2026)
+       Format: "Shop · Thu 21 May" + sale chunk
+       Sale chunk rules:
+         • 0 sales today  → no sale chunk
+         • 1 sale today   → "· First sale 10:34 AM"
+         • 2+ sales today → "· Last sale 2:15 PM"
+       Strips data-i18n defensively so the auto-translator can't
+       overwrite this with the legacy `dash.cafeOverview` key.
+    ───────────────────────────────────────────────────────────── */
+    const _fmtTime12 = (d) => {
+      let h = d.getHours();
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const ap = h >= 12 ? 'PM' : 'AM';
+      h = h % 12; if (h === 0) h = 12;
+      return h + ':' + m + ' ' + ap;
+    };
+    const _buildGreetSubline = () => {
+      /* Shop name — prefer MShop active outlet, else app/vertical fallback */
+      let shopName = '';
+      try {
+        const active = window.MShop && MShop.getActive && MShop.getActive();
+        shopName = (active && active.name) || '';
+      } catch(e){}
+      if (!shopName) shopName = (window.S && S.store) || (cfg && cfg.bizName) || 'Your shop';
+
+      /* Date as "Thu 21 May" */
+      const now = new Date();
+      const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()];
+      const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()];
+      const dateStr = wd + ' ' + now.getDate() + ' ' + mo;
+
+      /* Sale chunk — depends on count */
+      let saleChunk = '';
+      try {
+        const sales = (window.Store && Store.todaySales) ? Store.todaySales() : [];
+        if (sales.length === 1) {
+          const ts = sales[0].t || sales[0].createdAt || Date.now();
+          saleChunk = ' · First sale ' + _fmtTime12(new Date(ts));
+        } else if (sales.length >= 2) {
+          /* Latest sale = max timestamp */
+          let latest = 0;
+          for (let i = 0; i < sales.length; i++) {
+            const ts = sales[i].t || sales[i].createdAt || 0;
+            if (ts > latest) latest = ts;
+          }
+          if (latest) saleChunk = ' · Last sale ' + _fmtTime12(new Date(latest));
+        }
+      } catch(e){}
+
+      return shopName + ' · ' + dateStr + saleChunk;
+    };
+
     const greetSub = document.getElementById('greet-sub');
     if (greetSub) {
-      /* (May 2026) Defensive: strip any stale data-i18n so the i18n
-         auto-translator can't overwrite vertical-specific text with
-         the legacy `dash.cafeOverview` key. */
       greetSub.removeAttribute('data-i18n');
       if (skipOwnerData) {
         greetSub.textContent = 'Loading your dashboard…';
-      } else if (cfg && cfg.greetingSub) {
-        greetSub.textContent = cfg.greetingSub;
       } else {
-        const shopName = (window.S && S.store) || cfg.bizName || 'your shop';
-        greetSub.textContent = `Here's ${shopName} today.`;
+        greetSub.textContent = _buildGreetSubline();
       }
     }
 
@@ -8873,20 +8920,13 @@ const App = {
 
     const gs = document.getElementById('greet-sub');
     if (gs){
-      /* (May 2026) Defensive strip — see note in earlier setter. */
+      /* (May 2026) Use the shared subline helper defined at the top
+         of renderHome. See note there for format + rules. */
       gs.removeAttribute('data-i18n');
       if (isEmptyDay) {
         gs.textContent = "Welcome — let's start your day";
-      } else if (cfg && cfg.greetingSub) {
-        gs.textContent = cfg.greetingSub;
       } else {
-        let _shopName = '';
-        try {
-          const _active = window.MShop && MShop.getActive && MShop.getActive();
-          _shopName = (_active && _active.name) || '';
-        } catch(e){}
-        if (!_shopName) _shopName = (cfg && cfg.bizName) || 'Your shop';
-        gs.textContent = _shopName + " · " + this._T('dash.todayOverview', "here's how today's looking");
+        gs.textContent = _buildGreetSubline();
       }
     }
 
