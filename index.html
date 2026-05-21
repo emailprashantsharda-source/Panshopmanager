@@ -901,6 +901,35 @@ select.ps-input{appearance:none;-webkit-appearance:none;background-image:url("da
 .nav-fab{background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--y);align-self:center;justify-self:center;box-shadow:0 8px 22px -4px rgba(0,0,0,.55),0 0 0 2px rgba(255,192,67,.15);margin-top:-22px;transition:transform .12s ease;border:none;cursor:pointer}
 .nav-fab:active{transform:scale(.92)}
 
+/* ═══════════════════════════════════════════════════════════════
+   SPEED CHECKOUT (May 2026)
+   - Compact items card with eyebrow
+   - Sticky bottom CTA + payment tabs
+   - Discount + Notes as expandable chips
+   - Bottom nav hidden on this page (see App.nav)
+═══════════════════════════════════════════════════════════════ */
+.ck-items-card{background:var(--card);margin:12px 16px;border-radius:16px;padding:14px 16px;border:0.5px solid var(--border);box-shadow:var(--shadow-sm)}
+.ck-items-eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--t2);text-transform:uppercase;margin-bottom:10px}
+.ck-summary{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-strong)}
+.ck-summary .bill-line{padding:5px 0;font-size:13.5px}
+.ck-summary .bill-line.total{font-size:17px;font-weight:800;padding-top:8px;border-top:0.5px solid var(--border);margin-top:4px}
+.ck-row-label{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-left:2px}
+.ck-chip-row{display:flex;gap:8px;flex-wrap:wrap}
+.ck-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--t1);background:var(--card);border:1px solid var(--border);padding:9px 13px;border-radius:99px;cursor:pointer;font-family:inherit;transition:transform .12s ease}
+.ck-chip:active{transform:scale(.96)}
+.ck-chip.active{background:var(--p-50);border-color:var(--p-200);color:var(--p-deep)}
+.ck-chip-pill{background:var(--p);color:#fff;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:800;margin-left:2px;font-variant-numeric:tabular-nums}
+.ck-sticky{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(255,255,255,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:90;box-shadow:0 -8px 24px -10px rgba(0,0,0,.08)}
+.ck-pay-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.ck-pay-tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;background:#fff;border:1px solid var(--border);border-radius:11px;font-size:11px;font-weight:700;font-family:inherit;color:var(--t1);cursor:pointer;transition:transform .12s ease}
+.ck-pay-tab:active{transform:scale(.96)}
+.ck-pay-tab.selected{background:var(--n);color:#fff;border-color:var(--n)}
+.ck-pay-tab-emoji{font-size:16px;line-height:1}
+.ck-collect-btn{width:100%;background:linear-gradient(180deg,var(--p) 0%,var(--p-deep) 100%);color:#fff;border:none;padding:15px 16px;border-radius:13px;font-size:16px;font-weight:800;letter-spacing:-.01em;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 8px 24px -8px rgba(255,107,53,.55);transition:transform .12s ease}
+.ck-collect-btn:active{transform:scale(.98)}
+.ck-hdr-total{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--t1);min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
+body.on-checkout .nav{display:none !important}
+
 .chips{display:flex;gap:8px;padding:0 18px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
 .chips::-webkit-scrollbar{display:none}
 .chips::-webkit-scrollbar{display:none}
@@ -2396,23 +2425,29 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('addsale')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" data-i18n="checkout.title">Checkout</div>
-    <div style="width:40px"></div>
+    <div class="ck-hdr-total" id="checkout-hdr-total">₹0</div>
   </header>
 
-  <div class="bill-paper">
-    <div class="bill-h">
-      <div class="bill-shop" id="bill-shop" data-i18n="more.yourShop">Your shop</div>
-      <div class="bill-sub" id="bill-sub">Sector 18, Noida · GST 09ABCDE1234F1Z5</div>
+  <div style="padding-bottom:180px">
+
+  <div class="ck-items-card">
+    <div class="ck-items-eyebrow">
+      <span id="ck-items-count">0 items</span>
+      <span style="opacity:.45"> · </span>
+      <span id="bill-shop">Your shop</span>
+      <span id="bill-sub" style="display:none">—</span>
     </div>
     <div id="checkout-items"></div>
-    <div class="bill-line" id="checkout-subtotal-row" style="border-top:1px dashed var(--border-strong);margin-top:8px;padding-top:10px"><span class="l" data-i18n="common.subtotal">Subtotal</span><span class="r" id="checkout-subtotal">₹0</span></div>
-    <div class="bill-line" id="checkout-discount-row" style="display:none"><span class="l" style="color:var(--success)" data-i18n="common.discount">Discount</span><span class="r" id="checkout-discount-display" style="color:var(--success)">−₹0</span></div>
-    <div class="bill-line" id="checkout-gst-row" style="display:none"><span class="l">GST <span id="checkout-gst-rate" style="color:var(--t2);font-weight:600">(18%)</span></span><span class="r" id="checkout-gst-amt">₹0</span></div>
-    <div class="bill-line" id="checkout-comm-row" style="display:none;color:var(--t2);font-style:italic"><span class="l" data-i18n="common.staffComm">Staff commission</span><span class="r" id="checkout-comm-amt" style="color:var(--t2);font-weight:700">₹0</span></div>
-    <div class="bill-line total"><span class="l" data-i18n="common.total">Total</span><span class="r" id="checkout-total">₹0</span></div>
+    <div class="ck-summary">
+      <div class="bill-line" id="checkout-subtotal-row" style="display:none"><span class="l" data-i18n="common.subtotal">Subtotal</span><span class="r" id="checkout-subtotal">₹0</span></div>
+      <div class="bill-line" id="checkout-discount-row" style="display:none"><span class="l" style="color:var(--success)" data-i18n="common.discount">Discount</span><span class="r" id="checkout-discount-display" style="color:var(--success)">−₹0</span></div>
+      <div class="bill-line" id="checkout-gst-row" style="display:none"><span class="l">GST <span id="checkout-gst-rate" style="color:var(--t2);font-weight:600">(18%)</span></span><span class="r" id="checkout-gst-amt">₹0</span></div>
+      <div class="bill-line" id="checkout-comm-row" style="display:none;color:var(--t2);font-style:italic"><span class="l" data-i18n="common.staffComm">Staff commission</span><span class="r" id="checkout-comm-amt" style="color:var(--t2);font-weight:700">₹0</span></div>
+      <div class="bill-line total"><span class="l" data-i18n="common.total">Total</span><span class="r" id="checkout-total">₹0</span></div>
+    </div>
   </div>
 
-  <div id="bill-staff-picker-section" style="display:none;margin:14px 16px 0;padding:14px;background:linear-gradient(135deg,#FEF3C7 0%,#FED7AA 100%);border:1.5px solid #FDBA74;border-radius:14px">
+  <div id="bill-staff-picker-section" style="display:none;margin:0 16px 12px;padding:14px;background:linear-gradient(135deg,#FEF3C7 0%,#FED7AA 100%);border:1.5px solid #FDBA74;border-radius:14px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <div style="width:32px;height:32px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">✂️</div>
       <div style="flex:1;min-width:0">
@@ -2424,38 +2459,8 @@ html[data-current-role="manager"] body{
     <div id="bill-staff-helper" style="font-size:11.5px;color:#92400E;font-weight:600;margin-top:8px;display:none">Tap to pick · commission auto-calculated</div>
   </div>
 
-  <div class="checkout-extras">
-    <div class="extras-row">
-      <div class="extras-row-l">
-        <div class="extras-row-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
-        <div class="extras-row-text"><div class="extras-row-label" data-i18n="common.discount">Discount</div><div class="extras-row-sub">Flat amount or %</div></div>
-      </div>
-      <input type="number" class="extras-input" id="discount-input" placeholder="0" oninput="App.recalcTotal()">
-    </div>
-
-    <div class="extras-row" id="checkout-gst-extras" style="display:none">
-      <div class="extras-row-l">
-        <div class="extras-row-icon yellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
-        <div class="extras-row-text"><div class="extras-row-label">GST</div><div class="extras-row-sub" data-i18n="pos.applyToBill">Apply to bill</div></div>
-      </div>
-      <div class="gst-pills">
-        <button class="gst-pill active" onclick="App.gstSelect(this,0)">None</button>
-        <button class="gst-pill" onclick="App.gstSelect(this,5)">5%</button>
-        <button class="gst-pill" onclick="App.gstSelect(this,12)">12%</button>
-        <button class="gst-pill" onclick="App.gstSelect(this,18)">18%</button>
-      </div>
-    </div>
-    <div class="extras-row" style="flex-direction:column;align-items:stretch;gap:6px">
-      <div class="extras-row-l" style="width:100%">
-        <div class="extras-row-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-        <div class="extras-row-text" style="flex:1"><div class="extras-row-label" data-i18n="common.notesLbl">Notes</div></div>
-      </div>
-      <textarea class="extras-textarea" id="bill-notes" placeholder="Add a note for this bill (optional)…"></textarea>
-    </div>
-  </div>
-
-  <div style="padding:0 18px 14px">
-    <div class="panel-title" style="margin-bottom:10px" data-i18n="nav.customers">Customer</div>
+  <div style="padding:0 16px 12px">
+    <div class="ck-row-label" data-i18n="nav.customers">Customer</div>
     <div class="cust-search-wrap" style="position:relative">
       <div class="search-bar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -2477,35 +2482,69 @@ html[data-current-role="manager"] body{
     </div>
   </div>
 
-  <div style="padding:0 18px 14px">
-    <div class="panel-title" style="margin-bottom:10px" data-i18n="pos.payMethod">Payment Method</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-      <button class="vert-card" style="padding:12px 6px;flex-direction:column;text-align:center;gap:5px;border-width:1.5px" onclick="App.payMethod(this,'cash')">
-        <div class="pay-icon cash" style="width:34px;height:34px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <div style="font-size:11.5px;font-weight:700">Cash</div>
+  <div style="padding:0 16px 14px">
+    <div class="ck-chip-row">
+      <button type="button" class="ck-chip" id="ck-chip-discount" onclick="App.toggleExtras('discount')">
+        <span style="font-size:14px">💸</span><span data-i18n="common.discount">Discount</span><span class="ck-chip-pill" id="ck-chip-discount-val" style="display:none">0</span>
       </button>
-      <button class="vert-card selected" style="padding:12px 6px;flex-direction:column;text-align:center;gap:5px;border-width:1.5px" onclick="App.payMethod(this,'upi')">
-        <div class="pay-icon upi" style="width:34px;height:34px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-        <div style="font-size:11.5px;font-weight:700">UPI</div>
-      </button>
-      <button class="vert-card" style="padding:12px 6px;flex-direction:column;text-align:center;gap:5px;border-width:1.5px" onclick="App.payMethod(this,'card')">
-        <div class="pay-icon card" style="width:34px;height:34px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
-        <div style="font-size:11.5px;font-weight:700">Card</div>
-      </button>
-      <button class="vert-card" style="padding:12px 6px;flex-direction:column;text-align:center;gap:5px;border-width:1.5px" onclick="App.payMethod(this,'udhaar')" id="checkout-pay-udhaar">
-        <div class="pay-icon" style="width:34px;height:34px;background:#FEF3C7;color:#92400E;border-radius:9px;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-        <div style="font-size:11.5px;font-weight:700" data-i18n="nav.udhaar">Udhaar</div>
+      <button type="button" class="ck-chip" id="ck-chip-note" onclick="App.toggleExtras('note')">
+        <span style="font-size:14px">📝</span><span data-i18n="common.notesLbl">Notes</span><span class="ck-chip-pill" id="ck-chip-note-val" style="display:none">✓</span>
       </button>
     </div>
 
-    <div id="checkout-udhaar-warn" style="display:none;margin-top:8px;padding:9px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;font-size:12px;color:#92400E;font-weight:600;line-height:1.4">
-      ⚠ Tag a customer name to track this udhaar. Add phone for WhatsApp reminders.
+    <div class="checkout-extras" id="ck-extras-expanded" style="display:none;margin-top:12px">
+      <div class="extras-row">
+        <div class="extras-row-l">
+          <div class="extras-row-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+          <div class="extras-row-text"><div class="extras-row-label" data-i18n="common.discount">Discount</div><div class="extras-row-sub">Flat amount or %</div></div>
+        </div>
+        <input type="number" class="extras-input" id="discount-input" placeholder="0" oninput="App.recalcTotal()">
+      </div>
+      <div class="extras-row" id="checkout-gst-extras" style="display:none">
+        <div class="extras-row-l">
+          <div class="extras-row-icon yellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+          <div class="extras-row-text"><div class="extras-row-label">GST</div><div class="extras-row-sub" data-i18n="pos.applyToBill">Apply to bill</div></div>
+        </div>
+        <div class="gst-pills">
+          <button class="gst-pill active" onclick="App.gstSelect(this,0)">None</button>
+          <button class="gst-pill" onclick="App.gstSelect(this,5)">5%</button>
+          <button class="gst-pill" onclick="App.gstSelect(this,12)">12%</button>
+          <button class="gst-pill" onclick="App.gstSelect(this,18)">18%</button>
+        </div>
+      </div>
+      <div class="extras-row" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div class="extras-row-l" style="width:100%">
+          <div class="extras-row-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+          <div class="extras-row-text" style="flex:1"><div class="extras-row-label" data-i18n="common.notesLbl">Notes</div></div>
+        </div>
+        <textarea class="extras-textarea" id="bill-notes" placeholder="Add a note for this bill (optional)…" oninput="App._syncNoteChip()"></textarea>
+      </div>
     </div>
   </div>
 
-  <div style="padding:0 18px 0">
-    <button class="btn btn-primary btn-block" onclick="App.completeSale()">Complete Sale & Send WhatsApp
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+
+  <div class="ck-sticky">
+    <div id="checkout-udhaar-warn" style="display:none;margin-bottom:10px;padding:9px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;font-size:12px;color:#92400E;font-weight:600;line-height:1.4">
+      ⚠ Tag a customer name to track this udhaar. Add phone for WhatsApp reminders.
+    </div>
+    <div class="ck-pay-tabs">
+      <button type="button" class="ck-pay-tab vert-card" onclick="App.payMethod(this,'cash')">
+        <span class="ck-pay-tab-emoji">💵</span><span>Cash</span>
+      </button>
+      <button type="button" class="ck-pay-tab vert-card selected" onclick="App.payMethod(this,'upi')">
+        <span class="ck-pay-tab-emoji">📱</span><span>UPI</span>
+      </button>
+      <button type="button" class="ck-pay-tab vert-card" onclick="App.payMethod(this,'card')">
+        <span class="ck-pay-tab-emoji">💳</span><span>Card</span>
+      </button>
+      <button type="button" class="ck-pay-tab vert-card" id="checkout-pay-udhaar" onclick="App.payMethod(this,'udhaar')">
+        <span class="ck-pay-tab-emoji">🧾</span><span data-i18n="nav.udhaar">Udhaar</span>
+      </button>
+    </div>
+    <button type="button" class="ck-collect-btn" onclick="App.completeSale()">
+      <span>Collect <span id="ck-collect-amt">₹0</span><span id="ck-collect-method-suffix"></span></span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 12 5 19 12"/><line x1="12" y1="5" x2="12" y2="19" transform="rotate(90 12 12)"/></svg>
     </button>
   </div>
 </div>
@@ -8516,7 +8555,9 @@ const App = {
       if (navBtn) navBtn.classList.add('active');
     }
 
-    document.querySelector('.nav').style.display = (page === 'onboarding') ? 'none' : 'grid';
+    document.querySelector('.nav').style.display = (page === 'onboarding' || page === 'checkout') ? 'none' : 'grid';
+    /* (May 2026) Toggle body class for checkout — used by speed-checkout CSS */
+    try { document.body.classList.toggle('on-checkout', page === 'checkout'); } catch(e){}
 
     /* Reset onboarding: always show Step 0 (language picker) first */
     if (page === 'onboarding') {
@@ -13159,7 +13200,8 @@ const App = {
   },
 
   payMethod(el, m){
-    el.parentElement.querySelectorAll('.vert-card').forEach(c => c.classList.remove('selected'));
+    /* (May 2026) Works with both legacy .vert-card and new .ck-pay-tab */
+    el.parentElement.querySelectorAll('.vert-card, .ck-pay-tab').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
     this.paymentMode = m;
 
@@ -13167,6 +13209,51 @@ const App = {
     if (warn) {
       warn.style.display = (m === 'udhaar') ? '' : 'none';
     }
+    /* Update sticky CTA label suffix: "Collect ₹450 via UPI" etc. */
+    try {
+      const suffix = document.getElementById('ck-collect-method-suffix');
+      if (suffix) {
+        const label = (m === 'cash') ? ' in cash'
+                    : (m === 'upi') ? ' via UPI'
+                    : (m === 'card') ? ' on card'
+                    : (m === 'udhaar') ? ' as udhaar'
+                    : '';
+        suffix.textContent = label;
+      }
+    } catch(e){}
+  },
+
+  /* (May 2026) Speed-checkout: toggle Discount/Notes extras section */
+  toggleExtras(focus){
+    const el = document.getElementById('ck-extras-expanded');
+    if (!el) return;
+    const isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+      setTimeout(() => {
+        if (focus === 'discount') {
+          const d = document.getElementById('discount-input');
+          if (d) d.focus();
+        } else if (focus === 'note') {
+          const n = document.getElementById('bill-notes');
+          if (n) n.focus();
+        }
+      }, 50);
+    }
+  },
+
+  /* (May 2026) Speed-checkout: sync the Note chip visual when text entered */
+  _syncNoteChip(){
+    try {
+      const n = document.getElementById('bill-notes');
+      const pill = document.getElementById('ck-chip-note-val');
+      const chip = document.getElementById('ck-chip-note');
+      if (!n || !pill || !chip) return;
+      const has = (n.value || '').trim().length > 0;
+      pill.style.display = has ? '' : 'none';
+      if (has) chip.classList.add('active');
+      else chip.classList.remove('active');
+    } catch(e){}
   },
 
   renderSales(){
@@ -16521,6 +16608,34 @@ const App = {
       gRow.style.display = 'none';
     }
     document.getElementById('checkout-total').textContent = `₹${total.toFixed(0).toLocaleString('en-IN')}`;
+    /* (May 2026) Mirror total to header + sticky CTA */
+    try {
+      const totalStr = `₹${total.toFixed(0).toLocaleString('en-IN')}`;
+      const hdr = document.getElementById('checkout-hdr-total');
+      const ctaAmt = document.getElementById('ck-collect-amt');
+      if (hdr) hdr.textContent = totalStr;
+      if (ctaAmt) ctaAmt.textContent = totalStr;
+      /* Discount chip pill — show value when >0, hide when 0 */
+      const dPill = document.getElementById('ck-chip-discount-val');
+      const dChip = document.getElementById('ck-chip-discount');
+      if (dPill && dChip) {
+        if (discount > 0) {
+          dPill.style.display = '';
+          dPill.textContent = `−₹${discount.toLocaleString('en-IN')}`;
+          dChip.classList.add('active');
+        } else {
+          dPill.style.display = 'none';
+          dChip.classList.remove('active');
+        }
+      }
+      /* Items eyebrow count */
+      const itemsEl = document.getElementById('checkout-items');
+      const countEl = document.getElementById('ck-items-count');
+      if (itemsEl && countEl) {
+        const n = itemsEl.children.length;
+        countEl.textContent = (n === 1) ? '1 item' : (n + ' items');
+      }
+    } catch(e){}
   },
 
   gstSelect(el, rate){
