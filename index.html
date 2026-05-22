@@ -27802,12 +27802,30 @@ window.addEventListener('DOMContentLoaded', () => {
       pill.style.cursor = 'pointer';
       pill.onclick = _onRetryClick;
       function _renderCountdown(){
-        const remaining = Math.max(0, Math.ceil((backoffUntil - Date.now()) / 1000));
+        /* (v32.2) Re-read FRESH status every tick — never trust the captured
+           backoffUntil. The engine may have cleared backoff (outbox drained,
+           flush succeeded, etc.) and we wouldn't know unless we re-check. */
+        let curStatus;
+        try { curStatus = (window.HisaabSync && HisaabSync.getStatus) ? HisaabSync.getStatus() : null; } catch(e){}
+        if (!curStatus) {
+          _stopCountdown();
+          return;
+        }
+        const curBackoffUntil = curStatus.backoffUntil || 0;
+        const curPending = curStatus.pending || 0;
+        /* If state has changed materially, stop this countdown and let the
+           full applySyncState run on the next safety poll or emit. */
+        if (curPending === 0 || curBackoffUntil === 0 || !curStatus.online || curStatus.networkBlocked) {
+          _stopCountdown();
+          applySyncState(curStatus);
+          return;
+        }
+        const remaining = Math.max(0, Math.ceil((curBackoffUntil - Date.now()) / 1000));
         if (remaining > 0) {
-          pillText.innerHTML = `⏱ Retrying in ${remaining}s · ${pending} pending · <u>Retry now</u>`;
+          pillText.innerHTML = `⏱ Retrying in ${remaining}s · ${curPending} pending · <u>Retry now</u>`;
         } else {
           _stopCountdown();
-          pillText.textContent = `⏳ Retrying ${pending} change${pending === 1 ? '' : 's'}…`;
+          pillText.textContent = `⏳ Retrying ${curPending} change${curPending === 1 ? '' : 's'}…`;
         }
       }
       _renderCountdown();
@@ -27853,10 +27871,14 @@ window.addEventListener('DOMContentLoaded', () => {
       if (window.HisaabSync && typeof HisaabSync.flush === 'function') {
         Promise.resolve(HisaabSync.flush())
           .then(function(r){
-            /* If flush succeeded and outbox is empty, applySyncState
-               will hide the pill on the next emit. If still pending,
-               status events will keep updating it. */
-            _stuckSince = 0; _isStuck = false;
+            /* (v32.2) Force an immediate re-render with the FRESH status,
+               not whatever stale state was captured when click fired. */
+            _stuckSince = 0; _isStuck = false; _lastPending = 0;
+            try {
+              if (window.HisaabSync && HisaabSync.getStatus) {
+                applySyncState(HisaabSync.getStatus());
+              }
+            } catch(e){}
           })
           .catch(function(e){
             console.error('[sync retry]', e);
@@ -27887,6 +27909,21 @@ window.addEventListener('DOMContentLoaded', () => {
   }, 200);
   // Stop polling after 10s if HisaabSync never loaded
   setTimeout(() => clearInterval(syncWaitTimer), 10000);
+
+  /* (v32.2) Ground-truth safety poll: every 1.5s, re-render the pill
+     against the CURRENT sync engine status. This catches all the corner
+     cases where the pill's view of reality could drift from the actual
+     state — countdown timers holding stale backoffUntil, missed emits,
+     async race conditions during flush, etc. The cost is one
+     getStatus() call (zero network), and applySyncState short-circuits
+     on identical state. Belt-and-braces. */
+  setInterval(function(){
+    try {
+      if (window.HisaabSync && typeof HisaabSync.getStatus === 'function') {
+        applySyncState(HisaabSync.getStatus());
+      }
+    } catch(e){}
+  }, 1500);
   // Also subscribe to native online/offline so the pill reacts immediately
   // even before HisaabSync emits its first event
   window.addEventListener('online',  () => applySyncState({ online: true,  pending: 0 }));
