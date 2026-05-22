@@ -27724,74 +27724,113 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Sync status pill: subscribe to HisaabSync state ──
-  // Polls HisaabSync.onStatus() once it's available. Renders three states:
+  // Polls HisaabSync.onStatus() once it's available. Renders four states:
   //   - online + no pending: hide pill entirely
   //   - online + pending writes: amber "Syncing N changes…"
-  //   - offline: red "Offline · changes saved locally"
-  //   - stuck (v31_31b61): tap-to-retry after 30s of no progress
-  // Uses a setInterval poll because HisaabSync may not be init'd at
-  // DOMContentLoaded time (auth bootstrap calls init() async).
+  //   - offline OR networkBlocked: red "Offline · changes saved locally"
+  //   - backoff active: amber "Retrying in Xs…" (live countdown)
+  //   - stuck (no progress 10s+): red "Tap to retry"
+  // (May 2026 sync v32) Now uses HisaabSync.flush() so tap-to-retry actually
+  // works without a page reload.
   const pill = document.getElementById('sync-status-pill');
   const pillText = document.getElementById('sync-status-text');
-  // Stuck-sync detection state. _lastPending tracks the previous queue
-  // depth; if it doesn't decrease across two 15s windows, the pill
-  // becomes a tap-to-retry button. Resets when pending changes.
   let _lastPending = 0;
   let _stuckSince = 0;
   let _isStuck = false;
+  /* (v32) Countdown ticker for backoff state — re-renders pill every 500ms
+     while backoff is active so user sees "Retrying in 8s… 7s… 6s…" */
+  let _countdownTimer = null;
+  function _stopCountdown(){
+    if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null; }
+  }
   function applySyncState(s){
     if (!pill || !pillText) return;
     const online = s ? s.online !== false : (typeof navigator !== 'undefined' && navigator.onLine !== false);
     const pending = s ? (s.pending || 0) : 0;
+    const backoffUntil = s ? (s.backoffUntil || 0) : 0;
+    const networkBlocked = s ? !!s.networkBlocked : false;
+    const inBackoff = backoffUntil > Date.now();
 
-    // Track stuck state. If pending didn't move since last sample, accumulate.
-    // Reset cleanly when count changes (sync made progress).
+    // (v32) 10s stuck threshold (was 30s) — feels broken on mobile if longer
     if (pending === _lastPending && pending > 0) {
       if (!_stuckSince) _stuckSince = Date.now();
-      _isStuck = (Date.now() - _stuckSince) > 30000; // 30s of no progress
+      _isStuck = (Date.now() - _stuckSince) > 10000;
     } else {
       _stuckSince = pending > 0 ? Date.now() : 0;
       _isStuck = false;
     }
     _lastPending = pending;
 
-    if (online && pending === 0) {
+    // 1. Clean state — hide pill
+    if (online && pending === 0 && !networkBlocked) {
+      _stopCountdown();
       pill.style.display = 'none';
       pill.onclick = null;
       pill.style.cursor = '';
-    } else if (!online) {
+      return;
+    }
+
+    // 2. Hard offline OR network-blocked (3+ failures despite navigator.onLine)
+    if (!online || networkBlocked) {
+      _stopCountdown();
       pill.style.display = 'block';
       pill.style.background = '#FEF2F2';
       pill.style.border = '1px solid #FECACA';
       pill.style.color = '#991B1B';
-      pill.style.cursor = '';
-      pill.onclick = null;
-      pillText.textContent = '📴 Offline · changes saved locally';
-    } else if (pending > 0 && _isStuck) {
-      // Stuck — make it tappable. Tap forces a sync retry by calling
-      // HisaabSync.flush() if available, else reload as last resort.
+      if (networkBlocked && pending > 0) {
+        // User has signal but uploads keep failing — let them force retry
+        pill.style.cursor = 'pointer';
+        pillText.innerHTML = `🚫 Network blocked · ${pending} pending · <u>Tap to retry</u>`;
+        pill.onclick = _onRetryClick;
+      } else {
+        pill.style.cursor = '';
+        pillText.textContent = pending > 0
+          ? `📴 Offline · ${pending} change${pending === 1 ? '' : 's'} saved locally`
+          : '📴 Offline · changes saved locally';
+        pill.onclick = null;
+      }
+      return;
+    }
+
+    // 3. In backoff — countdown display (don't show "stuck" yet, backoff is normal)
+    if (inBackoff && pending > 0) {
+      _stopCountdown();
+      pill.style.display = 'block';
+      pill.style.background = '#FEF3C7';
+      pill.style.border = '1px solid #FDE68A';
+      pill.style.color = '#92400E';
+      pill.style.cursor = 'pointer';
+      pill.onclick = _onRetryClick;
+      function _renderCountdown(){
+        const remaining = Math.max(0, Math.ceil((backoffUntil - Date.now()) / 1000));
+        if (remaining > 0) {
+          pillText.innerHTML = `⏱ Retrying in ${remaining}s · ${pending} pending · <u>Retry now</u>`;
+        } else {
+          _stopCountdown();
+          pillText.textContent = `⏳ Retrying ${pending} change${pending === 1 ? '' : 's'}…`;
+        }
+      }
+      _renderCountdown();
+      _countdownTimer = setInterval(_renderCountdown, 500);
+      return;
+    }
+
+    // 4. Stuck — pending > 0, no progress in 10s, not in backoff → manual retry
+    if (pending > 0 && _isStuck) {
+      _stopCountdown();
       pill.style.display = 'block';
       pill.style.background = '#FEE2E2';
       pill.style.border = '1px solid #FCA5A5';
       pill.style.color = '#991B1B';
       pill.style.cursor = 'pointer';
       pillText.innerHTML = `⚠️ ${pending} change${pending === 1 ? '' : 's'} stuck · <u>Tap to retry</u>`;
-      pill.onclick = function(){
-        pillText.textContent = '🔄 Retrying sync…';
-        try {
-          if (window.HisaabSync && typeof HisaabSync.flush === 'function') {
-            Promise.resolve(HisaabSync.flush()).catch(function(e){
-              console.error('[sync retry]', e);
-            });
-          } else {
-            // No flush API — last-resort reload (preserves localStorage)
-            setTimeout(function(){ location.reload(); }, 500);
-          }
-        } catch(e){ console.error('[sync retry]', e); }
-        // Reset stuck flag so we re-evaluate after the retry
-        _stuckSince = 0; _isStuck = false;
-      };
-    } else if (pending > 0) {
+      pill.onclick = _onRetryClick;
+      return;
+    }
+
+    // 5. Normal syncing state
+    if (pending > 0) {
+      _stopCountdown();
       pill.style.display = 'block';
       pill.style.background = '#FEF3C7';
       pill.style.border = '1px solid #FDE68A';
@@ -27800,6 +27839,44 @@ window.addEventListener('DOMContentLoaded', () => {
       pill.onclick = null;
       pillText.textContent = `⏳ Syncing ${pending} change${pending === 1 ? '' : 's'}…`;
     }
+  }
+
+  /* (v32) Shared retry handler — used by stuck, backoff, and network-blocked
+     pill states. Uses HisaabSync.flush() which now exists and resets all
+     rate-limit state before re-attempting a real sync (no more page reload). */
+  function _onRetryClick(){
+    pillText.textContent = '🔄 Retrying sync…';
+    pill.style.cursor = 'wait';
+    pill.onclick = null;  /* prevent double-tap during retry */
+    _stopCountdown();
+    try {
+      if (window.HisaabSync && typeof HisaabSync.flush === 'function') {
+        Promise.resolve(HisaabSync.flush())
+          .then(function(r){
+            /* If flush succeeded and outbox is empty, applySyncState
+               will hide the pill on the next emit. If still pending,
+               status events will keep updating it. */
+            _stuckSince = 0; _isStuck = false;
+          })
+          .catch(function(e){
+            console.error('[sync retry]', e);
+            /* Restore tap-to-retry on failure */
+            setTimeout(function(){
+              pill.style.cursor = 'pointer';
+              pill.onclick = _onRetryClick;
+              pillText.innerHTML = `⚠️ Retry failed · <u>Tap to try again</u>`;
+            }, 800);
+          });
+      } else {
+        /* Should not happen with v32+, but safety net for old HisaabSync */
+        setTimeout(function(){ location.reload(); }, 500);
+      }
+    } catch(e){
+      console.error('[sync retry]', e);
+      pill.style.cursor = 'pointer';
+      pill.onclick = _onRetryClick;
+    }
+    _stuckSince = 0; _isStuck = false;
   }
   // Connect once HisaabSync becomes available
   const syncWaitTimer = setInterval(() => {
@@ -30289,6 +30366,10 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     syncing: false,
     lastSync: 0,
     lastError: null,
+    /* (May 2026 sync v32) */
+    backoffUntil: 0,           /* timestamp of when backoff ends; UI uses this for countdown */
+    consecutiveFailures: 0,    /* count of upload failures in a row; resets on any success */
+    networkBlocked: false,     /* true when navigator.onLine is true but uploads keep failing */
   };
   const observers = new Set();
   function emit() {
@@ -30522,10 +30603,30 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   let _lock = false;
   let _backoffUntil = 0;
   let _autoTimer = null;
+  /* (May 2026 sync v32) Auto-retry timer fires exactly when backoff ends,
+     so users don't wait up to AUTO_SYNC_INTERVAL_MS (2 min) for the next try. */
+  let _retryTimer = null;
+  function _scheduleRetryAfterBackoff(){
+    if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+    const delay = Math.max(0, _backoffUntil - now()) + 50; /* +50ms safety */
+    _retryTimer = setTimeout(function(){
+      _retryTimer = null;
+      if (status.online && Outbox.size() > 0) {
+        drainOutbox().catch(function(e){ err('auto-retry', e); });
+      }
+    }, delay);
+  }
 
   async function drainOutbox() {
-    if (_lock || !status.online || now() < _backoffUntil) return { pushed: 0, failed: 0 };
-    _lock = true; status.syncing = true; emit();
+    if (_lock) return { pushed: 0, failed: 0 };
+    if (!status.online) return { pushed: 0, failed: 0 };
+    if (now() < _backoffUntil) {
+      /* (v32) In backoff: emit so UI can show a countdown rather than freezing on "Syncing…" */
+      status.backoffUntil = _backoffUntil;
+      emit();
+      return { pushed: 0, failed: 0 };
+    }
+    _lock = true; status.syncing = true; status.backoffUntil = 0; emit();
     let pushed = 0, failed = 0;
 
     try {
@@ -30545,20 +30646,45 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
             break;
           }
         }
-        if (ok.length) Outbox.removeMany(ok);
+        if (ok.length) {
+          Outbox.removeMany(ok);
+          /* (v32) Any success resets the failure streak + clears networkBlocked */
+          status.consecutiveFailures = 0;
+          status.networkBlocked = false;
+        }
         if (bad.length) {
           Outbox.bumpAttempts(bad);
+          /* (v32) Track consecutive upload failures across drain calls — used
+             for soft offline detection (RC#6 from audit). */
+          status.consecutiveFailures = (status.consecutiveFailures || 0) + 1;
+          if (status.consecutiveFailures >= 3) {
+            /* navigator.onLine claims online but Firestore keeps rejecting — most
+               likely captive portal, App Check token issue, or dead cellular IP.
+               Soft-flip the UI to a network-blocked state without changing the
+               offline event flow (online events will still come). */
+            status.networkBlocked = true;
+          }
           const maxAttempts = Math.max(0, ...Outbox.all().map(e => e.attempts || 0));
           const delay = Math.min(CFG.BASE_BACKOFF_MS * Math.pow(2, maxAttempts), CFG.MAX_BACKOFF_MS);
           _backoffUntil = now() + delay;
+          status.backoffUntil = _backoffUntil;
           status.lastError = 'push_failed';
           log('backoff', delay, 'ms');
+          /* (v32) Schedule auto-retry right when the backoff ends — no need to
+             wait for the 2-minute periodic timer. */
+          _scheduleRetryAfterBackoff();
           break;
         }
       }
     } finally {
       _lock = false; status.syncing = false;
       status.pending = Outbox.size();
+      if (status.pending === 0) {
+        /* (v32) Outbox drained completely — clear any stale backoff/error state */
+        _backoffUntil = 0;
+        status.backoffUntil = 0;
+        status.lastError = null;
+      }
       emit();
     }
     return { pushed, failed };
@@ -30715,6 +30841,34 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     pull,
     drainOutbox,
     fullSync,
+
+    /* (May 2026 sync v32) flush() — user-initiated retry that bypasses backoff
+       and consecutive-failure cap. Resets all rate-limit state so the next
+       drainOutbox actually attempts to push, regardless of how long we've
+       been in backoff. Used by the "Tap to retry" pill. */
+    async flush() {
+      _backoffUntil = 0;
+      status.backoffUntil = 0;
+      status.consecutiveFailures = 0;
+      status.networkBlocked = false;
+      status.lastError = null;
+      /* Re-check connectivity since the user may have just regained signal */
+      const fresh = detectOnline();
+      if (fresh !== status.online) {
+        status.online = fresh;
+      }
+      if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+      emit();
+      /* fullSync = pull + drainOutbox; pull first ensures we have latest cursors
+         so any conflicting docs are merged before we re-upload our pending. */
+      try {
+        await fullSync();
+      } catch (e) {
+        err('flush', e);
+        throw e;
+      }
+      return { pending: status.pending, online: status.online };
+    },
 
     onStatus(cb) {
       if (typeof cb !== 'function') return () => {};
