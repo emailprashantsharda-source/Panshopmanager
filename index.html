@@ -23548,6 +23548,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let syncStatus = 'unknown';
     let syncPending = '?';
     let lastSync = '?';
+    let syncDetail = '';
+    let outboxDetail = '';
+    let syncBuild = '?';
     try {
       if (window.HisaabSync && typeof HisaabSync.getStatus === 'function') {
         const st = HisaabSync.getStatus();
@@ -23556,6 +23559,33 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         if (st && st.lastSync) {
           lastSync = new Date(st.lastSync).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'});
         }
+        /* (v32.3) Capture full sync engine internals — needed to diagnose the
+           "Network blocked" pill issue. */
+        try { syncBuild = (HisaabSync.VERSION || '?'); } catch(e){}
+        syncDetail = ''
+          + '\nSync internals:'
+          + '\n  consecutiveFailures: ' + (st.consecutiveFailures != null ? st.consecutiveFailures : '?')
+          + '\n  networkBlocked:      ' + (st.networkBlocked ? 'TRUE' : 'false')
+          + '\n  backoffUntil:        ' + (st.backoffUntil > 0 ? new Date(st.backoffUntil).toLocaleTimeString('en-IN') + ' (' + Math.max(0, Math.ceil((st.backoffUntil - Date.now())/1000)) + 's left)' : 'none')
+          + '\n  syncing:             ' + (st.syncing ? 'TRUE' : 'false')
+          + '\n  lastError:           ' + (st.lastError || 'none');
+        try {
+          if (typeof HisaabSync.diagnostics === 'function') {
+            const d = HisaabSync.diagnostics();
+            const preview = (d && d.outboxPreview) || [];
+            if (preview.length > 0) {
+              outboxDetail = '\nOutbox preview (' + d.outboxSize + ' items):';
+              preview.slice(0, 5).forEach(function(e, i){
+                const att = e.attempts || 0;
+                const ago = e.enqueuedAt ? Math.round((Date.now() - e.enqueuedAt)/1000) : '?';
+                outboxDetail += '\n  ' + (i+1) + '. ' + e.collection + '/' + (e.record && e.record.id) +
+                  ' (attempts=' + att + ', age=' + ago + 's)';
+              });
+            } else {
+              outboxDetail = '\nOutbox preview: empty';
+            }
+          }
+        } catch(e){}
       } else if (typeof navigator !== 'undefined') {
         syncStatus = navigator.onLine ? 'online' : 'offline';
       }
@@ -23570,8 +23600,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const lines = [
       '─── HisaabNow diagnostic ───',
-      'Version: v32 prod',
-      'Build:   ' + (window.__hnBuild || 'dev'),
+      'Version: v32.3 prod',
+      'HisaabSync v' + syncBuild,
+      'Build:   ' + (window.__hnBuild || window.HISAABNOW_BUILD || 'dev'),
       'Date:    ' + new Date().toLocaleString('en-IN'),
       '',
       'User ID:    ' + userId,
@@ -23585,6 +23616,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       'Sync status:    ' + syncStatus,
       'Pending writes: ' + syncPending,
       'Last sync:      ' + lastSync,
+      syncDetail,  /* v32.3 — multi-line internals */
+      outboxDetail, /* v32.3 — per-record detail */
       '',
       'Records:',
       '  Sales:        ' + (counts.sales || 0),
@@ -23650,12 +23683,152 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         <button type="button" onclick="App.recoverFromCloud()" style="width:100%;padding:11px;border:1px solid #D97706;background:#fff;color:#92400E;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;border-radius:10px;letter-spacing:-.005em">↓ Recover from Cloud</button>
       </div>
 
+      <div style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:4px;letter-spacing:-.005em">🔬 Sync error capture</div>
+        <div style="font-size:12.5px;color:#991B1B;font-weight:600;line-height:1.5;margin-bottom:10px">If you see "Network blocked" or stuck sync, tap to attempt upload and capture the exact Firestore error. Result appears in a popup.</div>
+        <button type="button" onclick="App._debugForceFlush()" style="width:100%;padding:11px;border:1px solid #B91C1C;background:#fff;color:#991B1B;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;border-radius:10px;letter-spacing:-.005em">🔍 Force flush + capture error</button>
+      </div>
+
       <div class="ps-actions">
         <button type="button" class="ps-btn ps-btn-danger" onclick="App._copyDiag(${JSON.stringify(reportText).replace(/"/g, '&quot;')})" style="flex:0 0 auto;background:#fff;color:var(--p-deep);border-color:#E2E2E2">Copy only</button>
         <button type="button" class="ps-btn ps-btn-primary" onclick="App._copyDiagAndWhatsApp(${JSON.stringify(reportText).replace(/"/g, '&quot;')})">Copy & WhatsApp us</button>
       </div>
     `;
     this.openInfoSheet({ title: 'Diagnostic info', sub: 'For support', bodyHTML: body });
+  },
+
+  /* (v32.3) Diagnostic — force a sync flush AND capture the raw Firestore
+     error if it fails. Used when the "Network blocked" pill appears and we
+     can't access DevTools console on the phone. */
+  async _debugForceFlush(){
+    if (!window.HisaabSync) {
+      alert('HisaabSync not loaded.');
+      return;
+    }
+    const before = HisaabSync.getStatus ? HisaabSync.getStatus() : null;
+    const beforeDiag = HisaabSync.diagnostics ? HisaabSync.diagnostics() : null;
+
+    /* Try a SINGLE direct upload of the first outbox record so we capture the
+       actual Firestore error code/message. flush() catches errors internally. */
+    let directErr = null;
+    let directOk = false;
+    try {
+      const preview = (beforeDiag && beforeDiag.outboxPreview) || [];
+      if (preview.length > 0 && window.HisaabSyncDeps && HisaabSyncDeps.db) {
+        const entry = preview[0];
+        const { db, sdk } = HisaabSyncDeps;
+        const shopId = (beforeDiag && beforeDiag.config && beforeDiag.config.shopId) ||
+                       (window.MShop && MShop.getActive && MShop.getActive() && MShop.getActive().shopId) ||
+                       (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid);
+        if (shopId) {
+          const ref = sdk.doc(db, 'shops', shopId, entry.collection, String(entry.record.id));
+          const payload = Object.assign({}, entry.record, { _serverUpdatedAt: sdk.serverTimestamp() });
+          try {
+            await sdk.setDoc(ref, payload, { merge: true });
+            directOk = true;
+          } catch(e) {
+            directErr = { code: e && e.code, message: e && e.message, name: e && e.name };
+          }
+        }
+      }
+    } catch(e) {
+      directErr = { code: 'wrapper-error', message: String(e && e.message) };
+    }
+
+    let flushErr = null;
+    let flushResult = null;
+    try {
+      if (typeof HisaabSync.flush === 'function') {
+        flushResult = await HisaabSync.flush();
+      } else {
+        await HisaabSync.fullSync();
+        flushResult = { pending: HisaabSync.getStatus().pending, online: HisaabSync.getStatus().online };
+      }
+    } catch (e) {
+      flushErr = { code: e && e.code, message: e && e.message, name: e && e.name };
+    }
+
+    const after = HisaabSync.getStatus ? HisaabSync.getStatus() : null;
+    const afterDiag = HisaabSync.diagnostics ? HisaabSync.diagnostics() : null;
+
+    const lines = [
+      '═══ FORCE FLUSH RESULT ═══',
+      'Time: ' + new Date().toLocaleTimeString('en-IN'),
+      '',
+      '── BEFORE ──',
+      'pending:             ' + (before && before.pending),
+      'consecutiveFailures: ' + (before && before.consecutiveFailures),
+      'networkBlocked:      ' + (before && before.networkBlocked),
+      'backoffUntil:        ' + (before && before.backoffUntil > 0 ? Math.max(0, Math.ceil((before.backoffUntil - Date.now())/1000)) + 's left' : 'none'),
+      'lastError:           ' + (before && before.lastError),
+      'outboxSize:          ' + (beforeDiag && beforeDiag.outboxSize),
+      '',
+      '── DIRECT UPLOAD TEST (first outbox record) ──',
+      directOk ? '✓ SUCCESS — record uploaded directly' :
+                 (directErr ? ('✗ FAILED\n  code:    ' + directErr.code +
+                              '\n  name:    ' + directErr.name +
+                              '\n  message: ' + (directErr.message || '').slice(0, 250))
+                             : '(no records to test, or shopId missing)'),
+      '',
+      '── FLUSH RESULT ──',
+      flushErr ? ('✗ FLUSH FAILED\n  code:    ' + flushErr.code +
+                  '\n  message: ' + (flushErr.message || '').slice(0, 200))
+                : ('✓ FLUSH OK · pending=' + (flushResult && flushResult.pending)),
+      '',
+      '── AFTER ──',
+      'pending:             ' + (after && after.pending),
+      'consecutiveFailures: ' + (after && after.consecutiveFailures),
+      'networkBlocked:      ' + (after && after.networkBlocked),
+      'outboxSize:          ' + (afterDiag && afterDiag.outboxSize),
+      '',
+      '── DIAGNOSIS ──',
+      this._debugDiagnose({ before, after, directErr, flushErr, directOk })
+    ];
+    const report = lines.join('\n');
+
+    const body = `
+      <div style="margin-bottom:14px;background:#0F172A;color:#E2E8F0;border-radius:12px;padding:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:420px;overflow-y:auto">${this.escapeHtml(report)}</div>
+      <div class="ps-actions">
+        <button type="button" class="ps-btn ps-btn-primary" onclick="App._copyDiag(${JSON.stringify(report).replace(/"/g, '&quot;')})">Copy report</button>
+      </div>
+    `;
+    this.openInfoSheet({ title: 'Sync error capture', sub: 'Diagnostic test result', bodyHTML: body });
+  },
+
+  _debugDiagnose(ctx){
+    const { before, after, directErr, flushErr, directOk } = ctx;
+    if (directOk && (!after || after.pending === 0)) {
+      return 'Sync is working. Direct upload succeeded and outbox drained. The "Network blocked" pill was stale UI — should clear within 2 seconds.';
+    }
+    if (directOk && after && after.pending > 0) {
+      return 'First record uploaded fine, but other records still pending. Likely cause: head-of-line blocking — first record was the poison pill, now retry should drain the rest. Wait 5s and check again.';
+    }
+    if (directErr) {
+      const code = directErr.code || '';
+      if (code === 'permission-denied' || code === 'PERMISSION_DENIED') {
+        return 'PERMISSION DENIED. Most likely cause: App Check token expired/invalid (your app has App Check enforcement). Could also be Firestore rules rejecting this specific record. Solution: ensure App Check provider is registered.';
+      }
+      if (code === 'unauthenticated' || code === 'UNAUTHENTICATED') {
+        return 'AUTHENTICATION EXPIRED. The user session has expired. Solution: sign out and sign back in.';
+      }
+      if (code === 'failed-precondition') {
+        return 'FAILED PRECONDITION. App Check may not be initialized yet, or the document depends on another that does not exist.';
+      }
+      if (code === 'unavailable' || code === 'deadline-exceeded') {
+        return 'NETWORK ISSUE. The Firestore endpoint timed out. Real network failure (despite navigator.onLine = true).';
+      }
+      if (code === 'invalid-argument') {
+        return 'INVALID DATA. The record has a field Firestore cannot accept (NaN, undefined, circular ref). This is a data validation bug — the record will never upload.';
+      }
+      if (code === 'resource-exhausted') {
+        return 'QUOTA EXHAUSTED. Firestore quota hit. Wait or upgrade Firebase plan.';
+      }
+      return 'UNKNOWN ERROR. Code: ' + code + '. Share with support.';
+    }
+    if (flushErr) {
+      return 'Flush wrapper failed. Error: ' + (flushErr.message || flushErr.code || 'unknown');
+    }
+    return 'Inconclusive. Direct upload had no records to test, and flush returned without error.';
   },
 
   async recoverFromCloud(){
