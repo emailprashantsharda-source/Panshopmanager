@@ -30622,7 +30622,21 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     if (!status.online) return { pushed: 0, failed: 0 };
     if (now() < _backoffUntil) {
       /* (v32) In backoff: emit so UI can show a countdown rather than freezing on "Syncing…" */
-      status.backoffUntil = _backoffUntil;
+      /* (v32.1) Always refresh pending from Outbox in case it drained elsewhere
+         (e.g., via reconcileOnlineState, manual flush, or pull-side cleanup).
+         If the outbox is empty, kill the stale backoff so the pill clears. */
+      const currentPending = Outbox.size();
+      status.pending = currentPending;
+      if (currentPending === 0) {
+        _backoffUntil = 0;
+        status.backoffUntil = 0;
+        status.lastError = null;
+        status.consecutiveFailures = 0;
+        status.networkBlocked = false;
+        if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+      } else {
+        status.backoffUntil = _backoffUntil;
+      }
       emit();
       return { pushed: 0, failed: 0 };
     }
@@ -30750,7 +30764,20 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         try { window.sA(); } catch (e) { err('host sA() threw', e); }
       }
     } finally {
-      _lock = false; status.syncing = false; emit();
+      _lock = false; status.syncing = false;
+      /* (v32.1) Always refresh pending from Outbox after a pull, in case it
+         drained between iterations. Also clear stale backoff if outbox is
+         now empty (similar safeguard to drainOutbox). */
+      status.pending = Outbox.size();
+      if (status.pending === 0 && _backoffUntil > 0) {
+        _backoffUntil = 0;
+        status.backoffUntil = 0;
+        status.lastError = null;
+        status.consecutiveFailures = 0;
+        status.networkBlocked = false;
+        if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+      }
+      emit();
     }
     return { pulled, changed };
   }
@@ -30852,12 +30879,21 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       status.consecutiveFailures = 0;
       status.networkBlocked = false;
       status.lastError = null;
+      if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+      /* (v32.1) Always refresh pending from Outbox before deciding what to do.
+         If outbox is already empty, we have nothing to flush — just emit the
+         cleared state and bail out. This avoids unnecessary network calls and
+         clears stale pill UI. */
+      status.pending = Outbox.size();
+      if (status.pending === 0) {
+        emit();
+        return { pending: 0, online: status.online };
+      }
       /* Re-check connectivity since the user may have just regained signal */
       const fresh = detectOnline();
       if (fresh !== status.online) {
         status.online = fresh;
       }
-      if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
       emit();
       /* fullSync = pull + drainOutbox; pull first ensures we have latest cursors
          so any conflicting docs are merged before we re-upload our pending. */
