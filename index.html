@@ -1017,6 +1017,49 @@ body.on-checkout .nav{display:none !important}
 #checkout-items{counter-reset:ck-sno}
 #checkout-items .bill-line-block{counter-increment:ck-sno;position:relative;padding-left:22px}
 #checkout-items .bill-line-block::before{content:counter(ck-sno) ".";position:absolute;left:0;top:11px;font-size:13px;font-weight:700;color:var(--t2);font-variant-numeric:tabular-nums}
+/* ═══════════════════════════════════════════════════════════════
+   PHASE 1.4 — Sync health page styling (May 2026)
+═══════════════════════════════════════════════════════════════ */
+.sh-hero{border-radius:14px;padding:18px;margin-bottom:14px}
+.sh-hero-ok{background:linear-gradient(135deg,#D1FAE5 0%,#A7F3D0 100%);border:1px solid #6EE7B7}
+.sh-hero-warn{background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);border:1px solid #FCD34D}
+.sh-hero-bad{background:linear-gradient(135deg,#FEE2E2 0%,#FECACA 100%);border:1px solid #FCA5A5}
+.sh-hero-icon{font-size:28px;line-height:1;margin-bottom:8px}
+.sh-hero-t{font-size:17px;font-weight:800;letter-spacing:-.015em;line-height:1.25;margin-bottom:4px}
+.sh-hero-ok .sh-hero-t{color:#065F46}
+.sh-hero-warn .sh-hero-t{color:#92400E}
+.sh-hero-bad .sh-hero-t{color:#991B1B}
+.sh-hero-sub{font-size:13px;font-weight:600;line-height:1.5}
+.sh-hero-ok .sh-hero-sub{color:#047857}
+.sh-hero-warn .sh-hero-sub{color:#92400E}
+.sh-hero-bad .sh-hero-sub{color:#991B1B}
+
+.sh-section-h{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--t2);text-transform:uppercase;margin:18px 4px 10px}
+
+.sh-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:10px}
+.sh-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.sh-card-tl{flex:1;min-width:0}
+.sh-card-coll{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.sh-card-summary{font-size:14.5px;font-weight:700;color:var(--t1);letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-card-amount{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--t1);text-align:right}
+.sh-card-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:11px;font-weight:600;color:var(--t3);margin-bottom:8px}
+.sh-card-meta span{background:#F3F4F6;padding:3px 7px;border-radius:99px;font-variant-numeric:tabular-nums}
+.sh-card-reason{background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;padding:9px 11px;margin-bottom:10px}
+.sh-card-reason-t{font-size:11px;font-weight:800;color:#92400E;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.sh-card-reason-b{font-size:12.5px;color:#7C2D12;font-weight:600;line-height:1.45}
+.sh-card-actions{display:flex;gap:8px}
+.sh-act{flex:1;padding:9px 12px;border:1px solid var(--border);background:#fff;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--t1);font-family:inherit;cursor:pointer;transition:transform .12s ease}
+.sh-act:active{transform:scale(.97)}
+.sh-act-retry{background:#0A0A0A;color:#fff;border-color:#0A0A0A}
+.sh-act-delete{background:#fff;color:#991B1B;border-color:#FCA5A5}
+.sh-act-view{background:#fff;color:var(--t2);border-color:var(--border)}
+
+.sh-empty{text-align:center;padding:36px 18px;color:var(--t2)}
+.sh-empty-icon{font-size:48px;margin-bottom:12px}
+.sh-empty-t{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:6px}
+.sh-empty-sub{font-size:13px;color:var(--t2);line-height:1.5;max-width:280px;margin:0 auto}
+
+#more-sync-health-badge.show{display:inline-block !important}
 
 /* ═══════════════════════════════════════════════════════════════
    MOBILE CASHFLOW (May 2026)
@@ -2317,6 +2360,23 @@ html[data-current-role="manager"] body{
     <span id="sync-status-text">📴 Offline · changes saved locally</span>
   </div>
 
+  <!-- Phase 1.6 — Stale sync banner. Appears when last successful sync was
+       >24h ago OR never (with local data present). Higher visibility than
+       the pill because data loss risk is real, not just transient. -->
+  <div id="sync-stale-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;border-radius:14px;font-size:13.5px;line-height:1.5">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+      <div id="ssb-icon" style="font-size:20px;line-height:1;flex-shrink:0;margin-top:1px">⚠️</div>
+      <div style="flex:1;min-width:0">
+        <div id="ssb-title" style="font-weight:800;font-size:14.5px;margin-bottom:3px;letter-spacing:-.01em">Your data hasn't backed up</div>
+        <div id="ssb-detail" style="font-size:13px;font-weight:500;line-height:1.5">Last successful sync was X hours ago.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="ssb-action" type="button" onclick="App.openSyncHealth()" style="flex:1;color:#fff;border:none;padding:10px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Check sync health</button>
+      <button type="button" onclick="App._dismissSyncStaleBanner()" style="flex:0 0 auto;background:transparent;border:1.5px solid currentColor;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Hide</button>
+    </div>
+  </div>
+
   <div id="vertical-mismatch-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:14px;font-size:13.5px;line-height:1.5;color:#1E293B">
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
       <div style="font-size:20px;line-height:1;flex-shrink:0;margin-top:1px">⚠️</div>
@@ -3276,6 +3336,15 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label" data-i18n="more.subscription">Subscription</div><div class="menu-sub" id="more-sub-status">—</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <button class="menu-item" id="more-sync-health-entry" onclick="App.openSyncHealth()">
+        <div class="menu-icon" style="background:#FEF3C7;color:#92400E"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c2.5-2.7 4-6 4-9s-1.5-6.3-4-9m0 18c-2.5-2.7-4-6-4-9s1.5-6.3 4-9"/></svg></div>
+        <div class="menu-text">
+          <div class="menu-label">Sync health</div>
+          <div class="menu-sub" id="more-sync-health-sub">All sales syncing</div>
+        </div>
+        <span id="more-sync-health-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;margin-right:6px">0</span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
       <button class="menu-item" onclick="App.openHelp()">
         <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
         <div class="menu-text"><div class="menu-label" data-i18n="more.helpSupport">Help & support</div><div class="menu-sub" data-i18n="more.helpSub">Tutorials, WhatsApp us</div></div>
@@ -3289,6 +3358,22 @@ html[data-current-role="manager"] body{
   </div>
 
   <div style="text-align:center;padding:8px 18px 18px;font-size:11px;color:var(--t3);font-weight:500">HisaabNow · v30 Multi-Vertical</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     Phase 1.4 — Sync health page
+     Shows status, outbox pending, and quarantined records with per-record
+     retry/delete actions. Renders dynamically via App._renderSyncHealth().
+════════════════════════════════════════════════════════════════════════ -->
+<div class="page" id="pg-sync-health">
+  <header class="hdr solid">
+    <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="hdr-title">Sync health</div>
+    <button class="icon-btn" onclick="App._renderSyncHealth(true)" aria-label="Refresh">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+  </header>
+  <div id="sync-health-content" style="padding:14px 16px 80px"></div>
 </div>
 
 <div class="page" id="pg-my-businesses">
@@ -8995,6 +9080,9 @@ const App = {
     const skipOwnerData = (roleResolved !== 'yes');
 
     this._evalVerticalMismatch();
+    /* (Phase 1.6) Refresh the sync-stale banner on every home render. The
+       banner self-hides if conditions don't apply. */
+    try { this._renderSyncStaleBanner(); } catch(e){}
 
     const greetName = document.getElementById('greet-name');
     if (greetName) {
@@ -9909,6 +9997,9 @@ const App = {
         subStatus.textContent = `${cfg.name} ${this._T('more.planLc','plan')} · ${days} ${_daysWord} ${_leftWord}`;
       }
     }
+
+    /* (Phase 1.4) Refresh the Sync health badge whenever the More menu renders */
+    try { this._updateSyncHealthBadge(); } catch(e){}
 
     try {
       const myBizEntry = document.getElementById('more-my-biz-entry');
@@ -23568,7 +23659,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           + '\n  networkBlocked:      ' + (st.networkBlocked ? 'TRUE' : 'false')
           + '\n  backoffUntil:        ' + (st.backoffUntil > 0 ? new Date(st.backoffUntil).toLocaleTimeString('en-IN') + ' (' + Math.max(0, Math.ceil((st.backoffUntil - Date.now())/1000)) + 's left)' : 'none')
           + '\n  syncing:             ' + (st.syncing ? 'TRUE' : 'false')
-          + '\n  lastError:           ' + (st.lastError || 'none');
+          + '\n  lastError:           ' + (st.lastError || 'none')
+          + (st.lastErrorMessage ? '\n  lastErrorMessage:    ' + st.lastErrorMessage : '');
         try {
           if (typeof HisaabSync.diagnostics === 'function') {
             const d = HisaabSync.diagnostics();
@@ -23580,9 +23672,33 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
                 const ago = e.enqueuedAt ? Math.round((Date.now() - e.enqueuedAt)/1000) : '?';
                 outboxDetail += '\n  ' + (i+1) + '. ' + e.collection + '/' + (e.record && e.record.id) +
                   ' (attempts=' + att + ', age=' + ago + 's)';
+                /* (Phase 1.2) Show captured error per record so we know exactly
+                   why each stuck record is failing — not generic "push_failed". */
+                if (e.lastError && e.lastError.code) {
+                  outboxDetail += '\n     ERROR: ' + e.lastError.code +
+                    (e.lastError.message ? ' — ' + e.lastError.message.slice(0, 120) : '');
+                }
               });
             } else {
               outboxDetail = '\nOutbox preview: empty';
+            }
+            /* (Phase 1.3) Append quarantine preview — records that have been
+               permanently moved out of the active sync queue. */
+            const qPreview = (d && d.quarantinePreview) || [];
+            const qSize = (d && d.quarantineSize) || 0;
+            if (qSize > 0) {
+              outboxDetail += '\n\nQuarantine (' + qSize + ' items — will NOT auto-sync):';
+              qPreview.slice(0, 5).forEach(function(e, i){
+                const att = e.attempts || 0;
+                const ageMin = e.quarantinedAt ? Math.round((Date.now() - e.quarantinedAt)/60000) : '?';
+                outboxDetail += '\n  ' + (i+1) + '. ' + e.collection + '/' + (e.record && e.record.id) +
+                  ' (attempts=' + att + ', quarantined ' + ageMin + 'm ago)';
+                outboxDetail += '\n     Reason: ' + (e.reason || 'unknown');
+                if (e.lastError && e.lastError.code) {
+                  outboxDetail += '\n     ERROR: ' + e.lastError.code +
+                    (e.lastError.message ? ' — ' + e.lastError.message.slice(0, 120) : '');
+                }
+              });
             }
           }
         } catch(e){}
@@ -23600,7 +23716,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const lines = [
       '─── HisaabNow diagnostic ───',
-      'Version: v32.3 prod',
+      'Version: v33.15 (Phase 1 COMPLETE)',
       'HisaabSync v' + syncBuild,
       'Build:   ' + (window.__hnBuild || window.HISAABNOW_BUILD || 'dev'),
       'Date:    ' + new Date().toLocaleString('en-IN'),
@@ -23829,6 +23945,444 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       return 'Flush wrapper failed. Error: ' + (flushErr.message || flushErr.code || 'unknown');
     }
     return 'Inconclusive. Direct upload had no records to test, and flush returned without error.';
+  },
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PHASE 1.4 — Sync health page methods (May 2026)
+     User-facing UI to manage records that are stuck in quarantine. Reads
+     state from HisaabSync.quarantine and HisaabSync.getStatus.
+  ════════════════════════════════════════════════════════════════════════ */
+  openSyncHealth(){
+    this.nav('sync-health');
+    this._renderSyncHealth();
+  },
+
+  /* Plain-English explanation of Firestore error codes — these are what
+     show up in the quarantine "Reason" box for each stuck record. */
+  _errorCodeToHuman(code){
+    var map = {
+      'permission-denied': 'Server refused this record. Usually means the record is missing required data or its format does not match what the server expects.',
+      'invalid-argument': 'Record data is malformed (e.g. an invalid number, missing field). This will never sync as-is.',
+      'failed-precondition': 'A prerequisite for this upload failed. Often happens when security checks are not ready. Retrying after a full app reload sometimes helps.',
+      'unauthenticated': 'Your session expired. Try signing out and signing in again.',
+      'unavailable': 'Server was unreachable. Should auto-retry once back online.',
+      'deadline-exceeded': 'Network timed out. Should auto-retry.',
+      'resource-exhausted': 'Daily upload quota was hit. Will auto-retry tomorrow.',
+      'cancelled': 'Upload was cancelled mid-way.',
+    };
+    if (code && map[code]) return map[code];
+    if (code) return 'Server returned error code: ' + code + '. This record needs manual review.';
+    return 'Unknown error — record could not be uploaded after multiple attempts.';
+  },
+
+  /* Human-readable summary of a record. Falls back to ID if no useful fields. */
+  _recordSummary(coll, rec){
+    if (!rec) return '(empty record)';
+    try {
+      if (coll === 'sales') {
+        var total = rec.total || rec.amt || 0;
+        var items = (rec.items && rec.items.length) || 0;
+        var dt = rec.t ? new Date(rec.t).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'}) : '';
+        return 'Sale ₹' + total + ' · ' + items + ' item' + (items === 1 ? '' : 's') + (dt ? ' · ' + dt : '');
+      }
+      if (coll === 'exps') {
+        var ea = rec.amt || 0;
+        var ec = rec.catLabel || rec.cat || 'expense';
+        return 'Expense ₹' + ea + ' · ' + ec;
+      }
+      if (coll === 'custs')   return 'Customer: ' + (rec.name || rec.phone || rec.id);
+      if (coll === 'prods')   return 'Product: ' + (rec.name || rec.id);
+      if (coll === 'staff')   return 'Staff: ' + (rec.name || rec.id);
+      if (coll === 'udh')     return 'Udhar ₹' + (rec.amt || 0) + ' · ' + (rec.name || '');
+      if (coll === 'appts')   return 'Appointment · ' + (rec.customerName || rec.t || rec.id);
+      if (coll === 'coupons') return 'Coupon: ' + (rec.code || rec.id);
+    } catch(e){}
+    return rec.id || '(no id)';
+  },
+
+  _renderSyncHealth(forceRefresh){
+    var container = document.getElementById('sync-health-content');
+    if (!container) return;
+
+    var st = (window.HisaabSync && HisaabSync.getStatus) ? HisaabSync.getStatus() : null;
+    var quarantine = (window.HisaabSync && HisaabSync.quarantine) ? HisaabSync.quarantine.list() : [];
+    var pending = st ? (st.pending || 0) : 0;
+    var qSize = quarantine.length;
+
+    var hero;
+    if (qSize === 0 && pending === 0) {
+      hero = '<div class="sh-hero sh-hero-ok">'
+        + '<div class="sh-hero-icon">✓</div>'
+        + '<div class="sh-hero-t">All sales are syncing</div>'
+        + '<div class="sh-hero-sub">Nothing needs your attention. Everything saved on this device is also in the cloud.</div>'
+        + '</div>';
+    } else if (qSize > 0) {
+      hero = '<div class="sh-hero sh-hero-bad">'
+        + '<div class="sh-hero-icon">⚠</div>'
+        + '<div class="sh-hero-t">' + qSize + ' record' + (qSize === 1 ? '' : 's') + ' can not sync</div>'
+        + '<div class="sh-hero-sub">These records were rejected by the server. They will not reach the cloud unless retried or fixed. Review each one below.</div>'
+        + '</div>';
+    } else {
+      hero = '<div class="sh-hero sh-hero-warn">'
+        + '<div class="sh-hero-icon">⏳</div>'
+        + '<div class="sh-hero-t">' + pending + ' record' + (pending === 1 ? '' : 's') + ' syncing</div>'
+        + '<div class="sh-hero-sub">Active uploads in progress. This will clear automatically.</div>'
+        + '</div>';
+    }
+
+    var quarantineHTML = '';
+    if (qSize > 0) {
+      quarantineHTML = '<div class="sh-section-h">⚠ Stuck records · ' + qSize + '</div>';
+      var self = this;
+      quarantine.forEach(function(entry){
+        var key = entry.collection + ':' + entry.record.id;
+        var summary = self._recordSummary(entry.collection, entry.record);
+        var atts = entry.attempts || 0;
+        var ago = entry.quarantinedAt ? Math.round((Date.now() - entry.quarantinedAt)/60000) : 0;
+        var reasonHuman = self._errorCodeToHuman(entry.lastError && entry.lastError.code);
+
+        var amountHTML = '';
+        if (entry.collection === 'sales' && entry.record.total) {
+          amountHTML = '<div class="sh-card-amount">₹' + entry.record.total + '</div>';
+        }
+
+        quarantineHTML += '<div class="sh-card">'
+          + '<div class="sh-card-h">'
+            + '<div class="sh-card-tl">'
+              + '<div class="sh-card-coll">' + self.escapeHtml(entry.collection) + '</div>'
+              + '<div class="sh-card-summary">' + self.escapeHtml(summary) + '</div>'
+            + '</div>'
+            + amountHTML
+          + '</div>'
+          + '<div class="sh-card-meta">'
+            + '<span>' + atts + ' attempt' + (atts === 1 ? '' : 's') + '</span>'
+            + '<span>Stuck ' + (ago < 1 ? 'just now' : ago + 'm ago') + '</span>'
+            + '<span>' + self.escapeHtml(entry.reason || 'unknown') + '</span>'
+          + '</div>'
+          + '<div class="sh-card-reason">'
+            + '<div class="sh-card-reason-t">Why it failed</div>'
+            + '<div class="sh-card-reason-b">' + self.escapeHtml(reasonHuman) + '</div>'
+          + '</div>'
+          + '<div class="sh-card-actions">'
+            + '<button class="sh-act sh-act-retry" onclick="App._syncHealthRetry(\'' + self.escapeHtml(key).replace(/'/g, "\\'") + '\')">Retry</button>'
+            + '<button class="sh-act sh-act-view" onclick="App._syncHealthView(\'' + self.escapeHtml(key).replace(/'/g, "\\'") + '\')">Details</button>'
+            + '<button class="sh-act sh-act-delete" onclick="App._syncHealthDelete(\'' + self.escapeHtml(key).replace(/'/g, "\\'") + '\')">Delete</button>'
+          + '</div>'
+        + '</div>';
+      });
+    }
+
+    /* (Phase 1.5) Surface possible duplicates across collections.
+       Detection-only — no auto-merge. User decides what to do. */
+    var dupesHTML = '';
+    var totalDupeGroups = 0;
+    var totalDupeRecords = 0;
+    try {
+      if (window.Store && Store.detectDuplicates) {
+        var collsToCheck = ['sales','exps','custs','prods','staff','udh','appts','coupons'];
+        var allGroups = [];
+        var self2 = this;
+        collsToCheck.forEach(function(coll){
+          var groups = Store.detectDuplicates(coll);
+          Object.keys(groups).forEach(function(hash){
+            allGroups.push({ coll: coll, hash: hash, recs: groups[hash] });
+            totalDupeGroups++;
+            totalDupeRecords += groups[hash].length;
+          });
+        });
+        if (allGroups.length > 0) {
+          dupesHTML = '<div class="sh-section-h">⚠ Possible duplicates · ' + totalDupeGroups + ' group' + (totalDupeGroups === 1 ? '' : 's') + '</div>';
+          /* Limit display to first 10 groups to avoid overwhelming UI on big sets */
+          allGroups.slice(0, 10).forEach(function(g){
+            var first = g.recs[0];
+            var summary = self2._recordSummary(g.coll, first);
+            dupesHTML += '<div class="sh-card">'
+              + '<div class="sh-card-h">'
+                + '<div class="sh-card-tl">'
+                  + '<div class="sh-card-coll">' + self2.escapeHtml(g.coll) + '</div>'
+                  + '<div class="sh-card-summary">' + self2.escapeHtml(summary) + '</div>'
+                + '</div>'
+              + '</div>'
+              + '<div class="sh-card-meta">'
+                + '<span>' + g.recs.length + ' identical record' + (g.recs.length === 1 ? '' : 's') + '</span>'
+                + '<span>Hash: ' + self2.escapeHtml(g.hash) + '</span>'
+              + '</div>'
+              + '<div class="sh-card-reason" style="background:#FEF3C7;border-color:#FDE68A">'
+                + '<div class="sh-card-reason-t">What this means</div>'
+                + '<div class="sh-card-reason-b">' + g.recs.length + ' records in this collection have identical content. They may be the same event recorded twice. Review before deleting.</div>'
+              + '</div>'
+            + '</div>';
+          });
+          if (allGroups.length > 10) {
+            dupesHTML += '<div style="text-align:center;font-size:12px;color:var(--t3);padding:8px">… and ' + (allGroups.length - 10) + ' more groups</div>';
+          }
+        }
+      }
+    } catch(e){}
+
+    /* Update hero to reflect dupes too — combined warning if both exist */
+    if (totalDupeGroups > 0 && qSize === 0 && pending === 0) {
+      hero = '<div class="sh-hero sh-hero-warn">'
+        + '<div class="sh-hero-icon">⚠</div>'
+        + '<div class="sh-hero-t">' + totalDupeRecords + ' possible duplicate' + (totalDupeRecords === 1 ? '' : 's') + ' found</div>'
+        + '<div class="sh-hero-sub">All sales are syncing correctly, but some records look identical. Review them below.</div>'
+        + '</div>';
+    }
+
+    var statusHTML = '<div class="sh-section-h">Status</div>'
+      + '<div class="sh-card">'
+      + '<div class="sh-card-meta" style="margin-bottom:4px">'
+        + '<span>Online: ' + (st && st.online ? 'yes' : 'no') + '</span>'
+        + '<span>Pending: ' + pending + '</span>'
+        + '<span>Last sync: ' + (st && st.lastSync ? new Date(st.lastSync).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'}) : '—') + '</span>'
+      + '</div>'
+      + '</div>';
+
+    var emptyHTML = '';
+    if (qSize === 0 && pending === 0 && totalDupeGroups === 0) {
+      emptyHTML = '<div class="sh-empty">'
+        + '<div class="sh-empty-icon">🟢</div>'
+        + '<div class="sh-empty-t">Your data is safe</div>'
+        + '<div class="sh-empty-sub">Every sale, expense and customer record on this device has been successfully uploaded to the cloud.</div>'
+        + '</div>';
+    }
+
+    container.innerHTML = hero + quarantineHTML + dupesHTML + ((qSize === 0 && totalDupeGroups === 0) ? statusHTML : '') + emptyHTML;
+
+    if (forceRefresh && this.toast) this.toast('✓ Refreshed');
+  },
+
+  /* Retry — moves record from quarantine back to outbox, then triggers a
+     drain. The drain may immediately re-quarantine if the failure repeats.
+     User will see the result on next render (we re-render after 1.5s). */
+  _syncHealthRetry(key){
+    if (!window.HisaabSync || !HisaabSync.quarantine) return;
+    var ok = HisaabSync.quarantine.retry(key);
+    if (ok) {
+      if (this.toast) this.toast('🔄 Retrying — checking with server…');
+      var self = this;
+      setTimeout(function(){ self._renderSyncHealth(); }, 1500);
+    } else {
+      if (this.toast) this.toast('Could not find record to retry');
+    }
+  },
+
+  /* View raw record + error history in a modal */
+  _syncHealthView(key){
+    if (!window.HisaabSync || !HisaabSync.quarantine) return;
+    var list = HisaabSync.quarantine.list();
+    var entry = list.find(function(e){ return (e.collection + ':' + e.record.id) === key; });
+    if (!entry) {
+      if (this.toast) this.toast('Record not found');
+      return;
+    }
+    var report = ''
+      + 'Collection: ' + entry.collection + '\n'
+      + 'Record ID: ' + entry.record.id + '\n'
+      + 'Attempts: ' + (entry.attempts || 0) + '\n'
+      + 'Reason: ' + (entry.reason || 'unknown') + '\n'
+      + 'Enqueued: ' + (entry.enqueuedAt ? new Date(entry.enqueuedAt).toLocaleString('en-IN') : '—') + '\n'
+      + 'Quarantined: ' + (entry.quarantinedAt ? new Date(entry.quarantinedAt).toLocaleString('en-IN') : '—') + '\n'
+      + '\nLast error:\n'
+      + (entry.lastError
+        ? ('  code: ' + (entry.lastError.code || '') + '\n  message: ' + (entry.lastError.message || '') + '\n  at: ' + (entry.lastError.at ? new Date(entry.lastError.at).toLocaleString('en-IN') : '—'))
+        : '  (none captured)')
+      + '\n\nError history (' + ((entry.errorHistory || []).length) + ' previous):\n'
+      + (entry.errorHistory || []).map(function(e, i){
+          return '  ' + (i+1) + '. ' + (e.code || '') + ' @ ' + (e.at ? new Date(e.at).toLocaleTimeString('en-IN') : '—');
+        }).join('\n')
+      + '\n\nRaw record:\n' + JSON.stringify(entry.record, null, 2);
+
+    var body = '<div style="margin-bottom:14px;background:#0F172A;color:#E2E8F0;border-radius:12px;padding:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:460px;overflow-y:auto">'
+      + this.escapeHtml(report)
+      + '</div>'
+      + '<div class="ps-actions">'
+        + '<button type="button" class="ps-btn ps-btn-primary" onclick="App._copyDiag(' + JSON.stringify(report).replace(/"/g, '&quot;') + ')">Copy details</button>'
+      + '</div>';
+    this.openInfoSheet({ title: 'Record details', sub: 'Quarantined record', bodyHTML: body });
+  },
+
+  /* Delete — permanently removes from quarantine. Requires confirmation.
+     Also removes the underlying record from local storage so it doesn't get
+     re-enqueued by a future checkpoint (which compares local state to snapshot
+     and would re-enqueue any "new" record). */
+  _syncHealthDelete(key){
+    if (!window.HisaabSync || !HisaabSync.quarantine) return;
+    var list = HisaabSync.quarantine.list();
+    var entry = list.find(function(e){ return (e.collection + ':' + e.record.id) === key; });
+    if (!entry) {
+      if (this.toast) this.toast('Record not found');
+      return;
+    }
+    var summary = this._recordSummary(entry.collection, entry.record);
+    var confirmMsg = 'Permanently delete this record?\n\n'
+      + summary + '\n\n'
+      + 'It will be removed from both the cloud sync queue AND your local data on this device. This cannot be undone.';
+    if (!confirm(confirmMsg)) return;
+
+    /* Remove from quarantine first */
+    HisaabSync.quarantine.remove(key);
+
+    /* Also remove from local Store so checkpoint doesn't re-enqueue */
+    try {
+      if (window.Store && Store.remove) {
+        Store.remove(entry.collection, entry.record.id);
+      } else if (window.Store && Store.delete) {
+        Store.delete(entry.collection, entry.record.id);
+      }
+    } catch(e){
+      console.warn('[sync-health] could not remove local record', e);
+    }
+
+    if (this.toast) this.toast('✓ Record deleted');
+    var self = this;
+    setTimeout(function(){ self._renderSyncHealth(); }, 300);
+  },
+
+  /* Updates the badge on the More menu entry — called periodically + on
+     navigation. Shows count when > 0 with red dot styling. */
+  /* ════════════════════════════════════════════════════════════════════════
+     Phase 1.6 — Stale sync health check (May 2026)
+     Checks if last successful sync is too old. Shows persistent banner on
+     home page. Per-session dismiss only (no permanent hide — issue must
+     resolve itself or be acted upon).
+  ════════════════════════════════════════════════════════════════════════ */
+  _syncStaleBannerDismissedThisSession: false,
+
+  _evalSyncStaleState(){
+    /* Returns:
+       - null     : no banner needed (healthy or freshly synced)
+       - 'warn'   : 24h-72h stale (yellow)
+       - 'critical' : >72h stale OR never-synced-with-local-data (red) */
+    try {
+      var st = (window.HisaabSync && HisaabSync.getStatus) ? HisaabSync.getStatus() : null;
+      if (!st) return null;
+      /* If sync is actively running OR has pending writes, don't show stale
+         banner — let the existing pill handle short-term status. */
+      if (st.syncing) return null;
+      var lastSync = st.lastSync || 0;
+      var now = Date.now();
+      var hoursAgo = lastSync > 0 ? ((now - lastSync) / 3600000) : Infinity;
+      /* Never synced + has local data: critical */
+      if (lastSync === 0) {
+        var hasLocalData = false;
+        try {
+          if (window.Store && Store.list) {
+            hasLocalData = ['sales','exps','custs','prods'].some(function(c){
+              return (Store.list(c) || []).length > 0;
+            });
+          }
+        } catch(e){}
+        return hasLocalData ? 'critical' : null;
+      }
+      if (hoursAgo > 72) return 'critical';
+      if (hoursAgo > 24) return 'warn';
+      return null;
+    } catch(e){
+      return null;
+    }
+  },
+
+  _renderSyncStaleBanner(){
+    var banner = document.getElementById('sync-stale-banner');
+    if (!banner) return;
+    /* Per-session dismissal */
+    if (this._syncStaleBannerDismissedThisSession) {
+      banner.style.display = 'none';
+      return;
+    }
+    /* Only show on home page — other pages would be noise */
+    if (this.current !== 'home') {
+      banner.style.display = 'none';
+      return;
+    }
+    var state = this._evalSyncStaleState();
+    if (!state) {
+      banner.style.display = 'none';
+      return;
+    }
+    var st = (window.HisaabSync && HisaabSync.getStatus) ? HisaabSync.getStatus() : null;
+    var lastSync = (st && st.lastSync) || 0;
+    var detailText;
+    if (lastSync === 0) {
+      detailText = 'Your sales and expenses on this device have never been backed up to the cloud. Your data is at risk if this phone is lost.';
+    } else {
+      var hoursAgo = Math.floor((Date.now() - lastSync) / 3600000);
+      if (hoursAgo >= 24 && hoursAgo < 48) {
+        detailText = 'Last successful sync was ' + hoursAgo + ' hours ago. Recent sales may not yet be backed up.';
+      } else {
+        var daysAgo = Math.floor(hoursAgo / 24);
+        detailText = 'Last successful sync was ' + daysAgo + ' day' + (daysAgo === 1 ? '' : 's') + ' ago. Your recent records are not in the cloud yet.';
+      }
+    }
+
+    /* Style by severity */
+    var iconEl   = document.getElementById('ssb-icon');
+    var titleEl  = document.getElementById('ssb-title');
+    var detailEl = document.getElementById('ssb-detail');
+    var actionEl = document.getElementById('ssb-action');
+    if (state === 'critical') {
+      banner.style.background = '#FEE2E2';
+      banner.style.border = '1.5px solid #FCA5A5';
+      banner.style.color = '#991B1B';
+      if (iconEl)   iconEl.textContent = '🚨';
+      if (titleEl)  titleEl.textContent = lastSync === 0 ? 'Your data is not backed up' : 'Sync has been broken for days';
+      if (actionEl) actionEl.style.background = '#991B1B';
+    } else {
+      banner.style.background = '#FEF3C7';
+      banner.style.border = '1.5px solid #FCD34D';
+      banner.style.color = '#92400E';
+      if (iconEl)   iconEl.textContent = '⚠️';
+      if (titleEl)  titleEl.textContent = 'Sync needs attention';
+      if (actionEl) actionEl.style.background = '#92400E';
+    }
+    if (detailEl) detailEl.textContent = detailText;
+    banner.style.display = 'block';
+  },
+
+  _dismissSyncStaleBanner(){
+    this._syncStaleBannerDismissedThisSession = true;
+    var banner = document.getElementById('sync-stale-banner');
+    if (banner) banner.style.display = 'none';
+  },
+
+  _updateSyncHealthBadge(){
+    try {
+      var qSize = 0;
+      if (window.HisaabSync && HisaabSync.quarantine) {
+        qSize = HisaabSync.quarantine.size() || 0;
+      }
+      /* (Phase 1.5) Also count duplicate groups across all collections */
+      var dupeGroups = 0;
+      try {
+        if (window.Store && Store.detectDuplicates) {
+          var colls = ['sales','exps','custs','prods','staff','udh','appts','coupons'];
+          colls.forEach(function(c){
+            dupeGroups += Object.keys(Store.detectDuplicates(c)).length;
+          });
+        }
+      } catch(e){}
+      var total = qSize + dupeGroups;
+      var badge = document.getElementById('more-sync-health-badge');
+      var sub   = document.getElementById('more-sync-health-sub');
+      if (badge) {
+        if (total > 0) {
+          badge.textContent = total;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+      if (sub) {
+        if (qSize > 0) {
+          sub.textContent = qSize + ' stuck record' + (qSize === 1 ? '' : 's') + ' need attention';
+        } else if (dupeGroups > 0) {
+          sub.textContent = dupeGroups + ' possible duplicate' + (dupeGroups === 1 ? '' : 's') + ' to review';
+        } else {
+          sub.textContent = 'All sales syncing';
+        }
+      }
+    } catch(e){}
   },
 
   async recoverFromCloud(){
@@ -27882,6 +28436,20 @@ window.addEventListener('DOMContentLoaded', () => {
   // ── Apply default vertical so every screen renders correctly on first paint ──
   try { App.applyVertical(App.vertical); } catch(e){ console.error('applyVertical failed:', e); }
 
+  /* (Phase 1.6) Reset the per-session "dismissed" flag for the stale-sync
+     banner on every fresh app open. If sync was broken yesterday and the
+     owner dismissed the banner, they should see it again today on reopen. */
+  try { if (window.App) window.App._syncStaleBannerDismissedThisSession = false; } catch(e){}
+  /* (Phase 1.6) Initial check — fires after auth + initial sync settle.
+     Give it 3s so HisaabSync.init has a chance to run its first pull. */
+  setTimeout(function(){
+    try {
+      if (window.App && typeof window.App._renderSyncStaleBanner === 'function') {
+        window.App._renderSyncStaleBanner();
+      }
+    } catch(e){}
+  }, 3000);
+
   // ── Time-aware greeting ──
   const now = new Date();
   const h = now.getHours();
@@ -28095,6 +28663,13 @@ window.addEventListener('DOMContentLoaded', () => {
       if (window.HisaabSync && typeof HisaabSync.getStatus === 'function') {
         applySyncState(HisaabSync.getStatus());
       }
+      /* (Phase 1.6) Also refresh the stale banner so it clears within
+         1.5s of a successful sync without needing a full home re-render. */
+      try {
+        if (window.App && typeof App._renderSyncStaleBanner === 'function') {
+          App._renderSyncStaleBanner();
+        }
+      } catch(e){}
     } catch(e){}
   }, 1500);
   // Also subscribe to native online/offline so the pill reacts immediately
@@ -30511,10 +31086,13 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   };
 
   const KEYS = {
-    META:     () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'sync_meta',
-    OUTBOX:   () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'outbox',
-    SNAPSHOT: (c) => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'snap_' + c,
-    MIGRATED: () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'sync_migrated_v2',
+    META:       () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'sync_meta',
+    OUTBOX:     () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'outbox',
+    SNAPSHOT:   (c) => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'snap_' + c,
+    MIGRATED:   () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'sync_migrated_v2',
+    /* (Phase 1.3 — May 2026) Quarantine list for records that hit permanent
+       failure conditions. Same shopId scoping as outbox. */
+    QUARANTINE: () => CFG.prefix + (CFG.shopId ? CFG.shopId + '_' : '') + 'quarantine',
   };
 
   function _wipeLegacyKeys() {
@@ -30580,9 +31158,21 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     backoffUntil: 0,           /* timestamp of when backoff ends; UI uses this for countdown */
     consecutiveFailures: 0,    /* count of upload failures in a row; resets on any success */
     networkBlocked: false,     /* true when navigator.onLine is true but uploads keep failing */
+    /* (Phase 1.3) Number of records in quarantine — UI shows badge when > 0 */
+    quarantineSize: 0,
   };
   const observers = new Set();
   function emit() {
+    /* (Phase 1.3) Always refresh quarantineSize from storage so the latest
+       count is visible to UI subscribers. Cheap (one read). Defensive guard:
+       Quarantine is declared after Outbox, but Outbox._save calls emit(), so
+       early calls during init may run before Quarantine is bound. typeof
+       check avoids ReferenceError in the temporal dead zone. */
+    try {
+      if (typeof Quarantine !== 'undefined' && Quarantine && Quarantine.size) {
+        status.quarantineSize = Quarantine.size();
+      }
+    } catch(e){}
     const snap = Object.assign({}, status);
     observers.forEach(cb => { try { cb(snap); } catch (e) { err(e); } });
   }
@@ -30615,16 +31205,181 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       this._save(q);
     },
 
-    bumpAttempts(keys) {
+    /* (Phase 1.2 — May 2026) Now captures the actual Firestore error per record.
+       errorsByKey is a Map of key → { code, message, name } as caught in drainOutbox.
+       Backwards compatible: callers passing only keys (no errors) still work — the
+       error fields just won't be populated. Old outbox entries without lastError
+       fields keep functioning normally. */
+    bumpAttempts(keys, errorsByKey) {
       const set = new Set(keys);
-      const q = this._load().map(e =>
-        set.has(e.collection + ':' + e.record.id)
-          ? Object.assign({}, e, { attempts: (e.attempts || 0) + 1, lastAttemptAt: now() })
-          : e
-      );
+      const q = this._load().map(e => {
+        if (!set.has(e.collection + ':' + e.record.id)) return e;
+        const key = e.collection + ':' + e.record.id;
+        const err = errorsByKey ? errorsByKey[key] : null;
+        const newAttempts = (e.attempts || 0) + 1;
+        const nowMs = now();
+        const updated = Object.assign({}, e, {
+          attempts: newAttempts,
+          lastAttemptAt: nowMs,
+        });
+        if (err) {
+          updated.lastError = {
+            code: err.code || 'unknown',
+            message: (err.message || '').slice(0, 250),
+            name: err.name || '',
+            at: nowMs,
+          };
+          /* Keep last 5 errors for forensics — bounded to prevent memory bloat */
+          const history = (e.errorHistory || []).slice(-4);
+          history.push(updated.lastError);
+          updated.errorHistory = history;
+        }
+        return updated;
+      });
       this._save(q);
     },
   };
+
+  /* ════════════════════════════════════════════════════════════════════════
+     Phase 1.3 — QUARANTINE MODULE (May 2026)
+     Records that hit permanent-failure conditions move here. They are
+     REMOVED from the active Outbox so the queue can drain. Quarantined
+     records are NOT deleted — they live here until the user manually
+     retries them (via the upcoming Phase 1.4 UI) or deletes them.
+
+     Storage: localStorage key kf_<shopId>_quarantine (per-shop scoped)
+     Schema:  Array of objects with shape:
+       {
+         collection: 'sales',
+         record: { id, ...full record data },
+         attempts: 16,
+         enqueuedAt: 1716234123,
+         quarantinedAt: 1716234567,
+         reason: 'permission-denied' | 'invalid-argument' | 'max-attempts' | 'manual',
+         lastError: { code, message, name, at },
+         errorHistory: [ ...last 5 errors ],
+       }
+     Cap: 200 entries. Oldest dropped if exceeded (FIFO).
+  ════════════════════════════════════════════════════════════════════════ */
+  const Quarantine = {
+    MAX_SIZE: 200,
+    _load() { return safeGet(KEYS.QUARANTINE(), []); },
+    _save(q) { safeSet(KEYS.QUARANTINE(), q); },
+
+    size() { return this._load().length; },
+    list() { return this._load(); },
+
+    /* Idempotent — re-quarantining the same key replaces the existing entry.
+       Returns true if added (or updated), false on storage error. */
+    add(entry, reason) {
+      try {
+        const q = this._load();
+        const key = entry.collection + ':' + entry.record.id;
+        const existingIdx = q.findIndex(e => (e.collection + ':' + e.record.id) === key);
+        const quarantineEntry = {
+          collection: entry.collection,
+          record: entry.record,
+          attempts: entry.attempts || 0,
+          enqueuedAt: entry.enqueuedAt || now(),
+          quarantinedAt: now(),
+          reason: reason || 'max-attempts',
+          lastError: entry.lastError || null,
+          errorHistory: entry.errorHistory || [],
+        };
+        if (existingIdx >= 0) {
+          q[existingIdx] = quarantineEntry;
+        } else {
+          q.push(quarantineEntry);
+        }
+        /* Cap enforcement — drop oldest by quarantinedAt */
+        if (q.length > this.MAX_SIZE) {
+          q.sort((a, b) => (a.quarantinedAt || 0) - (b.quarantinedAt || 0));
+          q.splice(0, q.length - this.MAX_SIZE);
+        }
+        this._save(q);
+        log('quarantined', key, 'reason:', reason);
+        return true;
+      } catch(e) {
+        err('quarantine.add failed', e);
+        return false;
+      }
+    },
+
+    /* Remove by key (collection:id). Returns true if removed. */
+    remove(key) {
+      try {
+        const q = this._load();
+        const next = q.filter(e => (e.collection + ':' + e.record.id) !== key);
+        if (next.length === q.length) return false;
+        this._save(next);
+        return true;
+      } catch(e) {
+        err('quarantine.remove failed', e);
+        return false;
+      }
+    },
+
+    /* Move a quarantined record back to the active outbox. Resets attempts
+       so it gets fresh retry budget. Used by Phase 1.4 manual retry. */
+    retry(key) {
+      try {
+        const q = this._load();
+        const idx = q.findIndex(e => (e.collection + ':' + e.record.id) === key);
+        if (idx < 0) return false;
+        const entry = q[idx];
+        /* Re-enqueue with reset attempts so head-of-line skip doesn't
+           immediately re-skip the record */
+        Outbox.enqueue({
+          collection: entry.collection,
+          record: entry.record,
+        });
+        /* Remove from quarantine */
+        q.splice(idx, 1);
+        this._save(q);
+        log('quarantine.retry', key);
+        return true;
+      } catch(e) {
+        err('quarantine.retry failed', e);
+        return false;
+      }
+    },
+
+    /* Forensic peek for diagnostics */
+    peek(n) { return this._load().slice(0, n || 5); },
+
+    clear() { this._save([]); },
+  };
+
+  /* (Phase 1.3) Determine whether an entry should be quarantined based on
+     its error code and attempt count. Pure function — easy to test.
+     Returns reason string (for quarantine.add) or null (keep in outbox). */
+  function _shouldQuarantine(entry) {
+    if (!entry) return null;
+    const attempts = entry.attempts || 0;
+    const code = entry.lastError && entry.lastError.code;
+
+    /* invalid-argument: data is malformed, will NEVER succeed — quarantine fast */
+    if (code === 'invalid-argument' && attempts >= 1) return 'invalid-argument';
+
+    /* permission-denied: rules reject this record, won't fix itself — quarantine fast */
+    if (code === 'permission-denied' && attempts >= 3) return 'permission-denied';
+
+    /* unauthenticated: session expired — DON'T quarantine, user needs to re-login.
+       Returning null keeps it in outbox where it'll retry once auth recovers. */
+    if (code === 'unauthenticated') return null;
+
+    /* unavailable / deadline-exceeded: pure network — keep retrying forever */
+    if (code === 'unavailable' || code === 'deadline-exceeded') return null;
+
+    /* failed-precondition: might be App Check init issue — give it more attempts */
+    if (code === 'failed-precondition' && attempts >= 5) return 'failed-precondition';
+
+    /* Generic catch-all: 10 attempts is enough for any transient issue.
+       After 10 retries, something is seriously wrong with this record. */
+    if (attempts >= 10) return 'max-attempts';
+
+    return null;
+  }
 
   const Snapshot = {
     get(coll) { return safeGet(KEYS.SNAPSHOT(coll), {}); },
@@ -30853,21 +31608,63 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     _lock = true; status.syncing = true; status.backoffUntil = 0; emit();
     let pushed = 0, failed = 0;
 
+    /* (Phase 1.1 — May 2026) Head-of-line skip.
+       Records that failed recently (in this drain session) are not re-attempted
+       in the same loop. This prevents a single poisoned record from blocking
+       all fresh records behind it. Each drain call gets a budget of 5 failures
+       before pausing — protects against thrashing when everything is broken.
+       The cooldown is per-record-per-session; next call to drainOutbox starts
+       with a fresh slate. */
+    const SESSION_FAIL_BUDGET = 5;
+    const _sessionFailedKeys = new Set();
+    const _sessionRecentFailMs = (CFG.MAX_BACKOFF_MS || 60_000);
+
     try {
+      let sessionFailures = 0;
       while (true) {
+        if (sessionFailures >= SESSION_FAIL_BUDGET) {
+          log('drain: hit session failure budget — pausing', sessionFailures);
+          break;
+        }
         const batch = Outbox.peek(CFG.OUTBOX_DRAIN_CHUNK);
         if (!batch.length) break;
 
         const ok = [], bad = [];
+        /* (Phase 1.2) Capture actual Firestore error per failed record so we
+           can quarantine permission-denied / invalid-argument records faster
+           in Phase 1.3, and so users can see the real reason in the UI. */
+        const errorsByKey = {};
+        /* (Phase 1.1) Track whether the batch had any "fresh" attempts at all.
+           If every record in the batch was on cooldown, we exit the outer loop
+           to prevent infinite spinning over the same skipped records. */
+        let batchAttempted = 0;
         for (const entry of batch) {
           const key = entry.collection + ':' + entry.record.id;
+          /* (Phase 1.1) Skip records that failed in this session — keep the
+              loop moving past poison-pills. */
+          if (_sessionFailedKeys.has(key)) continue;
+          /* (Phase 1.1) Skip records that failed in a previous drain call within
+              the cooldown window (60s default). They get another chance later. */
+          if (entry.lastAttemptAt && (now() - entry.lastAttemptAt) < _sessionRecentFailMs && (entry.attempts || 0) >= 3) {
+            continue;
+          }
+          batchAttempted++;
           try {
             await FS.upload(entry.collection, entry.record);
             ok.push(key); pushed++;
           } catch (e) {
             bad.push(key); failed++;
-            err('upload failed', key, e && e.message);
-            break;
+            sessionFailures++;
+            _sessionFailedKeys.add(key);
+            errorsByKey[key] = {
+              code: e && e.code,
+              message: e && e.message,
+              name: e && e.name,
+            };
+            err('upload failed', key, (e && e.code) || '', e && e.message);
+            /* (Phase 1.1) Was: break — which caused head-of-line blocking.
+                Now: continue to next record. Bad records don't block good ones. */
+            continue;
           }
         }
         if (ok.length) {
@@ -30877,10 +31674,42 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           status.networkBlocked = false;
         }
         if (bad.length) {
-          Outbox.bumpAttempts(bad);
+          Outbox.bumpAttempts(bad, errorsByKey);
           /* (v32) Track consecutive upload failures across drain calls — used
              for soft offline detection (RC#6 from audit). */
           status.consecutiveFailures = (status.consecutiveFailures || 0) + 1;
+          /* (Phase 1.2) Also surface the latest error code on the status object
+             so the pill UI can show specific text instead of generic "push_failed". */
+          const firstBad = bad[0];
+          if (firstBad && errorsByKey[firstBad]) {
+            status.lastError = errorsByKey[firstBad].code || 'push_failed';
+            status.lastErrorMessage = (errorsByKey[firstBad].message || '').slice(0, 200);
+          }
+          /* (Phase 1.3) Check each bad record after bumpAttempts ran (so the
+             attempts count is fresh). Quarantine ones that hit a permanent
+             failure condition based on error code + attempt count. */
+          try {
+            const allOutbox = Outbox.all();
+            const outboxByKey = {};
+            allOutbox.forEach(e => { outboxByKey[e.collection + ':' + e.record.id] = e; });
+            const quarantineKeys = [];
+            for (const badKey of bad) {
+              const fresh = outboxByKey[badKey];
+              if (!fresh) continue;
+              const reason = _shouldQuarantine(fresh);
+              if (reason) {
+                if (Quarantine.add(fresh, reason)) {
+                  quarantineKeys.push(badKey);
+                }
+              }
+            }
+            if (quarantineKeys.length) {
+              Outbox.removeMany(quarantineKeys);
+              log('drain: moved', quarantineKeys.length, 'records to quarantine');
+            }
+          } catch(qErr) {
+            err('quarantine check failed', qErr);
+          }
           if (status.consecutiveFailures >= 3) {
             /* navigator.onLine claims online but Firestore keeps rejecting — most
                likely captive portal, App Check token issue, or dead cellular IP.
@@ -30888,17 +31717,31 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
                offline event flow (online events will still come). */
             status.networkBlocked = true;
           }
-          const maxAttempts = Math.max(0, ...Outbox.all().map(e => e.attempts || 0));
-          const delay = Math.min(CFG.BASE_BACKOFF_MS * Math.pow(2, maxAttempts), CFG.MAX_BACKOFF_MS);
-          _backoffUntil = now() + delay;
-          status.backoffUntil = _backoffUntil;
-          status.lastError = 'push_failed';
-          log('backoff', delay, 'ms');
-          /* (v32) Schedule auto-retry right when the backoff ends — no need to
-             wait for the 2-minute periodic timer. */
-          _scheduleRetryAfterBackoff();
+          /* (Phase 1.1) Schedule backoff ONLY if EVERY batched record failed
+              (true network/auth problem). If some succeeded alongside the
+              failures, the network is fine — just some records are bad. Don't
+              penalize good records with backoff. */
+          if (ok.length === 0 && batchAttempted > 0) {
+            const maxAttempts = Math.max(0, ...Outbox.all().map(e => e.attempts || 0));
+            const delay = Math.min(CFG.BASE_BACKOFF_MS * Math.pow(2, maxAttempts), CFG.MAX_BACKOFF_MS);
+            _backoffUntil = now() + delay;
+            status.backoffUntil = _backoffUntil;
+            log('backoff (all-fail batch)', delay, 'ms');
+            /* (v32) Schedule auto-retry right when the backoff ends — no need to
+               wait for the 2-minute periodic timer. */
+            _scheduleRetryAfterBackoff();
+            break;  /* Exit outer while — wait for backoff */
+          }
+        }
+        /* (Phase 1.1) If batch produced no fresh attempts (all skipped on
+            cooldown), exit to avoid spinning forever on the same records. */
+        if (batchAttempted === 0) {
+          log('drain: batch had no fresh attempts (all on cooldown) — exiting');
           break;
         }
+        /* (Phase 1.1) If we have failures but also successes, keep draining —
+            don't break the outer loop. The Outbox.peek will return fresh records
+            since failed ones got their attempts bumped (sort order preserved). */
       }
     } finally {
       _lock = false; status.syncing = false;
@@ -31131,6 +31974,9 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         status: Object.assign({}, status),
         outboxSize: Outbox.size(),
         outboxPreview: Outbox.peek(5),
+        /* (Phase 1.3) Expose quarantine for UI and forensics */
+        quarantineSize: Quarantine.size(),
+        quarantinePreview: Quarantine.peek(5),
         meta: Meta.get(),
         collections: {},
       };
@@ -31145,6 +31991,28 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         };
       }
       return out;
+    },
+
+    /* (Phase 1.3) Public Quarantine API — used by Phase 1.4 UI and admin tools.
+       Methods:
+         list()      → array of quarantined entries
+         size()      → number
+         retry(key)  → move back to outbox (key = collection:id)
+         remove(key) → permanently delete from quarantine
+         clear()     → delete all (use with confirmation!) */
+    quarantine: {
+      list:   () => Quarantine.list(),
+      size:   () => Quarantine.size(),
+      retry:  (key) => {
+        const r = Quarantine.retry(key);
+        if (r) {
+          /* After retry, force a drain so the user sees immediate result */
+          drainOutbox().catch(e => err('quarantine retry drain', e));
+        }
+        return r;
+      },
+      remove: (key) => Quarantine.remove(key),
+      clear:  () => Quarantine.clear(),
     },
   };
 
@@ -32897,6 +33765,73 @@ window.Store = {
   __v: 1,
   __subs: subs,
 
+  /* ════════════════════════════════════════════════════════════════════════
+     Phase 1.5 — Content hash for duplicate detection (May 2026)
+     Every record created via Store.add gets a stable _clientHash based on
+     its content. Same content = same hash. Used by:
+       - Sync health UI to detect possible duplicates
+       - Future Phase 2 server-side ingestion to reject true duplicates
+     Backwards compatible: records without _clientHash (old data) keep
+     working. The hash never overrides the id — it is purely additive
+     forensic metadata.
+  ════════════════════════════════════════════════════════════════════════ */
+  _hashString: function(s){
+    var h = 0;
+    if (!s) return 'h0';
+    for (var i = 0; i < s.length; i++) {
+      h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    }
+    return 'h' + (h >>> 0).toString(36);
+  },
+  _computeClientHash: function(coll, rec){
+    /* Collection-specific identity fields. Timestamps are rounded to
+       the second to allow benign re-execution to produce same hash.
+       JSON.stringify of items provides deterministic content fingerprint. */
+    try {
+      var parts = [coll];
+      if (coll === 'sales') {
+        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('total=' + (rec.total || 0));
+        parts.push('mode=' + (rec.mode || rec.paymentMode || ''));
+        parts.push('cust=' + (rec.custId || rec.custPhone || rec.custName || ''));
+        parts.push('items=' + JSON.stringify(rec.items || []));
+      } else if (coll === 'exps') {
+        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('amt=' + (rec.amt || 0));
+        parts.push('cat=' + (rec.cat || rec.catLabel || ''));
+        parts.push('note=' + (rec.note || ''));
+      } else if (coll === 'custs') {
+        parts.push('phone=' + (rec.phone || ''));
+        parts.push('name=' + (rec.name || ''));
+      } else if (coll === 'prods') {
+        parts.push('name=' + (rec.name || ''));
+        parts.push('price=' + (rec.price || 0));
+      } else if (coll === 'staff') {
+        parts.push('name=' + (rec.name || ''));
+        parts.push('phone=' + (rec.phone || ''));
+      } else if (coll === 'udh') {
+        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('amt=' + (rec.amt || 0));
+        parts.push('cust=' + (rec.custId || rec.name || ''));
+      } else if (coll === 'appts') {
+        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('cust=' + (rec.customerName || rec.custName || ''));
+        parts.push('staff=' + (rec.staffId || ''));
+      } else if (coll === 'coupons') {
+        parts.push('code=' + (rec.code || ''));
+      } else {
+        /* Generic fallback — stringify whole record minus volatile fields */
+        var copy = Object.assign({}, rec);
+        delete copy.id; delete copy.updatedAt; delete copy.createdAt;
+        delete copy._clientHash; delete copy._serverUpdatedAt;
+        parts.push('all=' + JSON.stringify(copy));
+      }
+      return this._hashString(parts.join('|'));
+    } catch(e){
+      return 'herr';
+    }
+  },
+
   list: function(coll){
     return _arr(coll);
   },
@@ -32910,6 +33845,30 @@ window.Store = {
     return _arr(coll).filter(predicate);
   },
 
+  /* (Phase 1.5) Find all records with a given _clientHash.
+     Returns array (may be empty). If length > 1, that's a duplicate signal. */
+  findByHash: function(coll, hash){
+    if (!hash) return [];
+    return _arr(coll).filter(function(x){ return x._clientHash === hash; });
+  },
+
+  /* (Phase 1.5) Detect duplicates across the entire collection.
+     Returns Map of hash → array of matching records. Only includes hashes
+     with 2+ records (the duplicate set). Excludes records without hashes. */
+  detectDuplicates: function(coll){
+    var byHash = {};
+    _arr(coll).forEach(function(r){
+      if (!r._clientHash) return;
+      if (!byHash[r._clientHash]) byHash[r._clientHash] = [];
+      byHash[r._clientHash].push(r);
+    });
+    var dupes = {};
+    Object.keys(byHash).forEach(function(h){
+      if (byHash[h].length > 1) dupes[h] = byHash[h];
+    });
+    return dupes;
+  },
+
   add: function(coll, item){
     if (!item || typeof item !== 'object') throw new Error('Store.add: item must be object');
     var now = Date.now();
@@ -32917,6 +33876,12 @@ window.Store = {
     if (rec.id == null) rec.id = _newId();
     if (rec.createdAt == null) rec.createdAt = now;
     rec.updatedAt = now;
+    /* (Phase 1.5) Stamp content hash for duplicate detection. Only set if
+       not already present — preserves any explicitly-set hash from callers
+       (e.g., import paths that want to keep the original hash). */
+    if (!rec._clientHash) {
+      rec._clientHash = this._computeClientHash(coll, rec);
+    }
     _arr(coll).push(rec);
     _emit(coll);
     return rec;
@@ -32927,6 +33892,12 @@ window.Store = {
     var i = a.findIndex(function(x){ return x.id === id; });
     if (i < 0) return null;
     a[i] = Object.assign({}, a[i], patch, { updatedAt: Date.now() });
+    /* (Phase 1.5) If the patch touched content-significant fields, recompute
+       the hash so the record's "identity fingerprint" stays accurate.
+       Safe default: recompute always on update — cheap, deterministic. */
+    try {
+      a[i]._clientHash = this._computeClientHash(coll, a[i]);
+    } catch(e){}
     _emit(coll);
     return a[i];
   },
