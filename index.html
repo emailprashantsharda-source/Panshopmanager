@@ -31049,7 +31049,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 (function (window) {
   'use strict';
 
-  const VERSION = '2.1.0';
+  const VERSION = '2.2.0';
 
   // B2.b cleanup (May 2026): removed `purchases: 'purch'` and
   // `khataSettle: 'khataSettle'` from this map. Both were never populated
@@ -31612,6 +31612,11 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   /* (May 2026 sync v32) Auto-retry timer fires exactly when backoff ends,
      so users don't wait up to AUTO_SYNC_INTERVAL_MS (2 min) for the next try. */
   let _retryTimer = null;
+  /* (v32.3) Watchdog state — when did the current sync attempt start?
+     Used to detect hung syncs that need a forced unlock. */
+  let _syncStartedAt = 0;
+  let _watchdogTimer = null;
+  let _appCheckChecked = false;
   function _scheduleRetryAfterBackoff(){
     if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
     const delay = Math.max(0, _backoffUntil - now()) + 50; /* +50ms safety */
@@ -31646,7 +31651,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       emit();
       return { pushed: 0, failed: 0 };
     }
-    _lock = true; status.syncing = true; status.backoffUntil = 0; emit();
+    _lock = true; _syncStartedAt = now();
+    status.syncing = true; status.backoffUntil = 0; emit();
     let pushed = 0, failed = 0;
 
     /* (Phase 1.1 — May 2026) Head-of-line skip.
@@ -31785,7 +31791,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
             since failed ones got their attempts bumped (sort order preserved). */
       }
     } finally {
-      _lock = false; status.syncing = false;
+      _lock = false; _syncStartedAt = 0;
+      status.syncing = false;
       status.pending = Outbox.size();
       if (status.pending === 0) {
         /* (v32) Outbox drained completely — clear any stale backoff/error state */
@@ -31800,7 +31807,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
   async function pull() {
     if (_lock || !status.online) return { pulled: 0, changed: 0 };
-    _lock = true; status.syncing = true; emit();
+    _lock = true; _syncStartedAt = now();
+    status.syncing = true; emit();
     let pulled = 0, changed = 0;
 
     try {
@@ -31858,7 +31866,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         try { window.sA(); } catch (e) { err('host sA() threw', e); }
       }
     } finally {
-      _lock = false; status.syncing = false;
+      _lock = false; _syncStartedAt = 0;
+      status.syncing = false;
       /* (v32.1) Always refresh pending from Outbox after a pull, in case it
          drained between iterations. Also clear stale backoff if outbox is
          now empty (similar safeguard to drainOutbox). */
@@ -31899,6 +31908,57 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     }
     log('migration: stamped', stamped, 'records');
     return stamped;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     (v32.3) WATCHDOG — runs every 30s, detects engine wedges, self-heals.
+
+     Three failure shapes it catches:
+       1. ENGINE IDLE BUT OUTBOX PENDING — drainOutbox was never triggered
+          (init race, missed event, etc). Kick a drain.
+       2. SYNC HUNG FOR >60s — _lock stuck true from a hung await that
+          never resolved (timeout fallback if Phase 1 timeout fails). Force
+          unlock and re-drain.
+       3. APP RESUMED FROM BACKGROUND — visibility change handler covers
+          most cases, but if the browser delayed firing visibilitychange,
+          watchdog catches it via the pending+idle check.
+  ════════════════════════════════════════════════════════════════════════ */
+  const WATCHDOG_INTERVAL_MS = 30000;
+  const WATCHDOG_HUNG_SYNC_MS = 60000;
+
+  function _watchdogTick() {
+    try {
+      const pending = Outbox.size();
+      if (pending === 0) return; /* healthy */
+
+      /* Detect hung sync — _lock stuck, _syncStartedAt is old */
+      if (_lock && _syncStartedAt > 0) {
+        const syncAge = now() - _syncStartedAt;
+        if (syncAge > WATCHDOG_HUNG_SYNC_MS) {
+          warn('[watchdog] hung sync detected, age=' + syncAge + 'ms — forcing unlock');
+          _lock = false;
+          _syncStartedAt = 0;
+          status.syncing = false;
+          status.lastError = 'watchdog_forced_unlock';
+          emit();
+          drainOutbox().catch(function(e){ err('watchdog forced drain', e); });
+          return;
+        }
+      }
+
+      /* Idle but pending — drain wasn't triggered (init race or missed event) */
+      if (!_lock && status.online && now() >= _backoffUntil) {
+        log('[watchdog] idle with', pending, 'pending — kicking drain');
+        drainOutbox().catch(function(e){ err('watchdog kick drain', e); });
+      }
+    } catch(e) {
+      err('[watchdog] tick failed', e);
+    }
+  }
+
+  function _startWatchdog() {
+    if (_watchdogTimer) clearInterval(_watchdogTimer);
+    _watchdogTimer = setInterval(_watchdogTick, WATCHDOG_INTERVAL_MS);
   }
 
   const HisaabSync = {
@@ -31953,6 +32013,16 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       runInitialMigration();
 
       await fullSync().catch(e => err('initial sync', e));
+
+      /* (v32.3) Init race fix — if checkpoint() ran during the initial pull
+         (e.g., onboarding seed catalog), its drainOutbox was a no-op because
+         _lock was true. Kick one fresh drain now that init is done. */
+      if (Outbox.size() > 0) {
+        drainOutbox().catch(function(e){ err('post-init drain', e); });
+      }
+
+      /* (v32.3) Start watchdog — runs every 30s, self-heals stuck states */
+      _startWatchdog();
 
       log('init complete', { shopId: CFG.shopId, version: VERSION });
       return true;
