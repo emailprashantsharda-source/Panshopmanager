@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_22_b1_fixDates';
+    window.HISAABNOW_BUILD = 'v33_23_b1_overscroll';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -475,8 +475,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:#FFFBF5;font-family:'Inter',system-ui,sans-serif;color:var(--t1);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden;overscroll-behavior-x:none;width:100%;max-width:100vw;position:relative;border-top:0 !important;}
-html{touch-action:pan-y}
-body{min-height:100vh;display:flex;justify-content:center}
+html{touch-action:pan-y;overscroll-behavior-y:contain}
+body{min-height:100vh;display:flex;justify-content:center;overscroll-behavior-y:contain}
 
 .app{
   width:100%;max-width:430px;background:var(--surface);
