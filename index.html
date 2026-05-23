@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_12_b1_touchaudit';
+    window.HISAABNOW_BUILD = 'v33_14_b1_polish';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -1510,6 +1510,82 @@ body.on-checkout .nav{display:none !important}
   width:max(44px, 100%); height:max(44px, 100%);
   transform:translate(-50%, -50%);
   /* No background — invisible hit zone only */
+}
+/* ───────────────────────────────────────────────────────────────────── */
+
+/* ─── Loading states (May 2026) ──────────────────────────────────────────
+   Three patterns supported:
+     1. Inline button spinner — replace button text with spinner during async
+     2. Skeleton lines — placeholder bars for text content
+     3. Skeleton cards — placeholder for whole tiles/cards
+
+   Usage examples:
+     // Button:
+     App.setButtonLoading(btn, true, 'Saving…');  // shows spinner + text
+     App.setButtonLoading(btn, false);            // restores original text
+
+     // Skeleton lines:
+     <div class="sk-line"></div>                  // 1-line bar
+     <div class="sk-line sk-w-50"></div>          // half-width bar
+
+     // Skeleton cards:
+     <div class="sk-card"></div>                  // ~80px tall placeholder
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Shimmer animation — base for all skeleton variants */
+@keyframes hn-skeleton-shimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.skeleton, .sk-line, .sk-card, .sk-circle, .sk-tile {
+  background:#E5E7EB;
+  background-image: linear-gradient(90deg, #E5E7EB 0%, #F3F4F6 50%, #E5E7EB 100%);
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  animation: hn-skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.sk-line   { height: 14px; margin: 6px 0; }
+.sk-line.tall { height: 20px; }
+.sk-line.sm   { height: 11px; }
+.sk-w-30  { width: 30%; }
+.sk-w-50  { width: 50%; }
+.sk-w-70  { width: 70%; }
+.sk-w-90  { width: 90%; }
+
+.sk-card   { height: 80px; border-radius: 12px; margin-bottom: 10px; }
+.sk-card.tall { height: 120px; }
+
+.sk-circle { width: 40px; height: 40px; border-radius: 50%; }
+.sk-circle.lg { width: 56px; height: 56px; }
+
+.sk-tile   { height: 96px; border-radius: 14px; }
+
+/* Inline button spinner — small rotating ring used inside loading buttons */
+@keyframes hn-spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+.hn-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: hn-spinner-rotate .65s linear infinite;
+  vertical-align: -2px;
+  margin-right: 7px;
+}
+.hn-spinner.dark {
+  border-color: rgba(15,23,42,0.2);
+  border-top-color: #0F172A;
+}
+
+/* Loading state for buttons — applied via App.setButtonLoading() */
+button[data-hn-loading="true"] {
+  cursor: wait !important;
+  opacity: 0.85;
+  pointer-events: none;
 }
 /* ───────────────────────────────────────────────────────────────────── */
 
@@ -9135,6 +9211,199 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
   console.log('[BackHandler] installed');
 })();
 
+// ─────────────────────────────────────────────────────────────────────────
+// PULL-TO-REFRESH (May 2026)
+// Standard mobile pattern: swipe down at top of dashboard to refresh.
+// Triggers HisaabSync.fullSync() to pull latest data from Firestore,
+// then re-renders the dashboard. Active ONLY on the home page; other
+// screens scroll normally.
+//
+// Mechanics:
+//   - Touch begins at scrollTop=0 → start tracking pull distance
+//   - Pull distance > 70px on release → trigger refresh
+//   - Damping factor 0.5 makes the pull feel weighty (not springy)
+//   - Indicator pinned to viewport via position:fixed
+//   - Visibility blocks: not refreshing, not on a different screen, scroller at top
+//
+// Conflict avoidance:
+//   - Doesn't fire when modal is open (BackHandler modal stack non-empty)
+//   - Doesn't intercept horizontal scrolls (only acts on vertical delta)
+//   - Cancels cleanly on touchcancel (Android phone-call interrupt etc.)
+// ─────────────────────────────────────────────────────────────────────────
+(function setupPullToRefresh(){
+  const THRESHOLD_PX = 70;     // pull distance required to trigger
+  const MAX_PULL_PX  = 120;    // visual cap so it doesn't go too far
+  const DAMPING      = 0.5;    // resistance — half of finger motion shows
+  const HORIZ_BAIL   = 12;     // if horizontal movement exceeds this, bail
+
+  let startY = 0, startX = 0;
+  let currentY = 0;
+  let pulling = false;
+  let refreshing = false;
+  let indicator = null;
+
+  function getScroller() {
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function isOnHome() {
+    return window.App && window.App.current === 'home';
+  }
+
+  function modalOpen() {
+    // If BackHandler modal stack is non-empty, skip PTR
+    // (We can't read its internal stack directly, so check for any visible
+    //  bottom-sheet / overlay elements as proxy)
+    const anySheet = document.querySelector('.sheet-backdrop, .hn-confirm.show, .ps-overlay.open, #ns-overlay.open');
+    return !!anySheet;
+  }
+
+  function makeIndicator() {
+    if (indicator) return indicator;
+    indicator = document.createElement('div');
+    indicator.id = 'hn-ptr-indicator';
+    indicator.style.cssText = [
+      'position:fixed',
+      'top:0',
+      'left:50%',
+      'width:42px',
+      'height:42px',
+      'background:#FFFFFF',
+      'border-radius:50%',
+      'box-shadow:0 4px 14px rgba(15,23,42,.18)',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'z-index:9500',
+      'transform:translate(-50%,-100%) rotate(0deg)',
+      'opacity:0',
+      'transition:transform .22s ease, opacity .22s ease',
+      'pointer-events:none'
+    ].join(';');
+    indicator.innerHTML = '<div class="hn-ptr-arrow" style="width:18px;height:18px;border:2.5px solid #FF6B35;border-bottom-color:transparent;border-radius:50%;transition:transform .15s ease"></div>';
+    document.body.appendChild(indicator);
+    return indicator;
+  }
+
+  function updateIndicator(progress) {
+    // progress: 0 = nothing, 1 = at threshold, >1 = past threshold
+    const el = makeIndicator();
+    const y = Math.min(progress * 70, 90);
+    const rotation = progress * 360;
+    el.style.transform = 'translate(-50%,' + y + 'px) rotate(' + rotation + 'deg)';
+    el.style.opacity = Math.min(progress, 1).toFixed(2);
+    // Visual cue at threshold: arrow becomes full circle
+    if (progress >= 1) {
+      el.style.background = '#FFF7ED';
+    } else {
+      el.style.background = '#FFFFFF';
+    }
+  }
+
+  function hideIndicator() {
+    if (!indicator) return;
+    indicator.style.transform = 'translate(-50%,-100%) rotate(0deg)';
+    indicator.style.opacity = '0';
+  }
+
+  function startSpinning() {
+    if (!indicator) return;
+    const arrow = indicator.querySelector('.hn-ptr-arrow');
+    if (arrow) arrow.style.animation = 'hn-spinner-rotate 0.8s linear infinite';
+  }
+  function stopSpinning() {
+    if (!indicator) return;
+    const arrow = indicator.querySelector('.hn-ptr-arrow');
+    if (arrow) arrow.style.animation = '';
+  }
+
+  document.addEventListener('touchstart', function(e){
+    if (refreshing) return;
+    if (!isOnHome()) return;
+    if (modalOpen()) return;
+    if (getScroller().scrollTop > 0) return;
+    if (!e.touches || !e.touches[0]) return;
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    currentY = startY;
+    pulling = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e){
+    if (!pulling) return;
+    if (!e.touches || !e.touches[0]) return;
+    currentY = e.touches[0].clientY;
+    const dY = currentY - startY;
+    const dX = e.touches[0].clientX - startX;
+
+    // Bail if mostly horizontal (chip strip scroll, etc.)
+    if (Math.abs(dX) > HORIZ_BAIL && Math.abs(dX) > Math.abs(dY)) {
+      pulling = false;
+      hideIndicator();
+      return;
+    }
+    // Bail if user scrolls up (drag up)
+    if (dY <= 0) {
+      pulling = false;
+      hideIndicator();
+      return;
+    }
+    // Active pull — prevent default scroll bounce + update indicator
+    e.preventDefault();
+    const dampedY = dY * DAMPING;
+    const progress = Math.min(dampedY / THRESHOLD_PX, MAX_PULL_PX / THRESHOLD_PX);
+    updateIndicator(progress);
+  }, { passive: false });
+
+  async function onRelease() {
+    if (!pulling) return;
+    pulling = false;
+    const dY = currentY - startY;
+    const dampedY = dY * DAMPING;
+
+    if (dampedY < THRESHOLD_PX || refreshing) {
+      hideIndicator();
+      return;
+    }
+
+    // Trigger refresh
+    refreshing = true;
+    const el = makeIndicator();
+    // Pin indicator visible during refresh
+    el.style.transform = 'translate(-50%, 60px) rotate(0deg)';
+    el.style.opacity = '1';
+    startSpinning();
+    if (window.haptic && haptic.tap) haptic.tap();
+
+    try {
+      if (window.HisaabSync && typeof HisaabSync.fullSync === 'function') {
+        await HisaabSync.fullSync().catch(function(e){
+          console.warn('[PTR] fullSync error', e && e.message);
+        });
+      }
+      if (window.App && typeof window.App.renderHome === 'function') {
+        try { window.App.renderHome(); } catch(e){ console.warn('[PTR] renderHome error', e); }
+      }
+    } finally {
+      // Brief settle then hide
+      setTimeout(function(){
+        stopSpinning();
+        refreshing = false;
+        hideIndicator();
+      }, 250);
+    }
+  }
+
+  document.addEventListener('touchend',    onRelease, { passive: true });
+  document.addEventListener('touchcancel', function(){
+    if (!pulling) return;
+    pulling = false;
+    hideIndicator();
+  }, { passive: true });
+
+  console.log('[PullToRefresh] installed');
+})();
+
 const App = {
   current: 'home',
   vertical: 'cafe',
@@ -9369,6 +9638,207 @@ const App = {
       // a destructive action if user presses Enter blindly)
       setTimeout(() => { try { cancelBtn.focus(); } catch(e){} }, 50);
     });
+  },
+
+  /* ─── UPI deep links (May 2026) ────────────────────────────────────────
+     Constructs `upi://pay?...` URLs that, when tapped on Android, open
+     the user's UPI app (GPay, PhonePe, Paytm, BHIM, etc.) with payee,
+     payee name, amount, and note all pre-filled.
+
+     Standard spec: https://digitalindia.gov.in/upi/spec.html
+     Parameters:
+       pa  — payee VPA (required) — the shopkeeper's UPI ID from S.upiId
+       pn  — payee name — shop name from S.store
+       am  — amount in rupees (optional; if omitted, payer enters)
+       cu  — currency, always INR
+       tn  — transaction note (e.g. "Udhaar - Sharma ji")
+
+     Returns null if no UPI ID is configured. Caller should prompt user
+     to add UPI ID in Settings before this works.
+     ──────────────────────────────────────────────────────────────────── */
+  buildUpiPayLink(amount, note){
+    const upi = (window.S && window.S.upiId) || '';
+    if (!upi || !upi.includes('@')) return null;
+    const shop = (window.S && window.S.store) || 'Shop';
+    const parts = [
+      'pa=' + encodeURIComponent(upi),
+      'pn=' + encodeURIComponent(shop),
+      'cu=INR'
+    ];
+    if (amount && amount > 0) {
+      // UPI spec: amount with up to 2 decimal places
+      const formatted = (Math.round(amount * 100) / 100).toString();
+      parts.push('am=' + encodeURIComponent(formatted));
+    }
+    if (note) {
+      // tn limit varies by UPI app; 80 chars is universally safe
+      parts.push('tn=' + encodeURIComponent(String(note).slice(0, 80)));
+    }
+    return 'upi://pay?' + parts.join('&');
+  },
+
+  /* Send a UPI payment request to a customer via WhatsApp. Used from
+     udhaar settle flow. Composes a friendly message with a tappable
+     upi:// link the customer can use to pay one-tap from their phone. */
+  async requestUpiViaWhatsApp(khataId){
+    const k = (window.Store && Store.get) ? Store.get('khata', khataId) : null;
+    if (!k) { this.toast(this._T('toast.entryNotFound', 'Entry not found')); return; }
+
+    // Validate UPI ID exists
+    const upi = (window.S && window.S.upiId) || '';
+    if (!upi || !upi.includes('@')) {
+      const setup = await this.confirm({
+        title: this._T('upi.setupNeeded', 'Set up UPI ID first'),
+        message: this._T('upi.setupNeededDesc', 'Add your UPI ID in Settings so customers can pay you directly. It only takes a few seconds.'),
+        confirmText: this._T('upi.openSettings', 'Open Settings'),
+        cancelText: this._T('common.later', 'Later')
+      });
+      if (setup) this.nav('settings');
+      return;
+    }
+
+    // Validate customer phone exists
+    if (!k.partyPhone) {
+      this.toast(this._T('toast.noPhoneParty', 'No phone on file for this party'));
+      return;
+    }
+
+    // Compute remaining amount
+    const remaining = Number(k.amount || 0) - Number(k.paidAmount || 0);
+    if (remaining <= 0) {
+      this.toast(this._T('toast.alreadySettled', 'Already fully settled'));
+      return;
+    }
+
+    // Build the UPI deep link
+    const customerName = k.partyName || 'Customer';
+    const upiLink = this.buildUpiPayLink(remaining, 'Udhaar - ' + customerName);
+    if (!upiLink) {
+      this.toast(this._T('toast.upiLinkFail', 'Could not build UPI link — check Settings'));
+      return;
+    }
+
+    // Build WhatsApp message — friendly request with tappable upi:// link
+    const shop = (window.S && window.S.store) || 'Shop';
+    const lang = (window.S && window.S.lang) || 'hi';
+    let msg;
+    if (lang === 'en') {
+      msg = 'Hi ' + customerName + ', here\'s a UPI link to settle ₹' +
+            remaining.toLocaleString('en-IN') + ' from ' + shop +
+            '. Just tap to open your UPI app — amount is pre-filled.\n\n' +
+            upiLink + '\n\nThank you!';
+    } else {
+      msg = 'Namaste ' + customerName + ' ji 🙏\n\n' + shop + ' se: aapka ₹' +
+            remaining.toLocaleString('en-IN') +
+            ' ka udhaar settle karne ke liye UPI link bhej raha hu. Bas tap karein — amount already filled hai:\n\n' +
+            upiLink + '\n\nDhanyavaad!';
+    }
+
+    // Normalize phone to E.164 (add +91 if 10-digit)
+    let phone = String(k.partyPhone).replace(/[^0-9]/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    if (phone.length < 12) {
+      this.toast(this._T('toast.invalidPhoneFix', 'Invalid phone — fix in customer details'));
+      return;
+    }
+
+    const waUrl = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
+
+    // Mark this khata entry as reminded (audit trail)
+    try {
+      if (window.Khata && Khata.markReminded) Khata.markReminded(khataId);
+    } catch(e){ console.warn('[upi] markReminded failed', e); }
+
+    window.open(waUrl, '_blank');
+    this.toast(this._T('toast.upiReqSent', '✓ UPI request sent · waiting for payment'));
+  },
+
+  /* ─── Button loading state helper (May 2026) ───────────────────────────
+     Replaces button text with a spinner + loading text during async ops.
+     Restores original text + enables when called with isLoading=false.
+
+     Usage:
+       const btn = document.getElementById('save-btn');
+       App.setButtonLoading(btn, true, 'Saving…');
+       try {
+         await someAsyncOp();
+       } finally {
+         App.setButtonLoading(btn, false);  // restores
+       }
+
+     Stores original HTML in data attribute so call order doesn't matter.
+     Works on any button regardless of class. Idempotent.
+     ──────────────────────────────────────────────────────────────────── */
+  setButtonLoading(btnEl, isLoading, loadingText){
+    if (!btnEl) return;
+    if (isLoading) {
+      // Save original HTML on first call
+      if (!btnEl.hasAttribute('data-hn-original-html')) {
+        btnEl.setAttribute('data-hn-original-html', btnEl.innerHTML);
+      }
+      // Determine spinner color: light buttons get dark spinner, dark buttons get light
+      const computedBg = window.getComputedStyle(btnEl).backgroundColor;
+      const isDark = /rgb\(2[0-9],|rgb\(1[0-9],|rgb\(0,|rgb\(3[0-9],|rgb\(4[0-9],/.test(computedBg);
+      const spinnerClass = isDark ? 'hn-spinner' : 'hn-spinner dark';
+      btnEl.innerHTML = '<span class="' + spinnerClass + '"></span>' + (loadingText || this._T('common.loading', 'Loading…'));
+      btnEl.setAttribute('data-hn-loading', 'true');
+      btnEl.disabled = true;
+    } else {
+      // Restore original HTML
+      const original = btnEl.getAttribute('data-hn-original-html');
+      if (original !== null) {
+        btnEl.innerHTML = original;
+        btnEl.removeAttribute('data-hn-original-html');
+      }
+      btnEl.removeAttribute('data-hn-loading');
+      btnEl.disabled = false;
+    }
+  },
+
+  /* ─── Web Share API (May 2026) ─────────────────────────────────────────
+     Uses navigator.share() to trigger Android's system share sheet
+     (lets user pick WhatsApp, SMS, Telegram, Drive, etc.). Falls back
+     to a user-supplied fallback URL when Web Share API isn't available
+     (iOS Safari < 12.2, older browsers, sandboxed contexts).
+
+     Returns:
+       'shared'    — user picked an app and shared (or it succeeded)
+       'cancelled' — user dismissed the share sheet
+       'fallback'  — Web Share unavailable, opened fallback URL instead
+
+     Usage:
+       const result = await App.shareViaSystem({
+         title: 'Bill from My Shop',
+         text: receiptText,
+         fallbackUrl: 'https://wa.me/?text=' + encodeURIComponent(receiptText)
+       });
+     ──────────────────────────────────────────────────────────────────── */
+  async shareViaSystem(opts){
+    opts = opts || {};
+    const payload = {};
+    if (opts.title) payload.title = opts.title;
+    if (opts.text)  payload.text  = opts.text;
+    if (opts.url)   payload.url   = opts.url;
+
+    // Try Web Share API first
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share(payload);
+        return 'shared';
+      } catch (e) {
+        // User cancelled — return without falling back
+        if (e && e.name === 'AbortError') return 'cancelled';
+        // Other errors fall through to fallback
+        console.warn('[shareViaSystem] navigator.share failed:', e && e.message);
+      }
+    }
+
+    // Fallback path — open the WhatsApp/whatever URL the caller provided
+    if (opts.fallbackUrl) {
+      window.open(opts.fallbackUrl, '_blank');
+      return 'fallback';
+    }
+    return 'fallback';
   },
 
   /* Translation helper for JS-rendered strings. Falls back to the
@@ -13024,7 +13494,10 @@ const App = {
           <div style="font-size:11.5px;color:var(--t3);font-weight:600;margin-top:2px">${dateStr} · ${reasonLabel}${partial}</div>
           ${k.notes ? `<div style="font-size:11.5px;color:var(--t2);margin-top:3px">${this.escapeHtml(k.notes)}</div>` : ''}
         </div>
-        <button onclick="App.udhaarSettlePrompt('${k.id}')" style="background:#000;color:#fff;border:none;padding:7px 11px;border-radius:9px;font-weight:700;font-size:11.5px;font-family:inherit;cursor:pointer;flex-shrink:0;margin-left:10px" data-i18n="udh.settle">Settle</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+          ${k.type === 'lena' && k.partyPhone ? `<button onclick="App.requestUpiViaWhatsApp('${k.id}')" style="background:#25D366;color:#fff;border:none;padding:7px 10px;border-radius:9px;font-weight:700;font-size:11.5px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px" aria-label="Request via UPI">UPI</button>` : ''}
+          <button onclick="App.udhaarSettlePrompt('${k.id}')" style="background:#000;color:#fff;border:none;padding:7px 11px;border-radius:9px;font-weight:700;font-size:11.5px;font-family:inherit;cursor:pointer" data-i18n="udh.settle">Settle</button>
+        </div>
       </div>`;
     }).join('');
     sheet.innerHTML = `
@@ -22574,7 +23047,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._hideVoiceModal();
   },
 
-  shareBillWhatsApp(idx, source){
+  async shareBillWhatsApp(idx, source){
     let list;
     if (source === 'cust-history') {
       list = this._custVisits || [];
@@ -22587,7 +23060,27 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
     const bill = list[idx];
     if (!bill) return;
-    window.open(this.waUrlForBill(bill), '_blank');
+
+    // Known customer phone — go direct to their WhatsApp (existing behavior).
+    // Unknown customer — use system share sheet (new in v33_14) which lets
+    // the user pick WhatsApp, SMS, Telegram, Drive, etc. Way better UX
+    // than wa.me's empty contact picker.
+    const phone = bill && bill.cph ? String(bill.cph).replace(/\D/g, '').slice(-10) : '';
+    const receiptText = this.waBuildReceipt(bill);
+
+    if (phone.length === 10) {
+      // Direct to known customer — keeps existing UX
+      window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(receiptText), '_blank');
+      return;
+    }
+
+    // Unknown customer — system share sheet, fallback to wa.me empty-target
+    const shop = (window.S && window.S.store) || 'Shop';
+    await this.shareViaSystem({
+      title: shop + ' — Bill',
+      text: receiptText,
+      fallbackUrl: 'https://wa.me/?text=' + encodeURIComponent(receiptText)
+    });
   },
 
   openStaffDetail(idx){
@@ -30561,6 +31054,11 @@ window.Khata = {
   // Build WhatsApp reminder URL for a single khata entry.
   // Picks language by S.lang or defaults to Hinglish.
   // upiId pulled from S.upiId. Returns null if no phone.
+  //
+  // (May 2026) Upgraded to embed a tappable upi://pay deep link instead
+  // of a plain UPI-ID-as-text. Customers can tap the link on their phone
+  // to open their UPI app with payee, amount, and note already filled.
+  // Falls back to plain UPI ID text if App.buildUpiPayLink isn't available.
   buildReminderUrl: function(khataId){
     var k = Store.get('khata', khataId);
     if (!k || !k.partyPhone) return null;
@@ -30573,20 +31071,36 @@ window.Khata = {
     var upi = (window.S && window.S.upiId) || '';
     var shop = (window.S && window.S.store) || 'Hamari shop';
     var lang = (window.S && window.S.lang) || 'hi';
+
+    // Build the upi:// deep link (one-tap payment)
+    var upiLink = null;
+    if (upi && upi.includes('@') && amount > 0
+        && window.App && typeof window.App.buildUpiPayLink === 'function') {
+      upiLink = window.App.buildUpiPayLink(amount, 'Udhaar - ' + name);
+    }
+
     var msg;
     if (k.type === 'lena') {
       // Reminder TO customer — request payment
       if (lang === 'en') {
         msg = 'Hi ' + name + ', friendly reminder from ' + shop + ' — ₹' + amount.toLocaleString('en-IN') +
               ' is pending' + (ageDays > 0 ? ' (' + ageDays + ' days)' : '') + '.';
-        if (upi) msg += ' Pay via UPI: ' + upi;
-        msg += ' Thank you!';
+        if (upiLink) {
+          msg += '\n\nTap to pay via UPI (one tap, amount pre-filled):\n' + upiLink;
+        } else if (upi) {
+          msg += ' Pay via UPI: ' + upi;
+        }
+        msg += '\n\nThank you!';
       } else {
         msg = 'Namaste ' + name + ' ji 🙏 ' + shop + ' se reminder — aapka ₹' +
               amount.toLocaleString('en-IN') + ' ka udhaar' +
-              (ageDays > 0 ? ' ' + ageDays + ' din se' : '') + ' baaki hai. ';
-        if (upi) msg += 'Convenient ho toh UPI pe pay kar dijiye: ' + upi + '. ';
-        msg += 'Dhanyavaad!';
+              (ageDays > 0 ? ' ' + ageDays + ' din se' : '') + ' baaki hai.';
+        if (upiLink) {
+          msg += '\n\nUPI pe pay karna ho toh bas tap karein (amount already filled):\n' + upiLink;
+        } else if (upi) {
+          msg += ' Convenient ho toh UPI pe pay kar dijiye: ' + upi + '.';
+        }
+        msg += '\n\nDhanyavaad!';
       }
     } else {
       // Reminder FROM supplier — confirm payment intent (less common usage)
