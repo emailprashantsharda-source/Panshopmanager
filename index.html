@@ -30396,7 +30396,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
   window.HisaabSyncDeps = {
     db, auth,
-    sdk: { collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, serverTimestamp }
+    sdk: { collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, serverTimestamp, writeBatch }
   };
 
   const fns = getFunctions(app);
@@ -31049,7 +31049,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 (function (window) {
   'use strict';
 
-  const VERSION = '2.2.0';
+  const VERSION = '2.3.0';
 
   // B2.b cleanup (May 2026): removed `purchases: 'purch'` and
   // `khataSettle: 'khataSettle'` from this map. Both were never populated
@@ -31467,6 +31467,32 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       );
     },
 
+    /* (v32.4) Batched upload — commits up to 500 writes in a single
+       round-trip. Atomic: all-or-nothing. Used by drainOutbox for bulk
+       operations (onboarding seed, bulk imports). On 3G this is ~10x
+       faster than N individual setDocs, and cuts Firestore write costs
+       proportionally. */
+    async uploadBatch(items) {
+      if (!items || !items.length) return;
+      const { db, sdk } = deps();
+      if (typeof sdk.writeBatch !== 'function') {
+        throw new Error('writeBatch missing from HisaabSyncDeps.sdk');
+      }
+      const batch = sdk.writeBatch(db);
+      for (const it of items) {
+        const ref = this._docRef(it.collection, it.record.id);
+        batch.set(ref, Object.assign({}, it.record, {
+          _serverUpdatedAt: sdk.serverTimestamp()
+        }), { merge: true });
+      }
+      /* Batches need more time than single writes — give them 2x */
+      await _withTimeout(
+        batch.commit(),
+        UPLOAD_TIMEOUT_MS * 2,
+        'batch commit (' + items.length + ' items)'
+      );
+    },
+
     async pullSince(collectionName, sinceMs) {
       const { sdk } = deps();
       const ref = this._collRef(collectionName);
@@ -31685,17 +31711,59 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
            If every record in the batch was on cooldown, we exit the outer loop
            to prevent infinite spinning over the same skipped records. */
         let batchAttempted = 0;
+        /* (v32.4) Filter out cooldown skips first, so the batch only contains
+           records that should actually be attempted this drain. Then try
+           batched upload — single round-trip for up to OUTBOX_DRAIN_CHUNK
+           records. Falls back to per-item if the batch fails so a single
+           poisoned record doesn't block the rest. */
+        const _candidates = [];
         for (const entry of batch) {
           const key = entry.collection + ':' + entry.record.id;
-          /* (Phase 1.1) Skip records that failed in this session — keep the
-              loop moving past poison-pills. */
           if (_sessionFailedKeys.has(key)) continue;
-          /* (Phase 1.1) Skip records that failed in a previous drain call within
-              the cooldown window (60s default). They get another chance later. */
           if (entry.lastAttemptAt && (now() - entry.lastAttemptAt) < _sessionRecentFailMs && (entry.attempts || 0) >= 3) {
             continue;
           }
-          batchAttempted++;
+          _candidates.push(entry);
+        }
+        batchAttempted = _candidates.length;
+
+        if (_candidates.length > 1) {
+          /* Try batched upload — ~10x faster on weak networks */
+          try {
+            await FS.uploadBatch(_candidates.map(function(e){
+              return { collection: e.collection, record: e.record };
+            }));
+            /* Whole batch succeeded — mark all as ok */
+            for (const entry of _candidates) {
+              ok.push(entry.collection + ':' + entry.record.id);
+              pushed++;
+            }
+          } catch (batchErr) {
+            log('batch upload failed (' + ((batchErr && batchErr.code) || '?') + ') — falling back to per-item');
+            /* Per-item fallback to isolate the bad record(s) */
+            for (const entry of _candidates) {
+              const key = entry.collection + ':' + entry.record.id;
+              try {
+                await FS.upload(entry.collection, entry.record);
+                ok.push(key); pushed++;
+              } catch (e) {
+                bad.push(key); failed++;
+                sessionFailures++;
+                _sessionFailedKeys.add(key);
+                errorsByKey[key] = {
+                  code: e && e.code,
+                  message: e && e.message,
+                  name: e && e.name,
+                };
+                err('upload failed', key, (e && e.code) || '', e && e.message);
+                if (sessionFailures >= SESSION_FAIL_BUDGET) break;
+              }
+            }
+          }
+        } else if (_candidates.length === 1) {
+          /* Single record — no batching benefit, direct upload */
+          const entry = _candidates[0];
+          const key = entry.collection + ':' + entry.record.id;
           try {
             await FS.upload(entry.collection, entry.record);
             ok.push(key); pushed++;
@@ -31709,9 +31777,6 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
               name: e && e.name,
             };
             err('upload failed', key, (e && e.code) || '', e && e.message);
-            /* (Phase 1.1) Was: break — which caused head-of-line blocking.
-                Now: continue to next record. Bad records don't block good ones. */
-            continue;
           }
         }
         if (ok.length) {
