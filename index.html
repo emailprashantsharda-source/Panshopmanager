@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_14_b1_polish';
+    window.HISAABNOW_BUILD = 'v33_15_b1_sheetfix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -1586,6 +1586,67 @@ button[data-hn-loading="true"] {
   cursor: wait !important;
   opacity: 0.85;
   pointer-events: none;
+}
+/* ───────────────────────────────────────────────────────────────────── */
+
+/* ─── Bottom sheet (May 2026 fix) ───────────────────────────────────────
+   Adds missing mobile CSS for .sheet-backdrop / .sheet (used by
+   openUdhaarParty and others). Without this, the sheet-backdrop
+   rendered as a flex SIBLING of the active page (because body uses
+   `display:flex`), causing dashboard + sheet to appear side-by-side
+   instead of as a proper overlay.
+
+   The fix: position:fixed pulls .sheet-backdrop out of the body flex
+   flow. The active page returns to being the sole flex child (rendered
+   normally). The sheet floats as a fixed overlay with the sheet pinned
+   to the bottom.
+   ──────────────────────────────────────────────────────────────────── */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: hn-sheet-bd-in .22s ease;
+  /* Allow taps to fall through to the backdrop for tap-to-dismiss */
+  overscroll-behavior: contain;
+}
+.sheet-backdrop > .sheet {
+  width: 100%;
+  /* max-width / border-radius stay controlled by inline style on the
+     element so individual sheets can customize. Only add what's missing. */
+  background: #FFFFFF;
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: hn-sheet-slide-up .26s cubic-bezier(.32, .72, 0, 1);
+  /* Respect Android nav bar safe area */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@keyframes hn-sheet-bd-in {
+  from { background: rgba(15, 23, 42, 0); }
+  to   { background: rgba(15, 23, 42, 0.55); }
+}
+@keyframes hn-sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+/* Tablet/desktop: centered modal style instead of bottom sheet */
+@media (min-width: 720px) {
+  .sheet-backdrop { align-items: center; }
+  .sheet-backdrop > .sheet {
+    max-width: 520px;
+    margin: 0 24px;
+    border-radius: 16px !important;
+    max-height: 80vh;
+    animation: hn-sheet-fade-in .2s ease;
+  }
+  @keyframes hn-sheet-fade-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 }
 /* ───────────────────────────────────────────────────────────────────── */
 
