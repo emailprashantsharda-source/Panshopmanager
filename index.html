@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_8_b2_role_safety';
+    window.HISAABNOW_BUILD = 'v33_9_b1_haptic';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -8802,6 +8802,86 @@ const PAY_ICON = {
   card:{bg:'#DBEAFE',fg:'#1E40AF',label:'Card'}
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// HAPTIC HELPER + GLOBAL DELEGATION (May 2026)
+// Tiny wrapper around the Vibration API. Silently no-ops on iOS Safari
+// (Apple doesn't support navigator.vibrate) and on Android devices with
+// vibration disabled — both correct, no error path.
+//
+// Four standard intensities — pick by SEMANTIC, not by feel:
+//   haptic.tap()      →  8ms — secondary tap (chip, KPI, toggle)
+//   haptic.nav()      → 10ms — navigation tap (nav tab, list, add to cart)
+//   haptic.cta()      → 15ms — primary CTA (FAB, complete payment, confirm)
+//   haptic.success()  → 30ms — success pulse (voice recognized, payment OK)
+//
+// For custom durations: window.haptic(ms).
+//
+// GLOBAL DELEGATION: A single document-level capture-phase listener fires
+// the right haptic intensity automatically based on element classes. No
+// need to patch hundreds of onclick handlers. Opt-out per element via
+// data-no-haptic="true".
+// ─────────────────────────────────────────────────────────────────────────
+window.haptic = function(ms) {
+  try { if (navigator.vibrate) navigator.vibrate(ms || 10); } catch(e){}
+};
+window.haptic.tap     = function(){ try { if (navigator.vibrate) navigator.vibrate(8);  } catch(e){} };
+window.haptic.nav     = function(){ try { if (navigator.vibrate) navigator.vibrate(10); } catch(e){} };
+window.haptic.cta     = function(){ try { if (navigator.vibrate) navigator.vibrate(15); } catch(e){} };
+window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibrate(30); } catch(e){} };
+
+// Global delegated click handler — fires once per real user tap.
+// Uses capture phase to run BEFORE onclick handlers so the buzz feels
+// immediate. e.isTrusted filters out synthetic clicks (programmatic
+// .click() calls won't trigger haptic — those are app logic, not taps).
+(function(){
+  // Class → intensity mapping. Listed most-specific first so a button
+  // with multiple classes (e.g. "btn btn-primary") matches the strongest.
+  var CTA_CLASSES = [
+    'nav-fab',          // footer + FAB (Add Sale)
+    'fab',              // page-level FABs (Add Expense, etc.)
+    'btn-primary',      // primary action button
+    'ck-collect-btn',   // checkout "Collect ₹XXX"
+    'empty-cta',        // empty-state primary
+    'ai-card'           // Munim AI card (whole card is the tap target)
+  ];
+  var NAV_CLASSES = [
+    'nav-tab',          // footer tabs
+    'icon-btn',         // header back/forward icons
+    'menu-item',        // More menu rows
+    'hnd-nav-item',     // desktop sidebar nav
+    'hnd-tb-btn',       // desktop toolbar buttons
+    'btn-secondary',    // secondary buttons
+    'panel-link'        // "View All" panel links
+  ];
+  var TAP_CLASSES = [
+    'kpi',              // KPI tiles
+    'chip'              // filter chips
+  ];
+
+  function hasAnyClass(el, list) {
+    var cl = el.classList;
+    for (var i = 0; i < list.length; i++) {
+      if (cl.contains(list[i])) return true;
+    }
+    return false;
+  }
+
+  document.addEventListener('click', function(e){
+    // Only real taps, not programmatic .click()
+    if (!e.isTrusted) return;
+    // Find nearest clickable ancestor
+    var t = e.target && e.target.closest && e.target.closest('button, [role="button"], [onclick]');
+    if (!t) return;
+    // Explicit opt-out
+    if (t.hasAttribute('data-no-haptic')) return;
+    // Intensity by class — first match wins, strongest first
+    if (hasAnyClass(t, CTA_CLASSES))      { window.haptic.cta(); return; }
+    if (hasAnyClass(t, NAV_CLASSES))      { window.haptic.nav(); return; }
+    if (hasAnyClass(t, TAP_CLASSES))      { window.haptic.tap(); return; }
+    // Default: untyped buttons get no haptic — keeps secondary UI quiet
+  }, true);  // capture phase = fire before onclick handlers
+})();
+
 const App = {
   current: 'home',
   vertical: 'cafe',
@@ -14129,7 +14209,7 @@ const App = {
     }
     this.cart[id] = (this.cart[id] || 0) + 1;
     this.renderServiceGrid();
-    if (navigator.vibrate) navigator.vibrate(10);
+    haptic.nav();
   },
 
   _showSizePicker(prod) {
@@ -14168,7 +14248,7 @@ const App = {
     if (sheet) sheet.style.display = 'none';
     this.cart[key] = (this.cart[key] || 0) + 1;
     this.renderServiceGrid();
-    if (navigator.vibrate) navigator.vibrate(10);
+    haptic.nav();
   },
 
   /* Helpers for cart keys that may carry a size suffix "id::SizeName".
@@ -14548,7 +14628,7 @@ const App = {
     this.closeProductSheet && this.closeProductSheet();
     this.updateCartSummary();
     this.toast(this._T('toast.addedPrefix','Added') + ' ' + sel.name + ' (' + this._formatWeight(weightG) + ')');
-    if (navigator.vibrate) navigator.vibrate(10);
+    haptic.nav();
   },
 
   removeCustomLine(lineId){
@@ -16436,7 +16516,7 @@ const App = {
         this._voiceState = 'idle';
         this._setMicButtonState('idle');
       }, 800);
-      if (navigator.vibrate) navigator.vibrate(30);
+      haptic.success();
     };
 
     rec.onerror = (e) => {
@@ -21001,8 +21081,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (profitRow) profitRow.style.display = tracks ? 'none' : '';
     // Re-run summary calc (margin row visibility may change)
     this.recalcValue();
-    // Light haptic
-    try { if (navigator.vibrate) navigator.vibrate(8); } catch(e) {}
+    haptic.tap();
   },
 
   recalcValue(){
