@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_19_b1_navTransition';
+    window.HISAABNOW_BUILD = 'v33_20_b1_tzFix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -9734,7 +9734,7 @@ const App = {
       this.renderStaffRoleTiles();
 
       const _jd = document.getElementById('staff-joined');
-      if (_jd) _jd.value = (new Date()).toISOString().split('T')[0];
+      if (_jd) _jd.value = window.td();
     }
     if (page === 'add-appointment') {
       this.resetForm('add-appointment');
@@ -10424,7 +10424,7 @@ const App = {
     if (kind === 'sales') {
       csv = 'Shop,Date,Time,Amount,Payment,Customer,Phone,Items,Discount,GST\n';
       rows.forEach(s => {
-        const date = s.date || (s.t ? new Date(s.t).toISOString().split('T')[0] : '');
+        const date = s.date || (s.t ? window.tdAt(s.t) : '');
         const time = s.time || (s.t ? new Date(s.t).toTimeString().slice(0,5) : '');
         const items = (Array.isArray(s.items) ? s.items.map(it => (it.qty||1)+'x '+(it.name||it.n||'Item')).join(' | ') : '');
         csv += [
@@ -10443,8 +10443,8 @@ const App = {
     } else if (kind === 'customers') {
       csv = 'Shop,Name,Phone,Total Spent,Visit Count,Last Visit,Created\n';
       rows.forEach(c => {
-        const lastVisit = c.lastVisitDate || (c.lastVisitAt ? new Date(c.lastVisitAt).toISOString().split('T')[0] : '');
-        const created = c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : '';
+        const lastVisit = c.lastVisitDate || (c.lastVisitAt ? window.tdAt(c.lastVisitAt) : '');
+        const created = c.createdAt ? window.tdAt(c.createdAt) : '';
         csv += [
           this._csvEscape(c._shop),
           this._csvEscape(c.name || ''),
@@ -10460,8 +10460,8 @@ const App = {
       rows.forEach(k => {
         const amt = Number(k.amount) || 0;
         const paid = Number(k.paidAmount) || 0;
-        const created = k.createdAt ? new Date(k.createdAt).toISOString().split('T')[0] : (k.t ? new Date(k.t).toISOString().split('T')[0] : '');
-        const lastRem = k.lastReminded ? new Date(k.lastReminded).toISOString().split('T')[0] : '';
+        const created = k.createdAt ? window.tdAt(k.createdAt) : (k.t ? window.tdAt(k.t) : '');
+        const lastRem = k.lastReminded ? window.tdAt(k.lastReminded) : '';
         csv += [
           this._csvEscape(k._shop),
           this._csvEscape(k.type || ''),
@@ -10478,7 +10478,7 @@ const App = {
     } else if (kind === 'products') {
       csv = 'Shop,Name,Category,Price,Cost,Stock,Min Stock,Created\n';
       rows.forEach(p => {
-        const created = p.createdAt ? new Date(p.createdAt).toISOString().split('T')[0] : '';
+        const created = p.createdAt ? window.tdAt(p.createdAt) : '';
         csv += [
           this._csvEscape(p._shop),
           this._csvEscape(p.name || ''),
@@ -10493,7 +10493,7 @@ const App = {
     }
 
     // Trigger download
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.td();
     const filename = 'hisaabnow-' + kind + '-' + today + '.csv';
     try {
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -10819,7 +10819,7 @@ const App = {
     try {
       const _yest = new Date();
       _yest.setDate(_yest.getDate() - 1);
-      const _yestStr = _yest.toISOString().split('T')[0];
+      const _yestStr = window.tdAt(_yest);
       const _allSales = (window.Store && Store.list) ? Store.list('sales') : [];
       const _yestSales = _allSales.filter(s => s && s.date === _yestStr);
       yestBills_hero = _yestSales.length;
@@ -11111,7 +11111,7 @@ const App = {
     const all = Store.list('sales') || [];
     const range = this._salesRange || 'Today';
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = window.tdAt(now);
     const dayMs = 86400000;
 
     const roleFiltered = this._roleFilteredBills(all);
@@ -11121,7 +11121,7 @@ const App = {
     }
     if (range === 'Yesterday') {
       const y = new Date(now.getTime() - dayMs);
-      const yStr = y.toISOString().split('T')[0];
+      const yStr = window.tdAt(y);
       return roleFiltered.filter(s => s.date === yStr);
     }
     if (range === 'This Week') {
@@ -11980,10 +11980,10 @@ const App = {
       const expenses = readArray('exps', 'ke');
       const staff = readArray('staff', 'kstaff');
 
-      const today = (typeof window.td === 'function') ? window.td() : new Date().toISOString().split('T')[0];
+      const today = (typeof window.td === 'function') ? window.td() : window.td();
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthStartIso = monthStart.toISOString().split('T')[0];
+      const monthStartIso = window.tdAt(monthStart);
       const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
 
       const productRevenue = {};
@@ -12085,7 +12085,7 @@ const App = {
       expenses.forEach(e => {
         if (!e) return;
         const t = e.t || e.createdAt || (e.date ? new Date(e.date).getTime() : 0);
-        const isoDate = e.dateISO || (t ? new Date(t).toISOString().split('T')[0] : null);
+        const isoDate = e.dateISO || (t ? window.tdAt(t) : null);
         const amt = Number(e.amt || 0);
 
         if (isoDate && isoDate >= monthStartIso) {
@@ -13476,7 +13476,7 @@ const App = {
 
     const yest = new Date();
     yest.setDate(yest.getDate() - 1);
-    const yestStr = yest.toISOString().split('T')[0];
+    const yestStr = window.tdAt(yest);
     const allSales = (window.Store && Store.list) ? Store.list('sales') : [];
     const yestSales = allSales.filter(s => s && s.date === yestStr);
     const yestRev = yestSales.reduce((a, s) => a + Number(s.total || s.amt || 0), 0);
@@ -14389,20 +14389,20 @@ const App = {
     }
 
     const today = new Date();
-    const todayIso = today.toISOString().split('T')[0];
+    const todayIso = window.tdAt(today);
     let fromIso, toIso = todayIso, rangeLabel = 'this week';
     if (range === 'daily') {
       fromIso = todayIso;
       rangeLabel = 'today';
     } else if (range === 'monthly') {
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      fromIso = monthStart.toISOString().split('T')[0];
+      fromIso = window.tdAt(monthStart);
       rangeLabel = today.toLocaleString('en-IN', {month:'long'});
     } else {
 
       const wkStart = new Date(today);
       wkStart.setDate(wkStart.getDate() - 6);
-      fromIso = wkStart.toISOString().split('T')[0];
+      fromIso = window.tdAt(wkStart);
       rangeLabel = 'this week';
     }
 
@@ -14522,7 +14522,7 @@ const App = {
     const expenses = (typeof Store !== 'undefined' && Store.list) ? Store.list('exps') : [];
     let expensesInRange = 0;
     expenses.forEach(e => {
-      const eDate = e.date || (e.t ? new Date(e.t).toISOString().split('T')[0] : '');
+      const eDate = e.date || (e.t ? window.tdAt(e.t) : '');
       if (eDate >= fromIso && eDate <= toIso) {
         expensesInRange += Number(e.amount || 0);
       }
@@ -14569,41 +14569,41 @@ const App = {
   _computeReportsPeriodWindow(period){
 
     const today = new Date();
-    const tIso = today.toISOString().split('T')[0];
+    const tIso = window.tdAt(today);
     let fromIso, toIso = tIso, label, prevFromIso, prevToIso, prevLabel;
     if (period === 'last_month'){
       const startCur = new Date(today.getFullYear(), today.getMonth(), 1);
       const startPrev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const endPrev = new Date(startCur.getTime() - 86400000);
-      fromIso = startPrev.toISOString().split('T')[0];
-      toIso   = endPrev.toISOString().split('T')[0];
+      fromIso = window.tdAt(startPrev);
+      toIso   = window.tdAt(endPrev);
       label   = startPrev.toLocaleString('en-IN', { month: 'long' });
 
       const startPP = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-      prevFromIso = startPP.toISOString().split('T')[0];
-      prevToIso   = new Date(startPrev.getTime() - 86400000).toISOString().split('T')[0];
+      prevFromIso = window.tdAt(startPP);
+      prevToIso   = window.tdAt(new Date(startPrev.getTime() - 86400000));
       prevLabel   = startPP.toLocaleString('en-IN', { month: 'long' });
     } else if (period === 'last_30d'){
       const start = new Date(today);
       start.setDate(start.getDate() - 29);
-      fromIso = start.toISOString().split('T')[0];
+      fromIso = window.tdAt(start);
       label   = 'Last 30 days';
       const pStart = new Date(start);
       pStart.setDate(pStart.getDate() - 30);
       const pEnd = new Date(start);
       pEnd.setDate(pEnd.getDate() - 1);
-      prevFromIso = pStart.toISOString().split('T')[0];
-      prevToIso   = pEnd.toISOString().split('T')[0];
+      prevFromIso = window.tdAt(pStart);
+      prevToIso   = window.tdAt(pEnd);
       prevLabel   = 'Prior 30 days';
     } else {
 
       const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      fromIso = start.toISOString().split('T')[0];
+      fromIso = window.tdAt(start);
       label   = start.toLocaleString('en-IN', { month: 'long' });
       const startPrev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const endPrev = new Date(start.getTime() - 86400000);
-      prevFromIso = startPrev.toISOString().split('T')[0];
-      prevToIso   = endPrev.toISOString().split('T')[0];
+      prevFromIso = window.tdAt(startPrev);
+      prevToIso   = window.tdAt(endPrev);
       prevLabel   = startPrev.toLocaleString('en-IN', { month: 'long' });
     }
     return { fromIso, toIso, label, prevFromIso, prevToIso, prevLabel };
@@ -14924,8 +14924,8 @@ const App = {
         d.setDate(d.getDate() - (i * 7));
         const start = new Date(d);
         start.setDate(start.getDate() - 6);
-        const startIso = start.toISOString().split('T')[0];
-        const endIso = d.toISOString().split('T')[0];
+        const startIso = window.tdAt(start);
+        const endIso = window.tdAt(d);
         buckets.push({ from: startIso, to: endIso, total: 0 });
         labels.push(d.toLocaleDateString('en-IN', {day:'numeric', month:'short'}));
       }
@@ -14935,7 +14935,7 @@ const App = {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const iso = d.toISOString().split('T')[0];
+        const iso = window.tdAt(d);
         buckets.push({ from: iso, to: iso, total: 0 });
         labels.push(dow[d.getDay()]);
       }
@@ -14962,8 +14962,8 @@ const App = {
         d.setDate(d.getDate() - (i * 7));
         const start = new Date(d);
         start.setDate(start.getDate() - 6);
-        const fromI = start.toISOString().split('T')[0];
-        const toI = d.toISOString().split('T')[0];
+        const fromI = window.tdAt(start);
+        const toI = window.tdAt(d);
         allSales.forEach(s => {
           if (s.date >= fromI && s.date <= toI) prevTotal += Number(s.total || 0);
         });
@@ -14973,7 +14973,7 @@ const App = {
       for (let i = 13; i >= 7; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const iso = d.toISOString().split('T')[0];
+        const iso = window.tdAt(d);
         allSales.forEach(s => {
           if (s.date === iso) prevTotal += Number(s.total || 0);
         });
@@ -18934,7 +18934,7 @@ const App = {
 
     const now = Date.now();
     const today = new Date(now);
-    const dateISO = today.toISOString().split('T')[0];
+    const dateISO = window.tdAt(today);
     const timeStr = today.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
     const notes = (document.getElementById('bill-notes')?.value || '').trim();
 
@@ -19171,7 +19171,7 @@ const App = {
         var _sales = (window.S && Array.isArray(window.S.sales)) ? window.S.sales : [];
         var _now = new Date();
         var _monthKey = _now.getFullYear() + '-' + String(_now.getMonth() + 1).padStart(2, '0');
-        var _todayKey = _now.toISOString().slice(0, 10);
+        var _todayKey = window.tdAt(_now);
         var _billCount = _sales.length;
         var _billCountMonth = 0;
         var _revMonth = 0;
@@ -21480,7 +21480,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   _collectAlerts(){
     var out = [];
     var now = new Date();
-    var todayStr = (window.td && td()) || now.toISOString().split('T')[0];
+    var todayStr = (window.td && td()) || window.tdAt(now);
     var monthKey = todayStr.slice(0, 7);
     var prods = ((window.S && S.prods) || []).filter(function(p){
       return p && !p.deletedAt && p.active !== false;
@@ -23358,7 +23358,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const customerName = bill.cn || bill.name || 'Walk-in';
     const dateLine = bill.time
-      ? (bill.date === new Date().toISOString().split('T')[0] ? 'Today · ' + bill.time : (bill.date || '') + ' · ' + bill.time)
+      ? (bill.date === window.td() ? 'Today · ' + bill.time : (bill.date || '') + ' · ' + bill.time)
       : (bill.date || '—');
     const mode = bill.mode || bill.pt || 'cash';
     const modeMeta = PAY_ICON[mode] || { bg:'#F1F5F9', fg:'#475569', label: mode };
@@ -23461,7 +23461,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let dateStr = '';
     if (bill.date) {
       const d = new Date(bill.date);
-      const today = new Date().toISOString().split('T')[0];
+      const today = window.td();
       if (bill.date === today) {
         dateStr = 'Today';
       } else if (!isNaN(d.getTime())) {
@@ -23789,7 +23789,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (!s) { this.toast(this._T('toast.staffNotFound', 'Staff not found')); return; }
     const staffId = s.id;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = window.td();
     const monthInfo = window.Commission.thisMonth();
 
     const sales = (typeof Store !== 'undefined' && Store.list) ? Store.list('sales') : [];
@@ -24006,7 +24006,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         const cm = document.getElementById('staff-comm'); if (cm) cm.value = s.commission || 15;
 
         const jd = document.getElementById('staff-joined');
-        if (jd) jd.value = s.joinedDate || (new Date()).toISOString().split('T')[0];
+        if (jd) jd.value = s.joinedDate || window.td();
 
         const tiles = document.querySelectorAll('#pg-add-staff .cat-tile');
         tiles.forEach(t => {
@@ -27207,7 +27207,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
       if (targetDate.getTime() > now.getTime()) return;
 
-      const dateISO = targetDate.toISOString().split('T')[0];
+      const dateISO = window.tdAt(targetDate);
 
       const legacyCatToId = {
         'HR / Salaries':     { cat: 'hr_salaries',  subcat: 'monthly_salary',     catLabel: 'HR / Salaries',     subcatLabel: 'Monthly salary' },
@@ -27475,7 +27475,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const now = Date.now();
     const today = new Date(now);
-    const dateISO = today.toISOString().split('T')[0];
+    const dateISO = window.tdAt(today);
 
     const exp = {
       t:     now,
@@ -27808,7 +27808,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const comm = parseFloat((document.getElementById('staff-comm')||{}).value || '15') || 0;
 
     const joinedDateRaw = ((document.getElementById('staff-joined')||{}).value || '').trim();
-    const joinedDate = joinedDateRaw || (new Date()).toISOString().split('T')[0];
+    const joinedDate = joinedDateRaw || window.td();
     const role = this._getSelectedCat('pg-add-staff');
 
     const isLoginRole = this._isLoginRole(role.name);
@@ -28134,14 +28134,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const dateText = ((document.getElementById('appt-date-text')||{}).textContent || '').trim();
     const timeText = ((document.getElementById('appt-time-text')||{}).textContent || '').trim();
-    let today = now.toISOString().split('T')[0];
+    let today = window.tdAt(now);
     if (this._apptPickedDateISO) {
       today = this._apptPickedDateISO;
     } else if (dateText && /^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
       today = dateText;
     } else if (dateText.toLowerCase() === 'tomorrow') {
       const t = new Date(now); t.setDate(t.getDate() + 1);
-      today = t.toISOString().split('T')[0];
+      today = window.tdAt(t);
     }
     let nextSlot;
     if (this._apptPickedTime) {
@@ -28218,7 +28218,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     if (!inp.value) {
       const today = new Date();
-      inp.value = today.toISOString().split('T')[0];
+      inp.value = window.tdAt(today);
     }
     try {
       if (typeof inp.showPicker === 'function') {
@@ -28432,16 +28432,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const _allSales = (typeof Store !== 'undefined' && typeof Store.list === 'function')
       ? (Store.list('sales') || []) : [];
     const _now = new Date();
-    const _todayStr = _now.toISOString().split('T')[0];
+    const _todayStr = window.tdAt(_now);
     let _periodFrom = _todayStr;
     if (_period === 'week') {
 
       const _wk = new Date(_now); _wk.setDate(_wk.getDate() - 6);
-      _periodFrom = _wk.toISOString().split('T')[0];
+      _periodFrom = window.tdAt(_wk);
     } else if (_period === 'month') {
 
       const _mo = new Date(_now); _mo.setDate(_mo.getDate() - 29);
-      _periodFrom = _mo.toISOString().split('T')[0];
+      _periodFrom = window.tdAt(_mo);
     }
     const todayBills = _allSales.filter(b => b && b.date && b.date >= _periodFrom && b.date <= _todayStr);
     const statsByName = {};
@@ -28642,13 +28642,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       const dateStr = (() => {
 
         const t = e.t || e.createdAt;
-        const isoDate = e.dateISO || (t ? new Date(t).toISOString().split('T')[0] : null);
+        const isoDate = e.dateISO || (t ? window.tdAt(t) : null);
         if (isoDate) {
-          const today = new Date().toISOString().split('T')[0];
+          const today = window.td();
           if (isoDate === today) return 'Today';
 
           const y = new Date(); y.setDate(y.getDate() - 1);
-          const yIso = y.toISOString().split('T')[0];
+          const yIso = window.tdAt(y);
           if (isoDate === yIso) return 'Yesterday';
 
           const d = new Date(isoDate);
@@ -30417,7 +30417,33 @@ window.addEventListener('DOMContentLoaded', () => {
 
 window.fc  = window.fc  || function(n){ if(n==null||isNaN(n))return '₹0'; n=Math.round(Number(n)); var sign=n<0?'-':''; n=Math.abs(n); return sign+'₹'+n.toLocaleString('en-IN'); };
 window.es  = window.es  || function(s){ if(s==null)return ''; return String(s).replace(/[<>&"']/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c];}); };
-window.td  = window.td  || function(){ var d=new Date(); return d.toISOString().split('T')[0]; };
+/* ─── (v33_20) Timezone-correct date helpers ─────────────────────────────
+   PROBLEM: window.td() returns UTC date.
+   In India (UTC+5:30), this means a "new day" begins at 5:30 AM IST,
+   NOT at midnight IST. Sales made between 12:00 AM and 5:30 AM IST
+   were being recorded with the PREVIOUS day's date.
+
+   FIX: window.td() now uses local-time getters (getFullYear / getMonth /
+   getDate) so the date string reflects the user's clock, not UTC.
+
+   window.tdAt(d) — same fix for an arbitrary Date object. Used by code
+   that compares sale.t timestamps to "today".
+   ───────────────────────────────────────────────────────────────────── */
+window.td  = function(){
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+};
+window.tdAt = function(dateOrMs){
+  var d = (dateOrMs instanceof Date) ? dateOrMs : new Date(dateOrMs);
+  if (isNaN(d.getTime())) return '';
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+};
 window.lg  = window.lg  || function(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } };
 window.ls  = window.ls  || function(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
 window.toast = window.toast || function(msg){
@@ -30530,7 +30556,7 @@ window.MunimEngine = (function(){
     var arr=[],now=new Date();
     for(var i=0;i<days;i++){
       var d=new Date(now); d.setDate(d.getDate()-i);
-      arr=arr.concat(_daySales(d.toISOString().split('T')[0]));
+      arr=arr.concat(_daySales(window.tdAt(d)));
     }
     return arr;
   }
@@ -30648,7 +30674,7 @@ window.MunimEngine = (function(){
   function deadStock(){
     var pc=gPC();
     if(!pc.hasStock) return {list:[], totalValue:0};
-    var thirtyAgo = new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+    var thirtyAgo = window.tdAt(new Date(Date.now()-30*86400000));
     var soldRecently={};
     (S.sales||[]).filter(function(s){return s.date>=thirtyAgo;}).forEach(function(s){
       (s.items||[]).forEach(function(i){ if(i.pid!=null) soldRecently[i.pid]=true; });
@@ -30837,10 +30863,10 @@ window.MunimRules = {
   // TIER 2: PROBLEM — sales drop week-over-week (≥15%)
   salesDrop: function(pc){
     var nowD=new Date(), msPerDay=86400000;
-    var thisStart=new Date(nowD-6*msPerDay).toISOString().split('T')[0];
-    var thisEnd  =nowD.toISOString().split('T')[0];
-    var lastStart=new Date(nowD-13*msPerDay).toISOString().split('T')[0];
-    var lastEnd  =new Date(nowD-7*msPerDay).toISOString().split('T')[0];
+    var thisStart=window.tdAt(nowD-6*msPerDay);
+    var thisEnd  =window.tdAt(nowD);
+    var lastStart=window.tdAt(nowD-13*msPerDay);
+    var lastEnd  =window.tdAt(nowD-7*msPerDay);
     var thisRev=(S.sales||[]).filter(function(s){return s.date>=thisStart && s.date<=thisEnd;}).reduce(function(a,s){return a+s.total;},0);
     var lastRev=(S.sales||[]).filter(function(s){return s.date>=lastStart && s.date<=lastEnd;}).reduce(function(a,s){return a+s.total;},0);
     if(lastRev<500)return null;
@@ -31687,7 +31713,7 @@ window.Khata = {
       amount: settleAmt,
       mode: mode || 'cash',
       notes: notes || '',
-      date: new Date().toISOString().split('T')[0]
+      date: window.td()
     });
     // Update parent
     return Store.update('khata', khataId, {
@@ -31939,7 +31965,7 @@ window.Commission = {
   },
 
   today: function(){
-    var iso = new Date().toISOString().split('T')[0];
+    var iso = window.td();
     return { from: iso, to: iso, label: 'Today' };
   }
 };
@@ -35937,7 +35963,7 @@ window.Store = {
   },
 
   todaySales: function(){
-    var t = (typeof window.td === 'function') ? window.td() : new Date().toISOString().split('T')[0];
+    var t = (typeof window.td === 'function') ? window.td() : window.td();
     return _arr('sales').filter(function(s){ return s.date === t; });
   },
 
@@ -41989,8 +42015,8 @@ html[data-shell="desktop"] body.hnd-on-dash #hnd-dash {
   function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
   function getProds(){ try { return (typeof SERVICES !== 'undefined' && Array.isArray(SERVICES)) ? SERVICES : safeList('prods'); } catch(e){ return safeList('prods'); } }
   function daysAgo(n){ var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-n); return d; }
-  function dateKey(d){ var dt = (d instanceof Date) ? d : new Date(d); return dt.toISOString().slice(0,10); }
-  function todayKey(){ var d = new Date(); return d.toISOString().slice(0,10); }
+  function dateKey(d){ var dt = (d instanceof Date) ? d : new Date(d); return window.tdAt(dt); }
+  function todayKey(){ var d = new Date(); return window.tdAt(d); }
 
   function isDashActive(){
     if (document.documentElement.getAttribute('data-shell') !== 'desktop') return false;
@@ -43756,12 +43782,12 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       var all = safeList('sales');
       var range = this.range;
       var now = new Date();
-      var todayStr = now.toISOString().split('T')[0];
+      var todayStr = window.tdAt(now);
       var dayMs = 86400000;
       if (range === 'Today') return all.filter(function(s){ return s.date === todayStr; });
       if (range === 'Yesterday'){
         var y = new Date(now.getTime() - dayMs);
-        var yStr = y.toISOString().split('T')[0];
+        var yStr = window.tdAt(y);
         return all.filter(function(s){ return s.date === yStr; });
       }
       if (range === 'This Week'){
@@ -46207,7 +46233,7 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
   var DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  function isoOf(d){ return d.toISOString().split('T')[0]; }
+  function isoOf(d){ return window.tdAt(d); }
   function todayISO(){ var d = new Date(); d.setHours(0,0,0,0); return isoOf(d); }
   function startOfDay(d){ var n = new Date(d); n.setHours(0,0,0,0); return n; }
 
@@ -48739,7 +48765,7 @@ html[data-shell="desktop"] body.hnd-on-campaigns #hnd-campaigns {
     step2HTML: function(){
       var self = this;
       var sample = this.audienceRecipients[0];
-      var preview = sample ? applyTemplate(this.templateText, sample) : applyTemplate(this.templateText, { name: 'Priya', lastDate: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0] });
+      var preview = sample ? applyTemplate(this.templateText, sample) : applyTemplate(this.templateText, { name: 'Priya', lastDate: window.tdAt(new Date(Date.now() - 30 * 24 * 3600 * 1000)) });
 
       var len = (this.templateText || '').length;
       var lenClass = len > 1000 ? 'over' : (len > 700 ? 'warn' : '');
@@ -48963,7 +48989,7 @@ html[data-shell="desktop"] body.hnd-on-campaigns #hnd-campaigns {
     updatePreview: function(){
       var preview = $('hnd-cm-preview-msg');
       if (preview){
-        var sample = this.audienceRecipients[0] || { name: 'Priya', lastDate: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0] };
+        var sample = this.audienceRecipients[0] || { name: 'Priya', lastDate: window.tdAt(new Date(Date.now() - 30 * 24 * 3600 * 1000)) };
         preview.textContent = applyTemplate(this.templateText, sample);
       }
       var cc = $('hnd-cm-char-count');
@@ -52144,10 +52170,10 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
         return;
       }
       var now = new Date();
-      var todayKey = now.toISOString().slice(0,10);
-      var yKey = new Date(now.getTime() - 86400000).toISOString().slice(0,10);
+      var todayKey = window.tdAt(now);
+      var yKey = window.tdAt(new Date(now.getTime() - 86400000));
       tbody.innerHTML = list.map(function(e){
-        var iso = e.dateISO || (e.t ? new Date(e.t).toISOString().slice(0,10) : '');
+        var iso = e.dateISO || (e.t ? window.tdAt(e.t) : '');
         var d = e.t ? new Date(e.t) : (iso ? new Date(iso) : null);
         var dateStr;
         if (iso === todayKey) dateStr = 'Today · ' + (d ? d.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',hour12:true}) : '');
@@ -52238,7 +52264,7 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
       var clr = parentColors[this.formParent] || '#F1F5F9';
       var now = Date.now();
       var today = new Date(now);
-      var dateISO = today.toISOString().split('T')[0];
+      var dateISO = window.tdAt(today);
       var exp = {
         t: now,
         date: 'Today',
@@ -53558,9 +53584,9 @@ html[data-shell="desktop"] body.hnd-on-rep #hnd-rep {
   function fmtShort(n){ n = +n || 0; if (n >= 10000000) return '₹' + (n/10000000).toFixed(1).replace(/\.0$/,'') + 'Cr'; if (n >= 100000) return '₹' + (n/100000).toFixed(1).replace(/\.0$/,'') + 'L'; if (n >= 1000) return '₹' + (n/1000).toFixed(1).replace(/\.0$/,'') + 'k'; return '₹' + Math.round(n); }
   function safeList(coll){ try { return (window.Store && Store.list && Store.list(coll)) || []; } catch(e){ return []; } }
   function getProds(){ try { return (typeof SERVICES !== 'undefined' && Array.isArray(SERVICES)) ? SERVICES : safeList('prods'); } catch(e){ return safeList('prods'); } }
-  function isoOf(d){ var dt = (d instanceof Date) ? d : new Date(d); return dt.toISOString().slice(0,10); }
+  function isoOf(d){ var dt = (d instanceof Date) ? d : new Date(d); return window.tdAt(dt); }
   function parseIso(s){ var p = new Date(s + 'T00:00:00'); return isNaN(p) ? null : p; }
-  function todayIso(){ return new Date().toISOString().slice(0,10); }
+  function todayIso(){ return window.td(); }
   function daysBetween(a, b){ return Math.round((parseIso(b) - parseIso(a)) / 86400000) + 1; }
   function addDays(iso, n){ var d = parseIso(iso); d.setDate(d.getDate() + n); return isoOf(d); }
   function currentPageKey(){
@@ -57277,7 +57303,7 @@ html[data-current-role="cashier"] .hnd-edit-bill-trigger { display: none !import
       var t = this.computeTotals();
       var diff = t.total - this.origTotal;
       var when = this.bill.time
-        ? (this.bill.date === new Date().toISOString().split('T')[0] ? 'Today · ' + this.bill.time : (this.bill.date || '') + ' · ' + this.bill.time)
+        ? (this.bill.date === window.td() ? 'Today · ' + this.bill.time : (this.bill.date || '') + ' · ' + this.bill.time)
         : (this.bill.date || '—');
       $('hnd-eb-h-sub').textContent = '#' + (this.bill.id || '').slice(-6).toUpperCase() + ' · ' + when + ' · originally ' + fmtINR(this.origTotal);
 
@@ -58520,7 +58546,7 @@ html[data-current-role="cashier"] .hnd-edit-bill-trigger { display: none !import
         description: this.description.trim(),
         issuedBy: who,
         issuedAt: Date.now(),
-        date: new Date().toISOString().slice(0, 10),
+        date: window.td(),
         time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
       };
 
