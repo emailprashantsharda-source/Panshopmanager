@@ -9301,7 +9301,14 @@ const App = {
         const allProds = Store.list('prods');
         const inactiveSeeded = allProds.filter(p => p.seeded === true && p.active === false).length;
         if (inactiveSeeded > 0) {
-          hd.innerHTML = `<span style="opacity:.95">🎁 ${inactiveSeeded} items added to your menu · tap <b data-i18n="more.inventory">Inventory</b> to set prices</span>`;
+          /* (v32.3) Vertical-aware label — for salon, the Inventory screen
+             is renamed to "Services" via VERTICAL_CONFIG.salon.inventoryTitle.
+             Without this branch, salon users are told to tap a button that
+             doesn't exist by that name. */
+          const _vertCfg = (window.VERTICAL_CONFIG && this.vertical)
+            ? VERTICAL_CONFIG[this.vertical] : null;
+          const _screenLabel = (_vertCfg && _vertCfg.inventoryTitle) || 'Inventory';
+          hd.innerHTML = `<span style="opacity:.95">🎁 ${inactiveSeeded} items added to your menu · tap <b>${_screenLabel}</b> to set prices</span>`;
         } else {
           hd.innerHTML = `<span style="opacity:.85">No bills yet today · tap <b>+</b> to start</span>`;
         }
@@ -31042,7 +31049,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 (function (window) {
   'use strict';
 
-  const VERSION = '2.0.0';
+  const VERSION = '2.1.0';
 
   // B2.b cleanup (May 2026): removed `purchases: 'purch'` and
   // `khataSettle: 'khataSettle'` from this map. Both were never populated
@@ -31409,6 +31416,29 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     return d;
   }
 
+  /* (v32.3 — May 2026) Timeout wrapper for Firestore ops. Without this,
+     setDoc/getDocs hang silently on borderline networks (App Check token
+     delay, captive portal, voice-call data throttle), parking _lock=true
+     forever and freezing the entire sync engine. The 15s/20s thresholds
+     are generous enough to survive 3G latency but short enough to surface
+     real hangs and let backoff take over. */
+  const UPLOAD_TIMEOUT_MS = 15000;
+  const PULL_TIMEOUT_MS = 20000;
+  function _withTimeout(promise, ms, label) {
+    return new Promise(function(resolve, reject){
+      var t = setTimeout(function(){
+        var e = new Error('hisaab-sync timeout: ' + label);
+        e.code = 'deadline-exceeded';
+        e.name = 'TimeoutError';
+        reject(e);
+      }, ms);
+      promise.then(
+        function(v){ clearTimeout(t); resolve(v); },
+        function(e){ clearTimeout(t); reject(e); }
+      );
+    });
+  }
+
   const FS = {
     _collRef(name) {
       if (!CFG.shopId) throw new Error('shopId missing — call init first');
@@ -31427,7 +31457,14 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       const payload = Object.assign({}, record, {
         _serverUpdatedAt: sdk.serverTimestamp(),
       });
-      await sdk.setDoc(ref, payload, { merge: true });
+      /* (v32.3) Race against UPLOAD_TIMEOUT_MS — if Firestore hangs,
+         throw deadline-exceeded so drain releases _lock and schedules
+         backoff via the normal failure path. */
+      await _withTimeout(
+        sdk.setDoc(ref, payload, { merge: true }),
+        UPLOAD_TIMEOUT_MS,
+        'upload ' + collectionName + ':' + record.id
+      );
     },
 
     async pullSince(collectionName, sinceMs) {
@@ -31443,7 +31480,11 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           sdk.orderBy('updatedAt', 'asc'),
           sdk.limit(CFG.PULL_PAGE_LIMIT)
         );
-        const snap = await sdk.getDocs(q);
+        const snap = await _withTimeout(
+          sdk.getDocs(q),
+          PULL_TIMEOUT_MS,
+          'pull ' + collectionName + ' page ' + page
+        );
         if (snap.empty) break;
 
         let pageCount = 0;
@@ -31927,6 +31968,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
        drainOutbox actually attempts to push, regardless of how long we've
        been in backoff. Used by the "Tap to retry" pill. */
     async flush() {
+      /* (v32.3) User-initiated retry — assume any in-flight op may be hung.
+         Force-release _lock so fullSync can actually run. Outbox.removeMany
+         and bumpAttempts are idempotent, so racing a real op resolving
+         alongside our forced retry is harmless (worst case: one record gets
+         pushed twice, but setDoc+merge:true makes that a no-op). */
+      if (_lock) { warn('flush: forcing _lock=false (was stuck)'); _lock = false; }
       _backoffUntil = 0;
       status.backoffUntil = 0;
       status.consecutiveFailures = 0;
