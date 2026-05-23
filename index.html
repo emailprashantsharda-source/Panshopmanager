@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_17_b1_autoRestore';
+    window.HISAABNOW_BUILD = 'v33_18_b1_backPolicy';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -9192,32 +9192,150 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
     return;
   }
 
-  var ROOT_TABS = ['home', 'sales', 'customers', 'more'];
-  var EXIT_PROMPT_MS = 2000;  // double-back window
-  var modalCloseStack = [];   // LIFO of registered modal close functions
-  var lastBackAt = 0;         // timestamp of last back press while at root
+  // ════════════════════════════════════════════════════════════════════════
+  // BACK BUTTON POLICY (May 2026 — v33_18)
+  //
+  // Back button no longer walks browser history. Instead, every page has a
+  // declared back target. This prevents the "back from home → checkout"
+  // class of bugs where browser history accidentally drops user into a
+  // half-completed flow.
+  //
+  // Policy table:
+  //   ROOT_TABS (home/sales/customers/more) → exit prompt (double-back)
+  //   CHECKOUT → guarded: ask if cart has items, else go to addsale
+  //   ADDSALE  → guarded: ask if cart has items, else go to home
+  //   ONBOARDING → no back (locked flow)
+  //   MORE_PAGES (settings/subs/catalog/inventory/packs/staff/ingredients/coupons/campaigns/cashflow/reports/appointments)
+  //     → go to MORE tab (these are accessed from More menu)
+  //   OTHER (udhaar/expenses) → go to HOME (they're accessed from home widgets)
+  //
+  // Modals still close first via the modal close stack (preserved behavior).
+  // ════════════════════════════════════════════════════════════════════════
+
+  var ROOT_TABS = { home:1, sales:1, customers:1, more:1 };
+  var GUARDED_PAGES = { checkout:1, addsale:1 };  // cart-protection check
+  var MORE_PAGES = {
+    settings:1, subscriptions:1, catalog:1, inventory:1, packs:1,
+    staff:1, ingredients:1, coupons:1, campaigns:1, cashflow:1,
+    reports:1, appointments:1
+  };
+  var LOCKED_PAGES = { onboarding:1 };  // back is no-op
+  // Anything else (udhaar, expenses, etc) → defaults to 'home'
+
+  var EXIT_PROMPT_MS = 2000;
+  var modalCloseStack = [];
+  var lastBackAt = 0;
 
   // Public API for modals
   window.BackHandler = {
-    // Call when modal opens. Returns an unregister fn — call it when the
-    // modal closes via the user's normal close mechanism (X, backdrop tap).
     registerModalClose: function(closeFn) {
       if (typeof closeFn !== 'function') return function(){};
       var token = { close: closeFn };
       modalCloseStack.push(token);
-      // Push a synthetic state so the next back press has something to pop
       try { history.pushState({ hbModal: true, hbAt: Date.now() }, ''); } catch(e){}
       return function unregister() {
         var idx = modalCloseStack.indexOf(token);
         if (idx >= 0) modalCloseStack.splice(idx, 1);
-        // Note: we don't pop history here. The synthetic state will get
-        // popped naturally on next user back press or page nav.
       };
     }
   };
 
-  // Set up initial history state. Two entries means the first back
-  // press has something to consume without exiting the TWA.
+  // Determine the back target for a given page
+  function backTargetFor(page) {
+    if (!page) return 'home';
+    if (LOCKED_PAGES[page])  return null;          // no back
+    if (ROOT_TABS[page])     return '__exit';      // root tabs use exit prompt
+    if (GUARDED_PAGES[page]) return '__guarded';   // cart-aware
+    if (MORE_PAGES[page])    return 'more';        // sub-pages of More
+    return 'home';                                  // default fallback
+  }
+
+  // Check if cart has items (for guarded pages)
+  function cartHasItems() {
+    try {
+      if (!window.App) return false;
+      var cart = window.App.cart || {};
+      var hasRegular = Object.keys(cart).length > 0;
+      var customLines = window.App.customLines || [];
+      var hasCustom = Array.isArray(customLines) && customLines.length > 0;
+      return hasRegular || hasCustom;
+    } catch(e) { return false; }
+  }
+
+  // Guarded back — asks confirmation if cart has items
+  async function handleGuardedBack(currentPage) {
+    if (!cartHasItems()) {
+      // Empty cart → safe to go back without prompt
+      window._navFromPopstate = true;
+      try {
+        var dest = currentPage === 'checkout' ? 'addsale' : 'home';
+        if (window.App && window.App.nav) window.App.nav(dest);
+      } finally { window._navFromPopstate = false; }
+      return;
+    }
+
+    // Cart has items — confirm before discarding
+    if (!window.App || typeof window.App.confirm !== 'function') {
+      // Fallback if App.confirm not available — just navigate
+      window._navFromPopstate = true;
+      try {
+        var dest2 = currentPage === 'checkout' ? 'addsale' : 'home';
+        if (window.App && window.App.nav) window.App.nav(dest2);
+      } finally { window._navFromPopstate = false; }
+      return;
+    }
+
+    // Re-push state so modal cancel doesn't accidentally pop further
+    try { history.pushState({ hbPage: currentPage, hbAt: Date.now() }, ''); } catch(e){}
+
+    var t = (window.App && window.App._T) ? window.App._T.bind(window.App) : function(k,f){ return f; };
+    var ok = await window.App.confirm({
+      title: t('back.discardTitle', 'Discard this bill?'),
+      message: t('back.discardMsg', 'Your current cart will be cleared. This cannot be undone.'),
+      confirmText: t('back.discardCta', 'Discard'),
+      cancelText:  t('common.keep', 'Keep'),
+      dangerous: true
+    });
+
+    if (!ok) return;  // stay on current page
+
+    // Clear cart state
+    try {
+      window.App.cart = {};
+      window.App.customLines = [];
+      window.App._cartSubtotal = 0;
+      window.App._discount = 0;
+      window.App._gstRate = 0;
+      window.App._billCustomer = null;
+    } catch(e){}
+
+    // Navigate
+    window._navFromPopstate = true;
+    try {
+      var destFinal = currentPage === 'checkout' ? 'addsale' : 'home';
+      if (window.App && window.App.nav) window.App.nav(destFinal);
+    } finally { window._navFromPopstate = false; }
+  }
+
+  // Show "press again to exit" toast at root
+  function handleRootExit(currentPage) {
+    var now = Date.now();
+    if (now - lastBackAt < EXIT_PROMPT_MS) {
+      // Second tap within window — let it exit (don't re-push)
+      return;
+    }
+    lastBackAt = now;
+    var msg = (window.App && window.App._T)
+      ? window.App._T('toast.backToExit', 'Press back again to exit')
+      : 'Press back again to exit';
+    if (window.App && typeof window.App.toast === 'function') {
+      try { window.App.toast(msg); } catch(e){}
+    }
+    // Re-push to absorb the next "first" back
+    try { history.pushState({ hbPage: currentPage, hbSentinel: true }, ''); } catch(e){}
+  }
+
+  // Set up initial history state
   try {
     history.replaceState({ hbPage: 'home', hbInitial: true }, '');
     history.pushState({ hbPage: 'home', hbSentinel: true }, '');
@@ -9226,8 +9344,7 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
     return;
   }
 
-  // Hook App.nav — App may not exist yet, so retry-poll like existing
-  // __hnd_navHooked pattern does elsewhere in the codebase.
+  // Hook App.nav — push a state per nav so back has something to pop
   function tryHookNav() {
     if (!window.App || typeof window.App.nav !== 'function') return false;
     if (window.App.__backHandlerHooked) return true;
@@ -9236,8 +9353,6 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
     var originalNav = window.App.nav.bind(window.App);
     window.App.nav = function(page) {
       var result = originalNav.apply(this, arguments);
-      // Push state AFTER successful nav, unless we're navigating because
-      // of a popstate (history already moved, don't double-push)
       if (!window._navFromPopstate) {
         try { history.pushState({ hbPage: page, hbAt: Date.now() }, ''); } catch(e){}
       }
@@ -9251,16 +9366,14 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
     var pollTimer = setInterval(function(){
       if (tryHookNav()) clearInterval(pollTimer);
     }, 100);
-    // Stop polling after 10s — App is broken if not loaded by then
     setTimeout(function(){ clearInterval(pollTimer); }, 10000);
   }
 
-  // Main popstate handler — fires on every back/forward navigation
+  // Main popstate handler — POLICY-DRIVEN, not history-walking
   window.addEventListener('popstate', function(e) {
-    var state = e.state || {};
     var currentPage = (window.App && window.App.current) || 'home';
 
-    // ── Priority 1: Close open modal (LIFO) ─────────────────────────────
+    // ── Priority 1: Close open modal (LIFO) ──────────────────────────────
     if (modalCloseStack.length > 0) {
       var entry = modalCloseStack.pop();
       try { entry.close(); }
@@ -9270,44 +9383,36 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
       return;
     }
 
-    // ── Priority 2: Sentinel / initial state → exit prompt ──────────────
-    var atSentinel = state.hbInitial || state.hbSentinel || !state.hbPage;
-    if (atSentinel) {
-      if (ROOT_TABS.indexOf(currentPage) >= 0) {
-        var now = Date.now();
-        if (now - lastBackAt < EXIT_PROMPT_MS) {
-          // Second tap within 2s — let it exit naturally (don't re-push)
-          return;
-        }
-        lastBackAt = now;
-        // Show "press again to exit" toast
-        var msg = (window.App && window.App._T)
-          ? window.App._T('toast.backToExit', 'Press back again to exit')
-          : 'Press back again to exit';
-        if (window.App && typeof window.App.toast === 'function') {
-          try { window.App.toast(msg); } catch(e){}
-        }
-        // Re-push sentinel to prevent immediate exit
-        try { history.pushState({ hbPage: currentPage, hbSentinel: true }, ''); } catch(e){}
-        return;
-      }
-      // Non-root page at sentinel → navigate home
-      window._navFromPopstate = true;
-      try { if (window.App && window.App.nav) window.App.nav('home'); }
-      finally { window._navFromPopstate = false; }
+    // ── Priority 2: Determine back target by POLICY ──────────────────────
+    var target = backTargetFor(currentPage);
+
+    // Locked page (onboarding) → re-push, do nothing
+    if (target === null) {
+      try { history.pushState({ hbPage: currentPage, hbLocked: true }, ''); } catch(e){}
       return;
     }
 
-    // ── Priority 3: Navigate to state's page ────────────────────────────
-    var targetPage = state.hbPage;
-    if (targetPage && targetPage !== currentPage) {
+    // Root tab → exit prompt
+    if (target === '__exit') {
+      handleRootExit(currentPage);
+      return;
+    }
+
+    // Cart-guarded page → confirm if cart has items
+    if (target === '__guarded') {
+      handleGuardedBack(currentPage);
+      return;
+    }
+
+    // Normal page → navigate to declared back target
+    if (target !== currentPage) {
       window._navFromPopstate = true;
-      try { if (window.App && window.App.nav) window.App.nav(targetPage); }
+      try { if (window.App && window.App.nav) window.App.nav(target); }
       finally { window._navFromPopstate = false; }
     }
   });
 
-  console.log('[BackHandler] installed');
+  console.log('[BackHandler v2] installed — policy-driven back');
 })();
 
 // ─────────────────────────────────────────────────────────────────────────
