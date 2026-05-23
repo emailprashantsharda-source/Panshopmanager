@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_20_b1_tzFix';
+    window.HISAABNOW_BUILD = 'v33_21_b1_salesLabel';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5070,6 +5070,10 @@ html[data-current-role="manager"] body{
 
     /* Home / dashboard sections */
     'sec.todayTrans':          { en: "Today's transactions",       hi: 'आज के बिल' },
+    'sec.yestTrans':           { en: "Yesterday's transactions",   hi: 'कल के बिल' },
+    'sec.weekTrans':           { en: "This week's transactions",   hi: 'इस हफ्ते के बिल' },
+    'sec.monthTrans':          { en: "This month's transactions",  hi: 'इस महीने के बिल' },
+    'sec.allTrans':            { en: 'All transactions',           hi: 'सभी बिल' },
     'sec.recentExp':           { en: 'Recent expenses',            hi: 'हाल के खर्चे' },
     'sec.recentBills':         { en: 'Recent bills',               hi: 'हाल के बिल' },
     'sec.spendingBreak':       { en: 'Spending breakdown',         hi: 'खर्चे का विवरण' },
@@ -11210,11 +11214,22 @@ const App = {
     const sh = document.querySelector('#pg-sales .section-h .section-t');
     if (sh) {
       const range = this._salesRange || 'Today';
-      sh.textContent = range === 'Today'    ? "Today's transactions"
+      // Use data-i18n key so I18n.applyAll() doesn't overwrite our change.
+      // Each variant has its own dictionary key — defined below in DICT.
+      const i18nKey = range === 'Today'      ? 'sec.todayTrans'
+                    : range === 'Yesterday'  ? 'sec.yestTrans'
+                    : range === 'This Week'  ? 'sec.weekTrans'
+                    : range === 'This Month' ? 'sec.monthTrans'
+                    : 'sec.allTrans';
+      sh.setAttribute('data-i18n', i18nKey);
+      // Set text immediately too (in case I18n hasn't booted yet)
+      const fallback = range === 'Today'    ? "Today's transactions"
                      : range === 'Yesterday' ? "Yesterday's transactions"
                      : range === 'This Week' ? "This week's transactions"
                      : range === 'This Month'? "This month's transactions"
                      : 'All transactions';
+      const translated = (window.I18n && window.I18n.t) ? window.I18n.t(i18nKey) : fallback;
+      sh.textContent = (translated && translated !== i18nKey) ? translated : fallback;
     }
 
     const scopePill = document.getElementById('sales-scope-pill');
