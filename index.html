@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_9_b1_haptic';
+    window.HISAABNOW_BUILD = 'v33_12_b1_touchaudit';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -1441,6 +1441,77 @@ body.on-checkout .nav{display:none !important}
 
 .toast{position:fixed;top:20px;left:50%;transform:translate(-50%,-100px);background:#0F172A;color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:200;box-shadow:0 12px 28px -8px rgba(0,0,0,.3);transition:transform .3s ease;display:flex;align-items:center;gap:8px}
 .toast.show{transform:translate(-50%,0)}
+
+/* ─── Custom confirm modal (May 2026) ───────────────────────────────────
+   Replaces native confirm() with a polished bottom-sheet dialog.
+   Light theme: bg #F9FAFB, orange CTA #FF6B35, navy text.
+*/
+.hn-confirm{position:fixed;inset:0;z-index:10000;display:none;align-items:flex-end;justify-content:center;pointer-events:none}
+.hn-confirm.show{display:flex;pointer-events:auto}
+.hn-confirm-backdrop{position:absolute;inset:0;background:rgba(15,23,42,0);transition:background .22s ease;cursor:pointer}
+.hn-confirm.show .hn-confirm-backdrop{background:rgba(15,23,42,.55)}
+.hn-confirm-sheet{position:relative;width:100%;max-width:480px;background:#FFFFFF;border-radius:18px 18px 0 0;padding:14px 22px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -8px 32px -8px rgba(15,23,42,.28);transform:translateY(100%);transition:transform .26s cubic-bezier(.32,.72,0,1);font-family:inherit}
+.hn-confirm.show .hn-confirm-sheet{transform:translateY(0)}
+@media (min-width:600px){
+  .hn-confirm{align-items:center}
+  .hn-confirm-sheet{border-radius:16px;margin:0 20px;padding:22px 24px;transform:translateY(20px) scale(.98);opacity:0;transition:transform .22s ease,opacity .22s ease}
+  .hn-confirm.show .hn-confirm-sheet{transform:translateY(0) scale(1);opacity:1}
+}
+.hn-confirm-grip{width:38px;height:4px;background:#E5E7EB;border-radius:99px;margin:0 auto 14px}
+@media (min-width:600px){ .hn-confirm-grip{display:none} }
+.hn-confirm-title{font-size:17px;font-weight:700;color:#0F172A;letter-spacing:-.01em;margin-bottom:8px;line-height:1.3}
+.hn-confirm-message{font-size:14px;color:#475569;line-height:1.5;margin-bottom:18px;white-space:pre-wrap;word-wrap:break-word}
+.hn-confirm-message:empty{display:none}
+.hn-confirm-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.hn-confirm-cancel,.hn-confirm-ok{padding:11px 18px;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;border:none;letter-spacing:-.005em;transition:transform .12s ease,background .15s ease;min-width:96px;min-height:44px}
+.hn-confirm-cancel{background:#F3F4F6;color:#374151;border:1.5px solid #E5E7EB}
+.hn-confirm-cancel:hover{background:#E5E7EB}
+.hn-confirm-cancel:active{transform:scale(.97)}
+.hn-confirm-ok{background:#FF6B35;color:#FFFFFF}
+.hn-confirm-ok:hover{background:#C2410C}
+.hn-confirm-ok:active{transform:scale(.97)}
+.hn-confirm.dangerous .hn-confirm-ok{background:#DC2626}
+.hn-confirm.dangerous .hn-confirm-ok:hover{background:#991B1B}
+/* ───────────────────────────────────────────────────────────────────── */
+
+/* ─── Touch target audit (May 2026) ──────────────────────────────────────
+   Material Design min: 48dp. iOS HIG min: 44pt. We standardize to 44px.
+   Why min-* instead of fixed sizes:
+     - Doesn't break elements already larger than 44px
+     - Preserves intentional FAB / modal-button sizing
+     - Only enforces the FLOOR
+
+   Three classes fixed; tightly-packed context buttons (size picker close,
+   qty +/- in custom weight) keep their visual size but get expanded
+   effective tap area via the .tap-target-expand utility below.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* .icon-btn — header back arrows, header icon buttons. Was 40×40. */
+.icon-btn{ min-width:44px; min-height:44px; }
+
+/* .panel-link — text "View All" links. Was ~22px tall (font 12.5 + padding 3px).
+   Use inline-flex to centre vertically while keeping visual baseline. */
+.panel-link{ min-height:44px; display:inline-flex; align-items:center; padding:0 8px; }
+
+/* .chip — filter chips. Was ~36px tall. */
+.chip{ min-height:44px; box-sizing:border-box; display:inline-flex; align-items:center; }
+
+/* Utility: expand tap area of a small button WITHOUT changing its visual size.
+   Adds an invisible 44×44 hit zone centered on the button via ::before.
+   Apply to small buttons in tight layouts (qty +/-, close X, etc.):
+     <button class="tap-target-expand" style="width:32px;height:32px">×</button>
+   The button's parent must NOT have overflow:hidden, or the expanded area
+   will be clipped. Use sparingly — proper 44px buttons are still preferred. */
+.tap-target-expand{ position:relative; }
+.tap-target-expand::before{
+  content:'';
+  position:absolute;
+  top:50%; left:50%;
+  width:max(44px, 100%); height:max(44px, 100%);
+  transform:translate(-50%, -50%);
+  /* No background — invisible hit zone only */
+}
+/* ───────────────────────────────────────────────────────────────────── */
 
 .form-screen{padding:6px 18px 18px}
 .form-group{margin-bottom:16px}
@@ -4111,6 +4182,25 @@ html[data-current-role="manager"] body{
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     Custom confirm modal (replaces native confirm() — May 2026)
+     Used by App.confirm({title, message, confirmText, cancelText, dangerous})
+     which returns a Promise<boolean>. Bottom-sheet style on mobile for
+     thumb reach; backdrop tap or hardware back resolves false.
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="hn-confirm" id="hn-confirm" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="hn-confirm-title">
+  <div class="hn-confirm-backdrop" data-hn-confirm-cancel="1"></div>
+  <div class="hn-confirm-sheet" role="document">
+    <div class="hn-confirm-grip"></div>
+    <div class="hn-confirm-title" id="hn-confirm-title">Are you sure?</div>
+    <div class="hn-confirm-message" id="hn-confirm-message"></div>
+    <div class="hn-confirm-actions">
+      <button type="button" class="hn-confirm-cancel" id="hn-confirm-cancel-btn" data-no-haptic="true">Cancel</button>
+      <button type="button" class="hn-confirm-ok btn-primary" id="hn-confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════════════════════════════════════
      HisaabNow · I18n module (EN / HI bilingual)
@@ -8882,6 +8972,169 @@ window.haptic.success = function(){ try { if (navigator.vibrate) navigator.vibra
   }, true);  // capture phase = fire before onclick handlers
 })();
 
+// ─────────────────────────────────────────────────────────────────────────
+// HARDWARE BACK BUTTON HANDLER (May 2026 — TWA Critical)
+// Without this, Android's hardware back button closes the TWA instead of
+// navigating between screens — the #1 source of 1-star reviews for TWAs.
+//
+// HOW IT WORKS:
+//   1. At boot: push a sentinel history state so the first back press has
+//      something to consume without exiting.
+//   2. Hook App.nav: every navigation pushes a new history state.
+//   3. On popstate (back button pressed):
+//      a. If any modal is registered, close the topmost one.
+//      b. Otherwise, if state has a page, navigate to it.
+//      c. Otherwise (sentinel popped, at root tab): show "Press again to
+//         exit" toast. Second press within 2s lets the TWA exit naturally.
+//
+// MODAL INTEGRATION (optional, additive):
+//   When opening a modal/sheet/drawer:
+//     var unregister = window.BackHandler.registerModalClose(function(){
+//       // your modal-close logic here
+//     });
+//   When the modal closes via X or backdrop tap, call: unregister();
+//   Existing modals don't HAVE to integrate — they'll still close via
+//   their normal buttons. Integrating just gives them free back-button
+//   support too.
+//
+// CASES HANDLED:
+//   ✓ Back from /sales → home (or previous screen)
+//   ✓ Back from /more menu rows (staff, settings, etc.) → /more
+//   ✓ Back from /home → "Press again to exit" toast → exit on 2nd press
+//   ✓ Back closes any registered modal first
+//   ✓ Doesn't interfere with onboarding (uses its own internal step nav)
+//   ✓ Programmatic App.nav() calls (e.g., from sync engine) don't push state
+//
+// CASES NOT HANDLED (out of scope for v1):
+//   ✗ Back during checkout sheet — checkout uses inline UI, not modal
+//   ✗ Forward button on desktop (rare, low priority)
+//   ✗ Deep linking from external URLs (no users will do this in launch week)
+// ─────────────────────────────────────────────────────────────────────────
+(function setupBackHandler(){
+  // History API not available (very old browsers, sandboxed iframes) → no-op
+  if (!window.history || typeof history.pushState !== 'function') {
+    console.warn('[BackHandler] history API unavailable — back button will exit TWA');
+    return;
+  }
+
+  var ROOT_TABS = ['home', 'sales', 'customers', 'more'];
+  var EXIT_PROMPT_MS = 2000;  // double-back window
+  var modalCloseStack = [];   // LIFO of registered modal close functions
+  var lastBackAt = 0;         // timestamp of last back press while at root
+
+  // Public API for modals
+  window.BackHandler = {
+    // Call when modal opens. Returns an unregister fn — call it when the
+    // modal closes via the user's normal close mechanism (X, backdrop tap).
+    registerModalClose: function(closeFn) {
+      if (typeof closeFn !== 'function') return function(){};
+      var token = { close: closeFn };
+      modalCloseStack.push(token);
+      // Push a synthetic state so the next back press has something to pop
+      try { history.pushState({ hbModal: true, hbAt: Date.now() }, ''); } catch(e){}
+      return function unregister() {
+        var idx = modalCloseStack.indexOf(token);
+        if (idx >= 0) modalCloseStack.splice(idx, 1);
+        // Note: we don't pop history here. The synthetic state will get
+        // popped naturally on next user back press or page nav.
+      };
+    }
+  };
+
+  // Set up initial history state. Two entries means the first back
+  // press has something to consume without exiting the TWA.
+  try {
+    history.replaceState({ hbPage: 'home', hbInitial: true }, '');
+    history.pushState({ hbPage: 'home', hbSentinel: true }, '');
+  } catch(e) {
+    console.warn('[BackHandler] failed to initialize history state', e);
+    return;
+  }
+
+  // Hook App.nav — App may not exist yet, so retry-poll like existing
+  // __hnd_navHooked pattern does elsewhere in the codebase.
+  function tryHookNav() {
+    if (!window.App || typeof window.App.nav !== 'function') return false;
+    if (window.App.__backHandlerHooked) return true;
+    window.App.__backHandlerHooked = true;
+
+    var originalNav = window.App.nav.bind(window.App);
+    window.App.nav = function(page) {
+      var result = originalNav.apply(this, arguments);
+      // Push state AFTER successful nav, unless we're navigating because
+      // of a popstate (history already moved, don't double-push)
+      if (!window._navFromPopstate) {
+        try { history.pushState({ hbPage: page, hbAt: Date.now() }, ''); } catch(e){}
+      }
+      return result;
+    };
+    console.log('[BackHandler] App.nav hooked');
+    return true;
+  }
+
+  if (!tryHookNav()) {
+    var pollTimer = setInterval(function(){
+      if (tryHookNav()) clearInterval(pollTimer);
+    }, 100);
+    // Stop polling after 10s — App is broken if not loaded by then
+    setTimeout(function(){ clearInterval(pollTimer); }, 10000);
+  }
+
+  // Main popstate handler — fires on every back/forward navigation
+  window.addEventListener('popstate', function(e) {
+    var state = e.state || {};
+    var currentPage = (window.App && window.App.current) || 'home';
+
+    // ── Priority 1: Close open modal (LIFO) ─────────────────────────────
+    if (modalCloseStack.length > 0) {
+      var entry = modalCloseStack.pop();
+      try { entry.close(); }
+      catch(err) { console.warn('[BackHandler] modal close error', err); }
+      // Push state back so the NEXT back press still works
+      try { history.pushState({ hbPage: currentPage, hbAt: Date.now() }, ''); } catch(e){}
+      return;
+    }
+
+    // ── Priority 2: Sentinel / initial state → exit prompt ──────────────
+    var atSentinel = state.hbInitial || state.hbSentinel || !state.hbPage;
+    if (atSentinel) {
+      if (ROOT_TABS.indexOf(currentPage) >= 0) {
+        var now = Date.now();
+        if (now - lastBackAt < EXIT_PROMPT_MS) {
+          // Second tap within 2s — let it exit naturally (don't re-push)
+          return;
+        }
+        lastBackAt = now;
+        // Show "press again to exit" toast
+        var msg = (window.App && window.App._T)
+          ? window.App._T('toast.backToExit', 'Press back again to exit')
+          : 'Press back again to exit';
+        if (window.App && typeof window.App.toast === 'function') {
+          try { window.App.toast(msg); } catch(e){}
+        }
+        // Re-push sentinel to prevent immediate exit
+        try { history.pushState({ hbPage: currentPage, hbSentinel: true }, ''); } catch(e){}
+        return;
+      }
+      // Non-root page at sentinel → navigate home
+      window._navFromPopstate = true;
+      try { if (window.App && window.App.nav) window.App.nav('home'); }
+      finally { window._navFromPopstate = false; }
+      return;
+    }
+
+    // ── Priority 3: Navigate to state's page ────────────────────────────
+    var targetPage = state.hbPage;
+    if (targetPage && targetPage !== currentPage) {
+      window._navFromPopstate = true;
+      try { if (window.App && window.App.nav) window.App.nav(targetPage); }
+      finally { window._navFromPopstate = false; }
+    }
+  });
+
+  console.log('[BackHandler] installed');
+})();
+
 const App = {
   current: 'home',
   vertical: 'cafe',
@@ -9025,6 +9278,97 @@ const App = {
     t.classList.add('show');
     clearTimeout(this._tt);
     this._tt = setTimeout(()=>t.classList.remove('show'), 2200);
+  },
+
+  /* ─── App.confirm(opts) → Promise<boolean> ─────────────────────────────
+     Replaces native confirm(). Bottom-sheet style on mobile.
+
+     Usage:
+       const ok = await App.confirm({
+         title: 'Delete supply?',
+         message: 'This cannot be undone.',
+         confirmText: 'Delete',          // optional, default 'Confirm'
+         cancelText: 'Cancel',           // optional, default 'Cancel'
+         dangerous: true                 // optional, makes confirm red
+       });
+       if (!ok) return;
+
+     Plain-string shorthand also supported:
+       const ok = await App.confirm('Delete this item?');
+
+     Resolves false on: Cancel button, backdrop tap, ESC key, hardware
+     back button. Resolves true only on the Confirm button.
+     ───────────────────────────────────────────────────────────────────── */
+  confirm(opts){
+    return new Promise((resolve) => {
+      // Normalize input — accept string shorthand
+      if (typeof opts === 'string') opts = { message: opts };
+      opts = opts || {};
+
+      const root = document.getElementById('hn-confirm');
+      if (!root) {
+        // Modal HTML missing — fall back to native confirm
+        const text = (opts.title ? opts.title + '\n\n' : '') + (opts.message || '');
+        return resolve(window.confirm(text));
+      }
+
+      const titleEl  = document.getElementById('hn-confirm-title');
+      const msgEl    = document.getElementById('hn-confirm-message');
+      const okBtn    = document.getElementById('hn-confirm-ok-btn');
+      const cancelBtn= document.getElementById('hn-confirm-cancel-btn');
+
+      // Populate
+      titleEl.textContent  = opts.title   || this._T('dlg.areYouSure', 'Are you sure?');
+      msgEl.textContent    = opts.message || '';
+      okBtn.textContent    = opts.confirmText || this._T('common.confirm', 'Confirm');
+      cancelBtn.textContent= opts.cancelText  || this._T('common.cancel',  'Cancel');
+
+      // Dangerous variant (red confirm button)
+      root.classList.toggle('dangerous', !!opts.dangerous);
+
+      // Show
+      root.setAttribute('aria-hidden', 'false');
+      root.classList.add('show');
+
+      // Cleanup function — removes all listeners and the modal-close hook
+      let unregisterBack = null;
+      function cleanup() {
+        root.classList.remove('show');
+        root.setAttribute('aria-hidden', 'true');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        root.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKeydown);
+        if (unregisterBack) { try { unregisterBack(); } catch(e){} }
+      }
+
+      function onOk(){ cleanup(); resolve(true); }
+      function onCancel(){ cleanup(); resolve(false); }
+      function onBackdrop(e){
+        // Only close if click was on backdrop, not the sheet
+        if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-hn-confirm-cancel')) {
+          onCancel();
+        }
+      }
+      function onKeydown(e){
+        if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+        else if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+      }
+
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      root.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKeydown);
+
+      // Wire to hardware back button (if BackHandler is installed)
+      if (window.BackHandler && typeof window.BackHandler.registerModalClose === 'function') {
+        unregisterBack = window.BackHandler.registerModalClose(onCancel);
+      }
+
+      // Focus the cancel button by default (safer than auto-confirming
+      // a destructive action if user presses Enter blindly)
+      setTimeout(() => { try { cancelBtn.focus(); } catch(e){} }, 50);
+    });
   },
 
   /* Translation helper for JS-rendered strings. Falls back to the
@@ -14235,7 +14579,7 @@ const App = {
     card.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
         '<div style="font-size:18px;font-weight:800;letter-spacing:-.015em">'+(prod.emoji||'')+' '+prod.name+'</div>'+
-        '<button onclick="document.getElementById(\'size-picker-sheet\').style.display=\'none\'" style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #EFE8D7;color:#0A0A0A;font-size:18px;cursor:pointer">×</button>'+
+        '<button class="tap-target-expand" onclick="document.getElementById(\'size-picker-sheet\').style.display=\'none\'" style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #EFE8D7;color:#0A0A0A;font-size:18px;cursor:pointer">×</button>'+
       '</div>'+
       '<div style="font-size:12px;color:#6B6B6B;font-weight:500;margin-bottom:14px">Pick a size to add to cart</div>'+
       rows;
@@ -14452,7 +14796,7 @@ const App = {
           <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:10px">Choose item to bill by weight</div>
           <div style="position:relative;margin-bottom:12px">
             <input id="cw-search" placeholder="Search items…" style="width:100%;padding:11px 38px 11px 14px;border:1px solid var(--b);border-radius:10px;font-size:14px;font-weight:600;background:var(--bg2);color:var(--t1);box-sizing:border-box" oninput="App._cwFilterProducts(this.value)">
-            <button type="button" id="cw-search-clear" onclick="App._cwClearSearch()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:none;background:transparent;color:var(--t3);cursor:pointer;border-radius:50%;display:none;align-items:center;justify-content:center" aria-label="Clear search">
+            <button type="button" class="tap-target-expand" id="cw-search-clear" onclick="App._cwClearSearch()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:none;background:transparent;color:var(--t3);cursor:pointer;border-radius:50%;display:none;align-items:center;justify-content:center" aria-label="Clear search">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -14478,9 +14822,9 @@ const App = {
 
           <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
             <span style="font-size:13px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Qty</span>
-            <button type="button" onclick="App._cwAdjQty(-1)" style="width:34px;height:34px;border:1px solid var(--b);background:var(--bg2);border-radius:8px;font-weight:800;font-size:18px;cursor:pointer;color:var(--t1)">−</button>
+            <button type="button" class="tap-target-expand" onclick="App._cwAdjQty(-1)" style="width:34px;height:34px;border:1px solid var(--b);background:var(--bg2);border-radius:8px;font-weight:800;font-size:18px;cursor:pointer;color:var(--t1)">−</button>
             <span id="cw-qty" style="min-width:30px;text-align:center;font-weight:800;font-size:16px;color:var(--t1)">1</span>
-            <button type="button" onclick="App._cwAdjQty(1)" style="width:34px;height:34px;border:1px solid var(--b);background:var(--bg2);border-radius:8px;font-weight:800;font-size:18px;cursor:pointer;color:var(--t1)">+</button>
+            <button type="button" class="tap-target-expand" onclick="App._cwAdjQty(1)" style="width:34px;height:34px;border:1px solid var(--b);background:var(--bg2);border-radius:8px;font-weight:800;font-size:18px;cursor:pointer;color:var(--t1)">+</button>
             <span style="margin-left:auto;font-size:11px;color:var(--t3);font-weight:600">e.g. 2 × 350g packs</span>
           </div>
 
@@ -18663,12 +19007,12 @@ const App = {
     body.innerHTML = html;
   },
 
-  deleteSupplyFromDetail(){
+  async deleteSupplyFromDetail(){
     const id = this._sdId;
     if (!id) return;
     const item = Store.get('ingredients', id);
     if (!item) { this.nav('ingredients'); return; }
-    if (!confirm('Delete ' + (item.name || 'this supply') + '? This cannot be undone.')) return;
+    if (!await this.confirm({title: 'Delete ' + (item.name || 'this supply') + '?', message: 'This cannot be undone.', confirmText: 'Delete', dangerous: true})) return;
     Store.delete('ingredients', id);
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + item.name);
     this._sdId = null;
@@ -19878,11 +20222,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
   },
 
-  deleteIngredient(){
+  async deleteIngredient(){
     if (!this._editingIgId) return;
     const item = Store.get('ingredients', this._editingIgId);
     if (!item) { this.closeProductSheet(); return; }
-    if (!confirm('Delete ' + (item.name || 'this ingredient') + '?')) return;
+    if (!await this.confirm({title: 'Delete ' + (item.name || 'this ingredient') + '?', confirmText: 'Delete', dangerous: true})) return;
     Store.delete('ingredients', this._editingIgId);
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + item.name);
     this._editingIgId = null;
@@ -21594,11 +21938,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (chev) chev.style.transform = expanded ? 'rotate(0deg)' : 'rotate(90deg)';
   },
 
-  _markProductInactive(){
+  async _markProductInactive(){
     if (!this._editingId) return;
     var item = Store.get('prods', this._editingId);
     if (!item) { this.closeProductSheet(); return; }
-    if (!confirm('Hide "' + item.name + '"?\n\nIt won\'t appear in billing screens but stays in your inactive list — you can restore it anytime.')) return;
+    if (!await this.confirm({title: 'Hide "' + item.name + '"?', message: 'It won\'t appear in billing screens but stays in your inactive list — you can restore it anytime.', confirmText: 'Hide'})) return;
     Store.update('prods', this._editingId, { active: false });
     this._editingId = null;
     this.toast(this._T('toast.hiddenPrefix','Hidden') + ' · ' + item.name);
@@ -21640,11 +21984,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     setTimeout(function(){ self.openProductSheet(newItem.id); }, 250);
   },
 
-  deleteProduct(){
+  async deleteProduct(){
     if (!this._editingId) return;
     const item = Store.get('prods', this._editingId);
     if (!item) { this.closeProductSheet(); return; }
-    if (!confirm('Delete "' + item.name + '"?\n\nThis cannot be undone.')) return;
+    if (!await this.confirm({title: 'Delete "' + item.name + '"?', message: 'This cannot be undone.', confirmText: 'Delete', dangerous: true})) return;
     Store.delete('prods', this._editingId);
     this._editingId = null;
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + item.name);
@@ -22497,7 +22841,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         return;
       }
     } catch(e){}
-    if (!confirm('Remove "' + s.name + '" from your team?\n\nTheir historical sales data will be preserved. If they have login access, it will be revoked.')) return;
+    if (!await this.confirm({title: 'Remove "' + s.name + '" from your team?', message: 'Their historical sales data will be preserved. If they have login access, it will be revoked.', confirmText: 'Remove', dangerous: true})) return;
 
     if (s.hasLogin && (s.phoneE164 || s.phone)) {
       try {
@@ -22592,9 +22936,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(ex){} }
   },
 
-  deleteAppt(idx){
+  async deleteAppt(idx){
     const a = APPTS[idx]; if (!a) return;
-    if (!confirm('Cancel appointment for "' + a.name + '"?')) return;
+    if (!await this.confirm({title: 'Cancel appointment for "' + a.name + '"?', confirmText: 'Cancel appointment', dangerous: true, cancelText: 'Keep'})) return;
     Store.delete('appts', a.id);
     this.toast(this._T('toast.cancelledPrefix','Cancelled') + ' · ' + a.name);
     this.closeProductSheet();
@@ -22783,9 +23127,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(ex){} }
   },
 
-  deleteExpense(idx){
+  async deleteExpense(idx){
     const e = EXPENSES[idx]; if (!e) return;
-    if (!confirm('Delete expense "' + e.desc + '"?')) return;
+    if (!await this.confirm({title: 'Delete expense "' + e.desc + '"?', confirmText: 'Delete', dangerous: true})) return;
     Store.delete('exps', e.id);
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + e.desc);
     this.closeProductSheet();
@@ -22975,9 +23319,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (this.current === 'addsale') this.renderServiceGrid();
   },
 
-  deleteCatalogItem(idx){
+  async deleteCatalogItem(idx){
     const s = SERVICES[idx]; if (!s) return;
-    if (!confirm('Delete "' + s.name + '"?')) return;
+    if (!await this.confirm({title: 'Delete "' + s.name + '"?', confirmText: 'Delete', dangerous: true})) return;
     Store.delete('prods', s.id);
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + s.name);
     this.closeProductSheet();
@@ -23037,18 +23381,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this.renderCouponsScreen();
   },
 
-  deleteCoupon(id){
+  async deleteCoupon(id){
     if (!id) return;
     const c = Store.get('coupons', id);
     if (!c) return;
-    if (!confirm('Delete coupon "' + c.code + '"?')) return;
+    if (!await this.confirm({title: 'Delete coupon "' + c.code + '"?', confirmText: 'Delete', dangerous: true})) return;
     Store.delete('coupons', id);
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + c.code);
     this.closeProductSheet();
     this.renderCouponsScreen();
   },
 
-  switchStore(idx){
+  async switchStore(idx){
     if (!window.MShop) { this.toast(this._T('toast.multiShopNa', 'Multi-shop not available')); return; }
     const shops = window.MShop.getShops();
     const target = shops[idx];
@@ -23057,7 +23401,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       this.toast(this._T('toast.alreadyActive', 'Already active'));
       return;
     }
-    if (!confirm('Switch active outlet to "' + target.name + '"?\n\nAll screens will refresh with that outlet\'s data.')) return;
+    if (!await this.confirm({title: 'Switch active outlet to "' + target.name + '"?', message: 'All screens will refresh with that outlet\'s data.', confirmText: 'Switch'})) return;
 
     window.MShop.switchShop(target.shopId).then(() => {
       this.toast(this._T('toast.switched','Switched') + ' · ' + target.name);
@@ -23443,7 +23787,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     } else {
 
       const cfg = Subs.getTierConfig(tier);
-      if (confirm('Play Billing not available in this browser.\n\nApply ' + cfg.name + ' (' + cycle + ') as test mode?\n\nOK = mark as subscribed locally.\nCancel = abort.')) {
+      if (await this.confirm({title: 'Play Billing not available in this browser', message: 'Apply ' + cfg.name + ' (' + cycle + ') as test mode? OK = mark as subscribed locally.', confirmText: 'Apply test mode'})) {
         Subs.markPurchased(tier, cycle, 'dev_token', null);
         this.toast(this._T('toast.testSub', '✓ Test subscription · ') + cfg.name);
       }
@@ -24292,7 +24636,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
      Also removes the underlying record from local storage so it doesn't get
      re-enqueued by a future checkpoint (which compares local state to snapshot
      and would re-enqueue any "new" record). */
-  _syncHealthDelete(key){
+  async _syncHealthDelete(key){
     if (!window.HisaabSync || !HisaabSync.quarantine) return;
     var list = HisaabSync.quarantine.list();
     var entry = list.find(function(e){ return (e.collection + ':' + e.record.id) === key; });
@@ -24301,10 +24645,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       return;
     }
     var summary = this._recordSummary(entry.collection, entry.record);
-    var confirmMsg = 'Permanently delete this record?\n\n'
-      + summary + '\n\n'
-      + 'It will be removed from both the cloud sync queue AND your local data on this device. This cannot be undone.';
-    if (!confirm(confirmMsg)) return;
+    if (!await this.confirm({
+      title: 'Permanently delete this record?',
+      message: summary + '\n\nIt will be removed from both the cloud sync queue AND your local data on this device. This cannot be undone.',
+      confirmText: 'Delete',
+      dangerous: true
+    })) return;
 
     /* Remove from quarantine first */
     HisaabSync.quarantine.remove(key);
@@ -24553,7 +24899,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   async signOut(){
-    if (!confirm('Sign out of HisaabNow?\n\nYour data stays safe on this device. You\'ll be returned to the sign-in screen.')) return;
+    if (!await this.confirm({title: 'Sign out of HisaabNow?', message: 'Your data stays safe on this device. You\'ll be returned to the sign-in screen.', confirmText: 'Sign out'})) return;
 
     try {
       if (window.HisaabSync && typeof HisaabSync.checkpoint === 'function') {
@@ -24594,7 +24940,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
   async deleteAccount(){
 
-    const ok1 = confirm('Delete your HisaabNow account?\n\nThis will permanently remove:\n• Your account\n• All shops, bills, customers, and inventory data\n• Your subscription (if active)\n\nThis cannot be undone.');
+    const ok1 = await this.confirm({
+      title: 'Delete your HisaabNow account?',
+      message: 'This will permanently remove:\n• Your account\n• All shops, bills, customers, and inventory data\n• Your subscription (if active)\n\nThis cannot be undone.',
+      confirmText: 'Continue',
+      dangerous: true
+    });
     if (!ok1) return;
 
     const typed = prompt('Type "Delete my account" to confirm (case-insensitive):');
@@ -25706,10 +26057,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     return generated;
   },
 
-  stopRecurring(ruleId){
+  async stopRecurring(ruleId){
     const rule = Store.get('recurring', ruleId);
     if (!rule) { this.toast(this._T('toast.ruleNotFound', 'Rule not found')); return; }
-    if (!confirm('Stop auto-repeating "' + rule.desc + '"? Past entries will remain.')) return;
+    if (!await this.confirm({title: 'Stop auto-repeating "' + rule.desc + '"?', message: 'Past entries will remain.', confirmText: 'Stop'})) return;
     Store.update('recurring', ruleId, { active: false });
     this.toast(this._T('toast.stoppedRecPrefix','Stopped recurring') + ' · ' + rule.desc);
     if (this.current === 'expenses') {
@@ -26283,7 +26634,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       const wasPhone = existing.phoneE164 || existing.phone || '';
 
       if (wasLogin && !wantsLogin) {
-        const ok = window.confirm('Remove login access for ' + name + '? They will no longer be able to log in to this shop.');
+        const ok = await this.confirm({title: 'Remove login access for ' + name + '?', message: 'They will no longer be able to log in to this shop.', confirmText: 'Remove access', dangerous: true});
         if (!ok) return;
 
         try {
@@ -26330,7 +26681,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
       if (!wasLogin && wantsLogin && loginAllowed) {
         const url = this._buildStaffInviteWaUrl(phoneE164, name, role.name);
-        if (url) setTimeout(() => { if (confirm('Send WhatsApp invite to ' + name + '?')) window.open(url, '_blank'); }, 600);
+        if (url) setTimeout(async () => { if (await App.confirm({title: 'Send WhatsApp invite to ' + name + '?', confirmText: 'Send'})) window.open(url, '_blank'); }, 600);
       }
       setTimeout(()=> this.nav('staff'), 800);
       if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(ex){} }
@@ -26430,8 +26781,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
         const url = this._buildStaffInviteWaUrl(phoneE164, name, role.name);
         if (url) {
-          setTimeout(() => {
-            if (confirm('Send WhatsApp invite to ' + name + '?\n\nThey will get a message with login instructions.')) {
+          setTimeout(async () => {
+            if (await App.confirm({title: 'Send WhatsApp invite to ' + name + '?', message: 'They will get a message with login instructions.', confirmText: 'Send'})) {
               window.open(url, '_blank');
             }
           }, 500);
@@ -27892,7 +28243,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (!phoneE164) return;
     const s = (this._staffCache || []).find(x => x.phoneE164 === phoneE164);
     if (!s) return;
-    const ok = confirm(`Remove ${s.name}?\n\nThey'll lose access to this shop on their next sign-in. Past bills remain attributed.\n\nThis cannot be easily undone.`);
+    const ok = await this.confirm({title: 'Remove ' + s.name + '?', message: 'They\'ll lose access to this shop on their next sign-in. Past bills remain attributed.\n\nThis cannot be easily undone.', confirmText: 'Remove', dangerous: true});
     if (!ok) return;
     try {
       const shopId = this._currentShopForStaff && this._currentShopForStaff.shopId;
@@ -34457,8 +34808,8 @@ window.Store = {
 };
 
 if (location.search.indexOf('dev=1') >= 0) {
-  window.Store.__clearAll = function(){
-    if (!confirm('CLEAR ALL DATA? This wipes localStorage. Cloud data is untouched (next sync will restore).')) return;
+  window.Store.__clearAll = async function(){
+    if (!await App.confirm({title: 'CLEAR ALL DATA?', message: 'This wipes localStorage. Cloud data is untouched (next sync will restore).', confirmText: 'Clear', dangerous: true})) return;
     try {
       ['ks','kp','kc','ku','ke','kstaff','ksu','kappts','kprof','kstore','kcoup'].forEach(function(k){
         try { localStorage.removeItem(k); } catch(e) {}
@@ -38597,12 +38948,12 @@ button:not(:disabled){ user-select:none }
       state.editingId = null;
       var del = $('ns-del-btn'); if (del) del.style.display = 'none';
     },
-    cancel: function(){
+    cancel: async function(){
       var hasInput = state.name || state.price > 0 || state.supplies.length > 0;
 
       if (state.editingId){
-        if (!confirm('Discard your changes?')) return;
-      } else if (hasInput && !confirm('Discard this service?')) return;
+        if (!await App.confirm({title: 'Discard your changes?', confirmText: 'Discard', dangerous: true})) return;
+      } else if (hasInput && !await App.confirm({title: 'Discard this service?', confirmText: 'Discard', dangerous: true})) return;
       api.close();
     },
     next: function(){
@@ -38624,10 +38975,10 @@ button:not(:disabled){ user-select:none }
       setStep(n);
     },
 
-    deleteService: function(){
+    deleteService: async function(){
       if (!state.editingId){ return; }
       var name = state.name || 'this service';
-      if (!confirm('Delete "' + name + '"?\n\nThis cannot be undone.')) return;
+      if (!await App.confirm({title: 'Delete "' + name + '"?', message: 'This cannot be undone.', confirmText: 'Delete', dangerous: true})) return;
       try {
         if (window.Store && typeof window.Store.delete === 'function'){
           window.Store.delete('prods', state.editingId);
@@ -44917,7 +45268,7 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
   });
 
   /* Event delegation inside the screen */
-  document.addEventListener('click', function(e){
+  document.addEventListener('click', async function(e){
     if (!document.body.classList.contains('hnd-on-appts')) return;
 
     /* Week nav */
@@ -44955,7 +45306,7 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
       e.stopPropagation();
       var did = del.getAttribute('data-ap-delete');
       if (!did) return;
-      if (!confirm('Cancel this appointment? This cannot be undone.')) return;
+      if (!await App.confirm({title: 'Cancel this appointment?', message: 'This cannot be undone.', confirmText: 'Cancel appointment', dangerous: true, cancelText: 'Keep'})) return;
       try {
         if (window.Store && Store.update) Store.update('appts', did, { type: 'cancelled' });
         if (window.App && App.toast) App.toast('Appointment cancelled');
@@ -49092,9 +49443,9 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
 
       /* Auto-open WhatsApp welcome message */
       var subId = savedSub.id || savedSub;
-      setTimeout(function(){
+      setTimeout(async function(){
         if (cust.phone){
-          if (confirm('Send WhatsApp welcome message to ' + cust.name + '?')){
+          if (await App.confirm({title: 'Send WhatsApp welcome to ' + cust.name + '?', confirmText: 'Send'})){
             SubEngine.sendWA(subId, 'welcome');
           }
         }
@@ -50671,9 +51022,9 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
       }
     },
 
-    deleteExpense: function(id){
+    deleteExpense: async function(id){
       if (!id) return;
-      if (!confirm('Delete this expense? This cannot be undone.')) return;
+      if (!await App.confirm({title: 'Delete this expense?', message: 'This cannot be undone.', confirmText: 'Delete', dangerous: true})) return;
       try {
         Store.delete('exps', id);
         if (window.App && App.toast) App.toast(App._T('toast.expDeleted', 'Expense deleted'));
@@ -51572,12 +51923,12 @@ html[data-shell="desktop"] body.hnd-on-udh #hnd-udh {
       this.render();
     },
 
-    markPaid: function(khataId){
+    markPaid: async function(khataId){
       var k = (safeList('khata') || []).find(function(x){ return x.id === khataId; });
       if (!k){ return; }
       var remaining = (+k.amount || 0) - (+k.paidAmount || 0);
       if (remaining <= 0){ if (window.App && App.toast) App.toast(App._T('toast.alreadySettled', 'Already fully settled')); return; }
-      if (!confirm('Mark ' + fmtINR(remaining) + ' as fully paid? This logs a settlement audit entry.')) return;
+      if (!await App.confirm({title: 'Mark ' + fmtINR(remaining) + ' as fully paid?', message: 'This logs a settlement audit entry.', confirmText: 'Mark paid'})) return;
       try {
         Khata.settle(khataId, remaining, 'cash', 'Marked paid from desktop');
         if (window.App && App.toast) App.toast('✓ Marked paid · ' + fmtINR(remaining));
@@ -53696,8 +54047,8 @@ html[data-shell="mobile"] #pg-onboarding.onb-on-step3 #hnd-onb-mob-step-3 {
       skip.className = 'hnd-onb-mob-skip';
       skip.type = 'button';
       skip.textContent = "I'll set up later — take me in";
-      skip.addEventListener('click', function(){
-        if (!confirm('Skip setup? You can pick your business type later in Settings — but you\'ll see generic defaults until then.')) return;
+      skip.addEventListener('click', async function(){
+        if (!await App.confirm({title: 'Skip setup?', message: 'You can pick your business type later in Settings — but you\'ll see generic defaults until then.', confirmText: 'Skip'})) return;
         try {
           if (window.App && typeof App.vertSelect === 'function'){
             var other = step1.querySelector('[onclick*="\'other\'"]');
@@ -54380,7 +54731,7 @@ html[data-shell="desktop"] #pg-home {
   }
   function fireAcct(action){
     closeAcctMenu();
-    setTimeout(function(){
+    setTimeout(async function(){
       try {
         if (action === 'switch'){
           if (window.App && App.openShopPicker) App.openShopPicker();
@@ -54395,7 +54746,7 @@ html[data-shell="desktop"] #pg-home {
         } else if (action === 'help'){
           window.open('https://wa.me/917838361200?text=' + encodeURIComponent('Hi! I need help with HisaabNow.'), '_blank');
         } else if (action === 'logout'){
-          if (!confirm('Log out of HisaabNow? Your data syncs automatically — you can log back in anytime.')) return;
+          if (!await App.confirm({title: 'Log out of HisaabNow?', message: 'Your data syncs automatically — you can log back in anytime.', confirmText: 'Log out'})) return;
           if (window.App && typeof App.logout === 'function') App.logout();
           else if (window.firebase && firebase.auth) firebase.auth().signOut().then(function(){ location.reload(); });
           else { localStorage.clear(); location.reload(); }
@@ -54487,7 +54838,7 @@ html[data-shell="desktop"] #pg-home {
       if (window.App && App.toast) App.toast('✓ ' + prod.name + ' activated');
     } catch(e){ console.error('[M] activate failed', e); }
   }
-  function activateAllSeeded(){
+  async function activateAllSeeded(){
     var seeded = getAllProds().filter(function(p){ return p.seeded === true && p.active === false; });
     if (seeded.length === 0) return;
     var withPrices = seeded.filter(function(p){ return (+p.sp || +p.price || 0) > 0; });
@@ -54495,7 +54846,7 @@ html[data-shell="desktop"] #pg-home {
       if (window.App && App.toast) App.toast(App._T('toast.setPricesFirst', 'Set prices in Catalog first · tap each item'));
       return;
     }
-    if (!confirm('Activate all ' + withPrices.length + ' starter products with prices set? Items without prices need to be set up individually.')) return;
+    if (!await App.confirm({title: 'Activate all ' + withPrices.length + ' starter products?', message: 'Activates only items with prices set. Items without prices need to be set up individually.', confirmText: 'Activate all'})) return;
     withPrices.forEach(function(p){
       try { Store.update('prods', p.id, { active: true, status: 'active' }); } catch(e){}
     });
@@ -55694,11 +56045,11 @@ html[data-current-role="cashier"] .hnd-edit-bill-trigger { display: none !import
       $('hnd-eb-save').disabled = !canSave;
     },
 
-    adjustQty: function(i, delta){
+    adjustQty: async function(i, delta){
       if (!this.workItems[i]) return;
       var newQty = (+this.workItems[i].qty || 1) + delta;
       if (newQty < 1){
-        if (!confirm('Remove "' + (this.workItems[i].name || 'item') + '" from the bill?')) return;
+        if (!await App.confirm({title: 'Remove "' + (this.workItems[i].name || 'item') + '" from the bill?', confirmText: 'Remove', dangerous: true})) return;
         this.workItems.splice(i, 1);
       } else {
         this.workItems[i].qty = newQty;
@@ -55744,9 +56095,9 @@ html[data-current-role="cashier"] .hnd-edit-bill-trigger { display: none !import
       $('hnd-eb-save').disabled = !canSave;
     },
 
-    removeItem: function(i){
+    removeItem: async function(i){
       if (!this.workItems[i]) return;
-      if (!confirm('Remove "' + (this.workItems[i].name || 'item') + '" from the bill?')) return;
+      if (!await App.confirm({title: 'Remove "' + (this.workItems[i].name || 'item') + '" from the bill?', confirmText: 'Remove', dangerous: true})) return;
       this.workItems.splice(i, 1);
       this.render();
     },
@@ -57766,7 +58117,7 @@ html[data-shell="desktop"] .hnd-gst-settings-card {
   }
 
   /* Save settings to S + localStorage */
-  function saveSettings(){
+  async function saveSettings(){
     var gstin = ($('hnd-gst-input-gstin').value || '').trim().toUpperCase();
     var address = ($('hnd-gst-input-address').value || '').trim();
     var stateCode = ($('hnd-gst-input-state').value || '').trim();
@@ -57793,7 +58144,7 @@ html[data-shell="desktop"] .hnd-gst-settings-card {
     }
     /* Verify state code matches GSTIN */
     if (stateCode !== gstin.slice(0, 2)){
-      if (!confirm('Selected state code (' + stateCode + ') doesn\'t match GSTIN prefix (' + gstin.slice(0, 2) + '). Save anyway?')){
+      if (!await App.confirm({title: 'State code mismatch', message: 'Selected state code (' + stateCode + ') doesn\'t match GSTIN prefix (' + gstin.slice(0, 2) + '). Save anyway?', confirmText: 'Save anyway'})){
         return;
       }
     }
