@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_21_b1_salesLabel';
+    window.HISAABNOW_BUILD = 'v33_22_b1_fixDates';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -10325,7 +10325,105 @@ const App = {
             + '</div>';
     }
 
+    // (v33_22) Check for UTC-misdated bills in ACTIVE shop and surface a fix button.
+    // Uses window.tdAt to compare each sale's t timestamp against its stored date.
+    try {
+      if (window.tdAt && window.Store && Store.list) {
+        const activeSales = Store.list('sales') || [];
+        let misdatedCount = 0;
+        for (const s of activeSales) {
+          if (!s.t || !s.date) continue;
+          if (window.tdAt(s.t) !== s.date) misdatedCount++;
+        }
+        if (misdatedCount > 0) {
+          html += '<div class="menu-item" onclick="App.fixOldBillDates()" style="cursor:pointer;background:#FEF3C7;border-top:1px solid #F59E0B">'
+                + '  <div class="menu-text">'
+                + '    <div class="menu-label" style="color:#92400E">⚠ ' + misdatedCount + ' bills have wrong dates</div>'
+                + '    <div class="menu-sub" style="color:#92400E">Tap to fix (one-time cleanup of old timezone bug)</div>'
+                + '  </div>'
+                + '  <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+                + '</div>';
+        }
+      }
+    } catch(e){ console.warn('[dataHealth] misdated check failed:', e); }
+
     list.innerHTML = html;
+  },
+
+  /* ─── Fix old bill dates (v33_22) ──────────────────────────────────────
+     One-tap migration of UTC-misdated bills. Iterates the ACTIVE shop's
+     sales, compares each bill's stored `date` to its `t` timestamp's
+     local date, updates any mismatches.
+
+     Requirements: window.tdAt() must exist (v33_20+).
+     Only updates the `date` string field — preserves t, total, items, etc.
+     ──────────────────────────────────────────────────────────────────── */
+  async fixOldBillDates(){
+    if (!window.tdAt) {
+      this.toast('App is loading — try again in a moment');
+      return;
+    }
+    if (!window.Store || !Store.list || !Store.update) {
+      this.toast('Storage not ready');
+      return;
+    }
+
+    // Find misdated bills
+    const sales = Store.list('sales') || [];
+    const fixes = [];
+    sales.forEach(s => {
+      if (!s.t || !s.date || !s.id) return;
+      const correctDate = window.tdAt(s.t);
+      if (s.date !== correctDate) {
+        fixes.push({ id: s.id, from: s.date, to: correctDate, amt: s.total });
+      }
+    });
+
+    if (fixes.length === 0) {
+      this.toast('✓ No bills need fixing in this shop');
+      return;
+    }
+
+    // Confirm with user
+    const activeShop = (window.MShop && MShop.getActive) ? MShop.getActive() : null;
+    const shopName = (activeShop && activeShop.name) || 'this shop';
+    const ok = await this.confirm({
+      title: 'Fix ' + fixes.length + ' bill dates?',
+      message: 'Found ' + fixes.length + ' bills in ' + shopName + ' that were stored with the wrong date due to the old timezone bug. They\'ll be corrected based on the actual time each bill was made.\n\nIf you have multiple shops, switch to each one and repeat this fix.',
+      confirmText: 'Fix ' + fixes.length + ' bills',
+      cancelText: 'Cancel'
+    });
+    if (!ok) return;
+
+    // Apply fixes
+    let done = 0;
+    let failed = 0;
+    for (const f of fixes) {
+      try {
+        Store.update('sales', f.id, { date: f.to });
+        done++;
+      } catch(e) {
+        console.warn('[fixOldBillDates] failed for', f.id, e);
+        failed++;
+      }
+    }
+
+    // Toast result
+    if (failed === 0) {
+      this.toast('✓ Fixed ' + done + ' bills in ' + shopName);
+    } else {
+      this.toast('Fixed ' + done + ', failed ' + failed);
+    }
+
+    // Re-render data health panel so the banner disappears
+    try { this.renderDataHealth(); } catch(e){}
+    // Re-render sales screen if visible
+    if (this.current === 'sales') {
+      try { this.renderSalesScreen(); this.renderSales(); } catch(e){}
+    }
+    if (this.current === 'home') {
+      try { this.renderHome(); } catch(e){}
+    }
   },
 
   /* ─── Export data (May 2026) ───────────────────────────────────────────
