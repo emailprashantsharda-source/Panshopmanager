@@ -31049,7 +31049,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 (function (window) {
   'use strict';
 
-  const VERSION = '2.3.0';
+  const VERSION = '2.4.0';
 
   // B2.b cleanup (May 2026): removed `purchases: 'purch'` and
   // `khataSettle: 'khataSettle'` from this map. Both were never populated
@@ -31693,6 +31693,27 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     const _sessionRecentFailMs = (CFG.MAX_BACKOFF_MS || 60_000);
 
     try {
+      /* (v32.4) App Check preflight — wait once for the first AC token to
+         arrive before any Firestore write. Without this, the very first
+         drain after sign-in (onboarding burst) races against the AC token
+         resolution and the first batch fails with 'unavailable' or
+         'failed-precondition' — forcing per-item fallback and slowing down
+         what should be a 5s onboarding to 30s+. Subsequent drains reuse
+         the cached token so this only blocks once per page load.
+
+         5s timeout: AC token resolution is normally <1s; if it hangs longer
+         we proceed anyway and let Firestore's own error path handle it. */
+      if (!_appCheckChecked && window.kfAppCheckReady) {
+        try {
+          await _withTimeout(
+            Promise.resolve(window.kfAppCheckReady),
+            5000,
+            'AppCheck preflight'
+          );
+        } catch(e) { warn('AppCheck preflight failed or timed out:', e && e.code); }
+        _appCheckChecked = true;
+      }
+
       let sessionFailures = 0;
       while (true) {
         if (sessionFailures >= SESSION_FAIL_BUDGET) {
@@ -32060,7 +32081,17 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       }
       try {
         document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') reconcileOnlineState();
+          if (document.visibilityState === 'visible') {
+            reconcileOnlineState();
+            /* (v32.4) After Android backgrounding, kick drain immediately
+               so users don't wait up to 2 min for the auto-timer to fire.
+               This matters because Android aggressively suspends background
+               JS — when the user returns to the app, the auto-timer could
+               be most of its 2-min interval away from firing. */
+            if (status.online && Outbox.size() > 0 && !_lock && now() >= _backoffUntil) {
+              drainOutbox().catch(e => err('visibility drain', e));
+            }
+          }
         });
       } catch(e){}
 
