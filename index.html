@@ -31049,7 +31049,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 (function (window) {
   'use strict';
 
-  const VERSION = '2.4.0';
+  const VERSION = '2.5.0';
 
   // B2.b cleanup (May 2026): removed `purchases: 'purch'` and
   // `khataSettle: 'khataSettle'` from this map. Both were never populated
@@ -31117,6 +31117,41 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   const log  = (...a) => { if (CFG.debug) console.log('[HisaabSync]', ...a); };
   const warn = (...a) => console.warn('[HisaabSync]', ...a);
   const err  = (...a) => console.error('[HisaabSync]', ...a);
+
+  /* (v32.5) Critical event telemetry — fires Sentry events (if loaded) and
+     keeps an in-memory ring buffer for DevTools debugging. Use this for
+     "something is genuinely wrong" events the user should know about in
+     aggregate. Use sparingly: these are signals you want to investigate,
+     not per-write noise. Fire-and-forget — never blocks sync. */
+  const CRITICAL_BUFFER_MAX = 50;
+  const _criticalBuffer = [];
+
+  function _critical(event, details) {
+    const entry = {
+      event: event,
+      details: details || {},
+      ts: now(),
+      shopId: CFG.shopId,
+      version: VERSION
+    };
+    _criticalBuffer.push(entry);
+    if (_criticalBuffer.length > CRITICAL_BUFFER_MAX) _criticalBuffer.shift();
+
+    /* Always log to console with a parseable prefix so any future log
+       aggregator (LogRocket, DataDog, etc.) can pick it up. */
+    console.error('[HisaabSync][critical]', event, entry);
+
+    /* Sentry — only fires if loaded. Safe to add later without code change. */
+    try {
+      if (window.Sentry && typeof Sentry.captureMessage === 'function') {
+        Sentry.captureMessage('[sync] ' + event, {
+          level: 'warning',
+          tags: { event_type: event, sync_version: VERSION },
+          extra: Object.assign({ shopId: CFG.shopId }, details || {})
+        });
+      }
+    } catch(e) { /* never let telemetry break sync */ }
+  }
 
   const now = () => Date.now();
 
@@ -31833,6 +31868,15 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
               if (reason) {
                 if (Quarantine.add(fresh, reason)) {
                   quarantineKeys.push(badKey);
+                  /* (v32.5) Telemetry — any quarantine is worth investigating.
+                     A spike means rules are rejecting, schema mismatch, or
+                     genuinely bad data. The errorCode tells you which. */
+                  _critical('record_quarantined', {
+                    reason: reason,
+                    collection: fresh.collection,
+                    errorCode: (fresh.lastError && fresh.lastError.code) || 'unknown',
+                    attempts: fresh.attempts || 0
+                  });
                 }
               }
             }
@@ -31843,12 +31887,21 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           } catch(qErr) {
             err('quarantine check failed', qErr);
           }
-          if (status.consecutiveFailures >= 3) {
+          if (status.consecutiveFailures >= 3 && !status.networkBlocked) {
             /* navigator.onLine claims online but Firestore keeps rejecting — most
                likely captive portal, App Check token issue, or dead cellular IP.
                Soft-flip the UI to a network-blocked state without changing the
                offline event flow (online events will still come). */
             status.networkBlocked = true;
+            /* (v32.5) Telemetry — expected at low rate from genuinely bad
+               connections. Sustained high rate (>5% of sessions) means an
+               AppCheck or Firestore rules issue worth investigating. The
+               !networkBlocked guard ensures we fire once per trip, not on
+               every subsequent failed drain attempt. */
+            _critical('network_blocked', {
+              consecutiveFailures: status.consecutiveFailures,
+              lastErrorCode: status.lastError || 'unknown'
+            });
           }
           /* (Phase 1.1) Schedule backoff ONLY if EVERY batched record failed
               (true network/auth problem). If some succeeded alongside the
@@ -32027,6 +32080,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           status.syncing = false;
           status.lastError = 'watchdog_forced_unlock';
           emit();
+          _critical('watchdog_forced_unlock', { pending: pending, syncAge: syncAge });
           drainOutbox().catch(function(e){ err('watchdog forced drain', e); });
           return;
         }
@@ -32179,6 +32233,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       return () => observers.delete(cb);
     },
     getStatus() { return Object.assign({}, status); },
+
+    /* (v32.5) Returns the most recent critical events for DevTools
+       debugging. Useful for diagnosing user-reported sync issues — ask
+       the user to run HisaabSync.getRecentCriticalEvents() and share
+       the output. Buffer is in-memory only (lost on reload). */
+    getRecentCriticalEvents() { return _criticalBuffer.slice(); },
 
     diagnostics() {
       const out = {
