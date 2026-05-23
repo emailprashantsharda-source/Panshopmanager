@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_18_b1_backPolicy';
+    window.HISAABNOW_BUILD = 'v33_19_b1_navTransition';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -485,9 +485,9 @@ body{min-height:100vh;display:flex;justify-content:center}
   overflow-x:hidden;
 }
 
-.page{display:none;animation:fadeIn .25s ease}
+.page{display:none;animation:hn-page-in .18s ease-out}
 .page.active{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes hn-page-in{from{opacity:0}to{opacity:1}}
 @keyframes hn-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
 .hdr{
@@ -894,7 +894,15 @@ select.ps-input{appearance:none;-webkit-appearance:none;background-image:url("da
   backdrop-filter:blur(14px);border-top:1px solid var(--border);
   display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr 1fr;
   padding:9px 6px calc(9px + env(safe-area-inset-bottom));z-index:100;
+  transition:opacity .15s ease;
 }
+/* (v33_19 fix) Use opacity+pointer-events instead of display:none to
+   hide nav on checkout/onboarding. display:none causes a reflow when
+   nav re-appears (especially noticeable after completeSale → nav('home')),
+   producing a visible "squeeze and bounce" of the new page. opacity+
+   pointer-events keeps the nav in layout flow but invisible+unclickable,
+   so there's no reflow on transition. */
+.nav.hidden{ opacity:0; pointer-events:none; }
 .nav-tab{background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;color:var(--t2);font-family:inherit;position:relative}
 .nav-tab.active{color:var(--p)}
 .nav-tab span{font-size:10.5px;font-weight:600}
@@ -9663,7 +9671,13 @@ const App = {
       if (navBtn) navBtn.classList.add('active');
     }
 
-    document.querySelector('.nav').style.display = (page === 'onboarding' || page === 'checkout') ? 'none' : 'grid';
+    /* (v33_19) Toggle nav visibility via class — no display:none reflow */
+    try {
+      const navEl = document.querySelector('.nav');
+      if (navEl) {
+        navEl.classList.toggle('hidden', page === 'onboarding' || page === 'checkout');
+      }
+    } catch(e){}
     /* (May 2026) Toggle body class for checkout — used by speed-checkout CSS */
     try { document.body.classList.toggle('on-checkout', page === 'checkout'); } catch(e){}
 
