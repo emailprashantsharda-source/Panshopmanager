@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29_cashDrawerDiscovery';
+    window.HISAABNOW_BUILD = 'v33_29b_phantomStuckFix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26048,16 +26048,29 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
   /* Retry — moves record from quarantine back to outbox, then triggers a
      drain. The drain may immediately re-quarantine if the failure repeats.
-     User will see the result on next render (we re-render after 1.5s). */
-  _syncHealthRetry(key){
+     User will see the result on next render (we re-render after 1.5s).
+
+     (v33_29 Phase 1.6 — May 2026) Now async + handles the 'already-synced'
+     case where the cloud check finds the record was already pushed via a
+     different path. In that case we skip the retry entirely and show a
+     friendly toast indicating the warning was a false positive. */
+  async _syncHealthRetry(key){
     if (!window.HisaabSync || !HisaabSync.quarantine) return;
-    var ok = HisaabSync.quarantine.retry(key);
-    if (ok) {
-      if (this.toast) this.toast('🔄 Retrying — checking with server…');
-      var self = this;
-      setTimeout(function(){ self._renderSyncHealth(); }, 1500);
-    } else {
-      if (this.toast) this.toast('Could not find record to retry');
+    var self = this;
+    try {
+      var result = await HisaabSync.quarantine.retry(key);
+      if (result === 'already-synced') {
+        if (this.toast) this.toast('✓ Already saved to cloud — cleared');
+        setTimeout(function(){ self._renderSyncHealth(); }, 300);
+      } else if (result === true) {
+        if (this.toast) this.toast('🔄 Retrying — checking with server…');
+        setTimeout(function(){ self._renderSyncHealth(); }, 1500);
+      } else {
+        if (this.toast) this.toast('Could not find record to retry');
+      }
+    } catch(e) {
+      if (this.toast) this.toast('Retry error — please try again');
+      console.error('[syncHealth] retry threw:', e);
     }
   },
 
@@ -34095,13 +34108,62 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     },
 
     /* Move a quarantined record back to the active outbox. Resets attempts
-       so it gets fresh retry budget. Used by Phase 1.4 manual retry. */
-    retry(key) {
+       so it gets fresh retry budget. Used by Phase 1.4 manual retry.
+
+       (v33_29 Phase 1.6 — May 2026) Before re-enqueueing, check whether
+       the record already exists in Firestore with a matching _clientHash.
+       This catches "phantom stuck" records — entries that synced via a
+       different path (watchdog, alternate flow) but whose quarantine
+       entry never got cleaned up. Without this check, the user would
+       see the same permission-denied error on retry even though the
+       data is safely in cloud.
+
+       Returns:
+         true            → moved to outbox, drain will retry it
+         'already-synced'→ record exists in cloud with matching hash, removed without retry
+         false           → key not found, or error
+    */
+    async retry(key) {
       try {
         const q = this._load();
         const idx = q.findIndex(e => (e.collection + ':' + e.record.id) === key);
         if (idx < 0) return false;
         const entry = q[idx];
+
+        /* (v33_29 Phase 1.6) Cloud existence check.
+           If we can reach Firestore and the record is already there with
+           matching client hash, treat as already-synced and clean up.
+           If the check fails (network/auth), fall through to normal retry
+           — we don't want a flaky network to block manual retries. */
+        try {
+          if (status.online && CFG.shopId) {
+            const expected = entry.record && entry.record._clientHash;
+            const check = await FS.existsInCloud(
+              entry.collection,
+              entry.record.id,
+              expected
+            );
+            if (check.exists && check.hashMatches) {
+              /* Phantom stuck record — data is safe in cloud. Just clean up. */
+              q.splice(idx, 1);
+              this._save(q);
+              log('quarantine.retry: already synced', key, 'cloudHash=', check.cloudHash);
+              return 'already-synced';
+            }
+            if (check.exists && !check.hashMatches) {
+              /* Cloud has a DIFFERENT version. Local is newer/modified.
+                 Proceed with retry — the update path will handle it. */
+              log('quarantine.retry: cloud has different version', key, 'expected=', expected, 'cloud=', check.cloudHash);
+            }
+            /* check.exists === false → genuine retry needed, fall through */
+          }
+        } catch (checkErr) {
+          /* Cloud check failed (offline / permission / etc.) — fall through
+             to regular retry. We do not block the user's retry on a check
+             failure because they may legitimately need a fresh write attempt. */
+          log('quarantine.retry: cloud check failed, proceeding with retry', key, checkErr && checkErr.code);
+        }
+
         /* Re-enqueue with reset attempts so head-of-line skip doesn't
            immediately re-skip the record */
         Outbox.enqueue({
@@ -34293,6 +34355,52 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         if (pageCount < CFG.PULL_PAGE_LIMIT) break;
       }
       return { docs, newCursor: cursor };
+    },
+
+    /* ────────────────────────────────────────────────────────────────
+       (v33_29 Phase 1.6 — May 2026) False-positive quarantine detection.
+
+       Problem: A record can sync successfully via one code path (e.g.
+       manual retry, watchdog re-attempt, or alternate flow) but the
+       local outbox/quarantine entry isn't always cleared. Result: user
+       sees a permanent "X records can not sync" warning even though
+       the data is safely in Firestore. Erodes trust in sync indicator.
+
+       Solution: existsInCloud() does a lightweight getDoc() check.
+       If the cloud copy exists with a matching _clientHash, the record
+       has already synced (possibly via a different path) and the local
+       outbox/quarantine entry should be cleared without re-attempting
+       the write.
+
+       Cost: 1 Firestore read per check. Only invoked on manual retry
+       or right before quarantining, NOT on every upload. Read cost
+       is negligible compared to the trust damage of phantom stuck
+       records.
+
+       Returns: { exists: bool, hashMatches: bool, cloudHash: string|null }
+       Throws on network/auth errors (caller decides how to handle).
+    ──────────────────────────────────────────────────────────────── */
+    async existsInCloud(collectionName, recordId, expectedClientHash) {
+      const { sdk } = deps();
+      const ref = this._docRef(collectionName, recordId);
+      try {
+        const snap = await _withTimeout(
+          sdk.getDoc(ref),
+          UPLOAD_TIMEOUT_MS,
+          'existsInCloud ' + collectionName + ':' + recordId
+        );
+        if (!snap || !snap.exists()) {
+          return { exists: false, hashMatches: false, cloudHash: null };
+        }
+        const data = snap.data() || {};
+        const cloudHash = data._clientHash || null;
+        const hashMatches = !!(expectedClientHash && cloudHash && cloudHash === expectedClientHash);
+        return { exists: true, hashMatches: hashMatches, cloudHash: cloudHash };
+      } catch (e) {
+        /* Network errors should propagate so caller can distinguish
+           "doc doesn't exist" from "we couldn't even check". */
+        throw e;
+      }
     },
   };
 
@@ -34588,34 +34696,77 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           }
           /* (Phase 1.3) Check each bad record after bumpAttempts ran (so the
              attempts count is fresh). Quarantine ones that hit a permanent
-             failure condition based on error code + attempt count. */
+             failure condition based on error code + attempt count.
+
+             (v33_29 Phase 1.6 — May 2026) Before quarantining a record with
+             permission-denied, do a final cloud existence check. The record
+             may have synced via a different path (watchdog, alternate flow)
+             and the local outbox is just out-of-date. If the cloud copy
+             exists with matching _clientHash, silently remove from outbox
+             without quarantining — no user-visible warning for false
+             positives.
+
+             Only checks permission-denied (the most common false-positive
+             case). Other error codes still quarantine as before. Network
+             check failures fall through to normal quarantine — we never
+             skip a legit quarantine because of a flaky cloud check. */
           try {
             const allOutbox = Outbox.all();
             const outboxByKey = {};
             allOutbox.forEach(e => { outboxByKey[e.collection + ':' + e.record.id] = e; });
             const quarantineKeys = [];
+            const silentlyRemovedKeys = [];
+
             for (const badKey of bad) {
               const fresh = outboxByKey[badKey];
               if (!fresh) continue;
               const reason = _shouldQuarantine(fresh);
-              if (reason) {
-                if (Quarantine.add(fresh, reason)) {
-                  quarantineKeys.push(badKey);
-                  /* (v32.5) Telemetry — any quarantine is worth investigating.
-                     A spike means rules are rejecting, schema mismatch, or
-                     genuinely bad data. The errorCode tells you which. */
-                  _critical('record_quarantined', {
-                    reason: reason,
-                    collection: fresh.collection,
-                    errorCode: (fresh.lastError && fresh.lastError.code) || 'unknown',
-                    attempts: fresh.attempts || 0
-                  });
+              if (!reason) continue;
+
+              /* (v33_29 Phase 1.6) Cloud existence check for permission-denied.
+                 If already synced with matching hash, silently remove. */
+              let alreadyInCloud = false;
+              if (reason === 'permission-denied' && status.online && CFG.shopId) {
+                try {
+                  const expected = fresh.record && fresh.record._clientHash;
+                  const check = await FS.existsInCloud(
+                    fresh.collection,
+                    fresh.record.id,
+                    expected
+                  );
+                  if (check.exists && check.hashMatches) {
+                    alreadyInCloud = true;
+                    silentlyRemovedKeys.push(badKey);
+                    log('drain: skip quarantine — already synced', badKey, 'cloudHash=', check.cloudHash);
+                  }
+                } catch (chkErr) {
+                  /* Cloud check failed — fall through to normal quarantine */
+                  log('drain: cloud check failed during quarantine, proceeding', badKey, chkErr && chkErr.code);
                 }
+              }
+
+              if (alreadyInCloud) continue;
+
+              if (Quarantine.add(fresh, reason)) {
+                quarantineKeys.push(badKey);
+                /* (v32.5) Telemetry — any quarantine is worth investigating.
+                   A spike means rules are rejecting, schema mismatch, or
+                   genuinely bad data. The errorCode tells you which. */
+                _critical('record_quarantined', {
+                  reason: reason,
+                  collection: fresh.collection,
+                  errorCode: (fresh.lastError && fresh.lastError.code) || 'unknown',
+                  attempts: fresh.attempts || 0
+                });
               }
             }
             if (quarantineKeys.length) {
               Outbox.removeMany(quarantineKeys);
               log('drain: moved', quarantineKeys.length, 'records to quarantine');
+            }
+            if (silentlyRemovedKeys.length) {
+              Outbox.removeMany(silentlyRemovedKeys);
+              log('drain: silently removed', silentlyRemovedKeys.length, 'already-synced records');
             }
           } catch(qErr) {
             err('quarantine check failed', qErr);
@@ -35003,18 +35154,25 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
        Methods:
          list()      → array of quarantined entries
          size()      → number
-         retry(key)  → move back to outbox (key = collection:id)
+         retry(key)  → async; returns true (re-enqueued), 'already-synced'
+                       (cloud check found it; cleared without re-write),
+                       or false (not found)
          remove(key) → permanently delete from quarantine
-         clear()     → delete all (use with confirmation!) */
+         clear()     → delete all (use with confirmation!)
+
+       (v33_29 Phase 1.6) retry is now async to support cloud existence
+       check. Callers must await it. If 'already-synced' is returned, no
+       drain is needed — the record was already in cloud. */
     quarantine: {
       list:   () => Quarantine.list(),
       size:   () => Quarantine.size(),
-      retry:  (key) => {
-        const r = Quarantine.retry(key);
-        if (r) {
+      retry:  async (key) => {
+        const r = await Quarantine.retry(key);
+        if (r === true) {
           /* After retry, force a drain so the user sees immediate result */
           drainOutbox().catch(e => err('quarantine retry drain', e));
         }
+        /* r === 'already-synced' or false: no drain needed */
         return r;
       },
       remove: (key) => Quarantine.remove(key),
