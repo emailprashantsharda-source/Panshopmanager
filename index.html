@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29c_tombstoneGate';
+    window.HISAABNOW_BUILD = 'v33_29f_cashflowScrollPills';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -1122,7 +1122,14 @@ body.on-checkout .nav{display:none !important}
 .mcf-chart-legend .dot{display:inline-block;width:14px;height:2.5px;border-radius:99px;margin-right:5px;vertical-align:middle}
 .mcf-chart-legend .dot.solid{background:#15803D}
 .mcf-chart-legend .dot.dashed{background:repeating-linear-gradient(to right,#C2410C 0,#C2410C 3px,transparent 3px,transparent 5px);height:2.5px}
-.mcf-chart-svg{width:100%;height:200px;display:block;touch-action:none}
+.mcf-chart-svg{width:100%;height:200px;display:block}
+/* (v33_29f) Removed touch-action:none from .mcf-chart-svg. That property
+   prevented vertical page scrolling when a user's finger landed on the
+   chart area (the chart fills 200px of vertical space — easy to hit).
+   The chart is purely visual on mobile (no tap-to-inspect interaction
+   wired up), so capturing touches is wrong. If chart interactions are
+   added later, use pointer events with passive:false in JS rather than
+   blocking scroll for all users via CSS. */
 
 .mcf-panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
 .mcf-panel-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--border-strong)}
@@ -26582,6 +26589,22 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
 
     this.toast(this._T('toast.signedOut', 'Signed out'));
+
+    /* (v33_29e) Reload to fresh login screen.
+       Without this, the user remains on whatever screen they were on
+       (often the previous OTP page with the code still visible in the
+       input). Reloading guarantees:
+         - Login screen renders in clean state (no stale phone/OTP)
+         - All in-memory caches are cleared
+         - HisaabSync re-inits cleanly on next sign-in
+         - Service worker re-checks for any pending updates
+       Small 600ms delay so the "Signed out" toast is briefly visible
+       before the reload. Other sign-out paths (account dropdown) already
+       use this same reload pattern — this aligns the More-menu path. */
+    setTimeout(function(){
+      try { location.reload(); }
+      catch(e) { console.error('[App.signOut] reload failed', e); }
+    }, 600);
   },
 
   async deleteAccount(){
@@ -30507,11 +30530,36 @@ window.App = App;
   }
 
   /* ─── Period chip clicks ─── */
+  /* Original document-level delegation (kept as backup): */
   document.addEventListener('click', function(e){
     if (!shouldRender()) return;
     var btn = e.target.closest('[data-mcf-period]');
     if (btn) MCF.setPeriod(btn.getAttribute('data-mcf-period'));
   });
+
+  /* (v33_29f) Direct listener on #mcf-periods as safety net.
+     The document-level delegation above checks shouldRender() which
+     depends on App.current === 'cashflow'. If App.current gets out of
+     sync (timing race, late nav binding, etc.), pills break silently.
+     A direct listener on the container is bulletproof: if the user
+     can tap the pill, this handler runs. No state checks required. */
+  function _wirePillsDirect(retry){
+    var container = document.getElementById('mcf-periods');
+    if (!container) {
+      if (retry > 0) setTimeout(function(){ _wirePillsDirect(retry - 1); }, 200);
+      return;
+    }
+    if (container.__pillsBound) return;
+    container.__pillsBound = true;
+    container.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-mcf-period]');
+      if (!btn) return;
+      var period = btn.getAttribute('data-mcf-period');
+      if (period && MCF && typeof MCF.setPeriod === 'function') {
+        MCF.setPeriod(period);
+      }
+    });
+  }
 
   /* ─── Subscribe to Store changes ─── */
   function subscribe(retry){
@@ -30526,7 +30574,7 @@ window.App = App;
     });
   }
 
-  function boot(){ subscribe(10); hookNav(10); }
+  function boot(){ subscribe(10); hookNav(10); _wirePillsDirect(10); }
   if (document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', boot);
   } else { boot(); }
@@ -31207,6 +31255,18 @@ window.addEventListener('DOMContentLoaded', () => {
   let _lastPending = 0;
   let _stuckSince = 0;
   let _isStuck = false;
+
+  /* (v33_29c) Expose reset function so HisaabSync can call it on init
+     (sign-in) and online transitions. Without this, pre-existing outbox
+     records from before sign-in immediately count as "stuck" because
+     they've been pending for hours/days. Reset gives sync engine a
+     fresh 10-second window to push them before showing scary warnings. */
+  window._resetStuckTimer = function() {
+    _stuckSince = 0;
+    _isStuck = false;
+    _lastPending = 0;
+  };
+
   /* (v32) Countdown ticker for backoff state — re-renders pill every 500ms
      while backoff is active so user sees "Retrying in 8s… 7s… 6s…" */
   let _countdownTimer = null;
@@ -35111,6 +35171,16 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
          catastrophic false deletes during the load window. */
       _resetCheckpointGate();
 
+      /* (v33_29c) Reset the stuck-banner timer too. Without this,
+         pre-existing outbox records from before sign-in immediately
+         count as "stuck" because they've been pending for hours/days.
+         Reset gives sync engine a fresh 10-second window. */
+      try {
+        if (typeof window._resetStuckTimer === 'function') {
+          window._resetStuckTimer();
+        }
+      } catch(e){}
+
       try { _wipeLegacyKeys(); } catch(e){}
 
       try { deps(); } catch (e) { err(e.message); throw e; }
@@ -35120,6 +35190,13 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
       window.addEventListener('online', () => {
         status.online = true; _backoffUntil = 0; emit();
+        /* (v33_29c) Reset stuck timer when network comes back —
+           pre-existing outbox records get a fresh 10-second window. */
+        try {
+          if (typeof window._resetStuckTimer === 'function') {
+            window._resetStuckTimer();
+          }
+        } catch(e){}
         fullSync().catch(e => err('reconnect sync', e));
       });
       window.addEventListener('offline', () => {
