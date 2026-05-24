@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_28_b1_cashDrawerP3';
+    window.HISAABNOW_BUILD = 'v33_29_cashDrawerDiscovery';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3513,6 +3513,11 @@ html[data-current-role="manager"] body{
       <button class="menu-item" id="more-expenses-entry" onclick="App.nav('expenses')" data-role-min="manager">
         <div class="menu-icon yellow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
         <div class="menu-text"><div class="menu-label" data-i18n="nav.expenses">Expenses</div><div class="menu-sub" id="more-expenses-sub" data-i18n="more.trackShopCosts">Track shop costs</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" id="more-cashflow-entry" onclick="App.nav('cashflow')" data-role-min="manager">
+        <div class="menu-icon" style="background:#DCFCE7;color:#166534"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Cashflow</div><div class="menu-sub">Cash in hand · withdraw · deposit</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <button class="menu-item" id="more-inventory-entry" onclick="App.nav('inventory')">
@@ -13820,7 +13825,13 @@ const App = {
           ((window.Store && Store.list && (Store.list('cashOpening') || []).length > 0))
        || ((window.Store && Store.list && (Store.list('cashAdjust')  || []).length > 0));
         const noCostData = (!profitIsAccurate && todaySales.length > 0) || todayRev === 0;
-        if (hasUsedCashDrawer && noCostData) {
+        /* (v33_29) Show cash tile for first-time enabled users too. Previously
+           required hasUsedCashDrawer which created chicken-and-egg: new users
+           enabled the toggle but saw no entry point. Now: if enabled AND
+           cost data missing, show the tile (with "Set opening" CTA if not yet
+           used). hasUsedCashDrawer is still respected for non-cost-related
+           UX decisions but doesn't gate the tile itself. */
+        if (noCostData) {
           _useCashTile = true;
           _cashBalance = CashDrawer.currentBalance();
           _cashSetToday = CashDrawer.hasOpeningToday();
@@ -26288,7 +26299,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     /* ── Morning banner logic ── */
     if (morningEl) {
       var hasOpeningToday = CashDrawer.hasOpeningToday();
-      var showMorning = hasEverUsed && !hasOpeningToday && !morningDismissed;
+      /* (v33_29) Show morning banner for FIRST-TIME enabled users too, not
+         just those who've used cash drawer before. Previously the banner
+         only appeared if hasEverUsed was true, creating a chicken-and-egg
+         where new users had no entry point. Now: if cash drawer is enabled
+         and no opening today, show banner to onboard the user. */
+      var showMorning = !hasOpeningToday && !morningDismissed;
       morningEl.style.display = showMorning ? '' : 'none';
     }
 
