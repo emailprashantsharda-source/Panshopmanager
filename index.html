@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29f_cashflowScrollPills';
+    window.HISAABNOW_BUILD = 'v33_29g_cashPersistAndBannerMove';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2628,37 +2628,10 @@ html[data-current-role="manager"] body{
     </div>
   </div>
 
-  <!-- (v33_28) Cash drawer morning prompt — shown when user has used CashDrawer
-       before but hasn't set today's opening cash yet. Gentle nudge, dismissible. -->
-  <div id="cash-morning-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border:1.5px solid #FCD34D;border-radius:14px;font-size:13.5px;line-height:1.5">
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
-      <div style="font-size:22px;line-height:1;flex-shrink:0;margin-top:1px">🌅</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:800;font-size:14.5px;color:#1E293B;margin-bottom:3px;letter-spacing:-.01em">Good morning! Set today's opening cash</div>
-        <div style="font-size:13px;color:#78350F;font-weight:500">Count the drawer first thing — keeps your numbers accurate all day.</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button type="button" onclick="window.CashDrawer && CashDrawer.setOpeningSheet()" style="flex:1;background:#15803D;color:#fff;border:none;padding:10px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Set opening cash</button>
-      <button type="button" onclick="App._dismissCashMorningBanner()" style="flex:0 0 auto;background:transparent;color:#78350F;border:1.5px solid #FCD34D;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Later</button>
-    </div>
-  </div>
-
-  <!-- (v33_28) Cash drawer evening reminder — shown after 7 PM if today's drawer
-       has not been reconciled yet and there is cash activity to count. -->
-  <div id="cash-evening-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%);border:1.5px solid #93C5FD;border-radius:14px;font-size:13.5px;line-height:1.5">
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
-      <div style="font-size:22px;line-height:1;flex-shrink:0;margin-top:1px">⚖</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:800;font-size:14.5px;color:#1E293B;margin-bottom:3px;letter-spacing:-.01em">Closing soon? Count your drawer</div>
-        <div id="ceb-detail" style="font-size:13px;color:#1E3A8A;font-weight:500">Expected ₹0 in drawer. Verify before you close.</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button type="button" onclick="window.CashDrawer && CashDrawer.reconcileSheet()" style="flex:1;background:#1D4ED8;color:#fff;border:none;padding:10px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Count drawer now</button>
-      <button type="button" onclick="App._dismissCashEveningBanner()" style="flex:0 0 auto;background:transparent;color:#1E3A8A;border:1.5px solid #93C5FD;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Later</button>
-    </div>
-  </div>
+  <!-- (v33_29g) Cash drawer banners moved BELOW the udhaar widget so they
+       no longer dominate the top of the dashboard. The morning prompt sits
+       quietly as one of several "things to do" cards in the secondary feed
+       rather than as a top-of-page alert above the revenue card. -->
 
   <section class="greet">
     <div class="greet-text">
@@ -2726,6 +2699,47 @@ html[data-current-role="manager"] body{
       </div>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
+  </section>
+
+  <!-- (v33_29g) Cash drawer banners — moved here from page top.
+       Now appears as a quiet, dismissible task card after the udhaar
+       widget rather than as a top-of-page alert above the revenue card.
+       Same logic gates show/hide; just visually less screamy. -->
+  <section id="home-cash-banners" data-role-min="manager" style="padding:0 18px 14px">
+
+    <!-- Morning prompt — calmer styling: smaller padding, single-line
+         layout, matches the udhaar widget visual rhythm.
+         display:none until JS sets it to flex (via setting style.display='').
+         The flex layout is in the CSS-less inline style applied here. -->
+    <div id="cash-morning-banner" style="display:none;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:13px 16px;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="width:38px;height:38px;border-radius:10px;background:#FEF3C7;color:#92400E;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px">🌅</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13.5px;color:#1E293B;letter-spacing:-.005em;line-height:1.3">Set today's opening cash</div>
+        <div style="font-size:11.5px;color:#78350F;font-weight:500;margin-top:1px;line-height:1.4">Count once · accurate numbers all day</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+        <button type="button" onclick="window.CashDrawer && CashDrawer.setOpeningSheet()" style="background:#15803D;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:-.005em;white-space:nowrap">Set</button>
+        <button type="button" onclick="App._dismissCashMorningBanner()" aria-label="Dismiss" style="background:transparent;color:#92400E;border:none;padding:6px;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Evening reminder — same compact treatment. -->
+    <div id="cash-evening-banner" style="display:none;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:13px 16px;align-items:center;gap:12px">
+      <div style="width:38px;height:38px;border-radius:10px;background:#DBEAFE;color:#1E40AF;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px">⚖</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13.5px;color:#1E293B;letter-spacing:-.005em;line-height:1.3">Closing soon? Count drawer</div>
+        <div id="ceb-detail" style="font-size:11.5px;color:#1E3A8A;font-weight:500;margin-top:1px;line-height:1.4">Expected ₹0 in drawer</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+        <button type="button" onclick="window.CashDrawer && CashDrawer.reconcileSheet()" style="background:#1D4ED8;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:-.005em;white-space:nowrap">Count</button>
+        <button type="button" onclick="App._dismissCashEveningBanner()" aria-label="Dismiss" style="background:transparent;color:#1E40AF;border:none;padding:6px;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
   </section>
 
   <section class="ai-card" onclick="Munim.openDrawer()" data-role-min="manager">
@@ -26350,7 +26364,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         }
       } catch(e){}
       var showMorning = initialPullDone && !hasOpeningToday && !morningDismissed;
-      morningEl.style.display = showMorning ? '' : 'none';
+      /* (v33_29g) Use 'flex' explicitly since the new compact banner design
+         relies on flex layout (icon + text + buttons in one row). Setting
+         display to '' would default to block and break the layout. */
+      morningEl.style.display = showMorning ? 'flex' : 'none';
     }
 
     /* ── Evening banner logic ── */
@@ -26375,7 +26392,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         return anyCashSale || anyAdjustToday || hasOpeningToday2;
       })();
       var showEvening = hasOpeningToday2 && hour >= 19 && !reconciledToday && hasCashActivityToday && !eveningDismissed;
-      eveningEl.style.display = showEvening ? '' : 'none';
+      /* (v33_29g) Use 'flex' explicitly — see morning banner comment. */
+      eveningEl.style.display = showEvening ? 'flex' : 'none';
       if (showEvening) {
         /* Update expected balance in the banner */
         var det = document.getElementById('ceb-detail');
@@ -31557,6 +31575,14 @@ window.addEventListener('DOMContentLoaded', () => {
     khata:       loadColl('kkhata',     'kkhata'),
     khataSettle: loadColl('kkhataSet',  'kkhataSet'),
 
+    /* (v33_29g) Cash drawer collections — persist to/from localStorage
+       so they survive page reloads (sign-out → reload → sign-in cycle).
+       Without these load entries, S.cashOpening starts empty after every
+       reload until pull completes, causing the morning banner to show
+       even when an opening was set today. */
+    cashOpening: loadColl('kcashopen', 'kcashopen'),
+    cashAdjust:  loadColl('kcashadj',  'kcashadj'),
+
     starred:     lg('kstar', []),
     catMargins:  lg('kcm', {}),
     monthTarget: Number(lg('kmtg', 0)) || 0,
@@ -35708,11 +35734,15 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 if (window.MShop) return;
 
 var MAX_NAME_LEN = 30;
-var COLLS = ['sales','prods','custs','udh','exps','staff','sups','appts','coupons','ingredients','recurring','khata','khataSettle'];
+var COLLS = ['sales','prods','custs','udh','exps','staff','sups','appts','coupons','ingredients','recurring','khata','khataSettle','cashOpening','cashAdjust'];
 var LS_KEYS = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke',
                staff:'kstaff', sups:'ksu', appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec',
 
-               khata:'kkhata', khataSettle:'kkhataSet'};
+               khata:'kkhata', khataSettle:'kkhataSet',
+               /* (v33_29g) cash drawer module — needs to be in this map so
+                  shop-scoped localStorage keys are created/restored correctly
+                  during multi-shop switching. */
+               cashOpening:'kcashopen', cashAdjust:'kcashadj'};
 
 var state = {
   uid: null,
@@ -37054,7 +37084,7 @@ function _emit(coll){
   try {
     if (typeof window.ls === 'function') {
 
-      var lsKeys = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke', staff:'kstaff', sups:'ksu', appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec'};
+      var lsKeys = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke', staff:'kstaff', sups:'ksu', appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec', cashOpening:'kcashopen', cashAdjust:'kcashadj'};
       var lk = lsKeys[coll];
       if (lk) {
         var data = _arr(coll);
