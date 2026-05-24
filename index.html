@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_25_b1_mobileScroll';
+    window.HISAABNOW_BUILD = 'v33_28_b1_cashDrawerP3';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2621,6 +2621,38 @@ html[data-current-role="manager"] body{
     </div>
   </div>
 
+  <!-- (v33_28) Cash drawer morning prompt — shown when user has used CashDrawer
+       before but hasn't set today's opening cash yet. Gentle nudge, dismissible. -->
+  <div id="cash-morning-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%);border:1.5px solid #FCD34D;border-radius:14px;font-size:13.5px;line-height:1.5">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+      <div style="font-size:22px;line-height:1;flex-shrink:0;margin-top:1px">🌅</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14.5px;color:#1E293B;margin-bottom:3px;letter-spacing:-.01em">Good morning! Set today's opening cash</div>
+        <div style="font-size:13px;color:#78350F;font-weight:500">Count the drawer first thing — keeps your numbers accurate all day.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="button" onclick="window.CashDrawer && CashDrawer.setOpeningSheet()" style="flex:1;background:#15803D;color:#fff;border:none;padding:10px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Set opening cash</button>
+      <button type="button" onclick="App._dismissCashMorningBanner()" style="flex:0 0 auto;background:transparent;color:#78350F;border:1.5px solid #FCD34D;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Later</button>
+    </div>
+  </div>
+
+  <!-- (v33_28) Cash drawer evening reminder — shown after 7 PM if today's drawer
+       has not been reconciled yet and there is cash activity to count. -->
+  <div id="cash-evening-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%);border:1.5px solid #93C5FD;border-radius:14px;font-size:13.5px;line-height:1.5">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+      <div style="font-size:22px;line-height:1;flex-shrink:0;margin-top:1px">⚖</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14.5px;color:#1E293B;margin-bottom:3px;letter-spacing:-.01em">Closing soon? Count your drawer</div>
+        <div id="ceb-detail" style="font-size:13px;color:#1E3A8A;font-weight:500">Expected ₹0 in drawer. Verify before you close.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="button" onclick="window.CashDrawer && CashDrawer.reconcileSheet()" style="flex:1;background:#1D4ED8;color:#fff;border:none;padding:10px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Count drawer now</button>
+      <button type="button" onclick="App._dismissCashEveningBanner()" style="flex:0 0 auto;background:transparent;color:#1E3A8A;border:1.5px solid #93C5FD;padding:9px 14px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Later</button>
+    </div>
+  </div>
+
   <section class="greet">
     <div class="greet-text">
       <h1><span id="greet-time">Good morning</span>, <span id="greet-name">there</span>! <span class="wave">👋</span></h1>
@@ -2668,7 +2700,11 @@ html[data-current-role="manager"] body{
   <section class="kpi-row" id="kpi-row" data-role-min="manager">
     <div class="kpi"><div class="kpi-label-v2">AOV</div><div class="kpi-value-v2" id="kpi-revenue">₹0</div><div class="kpi-delta-v2" id="kpi-revenue-delta" style="opacity:.5">—</div></div>
     <div class="kpi" onclick="App.nav('sales')" style="cursor:pointer" aria-label="View all bills"><div class="kpi-label-v2" data-i18n="dash.bills">Bills</div><div class="kpi-value-v2" id="kpi-bills">0</div><div class="kpi-delta-v2" id="kpi-bills-delta" style="opacity:.5">—</div></div>
-    <div class="kpi"><div class="kpi-label-v2" id="kpi-profit-label" data-i18n="dash.margin">Margin</div><div class="kpi-value-v2" id="kpi-profit">—</div><div class="kpi-delta-v2" id="kpi-profit-delta" style="opacity:.5">—</div></div>
+    <div class="kpi" id="kpi-tile-3" onclick="App._handleKpi3Tap()" style="cursor:pointer" aria-label="Third KPI">
+      <div class="kpi-label-v2" id="kpi-profit-label" data-i18n="dash.margin">Margin</div>
+      <div class="kpi-value-v2" id="kpi-profit">—</div>
+      <div class="kpi-delta-v2" id="kpi-profit-delta" style="opacity:.5">—</div>
+    </div>
   </section>
 
   <section id="home-udhaar-tile" data-role-min="manager" style="display:none;padding:0 18px 14px">
@@ -3325,17 +3361,18 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title">Cashflow</div>
-    <button class="icon-btn" onclick="window.HND && HND.mcf && HND.mcf.refresh()" aria-label="Refresh">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    <button class="icon-btn" onclick="window.CashDrawer && CashDrawer.openSheet()" aria-label="Cash drawer actions">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
   </header>
 
   <div style="padding:14px 16px 100px">
 
-    <div class="mcf-hero" id="mcf-hero">
+    <div class="mcf-hero" id="mcf-hero" onclick="window.CashDrawer && CashDrawer.openSheet()" style="cursor:pointer">
       <div class="mcf-hero-lbl">💰 Cash in hand</div>
       <div class="mcf-hero-val" id="mcf-hero-val">—</div>
       <div class="mcf-hero-delta" id="mcf-hero-delta">—</div>
+      <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.65);margin-top:8px;letter-spacing:.04em;text-transform:uppercase">Tap to set opening · withdraw · deposit</div>
     </div>
 
     <div class="mcf-periods" id="mcf-periods">
@@ -3710,6 +3747,22 @@ html[data-current-role="manager"] body{
           <div class="menu-sub" data-i18n="settings.exportDataSub">Download CSV files of your sales, customers, udhaar, and products</div>
         </div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── (v33_28 Phase 3) Cash drawer settings ──────────────────── -->
+  <div class="menu-group">
+    <div class="menu-group-title" data-i18n="settings.cashDrawer">Cash drawer</div>
+    <div class="menu-card">
+      <div class="menu-item" onclick="App._toggleCashDrawerEnabled()" style="cursor:pointer;align-items:center">
+        <div class="menu-text">
+          <div class="menu-label" data-i18n="settings.cashTracking">Cash tracking</div>
+          <div class="menu-sub" data-i18n="settings.cashTrackingSub">Track opening cash, withdrawals, and end-of-day reconciliation</div>
+        </div>
+        <div id="settings-cash-toggle" style="width:44px;height:26px;background:#15803D;border-radius:99px;position:relative;flex-shrink:0;transition:background .2s">
+          <div id="settings-cash-toggle-dot" style="width:22px;height:22px;background:#fff;border-radius:50%;position:absolute;top:2px;left:20px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -4587,6 +4640,9 @@ html[data-current-role="manager"] body{
     'settings.backup':        { en: 'Backup',                 hi: 'बैकअप' },
     'settings.exportData':    { en: 'Export all data',        hi: 'सारा डेटा export करें' },
     'settings.exportDataSub': { en: 'Download CSV files of your sales, customers, udhaar, and products', hi: 'Sales, customers, udhaar, products ka CSV download karein' },
+    'settings.cashDrawer':    { en: 'Cash drawer',              hi: 'नकद ड्रॉअर' },
+    'settings.cashTracking':  { en: 'Cash tracking',            hi: 'नकद ट्रैकिंग' },
+    'settings.cashTrackingSub': { en: 'Track opening cash, withdrawals, and end-of-day reconciliation', hi: 'Opening cash, withdrawals aur din ke ant ki reconcile track karein' },
     'settings.language':      { en: 'Language',              hi: 'भाषा' },
     'settings.langDesc':      { en: 'Switch app language',   hi: 'ऐप की भाषा बदलें' },
     'settings.notifications': { en: 'Notifications',         hi: 'नोटिफिकेशन' },
@@ -5011,6 +5067,7 @@ html[data-current-role="manager"] body{
     'dash.perStaff':         { en: 'Per Staff',                     hi: 'प्रति स्टाफ' },
     'dash.aov':              { en: 'AOV',                           hi: 'AOV' },
     'dash.marginShort':      { en: 'Margin',                        hi: 'मार्जिन' },
+    'dash.cashInHand':       { en: 'Cash',                          hi: 'नकद' },
 
     /* Common dialog/UI */
     'dlg.areYouSure':        { en: 'Are you sure?',                 hi: 'पक्का?' },
@@ -10780,6 +10837,10 @@ const App = {
        banner self-hides if conditions don't apply. */
     try { this._renderSyncStaleBanner(); } catch(e){}
 
+    /* (v33_28) Cash drawer banners — morning prompt + evening reminder.
+       Both self-hide based on conditions. Cheap to call on every render. */
+    try { this._renderCashBanners(); } catch(e){ console.warn('[cashBanner] render:', e); }
+
     const greetName = document.getElementById('greet-name');
     if (greetName) {
       const ownerName = (window.S && S.ownerName) || '';
@@ -13030,6 +13091,9 @@ const App = {
     // Render data health panel (per-shop record counts)
     try { this.renderDataHealth(); } catch(e){ console.warn('[renderSettings] renderDataHealth failed:', e); }
 
+    // (v33_28) Render cash drawer toggle state
+    try { this._renderCashToggleState(); } catch(e){}
+
     const gstOn = !!(window.S && S.gstEnabled);
     const gstSw = document.getElementById('settings-gst-switch');
     const gstKnob = document.getElementById('settings-gst-knob');
@@ -13734,6 +13798,41 @@ const App = {
       profLabel.textContent = _useStaffPill ? this._T('dash.perStaff', 'Per Staff') : this._T('dash.marginShort', 'Margin');
     }
 
+    /* (v33_27 Phase 2) Determine if we should show CASH IN HAND instead
+       of "Set cost prices" when:
+       - Not in salon staff-pill mode
+       - Cost data is missing (would normally show "Set cost prices" prompt)
+       - User has engaged with CashDrawer feature (any opening or adjust)
+       This way the third tile becomes useful immediately for cash-tracking
+       shopkeepers without forcing them to enter product costs first. */
+    let _useCashTile = false;
+    let _cashBalance = 0;
+    let _cashSetToday = false;
+    try {
+      /* (v33_28) Check cash drawer enabled toggle */
+      var cashEnabled = true;
+      try {
+        var stored = localStorage.getItem('hn_cashDrawer_enabled');
+        cashEnabled = (stored === null) ? true : (stored === '1');
+      } catch(e){}
+      if (cashEnabled && !_useStaffPill && window.CashDrawer) {
+        const hasUsedCashDrawer =
+          ((window.Store && Store.list && (Store.list('cashOpening') || []).length > 0))
+       || ((window.Store && Store.list && (Store.list('cashAdjust')  || []).length > 0));
+        const noCostData = (!profitIsAccurate && todaySales.length > 0) || todayRev === 0;
+        if (hasUsedCashDrawer && noCostData) {
+          _useCashTile = true;
+          _cashBalance = CashDrawer.currentBalance();
+          _cashSetToday = CashDrawer.hasOpeningToday();
+        }
+      }
+    } catch(e){ console.warn('[renderKpis] cash tile detection:', e); }
+
+    /* Override label when showing cash */
+    if (_useCashTile && profLabel) {
+      profLabel.textContent = this._T('dash.cashInHand', 'Cash');
+    }
+
     if (profEl) {
       if (_useStaffPill) {
 
@@ -13743,6 +13842,16 @@ const App = {
         } else {
           profEl.textContent = '₹' + _todayPerStaff.toLocaleString('en-IN');
           if (profDelta) profDelta.innerHTML = `<span style="opacity:.65">${_activeStylistsToday} ${_activeStylistsToday === 1 ? 'stylist' : 'stylists'} today</span>`;
+        }
+      } else if (_useCashTile) {
+        /* CASH IN HAND mode */
+        profEl.textContent = '₹' + Math.round(_cashBalance).toLocaleString('en-IN');
+        if (profDelta) {
+          if (_cashSetToday) {
+            profDelta.innerHTML = '<span style="opacity:.65">Tap to count drawer</span>';
+          } else {
+            profDelta.innerHTML = '<span style="color:#92400E;font-weight:700">⚠ Set opening</span>';
+          }
         }
       } else if (!profitIsAccurate && todaySales.length > 0) {
 
@@ -13770,6 +13879,30 @@ const App = {
           profDelta.innerHTML = `<span style="opacity:.5">·</span>`;
         }
       }
+    }
+
+    /* Remember current tile mode for tap handler */
+    this._kpi3Mode = _useStaffPill ? 'staff'
+                    : _useCashTile ? 'cash'
+                    : (!profitIsAccurate && todaySales.length > 0) ? 'setcost'
+                    : 'margin';
+  },
+
+  /* (v33_27 Phase 2) Handle taps on the 3rd KPI tile based on its current mode */
+  _handleKpi3Tap(){
+    const mode = this._kpi3Mode;
+    if (mode === 'cash' && window.CashDrawer) {
+      // Open cash drawer sheet
+      try {
+        if (window.haptic) haptic.tap();
+      } catch(e){}
+      CashDrawer.openSheet();
+    } else if (mode === 'staff') {
+      // Navigate to staff
+      this.nav('staff');
+    } else if (mode === 'setcost' || mode === 'margin') {
+      // Navigate to catalog (where they can set cost prices)
+      this.nav('catalog');
     }
   },
 
@@ -26098,6 +26231,145 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (banner) banner.style.display = 'none';
   },
 
+  /* ─── (v33_28 Phase 3) Cash banner rendering ──────────────────────────
+     Two banners controlled here:
+     1. Morning banner — shown if:
+        - User has previously used CashDrawer (at least 1 opening or adjust)
+        - No opening set for today
+        - Not dismissed today
+        - Not dismissed this session
+     2. Evening banner — shown if:
+        - User has opening set today
+        - Local time >= 19:00 (7 PM)
+        - No reconcile correction yet today
+        - Not dismissed today
+        - Cash activity exists today (otherwise no point reconciling)
+     ──────────────────────────────────────────────────────────────────── */
+  _renderCashBanners(){
+    var morningEl = document.getElementById('cash-morning-banner');
+    var eveningEl = document.getElementById('cash-evening-banner');
+    if (!morningEl && !eveningEl) return;
+    if (!window.CashDrawer) {
+      if (morningEl) morningEl.style.display = 'none';
+      if (eveningEl) eveningEl.style.display = 'none';
+      return;
+    }
+
+    /* (v33_28) Check master toggle — user can disable cash drawer entirely */
+    var enabled = true;
+    try {
+      var stored = localStorage.getItem('hn_cashDrawer_enabled');
+      enabled = (stored === null) ? true : (stored === '1');
+    } catch(e){}
+    if (!enabled) {
+      if (morningEl) morningEl.style.display = 'none';
+      if (eveningEl) eveningEl.style.display = 'none';
+      return;
+    }
+
+    var todayStr = window.td();
+    var now = new Date();
+    var hour = now.getHours();
+
+    /* Check if user has historically engaged with CashDrawer */
+    var openings = (window.Store && Store.list ? Store.list('cashOpening') : []) || [];
+    var adjusts  = (window.Store && Store.list ? Store.list('cashAdjust') : []) || [];
+    var hasEverUsed = openings.length > 0 || adjusts.length > 0;
+
+    /* Per-day dismiss keys (persist across sessions for same day) */
+    var morningDismissKey = 'hn_cashBanner_morningDismissed_' + todayStr;
+    var eveningDismissKey = 'hn_cashBanner_eveningDismissed_' + todayStr;
+    var morningDismissed = false, eveningDismissed = false;
+    try {
+      morningDismissed = !!localStorage.getItem(morningDismissKey);
+      eveningDismissed = !!localStorage.getItem(eveningDismissKey);
+    } catch(e){}
+
+    /* ── Morning banner logic ── */
+    if (morningEl) {
+      var hasOpeningToday = CashDrawer.hasOpeningToday();
+      var showMorning = hasEverUsed && !hasOpeningToday && !morningDismissed;
+      morningEl.style.display = showMorning ? '' : 'none';
+    }
+
+    /* ── Evening banner logic ── */
+    if (eveningEl) {
+      var hasOpeningToday2 = CashDrawer.hasOpeningToday();
+      var reconciledToday = adjusts.some(function(a){
+        if (!a || !a.t || (a.kind || '') !== 'correction') return false;
+        return window.tdAt(a.t) === todayStr;
+      });
+      var hasCashActivityToday = (function(){
+        var sales = (window.Store && Store.list ? Store.list('sales') : []) || [];
+        var anyCashSale = sales.some(function(s){
+          if (!s || !s.t) return false;
+          if (window.tdAt(s.t) !== todayStr) return false;
+          var mode = (s.mode || 'cash').toLowerCase();
+          return mode === 'cash';
+        });
+        var anyAdjustToday = adjusts.some(function(a){
+          if (!a || !a.t) return false;
+          return window.tdAt(a.t) === todayStr;
+        });
+        return anyCashSale || anyAdjustToday || hasOpeningToday2;
+      })();
+      var showEvening = hasOpeningToday2 && hour >= 19 && !reconciledToday && hasCashActivityToday && !eveningDismissed;
+      eveningEl.style.display = showEvening ? '' : 'none';
+      if (showEvening) {
+        /* Update expected balance in the banner */
+        var det = document.getElementById('ceb-detail');
+        if (det) {
+          var bal = CashDrawer.currentBalance();
+          det.textContent = 'Expected ₹' + Math.round(bal).toLocaleString('en-IN') + ' in drawer. Verify before you close.';
+        }
+      }
+    }
+  },
+
+  _dismissCashMorningBanner(){
+    try { localStorage.setItem('hn_cashBanner_morningDismissed_' + window.td(), '1'); } catch(e){}
+    var banner = document.getElementById('cash-morning-banner');
+    if (banner) banner.style.display = 'none';
+  },
+
+  _dismissCashEveningBanner(){
+    try { localStorage.setItem('hn_cashBanner_eveningDismissed_' + window.td(), '1'); } catch(e){}
+    var banner = document.getElementById('cash-evening-banner');
+    if (banner) banner.style.display = 'none';
+  },
+
+  /* (v33_28 Phase 3) Cash drawer master toggle in Settings */
+  _toggleCashDrawerEnabled(){
+    var cur = true;
+    try {
+      var stored = localStorage.getItem('hn_cashDrawer_enabled');
+      cur = (stored === null) ? true : (stored === '1');
+    } catch(e){}
+    var newVal = !cur;
+    try { localStorage.setItem('hn_cashDrawer_enabled', newVal ? '1' : '0'); } catch(e){}
+    this._renderCashToggleState();
+    if (this.toast) {
+      this.toast(newVal ? '✓ Cash tracking enabled' : 'Cash tracking disabled');
+    }
+    /* Re-render home if visible so the tile updates */
+    if (this.current === 'home') {
+      try { this.renderHome(); } catch(e){}
+    }
+  },
+
+  _renderCashToggleState(){
+    var toggle = document.getElementById('settings-cash-toggle');
+    var dot = document.getElementById('settings-cash-toggle-dot');
+    if (!toggle || !dot) return;
+    var enabled = true;
+    try {
+      var stored = localStorage.getItem('hn_cashDrawer_enabled');
+      enabled = (stored === null) ? true : (stored === '1');
+    } catch(e){}
+    toggle.style.background = enabled ? '#15803D' : '#D1D5DB';
+    dot.style.left = enabled ? '20px' : '2px';
+  },
+
   _updateSyncHealthBadge(){
     try {
       var qSize = 0;
@@ -29834,7 +30106,14 @@ window.App = App;
     var cash = 0;
     try {
       var opening = safeList('cashOpening');
-      if (opening.length > 0) cash += Number(opening[0].amount || opening[0].amt || 0);
+      // (v33_26) Sum ALL opening entries — supports per-day morning resets.
+      // Each opening entry has { t, amount }. We sum entries with t <= asOfT
+      // so adding a new morning opening doesn't erase yesterday's history.
+      opening.forEach(function(o){
+        var t = Number(o.t || 0);
+        if (t > asOfT) return;
+        cash += Number(o.amount || o.amt || 0);
+      });
     } catch(e){}
     var sales = safeList('sales');
     sales.forEach(function(s){
@@ -29861,6 +30140,21 @@ window.App = App;
       var mode = (e.mode || 'cash').toLowerCase();
       if (mode === 'cash') cash -= Number(e.amt || 0);
     });
+    /* (v33_26) Apply withdrawals (negative) and deposits (corrections, can be either sign)
+       Each adjust entry: { t, kind, amount }
+       kind: 'withdrawal' (-amt) | 'deposit' (+amt to drawer, e.g. partner brought cash) | 'correction' (signed amt) */
+    try {
+      var adjusts = safeList('cashAdjust');
+      adjusts.forEach(function(a){
+        var t = Number(a.t || 0);
+        if (t > asOfT) return;
+        var kind = (a.kind || 'withdrawal').toLowerCase();
+        var amt = Number(a.amount || a.amt || 0);
+        if (kind === 'withdrawal' || kind === 'bankdeposit') cash -= amt;
+        else if (kind === 'deposit' || kind === 'cashin')   cash += amt;
+        else if (kind === 'correction')                      cash += amt;  // signed: positive or negative
+      });
+    } catch(e){}
     return cash;
   }
   function upcomingObligations(daysAhead){
@@ -30185,6 +30479,630 @@ window.App = App;
 
   window.HND = window.HND || {};
   window.HND.mcf = MCF;
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CASH DRAWER MODULE (v33_26 — Phase 1)
+   ═══════════════════════════════════════════════════════════════════════
+   Public API:
+     CashDrawer.openSheet()           — opens the main "Set / adjust cash" sheet
+     CashDrawer.setOpeningSheet()      — opens just the "Set opening cash" sheet
+     CashDrawer.withdrawSheet()        — opens "Take money out" sheet
+     CashDrawer.depositSheet()         — opens "Add money to drawer" sheet
+     CashDrawer.todayOpening()         — returns today's opening balance (number)
+     CashDrawer.hasOpeningToday()      — boolean: true if opening was set today
+     CashDrawer.currentBalance()       — returns current cash in drawer (number)
+
+   Data model:
+     cashOpening — array of { id, t, amount, note, date }
+                   One entry per day usually. New day = new entry (delta).
+     cashAdjust  — array of { id, t, kind, amount, note }
+                   kind: 'withdrawal' | 'deposit' | 'bankdeposit' | 'correction'
+                   Withdrawals/bankdeposits subtract; deposits add; corrections signed.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  var CashDrawer = {
+    /* Read today's opening balance (delta-based: sum of openings set today) */
+    todayOpening: function(){
+      try {
+        var openings = (window.Store && window.Store.list ? window.Store.list('cashOpening') : []) || [];
+        var todayStr = (window.td && window.td()) || new Date().toDateString();
+        var sum = 0;
+        openings.forEach(function(o){
+          if (!o || !o.t) return;
+          var oDate = (window.tdAt && window.tdAt(o.t)) || new Date(o.t).toDateString();
+          if (oDate === todayStr) sum += Number(o.amount || o.amt || 0);
+        });
+        return sum;
+      } catch(e){ return 0; }
+    },
+
+    hasOpeningToday: function(){
+      try {
+        var openings = (window.Store && window.Store.list ? window.Store.list('cashOpening') : []) || [];
+        var todayStr = (window.td && window.td()) || new Date().toDateString();
+        return openings.some(function(o){
+          if (!o || !o.t) return false;
+          var oDate = (window.tdAt && window.tdAt(o.t)) || new Date(o.t).toDateString();
+          return oDate === todayStr;
+        });
+      } catch(e){ return false; }
+    },
+
+    /* Compute current cash balance via existing cashflow logic if available */
+    currentBalance: function(){
+      try {
+        if (window.HND && window.HND.mcf && window.HND.mcf._cashAt) {
+          return window.HND.mcf._cashAt(Date.now());
+        }
+        // Fallback: simple compute
+        var opening = (window.Store && window.Store.list ? window.Store.list('cashOpening') : []) || [];
+        var sales = (window.Store && window.Store.list ? window.Store.list('sales') : []) || [];
+        var exps = (window.Store && window.Store.list ? window.Store.list('exps') : []) || [];
+        var adjusts = (window.Store && window.Store.list ? window.Store.list('cashAdjust') : []) || [];
+        var cash = 0;
+        opening.forEach(function(o){ cash += Number(o.amount || o.amt || 0); });
+        sales.forEach(function(s){
+          var mode = (s.mode || s.paymentMode || 'cash').toLowerCase();
+          if (mode === 'cash') cash += Number(s.total || s.amt || 0);
+        });
+        exps.forEach(function(e){
+          var mode = (e.mode || 'cash').toLowerCase();
+          if (mode === 'cash') cash -= Number(e.amt || 0);
+        });
+        adjusts.forEach(function(a){
+          var kind = (a.kind || 'withdrawal').toLowerCase();
+          var amt = Number(a.amount || a.amt || 0);
+          if (kind === 'withdrawal' || kind === 'bankdeposit') cash -= amt;
+          else if (kind === 'deposit') cash += amt;
+          else if (kind === 'correction') cash += amt;
+        });
+        return cash;
+      } catch(e){ return 0; }
+    },
+
+    /* Open the main cash drawer sheet — shows current balance + 3 actions */
+    openSheet: function(){
+      var balance = this.currentBalance();
+      var hasOpening = this.hasOpeningToday();
+      var todayOpening = this.todayOpening();
+      var self = this;
+
+      var sheet = document.createElement('div');
+      sheet.className = 'sheet-backdrop';
+      sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+      sheet.innerHTML =
+        '<div class="sheet" style="max-width:430px;border-radius:18px 18px 0 0;padding:18px 18px 22px">'
+      +   '<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)">'
+      +     '<div style="flex:1">'
+      +       '<div style="font-size:13px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Cash in drawer</div>'
+      +       '<div style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:2px">₹' + Number(balance).toLocaleString('en-IN') + '</div>'
+      +       (hasOpening
+            ? '<div style="font-size:12px;color:var(--t3);font-weight:600;margin-top:4px">Today\'s opening: ₹' + Number(todayOpening).toLocaleString('en-IN') + '</div>'
+            : '<div style="font-size:12px;color:#92400E;font-weight:700;margin-top:4px">⚠ Opening cash not set for today</div>')
+      +     '</div>'
+      +     '<button onclick="this.closest(\'.sheet-backdrop\').remove()" style="background:transparent;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:4px 8px">×</button>'
+      +   '</div>'
+      +   '<div style="display:flex;flex-direction:column;gap:8px;padding-top:14px">'
+      +     '<button onclick="CashDrawer.setOpeningSheet(); this.closest(\'.sheet-backdrop\').remove()" style="background:#F0FDF4;border:1.5px solid #86EFAC;padding:14px;border-radius:11px;text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px">'
+      +       '<div style="width:38px;height:38px;border-radius:10px;background:#15803D;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🌅</div>'
+      +       '<div style="flex:1">'
+      +         '<div style="font-weight:700;font-size:14px;color:var(--t1)">' + (hasOpening ? 'Update' : 'Set') + ' today\'s opening cash</div>'
+      +         '<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">Count drawer in the morning</div>'
+      +       '</div>'
+      +     '</button>'
+      +     '<button onclick="CashDrawer.withdrawSheet(); this.closest(\'.sheet-backdrop\').remove()" style="background:#FEF2F2;border:1.5px solid #FECACA;padding:14px;border-radius:11px;text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px">'
+      +       '<div style="width:38px;height:38px;border-radius:10px;background:#DC2626;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">↓</div>'
+      +       '<div style="flex:1">'
+      +         '<div style="font-weight:700;font-size:14px;color:var(--t1)">Take cash out</div>'
+      +         '<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">Personal use, bank deposit, etc.</div>'
+      +       '</div>'
+      +     '</button>'
+      +     '<button onclick="CashDrawer.depositSheet(); this.closest(\'.sheet-backdrop\').remove()" style="background:#EFF6FF;border:1.5px solid #BFDBFE;padding:14px;border-radius:11px;text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px">'
+      +       '<div style="width:38px;height:38px;border-radius:10px;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">↑</div>'
+      +       '<div style="flex:1">'
+      +         '<div style="font-weight:700;font-size:14px;color:var(--t1)">Add cash to drawer</div>'
+      +         '<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">Cash brought from home, change fund</div>'
+      +       '</div>'
+      +     '</button>'
+      +     '<button onclick="CashDrawer.reconcileSheet(); this.closest(\'.sheet-backdrop\').remove()" style="background:#FFFBEB;border:1.5px solid #FCD34D;padding:14px;border-radius:11px;text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px">'
+      +       '<div style="width:38px;height:38px;border-radius:10px;background:#92400E;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚖</div>'
+      +       '<div style="flex:1">'
+      +         '<div style="font-weight:700;font-size:14px;color:var(--t1)">Count drawer &amp; reconcile</div>'
+      +         '<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">End of day check — verify physical cash</div>'
+      +       '</div>'
+      +     '</button>'
+      +     '<button onclick="CashDrawer.historySheet(); this.closest(\'.sheet-backdrop\').remove()" style="background:transparent;border:1.5px solid var(--border);padding:12px;border-radius:11px;text-align:center;cursor:pointer;font-family:inherit;color:var(--t2);font-weight:700;font-size:13px;margin-top:4px">View today\'s activity →</button>'
+      +   '</div>'
+      + '</div>';
+      document.body.appendChild(sheet);
+    },
+
+    /* Set/update today's opening cash */
+    setOpeningSheet: function(){
+      var currentOpening = this.todayOpening();
+      var self = this;
+      var sheet = document.createElement('div');
+      sheet.className = 'sheet-backdrop';
+      sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+      sheet.innerHTML =
+        '<div class="sheet" style="max-width:430px;border-radius:18px 18px 0 0;padding:18px 18px 22px">'
+      +   '<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)">'
+      +     '<div style="flex:1">'
+      +       '<div style="font-size:18px;font-weight:800;letter-spacing:-.015em">🌅 Opening cash</div>'
+      +       '<div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:2px">How much cash is in the drawer right now?</div>'
+      +     '</div>'
+      +     '<button onclick="this.closest(\'.sheet-backdrop\').remove()" style="background:transparent;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:4px 8px">×</button>'
+      +   '</div>'
+      +   '<div style="padding-top:18px">'
+      +     '<label style="display:block;font-size:12.5px;color:var(--t2);font-weight:700;margin-bottom:6px">Today\'s opening cash</label>'
+      +     '<div style="display:flex;align-items:center;gap:8px;background:#F9FAFB;border:1.5px solid var(--border);border-radius:11px;padding:14px;font-size:24px;font-weight:800">'
+      +       '<span style="color:var(--t3)">₹</span>'
+      +       '<input id="cd-opening-input" type="number" inputmode="numeric" placeholder="0" value="' + (currentOpening || '') + '" style="flex:1;border:none;background:transparent;font-size:24px;font-weight:800;outline:none;font-family:inherit;color:var(--t1);min-width:0;width:100%">'
+      +     '</div>'
+      +     '<div style="font-size:11.5px;color:var(--t3);font-weight:600;margin-top:8px;line-height:1.5">Tip: Count physical notes + coins in your drawer. This is your starting balance for the day.</div>'
+      +     '<button onclick="CashDrawer._saveOpening()" style="margin-top:18px;width:100%;background:#15803D;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer">Save opening cash</button>'
+      +   '</div>'
+      + '</div>';
+      document.body.appendChild(sheet);
+      setTimeout(function(){
+        var el = document.getElementById('cd-opening-input');
+        if (el) { el.focus(); el.select(); }
+      }, 100);
+    },
+
+    _saveOpening: function(){
+      var input = document.getElementById('cd-opening-input');
+      if (!input) return;
+      var amt = Number(input.value || 0);
+      if (isNaN(amt) || amt < 0) {
+        if (window.App) App.toast('Enter a valid amount');
+        return;
+      }
+      try {
+        // Strategy: if there's already an opening today, REPLACE it.
+        // Find today's opening entries, delete them, then add the new one.
+        var openings = (window.Store.list('cashOpening') || []);
+        var todayStr = window.td();
+        openings.forEach(function(o){
+          if (!o || !o.t || !o.id) return;
+          var oDate = window.tdAt(o.t);
+          if (oDate === todayStr) {
+            try { window.Store.remove('cashOpening', o.id); } catch(e){}
+          }
+        });
+        // Add new opening
+        window.Store.add('cashOpening', {
+          t: Date.now(),
+          date: todayStr,
+          amount: amt,
+          note: 'Opening cash for ' + todayStr
+        });
+        // Close sheet
+        document.querySelectorAll('.sheet-backdrop').forEach(function(s){ s.remove(); });
+        if (window.App && window.App.toast) window.App.toast('✓ Opening cash set: ₹' + amt.toLocaleString('en-IN'));
+        // Re-render whatever is currently visible
+        CashDrawer._rerenderHosts();
+      } catch(e) {
+        console.error('[CashDrawer] saveOpening failed', e);
+        if (window.App) App.toast('Could not save: ' + e.message);
+      }
+    },
+
+    withdrawSheet: function(){
+      this._adjustSheet({
+        kind: 'withdrawal',
+        title: '↓ Take cash out',
+        subtitle: 'Where is the cash going?',
+        amountLabel: 'Amount taken out',
+        notePlaceholder: 'e.g. Personal expense, bank deposit, supplier payment',
+        cta: 'Confirm withdrawal',
+        ctaBg: '#DC2626',
+        successPrefix: '✓ ₹{n} taken out'
+      });
+    },
+
+    depositSheet: function(){
+      this._adjustSheet({
+        kind: 'deposit',
+        title: '↑ Add cash to drawer',
+        subtitle: 'Where did the cash come from?',
+        amountLabel: 'Amount added',
+        notePlaceholder: 'e.g. Brought from home, partner contribution, change fund',
+        cta: 'Confirm addition',
+        ctaBg: '#2563EB',
+        successPrefix: '✓ ₹{n} added to drawer'
+      });
+    },
+
+    _adjustSheet: function(opts){
+      var sheet = document.createElement('div');
+      sheet.className = 'sheet-backdrop';
+      sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+      sheet.innerHTML =
+        '<div class="sheet" style="max-width:430px;border-radius:18px 18px 0 0;padding:18px 18px 22px">'
+      +   '<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)">'
+      +     '<div style="flex:1">'
+      +       '<div style="font-size:18px;font-weight:800;letter-spacing:-.015em">' + opts.title + '</div>'
+      +       '<div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:2px">' + opts.subtitle + '</div>'
+      +     '</div>'
+      +     '<button onclick="this.closest(\'.sheet-backdrop\').remove()" style="background:transparent;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:4px 8px">×</button>'
+      +   '</div>'
+      +   '<div style="padding-top:18px">'
+      +     '<label style="display:block;font-size:12.5px;color:var(--t2);font-weight:700;margin-bottom:6px">' + opts.amountLabel + '</label>'
+      +     '<div style="display:flex;align-items:center;gap:8px;background:#F9FAFB;border:1.5px solid var(--border);border-radius:11px;padding:14px;font-size:24px;font-weight:800">'
+      +       '<span style="color:var(--t3)">₹</span>'
+      +       '<input id="cd-adj-amount" type="number" inputmode="numeric" placeholder="0" style="flex:1;border:none;background:transparent;font-size:24px;font-weight:800;outline:none;font-family:inherit;color:var(--t1);min-width:0;width:100%">'
+      +     '</div>'
+      +     '<label style="display:block;font-size:12.5px;color:var(--t2);font-weight:700;margin:14px 0 6px">Note (optional)</label>'
+      +     '<input id="cd-adj-note" type="text" placeholder="' + opts.notePlaceholder + '" style="width:100%;border:1.5px solid var(--border);background:#F9FAFB;border-radius:11px;padding:12px;font-size:14px;font-family:inherit;outline:none;color:var(--t1);box-sizing:border-box">'
+      +     '<button id="cd-adj-save" data-kind="' + opts.kind + '" data-prefix="' + opts.successPrefix + '" style="margin-top:18px;width:100%;background:' + opts.ctaBg + ';color:#fff;border:none;padding:14px;border-radius:12px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer">' + opts.cta + '</button>'
+      +   '</div>'
+      + '</div>';
+      document.body.appendChild(sheet);
+      var btn = document.getElementById('cd-adj-save');
+      if (btn) btn.onclick = function(){ CashDrawer._saveAdjust(); };
+      setTimeout(function(){
+        var el = document.getElementById('cd-adj-amount');
+        if (el) el.focus();
+      }, 100);
+    },
+
+    _saveAdjust: function(){
+      var amtEl = document.getElementById('cd-adj-amount');
+      var noteEl = document.getElementById('cd-adj-note');
+      var btn = document.getElementById('cd-adj-save');
+      if (!amtEl || !btn) return;
+      var amt = Number(amtEl.value || 0);
+      if (isNaN(amt) || amt <= 0) {
+        if (window.App) App.toast('Enter a valid amount');
+        return;
+      }
+      var kind = btn.getAttribute('data-kind') || 'withdrawal';
+      var prefix = btn.getAttribute('data-prefix') || '✓ Saved';
+      var note = (noteEl ? noteEl.value : '').trim();
+      try {
+        window.Store.add('cashAdjust', {
+          t: Date.now(),
+          date: window.td(),
+          kind: kind,
+          amount: amt,
+          note: note || (kind === 'withdrawal' ? 'Cash withdrawn' : 'Cash added')
+        });
+        document.querySelectorAll('.sheet-backdrop').forEach(function(s){ s.remove(); });
+        if (window.App && window.App.toast) {
+          App.toast(prefix.replace('{n}', amt.toLocaleString('en-IN')));
+        }
+        CashDrawer._rerenderHosts();
+      } catch(e) {
+        console.error('[CashDrawer] saveAdjust failed', e);
+        if (window.App) App.toast('Could not save: ' + e.message);
+      }
+    },
+
+    /* ─── Reconcile (count drawer & verify) ────────────────────────────
+       End-of-day flow:
+       1. App shows expected balance based on recorded data
+       2. User enters actual count from drawer
+       3. App shows difference (over/short)
+       4. User chooses: "Save as correction" (records cashAdjust correction)
+          OR "Cancel" (no entry)
+       This builds the daily reconcile habit and surfaces discrepancies
+       (theft, missed entries, billing errors) early.
+       ──────────────────────────────────────────────────────────────── */
+    reconcileSheet: function(){
+      var expected = this.currentBalance();
+      var sheet = document.createElement('div');
+      sheet.className = 'sheet-backdrop';
+      sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+      sheet.innerHTML =
+        '<div class="sheet" style="max-width:430px;border-radius:18px 18px 0 0;padding:18px 18px 22px">'
+      +   '<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)">'
+      +     '<div style="flex:1">'
+      +       '<div style="font-size:18px;font-weight:800;letter-spacing:-.015em">⚖ Count drawer</div>'
+      +       '<div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:2px">Verify physical cash matches records</div>'
+      +     '</div>'
+      +     '<button onclick="this.closest(\'.sheet-backdrop\').remove()" style="background:transparent;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:4px 8px">×</button>'
+      +   '</div>'
+
+      +   '<div style="padding:18px 0 0">'
+      +     '<div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:11px;padding:12px 14px;margin-bottom:14px">'
+      +       '<div style="font-size:11px;color:#065F46;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Expected in drawer</div>'
+      +       '<div style="font-size:24px;font-weight:800;color:#065F46;margin-top:2px;letter-spacing:-.015em">₹' + Math.round(expected).toLocaleString('en-IN') + '</div>'
+      +       '<div style="font-size:11px;color:#065F46;font-weight:600;margin-top:2px;opacity:.8">Based on opening + sales − expenses − withdrawals</div>'
+      +     '</div>'
+
+      +     '<label style="display:block;font-size:12.5px;color:var(--t2);font-weight:700;margin-bottom:6px">Actual count from drawer</label>'
+      +     '<div style="display:flex;align-items:center;gap:8px;background:#F9FAFB;border:1.5px solid var(--border);border-radius:11px;padding:14px;font-size:24px;font-weight:800">'
+      +       '<span style="color:var(--t3)">₹</span>'
+      +       '<input id="cd-rec-actual" type="number" inputmode="numeric" placeholder="0" style="flex:1;border:none;background:transparent;font-size:24px;font-weight:800;outline:none;font-family:inherit;color:var(--t1);min-width:0;width:100%">'
+      +     '</div>'
+
+      +     '<div id="cd-rec-diff" style="margin-top:14px;display:none;padding:12px 14px;border-radius:11px"></div>'
+
+      +     '<button id="cd-rec-save" data-expected="' + expected + '" style="margin-top:18px;width:100%;background:#92400E;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;display:none">Save correction</button>'
+      +     '<button id="cd-rec-match" style="margin-top:18px;width:100%;background:#15803D;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;display:none">✓ Matches — Done</button>'
+
+      +     '<div style="font-size:11px;color:var(--t3);font-weight:600;margin-top:14px;line-height:1.5;text-align:center">Tip: Count notes + coins in your drawer. If different from expected, a correction entry will be created with your reason.</div>'
+      +   '</div>'
+      + '</div>';
+      document.body.appendChild(sheet);
+
+      var input = document.getElementById('cd-rec-actual');
+      var diffEl = document.getElementById('cd-rec-diff');
+      var saveBtn = document.getElementById('cd-rec-save');
+      var matchBtn = document.getElementById('cd-rec-match');
+
+      function updateDiff(){
+        var actual = Number(input.value || 0);
+        if (input.value === '' || isNaN(actual)) {
+          diffEl.style.display = 'none';
+          saveBtn.style.display = 'none';
+          matchBtn.style.display = 'none';
+          return;
+        }
+        var diff = actual - expected;
+        if (diff === 0) {
+          diffEl.style.display = 'block';
+          diffEl.style.background = '#F0FDF4';
+          diffEl.style.border = '1px solid #86EFAC';
+          diffEl.innerHTML = '<div style="font-size:13px;color:#065F46;font-weight:700">✓ Matches expected balance</div>';
+          saveBtn.style.display = 'none';
+          matchBtn.style.display = 'block';
+        } else {
+          var isOver = diff > 0;
+          diffEl.style.display = 'block';
+          diffEl.style.background = isOver ? '#FFFBEB' : '#FEF2F2';
+          diffEl.style.border = '1px solid ' + (isOver ? '#FCD34D' : '#FECACA');
+          var color = isOver ? '#92400E' : '#991B1B';
+          var label = isOver ? 'OVER' : 'SHORT';
+          diffEl.innerHTML =
+              '<div style="font-size:11px;color:' + color + ';font-weight:800;letter-spacing:.04em;text-transform:uppercase">Drawer is ' + label + '</div>'
+            + '<div style="font-size:18px;font-weight:800;color:' + color + ';margin-top:2px">'
+            + (isOver ? '+' : '−') + '₹' + Math.abs(Math.round(diff)).toLocaleString('en-IN') + '</div>'
+            + '<div style="font-size:11.5px;color:' + color + ';font-weight:600;margin-top:4px;opacity:.85">Tap save to record this as a correction. Common reasons: missed entry, billing error, give-back to customer.</div>';
+          saveBtn.style.display = 'block';
+          matchBtn.style.display = 'none';
+        }
+      }
+      input.addEventListener('input', updateDiff);
+
+      saveBtn.onclick = function(){
+        var actual = Number(input.value || 0);
+        var diff = actual - expected;
+        try {
+          window.Store.add('cashAdjust', {
+            t: Date.now(),
+            date: window.td(),
+            kind: 'correction',
+            amount: diff,  // signed: positive if over, negative if short
+            note: 'Reconciliation correction — actual count ₹' + actual.toLocaleString('en-IN') + ' vs expected ₹' + Math.round(expected).toLocaleString('en-IN')
+          });
+          document.querySelectorAll('.sheet-backdrop').forEach(function(s){ s.remove(); });
+          if (window.App && window.App.toast) {
+            App.toast('✓ Correction recorded: ' + (diff > 0 ? '+' : '') + '₹' + Math.abs(diff).toLocaleString('en-IN'));
+          }
+          CashDrawer._rerenderHosts();
+        } catch(e) {
+          console.error('[CashDrawer] reconcile save failed', e);
+          if (window.App) App.toast('Could not save: ' + e.message);
+        }
+      };
+
+      matchBtn.onclick = function(){
+        document.querySelectorAll('.sheet-backdrop').forEach(function(s){ s.remove(); });
+        if (window.App && window.App.toast) App.toast('✓ Drawer matches — well done');
+      };
+
+      setTimeout(function(){ if (input) input.focus(); }, 100);
+    },
+
+    /* ─── History sheet — today's cash activity ──────────────────────── */
+    historySheet: function(){
+      var todayStr = window.td();
+      var openings = (window.Store && window.Store.list ? window.Store.list('cashOpening') : []) || [];
+      var adjusts  = (window.Store && window.Store.list ? window.Store.list('cashAdjust') : []) || [];
+      var sales    = (window.Store && window.Store.list ? window.Store.list('sales') : []) || [];
+      var exps     = (window.Store && window.Store.list ? window.Store.list('exps') : []) || [];
+
+      // Build today's events, sorted by time
+      var events = [];
+      openings.forEach(function(o){
+        if (!o || !o.t) return;
+        if (window.tdAt(o.t) !== todayStr) return;
+        events.push({ t: o.t, type: 'opening', amt: Number(o.amount || 0), note: o.note || 'Opening cash' });
+      });
+      sales.forEach(function(s){
+        if (!s || !s.t) return;
+        if (window.tdAt(s.t) !== todayStr) return;
+        var mode = (s.mode || 'cash').toLowerCase();
+        if (mode !== 'cash') return;
+        events.push({ t: s.t, type: 'sale', amt: Number(s.total || 0), note: 'Cash sale' + (s.cn && s.cn !== 'Walk-in' ? ' · ' + s.cn : '') });
+      });
+      exps.forEach(function(e){
+        if (!e || !e.t) return;
+        if (window.tdAt(e.t) !== todayStr) return;
+        var mode = (e.mode || 'cash').toLowerCase();
+        if (mode !== 'cash') return;
+        events.push({ t: e.t, type: 'expense', amt: -Number(e.amt || 0), note: 'Expense' + (e.catLabel ? ' · ' + e.catLabel : '') });
+      });
+      adjusts.forEach(function(a){
+        if (!a || !a.t) return;
+        if (window.tdAt(a.t) !== todayStr) return;
+        var kind = (a.kind || 'withdrawal').toLowerCase();
+        var amt = Number(a.amount || 0);
+        var signed = (kind === 'withdrawal' || kind === 'bankdeposit') ? -amt
+                   : (kind === 'deposit') ? amt
+                   : amt;  // correction is already signed
+        var label = kind === 'withdrawal' ? 'Cash taken out'
+                  : kind === 'deposit'    ? 'Cash added'
+                  : kind === 'bankdeposit'? 'Deposited to bank'
+                  : 'Correction';
+        events.push({ t: a.t, type: kind, amt: signed, note: label + (a.note ? ' · ' + a.note : '') });
+      });
+      events.sort(function(a, b){ return b.t - a.t; });
+
+      var rowsHtml = '';
+      if (events.length === 0) {
+        rowsHtml = '<div style="padding:30px 14px;text-align:center;color:var(--t3);font-weight:600;font-size:13px">No cash activity today yet</div>';
+      } else {
+        events.forEach(function(ev){
+          var d = new Date(ev.t);
+          var time = (function(){
+            var h = d.getHours(); var m = String(d.getMinutes()).padStart(2,'0');
+            var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+            return h + ':' + m + ' ' + ap;
+          })();
+          var sign = ev.amt > 0 ? '+' : '−';
+          var color = ev.amt > 0 ? '#15803D' : '#DC2626';
+          var icon = ev.type === 'opening' ? '🌅'
+                   : ev.type === 'sale'    ? '💵'
+                   : ev.type === 'expense' ? '📤'
+                   : ev.type === 'deposit' ? '↑'
+                   : ev.type === 'withdrawal' || ev.type === 'bankdeposit' ? '↓'
+                   : '⚖';
+          rowsHtml += '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">'
+                    + '<div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + icon + '</div>'
+                    + '<div style="flex:1;min-width:0">'
+                    +   '<div style="font-size:13px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ev.note + '</div>'
+                    +   '<div style="font-size:11.5px;color:var(--t3);font-weight:600;margin-top:1px">' + time + '</div>'
+                    + '</div>'
+                    + '<div style="font-size:14px;font-weight:800;color:' + color + ';flex-shrink:0">' + sign + '₹' + Math.abs(Math.round(ev.amt)).toLocaleString('en-IN') + '</div>'
+                    + '</div>';
+        });
+      }
+
+      var balance = this.currentBalance();
+      var sheet = document.createElement('div');
+      sheet.className = 'sheet-backdrop';
+      sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+      sheet.innerHTML =
+        '<div class="sheet" style="max-width:430px;border-radius:18px 18px 0 0;padding:18px 18px 22px;max-height:85vh;overflow-y:auto">'
+      +   '<div style="display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--border)">'
+      +     '<div style="flex:1">'
+      +       '<div style="font-size:18px;font-weight:800;letter-spacing:-.015em">Today\'s cash activity</div>'
+      +       '<div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:2px">Current balance: ₹' + Math.round(balance).toLocaleString('en-IN') + '</div>'
+      +     '</div>'
+      +     '<button onclick="this.closest(\'.sheet-backdrop\').remove()" style="background:transparent;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:4px 8px">×</button>'
+      +   '</div>'
+      +   '<div style="padding-top:8px">' + rowsHtml + '</div>'
+      +   (events.length > 0
+          ? '<button onclick="CashDrawer.shareWhatsAppReport()" style="margin-top:16px;width:100%;background:#25D366;color:#fff;border:none;padding:13px;border-radius:11px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">📤 Share daily summary on WhatsApp</button>'
+          : '')
+      + '</div>';
+      document.body.appendChild(sheet);
+    },
+
+    /* ─── WhatsApp daily summary (v33_28 Phase 3) ────────────────────
+       Composes a clean text summary of today's cash activity and opens
+       WhatsApp with it pre-filled. User picks contact (themselves, an
+       accountant, business partner, etc.).
+       ──────────────────────────────────────────────────────────────── */
+    shareWhatsAppReport: function(){
+      try {
+        var todayStr = window.td();
+        var openings = (window.Store && window.Store.list ? window.Store.list('cashOpening') : []) || [];
+        var sales    = (window.Store && window.Store.list ? window.Store.list('sales') : []) || [];
+        var exps     = (window.Store && window.Store.list ? window.Store.list('exps') : []) || [];
+        var adjusts  = (window.Store && window.Store.list ? window.Store.list('cashAdjust') : []) || [];
+
+        var openingTotal = 0, cashSalesTotal = 0, upiSalesTotal = 0, otherSalesTotal = 0;
+        var cashExpTotal = 0, withdrawTotal = 0, depositTotal = 0, correctionTotal = 0;
+        var billCount = 0;
+
+        openings.forEach(function(o){
+          if (window.tdAt(o.t) === todayStr) openingTotal += Number(o.amount || 0);
+        });
+        sales.forEach(function(s){
+          if (window.tdAt(s.t) !== todayStr) return;
+          billCount++;
+          var mode = (s.mode || 'cash').toLowerCase();
+          var amt = Number(s.total || 0);
+          if (mode === 'cash') cashSalesTotal += amt;
+          else if (mode === 'upi') upiSalesTotal += amt;
+          else otherSalesTotal += amt;
+        });
+        exps.forEach(function(e){
+          if (window.tdAt(e.t) !== todayStr) return;
+          var mode = (e.mode || 'cash').toLowerCase();
+          if (mode === 'cash') cashExpTotal += Number(e.amt || 0);
+        });
+        adjusts.forEach(function(a){
+          if (window.tdAt(a.t) !== todayStr) return;
+          var kind = (a.kind || '').toLowerCase();
+          var amt = Number(a.amount || 0);
+          if (kind === 'withdrawal' || kind === 'bankdeposit') withdrawTotal += amt;
+          else if (kind === 'deposit') depositTotal += amt;
+          else if (kind === 'correction') correctionTotal += amt;
+        });
+
+        var expectedDrawer = openingTotal + cashSalesTotal - cashExpTotal - withdrawTotal + depositTotal + correctionTotal;
+        var totalSales = cashSalesTotal + upiSalesTotal + otherSalesTotal;
+
+        var shop = (window.S && window.S.store) || 'My shop';
+        var lang = (window.S && window.S.lang) || 'hi';
+        var dateNice = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        var lines = [];
+        if (lang === 'en') {
+          lines.push('📊 *' + shop + '* — ' + dateNice);
+          lines.push('');
+          lines.push('💰 *Cash drawer*');
+          if (openingTotal > 0) lines.push('  Opening: ₹' + openingTotal.toLocaleString('en-IN'));
+          if (cashSalesTotal > 0) lines.push('  Cash sales: +₹' + cashSalesTotal.toLocaleString('en-IN'));
+          if (cashExpTotal > 0) lines.push('  Cash expenses: −₹' + cashExpTotal.toLocaleString('en-IN'));
+          if (withdrawTotal > 0) lines.push('  Withdrawals: −₹' + withdrawTotal.toLocaleString('en-IN'));
+          if (depositTotal > 0) lines.push('  Cash added: +₹' + depositTotal.toLocaleString('en-IN'));
+          if (correctionTotal !== 0) lines.push('  Reconcile: ' + (correctionTotal > 0 ? '+' : '−') + '₹' + Math.abs(correctionTotal).toLocaleString('en-IN'));
+          lines.push('  *Expected: ₹' + Math.round(expectedDrawer).toLocaleString('en-IN') + '*');
+          lines.push('');
+          lines.push('🧾 *Sales summary*');
+          lines.push('  Total: ₹' + Math.round(totalSales).toLocaleString('en-IN') + ' (' + billCount + ' bills)');
+          if (upiSalesTotal > 0) lines.push('  UPI: ₹' + upiSalesTotal.toLocaleString('en-IN'));
+          if (otherSalesTotal > 0) lines.push('  Other: ₹' + otherSalesTotal.toLocaleString('en-IN'));
+        } else {
+          lines.push('📊 *' + shop + '* — ' + dateNice);
+          lines.push('');
+          lines.push('💰 *Nakad drawer*');
+          if (openingTotal > 0) lines.push('  Opening: ₹' + openingTotal.toLocaleString('en-IN'));
+          if (cashSalesTotal > 0) lines.push('  Cash sale: +₹' + cashSalesTotal.toLocaleString('en-IN'));
+          if (cashExpTotal > 0) lines.push('  Cash kharcha: −₹' + cashExpTotal.toLocaleString('en-IN'));
+          if (withdrawTotal > 0) lines.push('  Nikala: −₹' + withdrawTotal.toLocaleString('en-IN'));
+          if (depositTotal > 0) lines.push('  Daala: +₹' + depositTotal.toLocaleString('en-IN'));
+          if (correctionTotal !== 0) lines.push('  Correction: ' + (correctionTotal > 0 ? '+' : '−') + '₹' + Math.abs(correctionTotal).toLocaleString('en-IN'));
+          lines.push('  *Expected: ₹' + Math.round(expectedDrawer).toLocaleString('en-IN') + '*');
+          lines.push('');
+          lines.push('🧾 *Aaj ki sale*');
+          lines.push('  Total: ₹' + Math.round(totalSales).toLocaleString('en-IN') + ' (' + billCount + ' bills)');
+          if (upiSalesTotal > 0) lines.push('  UPI: ₹' + upiSalesTotal.toLocaleString('en-IN'));
+          if (otherSalesTotal > 0) lines.push('  Other: ₹' + otherSalesTotal.toLocaleString('en-IN'));
+        }
+        lines.push('');
+        lines.push('_via HisaabNow_');
+
+        var msg = lines.join('\n');
+        var waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+        window.open(waUrl, '_blank');
+        if (window.App && window.App.toast) window.App.toast('✓ Opening WhatsApp…');
+      } catch(e) {
+        console.error('[CashDrawer] shareWhatsAppReport failed', e);
+        if (window.App) window.App.toast('Could not generate report: ' + e.message);
+      }
+    },
+
+    /* Re-render any visible view that shows cash data */
+    _rerenderHosts: function(){
+      try {
+        if (window.App) {
+          if (App.current === 'home' && typeof App.renderHome === 'function') App.renderHome();
+          if (App.current === 'cashflow' && window.HND && window.HND.mcf && typeof window.HND.mcf.refresh === 'function') window.HND.mcf.refresh();
+        }
+      } catch(e){}
+    }
+  };
+
+  window.CashDrawer = CashDrawer;
+})();
+/* ═════════════════════════════════════════════════════════════════════ */
 })();
 /* End Mobile Cashflow block */
 
@@ -32870,7 +33788,9 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
     appts:        'appts',
     coupons:      'coupons',
-    recurring:    'recurring'
+    recurring:    'recurring',
+    cashOpening:  'cashOpening',  /* (v33_26) cash drawer module — opening balances + adjustments */
+    cashAdjust:   'cashAdjust'    /* (v33_26) withdrawals, deposits, corrections */
   };
 
   const NO_PUSH_COLLECTIONS = { staff: true };
@@ -47339,12 +48259,14 @@ html[data-shell="desktop"] body.hnd-on-cashflow #hnd-cashflow {
   function cashPositionAt(asOfT){
     var cash = 0;
 
-    /* Opening balance (optional collection) */
+    /* Opening balances — sum ALL with t <= asOfT (v33_26: supports per-day opening resets) */
     try {
       var opening = safeList('cashOpening');
-      if (opening.length > 0){
-        cash += Number(opening[0].amount || opening[0].amt || 0);
-      }
+      opening.forEach(function(o){
+        var t = Number(o.t || 0);
+        if (t > asOfT) return;
+        cash += Number(o.amount || o.amt || 0);
+      });
     } catch(e){}
 
     /* Cash sales */
@@ -47377,6 +48299,20 @@ html[data-shell="desktop"] body.hnd-on-cashflow #hnd-cashflow {
       var mode = (e.mode || 'cash').toLowerCase();
       if (mode === 'cash') cash -= Number(e.amt || 0);
     });
+
+    /* (v33_26) Cash adjustments — withdrawals, deposits, corrections */
+    try {
+      var adjusts = safeList('cashAdjust');
+      adjusts.forEach(function(a){
+        var t = Number(a.t || 0);
+        if (t > asOfT) return;
+        var kind = (a.kind || 'withdrawal').toLowerCase();
+        var amt = Number(a.amount || a.amt || 0);
+        if (kind === 'withdrawal' || kind === 'bankdeposit') cash -= amt;
+        else if (kind === 'deposit' || kind === 'cashin')   cash += amt;
+        else if (kind === 'correction')                      cash += amt;
+      });
+    } catch(e){}
 
     return cash;
   }
