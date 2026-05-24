@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_23_b1_overscroll';
+    window.HISAABNOW_BUILD = 'v33_24_b1_bodyBlock';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -476,13 +476,20 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:#FFFBF5;font-family:'Inter',system-ui,sans-serif;color:var(--t1);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden;overscroll-behavior-x:none;width:100%;max-width:100vw;position:relative;border-top:0 !important;}
 html{touch-action:pan-y;overscroll-behavior-y:contain}
-body{min-height:100vh;display:flex;justify-content:center;overscroll-behavior-y:contain}
+/* (v33_24) Body refactored: was display:flex which caused scroll/touch issues
+   on tall pages like More (1634px content > 551px viewport got stuck).
+   Now uses block layout with .app centered via auto margins. Equivalent
+   visual result, no flex-child weirdness. Also fixes the sheet-backdrop
+   class of bugs cleanly (any body-appended fixed overlay now stacks
+   correctly regardless of body height). */
+body{min-height:100vh;margin:0;overscroll-behavior-y:contain}
 
 .app{
   width:100%;max-width:430px;background:var(--surface);
   min-height:100vh;position:relative;
   padding-bottom:108px;
   overflow-x:hidden;
+  margin:0 auto;  /* centers in viewport — replaces body flex */
 }
 
 .page{display:none;animation:hn-page-in .18s ease-out}
