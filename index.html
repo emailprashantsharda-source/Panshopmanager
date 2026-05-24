@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29b_phantomStuckFix';
+    window.HISAABNOW_BUILD = 'v33_29c_tombstoneGate';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -13830,8 +13830,20 @@ const App = {
            enabled the toggle but saw no entry point. Now: if enabled AND
            cost data missing, show the tile (with "Set opening" CTA if not yet
            used). hasUsedCashDrawer is still respected for non-cost-related
-           UX decisions but doesn't gate the tile itself. */
-        if (noCostData) {
+           UX decisions but doesn't gate the tile itself.
+
+           (v33_29c) During the post-sign-in pull window (when local state
+           is empty but cloud has cashOpening data), suppress the "Set
+           opening" CTA to avoid flashing the wrong state to users who
+           already set an opening. Once pull completes and the local
+           cashOpening cache is populated, the normal logic takes over. */
+        let _initialPullDoneForTile = true;
+        try {
+          if (window.HisaabSync && typeof window.HisaabSync.isInitialPullDone === 'function') {
+            _initialPullDoneForTile = window.HisaabSync.isInitialPullDone();
+          }
+        } catch(e){}
+        if (noCostData && (hasUsedCashDrawer || _initialPullDoneForTile)) {
           _useCashTile = true;
           _cashBalance = CashDrawer.currentBalance();
           _cashSetToday = CashDrawer.hasOpeningToday();
@@ -26316,8 +26328,21 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
          just those who've used cash drawer before. Previously the banner
          only appeared if hasEverUsed was true, creating a chicken-and-egg
          where new users had no entry point. Now: if cash drawer is enabled
-         and no opening today, show banner to onboard the user. */
-      var showMorning = !hasOpeningToday && !morningDismissed;
+         and no opening today, show banner to onboard the user.
+
+         (v33_29c) BUT suppress until initial cloud pull completes. Without
+         this, after sign-out / sign-in the banner flashes for 2-5 seconds
+         while local state is empty (before pull catches up), confusing
+         users who DID set an opening earlier. Once pull completes and the
+         cashOpening record loads from cloud, hasOpeningToday() returns true
+         and the banner correctly stays hidden. */
+      var initialPullDone = true;  /* default true for old builds w/o the API */
+      try {
+        if (window.HisaabSync && typeof window.HisaabSync.isInitialPullDone === 'function') {
+          initialPullDone = window.HisaabSync.isInitialPullDone();
+        }
+      } catch(e){}
+      var showMorning = initialPullDone && !hasOpeningToday && !morningDismissed;
       morningEl.style.display = showMorning ? '' : 'none';
     }
 
@@ -34440,6 +34465,42 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
   let _checkpointPending = null;
 
+  /* ════════════════════════════════════════════════════════════════════════
+     (v33_29c — May 2026) INITIAL PULL GATE — protects against catastrophic
+     false-positive tombstones during sign-in / shop-switch transitions.
+
+     PROBLEM (root cause of v33_29b post-deploy bug report):
+       When a user signs out and signs back in, the app starts with empty
+       local state. The snapshot from the previous session is still in
+       localStorage with all the IDs from before. _checkpointNow() runs,
+       sees snapshot has IDs but current state arrays are empty, and
+       concludes "these were all deleted" — generating tombstone records
+       for EVERY synced record. These tombstones queue up as DELETE writes
+       to Firestore. If they succeed (they currently fail with permission-
+       denied by accident), the user loses ALL their data.
+
+     SAFETY MECHANISM:
+       _initialPullDone is false until pull() completes successfully at
+       least once. While false, _checkpointNow skips tombstone generation
+       but still tracks snapshot updates for new records. After first
+       successful pull, the local state has caught up to cloud, and any
+       remaining "snapshot id not in state" entries are genuine deletes.
+
+     RESET CASES:
+       - On shop switch (resetCheckpointGate() called externally)
+       - On sign-out (init() called again on next sign-in, flag starts false)
+
+     This is a launch-critical safety net. Without it, a single sign-out/
+     sign-in cycle could wipe a real shopkeeper's data depending on auth
+     and shop state alignment.
+  ════════════════════════════════════════════════════════════════════════ */
+  let _initialPullDone = false;
+
+  function _resetCheckpointGate() {
+    _initialPullDone = false;
+    log('checkpoint gate reset — tombstone generation paused until next pull');
+  }
+
   function _checkpointNow() {
     if (!CFG.shopId) return;
 
@@ -34481,14 +34542,47 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         }
       }
 
-      for (const id in snap) {
-        if (!seenIds.has(id)) {
-          const tomb = { id, updatedAt: now(), deletedAt: now() };
-          if (!_suppressPush) {
-            Outbox.enqueue({ collection: coll, record: tomb });
+      /* ────────────────────────────────────────────────────────────────
+         (v33_29c) TOMBSTONE GATE — protect against false deletes.
+
+         Before initial pull completes, "missing from state" doesn't mean
+         "deleted" — it means "we haven't loaded from cloud yet." In that
+         case, leave the snapshot entry alone so future checkpoints don't
+         keep re-attempting deletes. Once initial pull completes and the
+         next checkpoint runs, the state will match cloud and tombstones
+         will only fire for actual user deletions.
+      ──────────────────────────────────────────────────────────────── */
+      if (_initialPullDone) {
+        for (const id in snap) {
+          if (!seenIds.has(id)) {
+            const tomb = { id, updatedAt: now(), deletedAt: now() };
+            if (!_suppressPush) {
+              Outbox.enqueue({ collection: coll, record: tomb });
+            }
+            snap[id] = { h: hashRecord(tomb), t: tomb.updatedAt };
+            changes++;
           }
-          snap[id] = { h: hashRecord(tomb), t: tomb.updatedAt };
-          changes++;
+        }
+      } else {
+        /* Pre-initial-pull state: count would-be tombstones for telemetry
+           but don't queue them. This logs how often the gate saves data. */
+        let skippedTombs = 0;
+        for (const id in snap) {
+          if (!seenIds.has(id)) skippedTombs++;
+        }
+        if (skippedTombs > 0) {
+          log('checkpoint:tombstones_suppressed (pre-initial-pull)', coll, 'count:', skippedTombs);
+          /* Critical-level telemetry only if a lot — helps catch real-world
+             frequency of the bug. */
+          if (skippedTombs >= 5) {
+            try {
+              _critical('tombstones_suppressed', {
+                collection: coll,
+                count: skippedTombs,
+                shopId: CFG.shopId
+              });
+            } catch(e){}
+          }
         }
       }
 
@@ -34910,6 +35004,24 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
   async function fullSync() {
     await pull();
+    /* (v33_29c) After first successful pull, local state has caught up to
+       cloud. Future checkpoints can now safely generate tombstones for
+       records that are genuinely missing (user-initiated deletes).
+       emit() ensures subscribers (dashboard, banners, KPI tile) re-render
+       so the gate flip is reflected in the UI within the same tick. */
+    if (!_initialPullDone) {
+      _initialPullDone = true;
+      log('checkpoint gate opened — pull complete, tombstones re-enabled');
+      try { emit(); } catch(e){}
+      /* Also trigger a home re-render explicitly if App is loaded so cash
+         drawer banners + KPI tile transition out of the "loading" state
+         immediately without waiting for the 1.5s safety poll. */
+      try {
+        if (window.App && window.App.current === 'home' && typeof window.App.renderHome === 'function') {
+          window.App.renderHome();
+        }
+      } catch(e){}
+    }
     await drainOutbox();
   }
 
@@ -34993,6 +35105,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       CFG.shopId = String(opts.shopId);
       if (typeof opts.debug === 'boolean') CFG.debug = opts.debug;
 
+      /* (v33_29c) Reset checkpoint gate on every init. This is the entry
+         point after sign-in or shop-switch. Until the next fullSync()
+         completes pull, tombstones are suppressed — protects against
+         catastrophic false deletes during the load window. */
+      _resetCheckpointGate();
+
       try { _wipeLegacyKeys(); } catch(e){}
 
       try { deps(); } catch (e) { err(e.message); throw e; }
@@ -35066,6 +35184,14 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     pull,
     drainOutbox,
     fullSync,
+
+    /* (v33_29c) Expose checkpoint gate controls so shop-switch /
+       sign-out flows can suppress false tombstones during transitions.
+       resetCheckpointGate() pauses tombstone generation until the next
+       fullSync completes pull. isInitialPullDone() lets UI suppress
+       first-time-user banners until the cloud catch-up has happened. */
+    resetCheckpointGate: _resetCheckpointGate,
+    isInitialPullDone: () => _initialPullDone,
 
     /* (May 2026 sync v32) flush() — user-initiated retry that bypasses backoff
        and consecutive-failure cap. Resets all rate-limit state so the next
