@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_24_b1_bodyBlock';
+    window.HISAABNOW_BUILD = 'v33_25_b1_mobileScroll';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -481,8 +481,11 @@ html{touch-action:pan-y;overscroll-behavior-y:contain}
    Now uses block layout with .app centered via auto margins. Equivalent
    visual result, no flex-child weirdness. Also fixes the sheet-backdrop
    class of bugs cleanly (any body-appended fixed overlay now stacks
-   correctly regardless of body height). */
-body{min-height:100vh;margin:0;overscroll-behavior-y:contain}
+   correctly regardless of body height).
+   (v33_25) Added explicit touch-action and removed overscroll-contain
+   from body — that property on body can conflict with TWA scroll on
+   tall pages in Chrome 100+ on some Android versions. */
+body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:touch}
 
 .app{
   width:100%;max-width:430px;background:var(--surface);
@@ -490,9 +493,13 @@ body{min-height:100vh;margin:0;overscroll-behavior-y:contain}
   padding-bottom:108px;
   overflow-x:hidden;
   margin:0 auto;  /* centers in viewport — replaces body flex */
+  /* (v33_25) Explicitly allow vertical scroll on .app; some Android
+     Chrome versions need this hint for TWA contexts. */
+  touch-action:pan-y;
 }
 
-.page{display:none;animation:hn-page-in .18s ease-out}
+/* (v33_25) Belt-and-suspenders: each page is explicitly scroll-friendly */
+.page{display:none;animation:hn-page-in .18s ease-out;touch-action:pan-y}
 .page.active{display:block}
 @keyframes hn-page-in{from{opacity:0}to{opacity:1}}
 @keyframes hn-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
