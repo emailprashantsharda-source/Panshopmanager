@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29p_productWording';
+    window.HISAABNOW_BUILD = 'v33_29r_shopCreateReload';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -13773,6 +13773,13 @@ const App = {
 
     const todayMargin = todayRev > 0 ? (todayProf / todayRev) * 100 : 0;
     const yestMargin = yestRev > 0 ? (yestProf / yestRev) * 100 : 0;
+    /* (v33_29q) todayCost derived locally. The v33_29j zero-cost branch
+       referenced `todayCost`, but that variable lives in a DIFFERENT
+       function (the dashboard totals computer) and is out of scope here —
+       causing "todayCost is not defined" to throw during renderKpis, which
+       surfaced as "Could not create shop" because shop creation triggers a
+       home re-render. Cost = revenue − profit. */
+    const todayCost = Math.max(0, todayRev - todayProf);
 
     const revEl = document.getElementById('kpi-revenue');
     const revDelta = document.getElementById('kpi-revenue-delta');
@@ -25660,6 +25667,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       this.closeProductSheet();
       this.nav('home');
       if (typeof this.toast === 'function') this.toast(this._T('toast.newShopCreated','New shop created') + ' · ' + name);
+      /* (v33_29r) Reload after creating a shop. Creating a shop switches the
+         active shop in-place without tearing down the previous shop's DOM.
+         The old shop's catalog rows stayed mounted underneath, showing as a
+         ghost overlay (e.g. cafe "espresso ☕" bleeding through the new
+         sweet-shop catalog). A reload guarantees a clean DOM for the newly
+         active shop — same approach as sign-out (v33_29e). Short delay so
+         the success toast is visible first. */
+      setTimeout(function(){
+        try { location.reload(); } catch(e){ console.error('[addShop] reload failed', e); }
+      }, 700);
     } catch (e) {
       console.error('[v30.01] addShop failed:', e);
       if (btn) { btn.disabled = false; btn.textContent = 'Create shop'; }
