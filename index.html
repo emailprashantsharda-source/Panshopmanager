@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29v_onboardingChecklist';
+    window.HISAABNOW_BUILD = 'v33_29w_onbAckOnTap';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -21904,6 +21904,47 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }, 150);
   },
 
+  /* (v33_29w) Onboarding nudge acknowledgment.
+     When a user taps an onboarding nudge, we mark it acknowledged so it
+     drops off the bell badge immediately — even before they finish the
+     task. Rationale: tapping = "I've seen this, I'm on it"; keeping it
+     badged after the user has clearly engaged feels nagging. The ack is
+     scoped per-shop and per-day so:
+       - completing the task removes the nudge naturally (state-driven), and
+       - a tapped-but-not-completed nudge stays hidden for the rest of the
+         day (they acknowledged it), then resurfaces next day if still
+         pending — a gentle reminder without being naggy.
+     Non-onboarding alerts (stock/udhar/expiry) are NOT affected: those are
+     real operational alerts and must reflect live state, not be dismissible
+     by a tap. */
+  _onbAckKey(){
+    var shopId = '';
+    try {
+      if (window.MShop && MShop.getActive){
+        var a = MShop.getActive();
+        shopId = (a && a.shopId) || '';
+      }
+    } catch(e){}
+    var today = (window.td && td()) || '';
+    return 'hn_onbAck_' + shopId + '_' + today;
+  },
+  _getOnbAck(){
+    try {
+      var raw = localStorage.getItem(this._onbAckKey());
+      return raw ? JSON.parse(raw) : {};
+    } catch(e){ return {}; }
+  },
+  _ackOnboardingNudge(id){
+    if (!id) return;
+    try {
+      var map = this._getOnbAck();
+      map[id] = 1;
+      localStorage.setItem(this._onbAckKey(), JSON.stringify(map));
+    } catch(e){}
+    /* Re-render the badge immediately so the count drops on tap. */
+    try { this.renderAlertsBadge(); } catch(e){}
+  },
+
   _collectAlerts(){
     var out = [];
     var now = new Date();
@@ -22225,6 +22266,22 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           action: "App.nav('staff')"
         });
       }
+
+      /* (v33_29w) Drop any onboarding nudge the user has already tapped
+         today (acknowledged). Completed tasks are already gone via the
+         state checks above; this additionally hides tapped-but-incomplete
+         ones for the rest of the day so the badge drops the moment they
+         engage. Only filters onboarding:true items — operational alerts
+         are untouched. */
+      try {
+        var _ack = this._getOnbAck();
+        if (_ack && Object.keys(_ack).length){
+          out = out.filter(function(a){
+            if (a && a.onboarding === true && _ack[a.id]) return false;
+            return true;
+          });
+        }
+      } catch(e){}
     }
 
     // ─── 🟢 GREEN — suggestions ────────────────────────────────────
@@ -22345,7 +22402,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           .replace(/"/g, '&quot;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
-        return '<div data-alert-action="' + safeAction + '" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;cursor:pointer">'
+        return '<div data-alert-action="' + safeAction + '" data-alert-id="' + (a.id || '') + '" data-alert-onb="' + (a.onboarding === true ? '1' : '') + '" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;cursor:pointer">'
           + '<div style="width:38px;height:38px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + a.emoji + '</div>'
           + '<div style="flex:1;min-width:0">'
             + '<div style="font-size:14px;font-weight:800;color:var(--t1);letter-spacing:-.005em">' + a.title + '</div>'
@@ -22376,6 +22433,17 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         row.addEventListener('click', function(){
           var action = row.getAttribute('data-alert-action');
           if (!action) return;
+
+          /* (v33_29w) If this is an onboarding nudge, acknowledge it so the
+             bell badge drops immediately on tap — even before the user
+             finishes the task. */
+          try {
+            var isOnb = row.getAttribute('data-alert-onb') === '1';
+            var alertId = row.getAttribute('data-alert-id');
+            if (isOnb && alertId && typeof App._ackOnboardingNudge === 'function'){
+              App._ackOnboardingNudge(alertId);
+            }
+          } catch(e){}
 
           App.closeProductSheet();
           setTimeout(function(){
