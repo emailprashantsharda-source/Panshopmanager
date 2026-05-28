@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29h_cashTileLabelFix';
+    window.HISAABNOW_BUILD = 'v33_29i_cashTileConsistent';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -13853,33 +13853,61 @@ const App = {
         cashEnabled = (stored === null) ? true : (stored === '1');
       } catch(e){}
       if (cashEnabled && !_useStaffPill && window.CashDrawer) {
+        /* ════════════════════════════════════════════════════════════════
+           (v33_29i — Refined Option A) Cash tile takes the 3rd KPI slot
+           CONSISTENTLY — once a shopkeeper has engaged with the cash drawer,
+           the tile always shows live cash-in-hand. No more flip-flopping
+           between CASH and MARGIN based on whether a sale happened today.
+
+           ENGAGEMENT GATE — the tile shows cash only if the user has
+           actually USED the cash drawer at least once (ever set an opening
+           or made any adjustment). Rationale:
+             - Brand-new users who've never touched cash drawer still see
+               the familiar MARGIN / "Set cost prices" onboarding in this
+               slot. We don't push them into cash before they understand it.
+             - Once they set their first opening (deliberate adoption), the
+               tile switches to CASH and STAYS there — consistent meaning
+               all day, every day. Grows with cash sales, shrinks with cash
+               expenses / withdrawals. No mid-day surprise revert to margin.
+
+           This replaces the old noCostData-driven swap which caused the
+           tile to mean different things at different times of day. */
         const hasUsedCashDrawer =
           ((window.Store && Store.list && (Store.list('cashOpening') || []).length > 0))
        || ((window.Store && Store.list && (Store.list('cashAdjust')  || []).length > 0));
-        const noCostData = (!profitIsAccurate && todaySales.length > 0) || todayRev === 0;
-        /* (v33_29) Show cash tile for first-time enabled users too. Previously
-           required hasUsedCashDrawer which created chicken-and-egg: new users
-           enabled the toggle but saw no entry point. Now: if enabled AND
-           cost data missing, show the tile (with "Set opening" CTA if not yet
-           used). hasUsedCashDrawer is still respected for non-cost-related
-           UX decisions but doesn't gate the tile itself.
 
-           (v33_29c) During the post-sign-in pull window (when local state
-           is empty but cloud has cashOpening data), suppress the "Set
-           opening" CTA to avoid flashing the wrong state to users who
-           already set an opening. Once pull completes and the local
-           cashOpening cache is populated, the normal logic takes over. */
+        /* (v33_29c) During the post-sign-in pull window (local state empty
+           but cloud has cashOpening data), isInitialPullDone() is false.
+           We must NOT decide "user hasn't used cash drawer" during this
+           window, or the tile would wrongly show margin/set-cost until pull
+           completes. So: if pull isn't done yet AND the user previously had
+           cash drawer engagement (we can't know locally yet), default to
+           keeping whatever the prior render showed. Simplest safe behavior:
+           treat hasUsedCashDrawer as authoritative only after pull. Before
+           pull, if local already shows engagement, honor it; if not, fall
+           through to margin (which then corrects itself post-pull via the
+           re-render fullSync triggers). */
         let _initialPullDoneForTile = true;
         try {
           if (window.HisaabSync && typeof window.HisaabSync.isInitialPullDone === 'function') {
             _initialPullDoneForTile = window.HisaabSync.isInitialPullDone();
           }
         } catch(e){}
-        if (noCostData && (hasUsedCashDrawer || _initialPullDoneForTile)) {
+
+        /* Refined Option A core rule: engagement gates the tile. */
+        if (hasUsedCashDrawer) {
           _useCashTile = true;
           _cashBalance = CashDrawer.currentBalance();
           _cashSetToday = CashDrawer.hasOpeningToday();
         }
+        /* If NOT engaged yet, _useCashTile stays false → margin / set-cost
+           onboarding shows in this slot (handled by the profEl block below).
+           _initialPullDoneForTile is intentionally referenced so the linter
+           and future maintainers see it's considered; the post-pull
+           re-render (fullSync → renderHome) re-runs this logic once cloud
+           cashOpening data has loaded, flipping the tile to cash if the
+           user is in fact an engaged cash-drawer user. */
+        void _initialPullDoneForTile;
       }
     } catch(e){ console.warn('[renderKpis] cash tile detection:', e); }
 
