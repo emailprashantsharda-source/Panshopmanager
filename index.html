@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29t_bellRedesign';
+    window.HISAABNOW_BUILD = 'v33_29v_onboardingChecklist';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -566,7 +566,7 @@ body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:tou
    dot — low contrast on the light header and "always lit", so users learned
    to ignore it. Now it's a solid dark bell that's quiet when there's nothing
    pending and shows a clear red count badge (#home-bell-badge) when there is. */
-#home-bell-btn{color:#1E293B}
+#home-bell-btn{color:#1E293B;position:relative}
 .dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--y);border:2px solid var(--surface);box-shadow:0 0 0 3px rgba(255,192,67,.22)}
 .brand{display:flex;align-items:center;gap:8px}
 .brand-mark{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
@@ -22129,13 +22129,24 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     } catch(e){}
 
     if (_onbPullDone) {
-      var _recipeVertsOnb = { salon:1, cafe:1, restaurant:1, bakery:1, sweets:1 };
-      var _isRecipeVertOnb = !!_recipeVertsOnb[this.vertical];
+      /* (v33_29v) Vertical capability maps — which setup steps apply.
+         Mirrors the PROFS table (hasConsumables / hasStaff) but defined
+         locally since PROFS isn't exposed on window in this scope.
+           hasConsumables: salon, cafe, restaurant, bakery
+           hasStaff:       salon only
+         Keep these in sync with the PROFS definition if verticals change. */
+      var _consumableVerts = { salon:1, cafe:1, restaurant:1, bakery:1 };
+      var _staffVerts       = { salon:1 };
+      var _hasConsumables = !!_consumableVerts[this.vertical];
+      var _hasStaff       = !!_staffVerts[this.vertical];
+
       var _itemNounMap = { salon:'service', restaurant:'dish', cafe:'item', bakery:'item', sweets:'item' };
       var _itemNoun = _itemNounMap[this.vertical] || 'product';
       var _supplyNoun = (this.vertical === 'salon') ? 'supplies' : 'ingredients';
 
-      // Nudge 1 — no catalog yet → add your first item
+      var staff = ((window.S && S.staff) || []).filter(function(s){ return s && !s._deleted && !s.deletedAt; });
+
+      // ── Step 1 — Add your first item (all shops, if no catalog yet) ──
       if (prods.length === 0) {
         out.push({
           id: 'onbFirstItem',
@@ -22149,8 +22160,23 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         });
       }
 
-      // Nudge 2 — products exist but some have no cost price.
-      // (Can only apply once products exist.)
+      // ── Step 2 — Add supplies/ingredients (consumable verticals only) ──
+      // salon, cafe, restaurant, bakery. Grocery/sweets/stationery/pan skip.
+      if (_hasConsumables && ings.length === 0) {
+        out.push({
+          id: 'onbNoSupplies',
+          urgency: 'amber',
+          onboarding: true,
+          emoji: '🌾',
+          title: 'Add your ' + _supplyNoun,
+          sub: 'Track recipe cost and real margin',
+          cta: 'Add',
+          action: "App.openIngredientSheet()"
+        });
+      }
+
+      // ── Step 3 — Add cost price (all shops, once products exist) ──
+      // Can only apply when there are products to cost.
       if (prods.length > 0) {
         var noCpProds = prods.filter(function(p){
           var sp = Number(p.sp || p.price || 0);
@@ -22163,26 +22189,40 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
             onboarding: true,
             emoji: '🏷️',
             title: noCpProds.length + ' ' + (noCpProds.length === 1 ? 'item' : 'items') + ' missing cost price',
-            sub: 'Add cost to track your real profit',
+            sub: 'Add cost to track your real profit margin',
             cta: 'Fix',
             action: "App.openCpMissingFix()"
           });
         }
       }
 
-      // Nudge 3 — recipe vertical with no supplies yet. Independent of
-      // product count: setting up the supply pantry is its own task.
-      // Grocery/stationery/pan have hasConsumables:false → never nagged.
-      if (_isRecipeVertOnb && ings.length === 0) {
+      // ── Step 4 — Log your first expense (all shops) ──
+      // Helps users understand true profit (revenue − cost − expenses).
+      if (exps.length === 0) {
         out.push({
-          id: 'onbNoSupplies',
+          id: 'onbNoExpense',
           urgency: 'amber',
           onboarding: true,
-          emoji: '🌾',
-          title: 'Add your ' + _supplyNoun,
-          sub: 'Track recipe cost and real margin',
+          emoji: '💸',
+          title: 'Add your first expense',
+          sub: 'Rent, supplies, salaries — track where money goes',
           cta: 'Add',
-          action: "App.openIngredientSheet()"
+          action: "App.nav('expenses')"
+        });
+      }
+
+      // ── Step 5 — Add your team (staff verticals only — salon) ──
+      // Only salon uses staff attribution / commission. Others skip.
+      if (_hasStaff && staff.length === 0) {
+        out.push({
+          id: 'onbNoStaff',
+          urgency: 'amber',
+          onboarding: true,
+          emoji: '👥',
+          title: 'Add your team',
+          sub: 'Track who served each customer & their commission',
+          cta: 'Add',
+          action: "App.nav('staff')"
         });
       }
     }
