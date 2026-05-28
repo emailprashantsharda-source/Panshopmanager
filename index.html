@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29j_setMarginPrompt';
+    window.HISAABNOW_BUILD = 'v33_29k_inlineMissingSupply';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -21237,7 +21237,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     target.innerHTML = html;
   },
 
-  openIngredientSheet(id){
+  openIngredientSheet(id, opts){
 
     try {
       if (window.AppRole && typeof window.AppRole.isCashier === 'function' && window.AppRole.isCashier()) {
@@ -21251,7 +21251,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (isEdit && !item) { this.toast(this._T('toast.itemNotFound', 'Item not found')); return; }
     this._editingIgId = isEdit ? id : null;
 
-    const v = item || {};
+    /* (v33_29k) Allow a prefill name for NEW supplies. Used by the product
+       wizard's "quick-add missing supply" chips: when a recipe template
+       references an ingredient the user hasn't created yet (e.g. "milk"),
+       tapping the chip opens this sheet with the name pre-filled so the
+       user only has to enter the price/pack size, not retype the name. */
+    const _prefillName = (!isEdit && opts && opts.prefillName) ? String(opts.prefillName) : '';
+
+    const v = item || (_prefillName ? { name: _prefillName } : {});
     const _L = this._supplyLabels();
 
     var _vKey = this._supplyVerticalKey();
@@ -38678,6 +38685,17 @@ log('module loaded — call AppRole.refresh() after MShop.bootstrap and on every
 }
 .ns-create-cta button:hover{ background:var(--ns-tint) }
 
+/* (v33_29k) Missing-supplies quick-add chips */
+.ns-missing-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:10px;
+  padding:8px 12px;font-size:13px;font-weight:700;color:#92400E;
+  cursor:pointer;font-family:inherit;letter-spacing:-.005em;
+  transition:background .12s, transform .1s;
+}
+.ns-missing-chip:hover{ background:#FEF3C7 }
+.ns-missing-chip:active{ transform:scale(.96) }
+
 .ns-recap{ margin-top:18px;padding:14px 0 0;border-top:1px solid var(--ns-bd-soft) }
 .ns-recap .row{
   display:flex;justify-content:space-between;align-items:center;
@@ -40299,6 +40317,18 @@ button:not(:disabled){ user-select:none }
           </button>
         </div>
 
+        <!-- (v33_29k) Missing-supplies quick-add chips. When a recipe template
+             references ingredients the user hasn't created yet, each shows as
+             a tappable chip here. Tapping opens the supply sheet pre-filled
+             with the name; on save, it auto-links back into the recipe. -->
+        <div id="ns-missing-wrap" style="display:none;margin:4px 2px 10px">
+          <div style="font-size:12px;font-weight:800;color:#92400E;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            <span id="ns-missing-title">Add these to finish the recipe</span>
+          </div>
+          <div id="ns-missing-chips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
         <div class="ns-recap" id="ns-recap" style="display:none">
           <div class="row total">
             <span>Total supply cost</span>
@@ -40800,7 +40830,12 @@ button:not(:disabled){ user-select:none }
 
     sizesEnabled: false,
     sizes: [],
-    estBookings:120
+    estBookings:120,
+    /* (v33_29k) Tracks recipe-template ingredients that couldn't be matched
+       to the user's existing supplies. Each entry: { kw, qty, unit } from
+       the template spec. Rendered as tappable "quick-add" chips so the user
+       can create the missing supply inline without leaving the wizard. */
+    missingSupplies: []
   };
 
   function $(id){ return document.getElementById(id); }
@@ -41339,6 +41374,34 @@ button:not(:disabled){ user-select:none }
     }).join('');
   }
 
+  /* (v33_29k) Render the missing-supplies quick-add chips. Each chip shows
+     the supply name + suggested qty; tapping it opens the supply sheet
+     pre-filled so the user creates it in one step and it links straight
+     back into the recipe. Only relevant for recipe verticals (the wizard
+     never runs for grocery/stationery/pan). */
+  function renderMissingChips(){
+    var wrap = $('ns-missing-wrap');
+    var chips = $('ns-missing-chips');
+    if (!wrap || !chips) return;
+    var list = state.missingSupplies || [];
+    if (list.length === 0){
+      wrap.style.display = 'none';
+      chips.innerHTML = '';
+      return;
+    }
+    wrap.style.display = '';
+    chips.innerHTML = list.map(function(spec, idx){
+      var nm = titleCase(spec.kw);
+      var qtyHint = (spec.qty && spec.unit) ? (' · ' + spec.qty + spec.unit) : '';
+      return ''+
+        '<button type="button" class="ns-missing-chip" onclick="NSW.quickAddMissing('+idx+')">'+
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'+
+          '<span>'+escHtml(nm)+'</span>'+
+          '<span style="opacity:.6;font-weight:600">'+escHtml(qtyHint)+'</span>'+
+        '</button>';
+    }).join('');
+  }
+
   function renderReview(){
     var c = compute();
 
@@ -41453,6 +41516,7 @@ button:not(:disabled){ user-select:none }
       }
     }
     renderSupplyList();
+    renderMissingChips();  /* (v33_29k) */
     if (state.step === 3) renderReview();
 
     var back = $('ns-back-btn'), next = $('ns-next-btn'), stepBtn = $('ns-step-btn');
@@ -41754,6 +41818,7 @@ button:not(:disabled){ user-select:none }
       state.supplies = [];
       state.sizesEnabled = false;
       state.sizes = [];
+      state.missingSupplies = [];  /* (v33_29k) clear stale chips on fresh open */
 
       applyFlavorLabels();
       loadCategories();
@@ -42017,6 +42082,7 @@ button:not(:disabled){ user-select:none }
       var ings = getIngredients();
       var picked = [];
       var missing = [];
+      var missingSpecs = [];  /* (v33_29k) full specs for quick-add chips */
       def.forEach(function(spec){
         var match = null;
         for (var k = 0; k < spec.kw.length && !match; k++){
@@ -42032,21 +42098,76 @@ button:not(:disabled){ user-select:none }
           picked.push({ ingredientId: match.id, qty: qty });
         } else {
           missing.push(spec.kw[0]);
+          /* (v33_29k) Keep the full spec so the quick-add chip can prefill
+             the supply name AND remember the qty/unit to auto-link the
+             recipe line once the supply is created. */
+          missingSpecs.push({ kw: spec.kw[0], allKw: spec.kw.slice(), qty: spec.qty, unit: spec.unit });
         }
       });
       state.supplies = picked;
+      state.missingSupplies = missingSpecs;  /* (v33_29k) drive the chips */
       if (key !== 'blank' && !state.name){
         state.name = titleCase(key);
         var ne = $('ns-name'); if (ne) ne.value = state.name;
       }
       render();
       if (missing.length > 0 && def.length > 0){
-        var msg = 'Added ' + picked.length + ' of ' + def.length + ' supplies. ' +
-                  (missing.length ? 'Missing: ' + missing.join(', ') + '. Tap "Create new supply" if needed.' : '');
-        _toast(msg);
+        /* (v33_29k) Friendlier message — chips below now let them add the
+           missing ones in one tap, so we point there instead of the old
+           "Create new supply" instruction. */
+        var addedMsg = picked.length > 0 ? ('Added ' + picked.length + ' of ' + def.length + ' supplies. ') : '';
+        _toast(addedMsg + 'Tap the highlighted items below to add what\'s missing.');
       } else if (key === 'blank'){
+        state.missingSupplies = [];
         _toast('Cleared — add supplies manually.');
       }
+    },
+
+    /* (v33_29k) Quick-add a missing template supply. Opens the ingredient
+       sheet pre-filled with the supply name. After the user saves it, the
+       resume flow links it back into the recipe automatically (the new
+       ingredient is detected as the diff and added to state.supplies). We
+       stash the pending spec so the resumed wizard can apply the template's
+       suggested qty/unit to the newly created supply. */
+    quickAddMissing: function(idx){
+      var spec = state.missingSupplies && state.missingSupplies[idx];
+      if (!spec) return;
+      var A = _app();
+      if (!(A && typeof A.openIngredientSheet === 'function')){
+        _toast('Open Supplies to add this item, then return here.');
+        return;
+      }
+      try {
+        window._NSW_RESUME = {
+          editingId:    state.editingId,
+          wasInactive:  state.wasInactive,
+          step:         state.step,
+          name:         state.name,
+          cat:          state.cat,
+          gender:       state.gender,
+          price:        state.price,
+          gstRate:      state.gstRate,
+          gstInclusive: state.gstInclusive,
+          duration:     state.duration,
+          supplies:     state.supplies.map(function(s){
+            return { ingredientId: s.ingredientId, qty: s.qty };
+          }),
+          knownIngIds:  getIngredients().map(function(i){ return i.id; }),
+          /* (v33_29k) Remember which missing spec we're resolving + the
+             remaining missing list, so resumeFromIngredient can apply the
+             suggested qty and keep the other chips. */
+          pendingSpec:      spec,
+          missingSupplies:  state.missingSupplies.slice()
+        };
+      } catch(e){
+        console.error('[NSW.quickAddMissing] snapshot failed', e);
+      }
+      var niceName = titleCase(spec.kw);
+      _toast('Add "' + niceName + '" — we\'ll link it back automatically.');
+      api.close();
+      setTimeout(function(){
+        try { A.openIngredientSheet(null, { prefillName: niceName }); } catch(e){}
+      }, 250);
     },
 
     resumeFromIngredient: function(newIngredientId){
@@ -42084,9 +42205,36 @@ button:not(:disabled){ user-select:none }
           var alreadyHas = state.supplies.some(function(s){ return s.ingredientId === addId; });
           if (!alreadyHas){
             var ing = getIngredients().find(function(i){ return i.id === addId; });
-            var qty = (ing && (ing.baseUnit === 'ml' || ing.baseUnit === 'g')) ? 20 : 1;
+            /* (v33_29k) If this add resolves a pending template spec, use the
+               template's suggested qty (and only if units line up), instead
+               of the generic 20/1 default. Gives a sensible recipe amount
+               straight away (e.g. milk 120ml for a cappuccino). */
+            var qty;
+            var pSpec = snap.pendingSpec;
+            if (pSpec && ing && ing.baseUnit === pSpec.unit){
+              qty = pSpec.qty;
+            } else {
+              qty = (ing && (ing.baseUnit === 'ml' || ing.baseUnit === 'g')) ? 20 : 1;
+            }
             state.supplies.push({ ingredientId: addId, qty: qty });
           }
+        }
+
+        /* (v33_29k) Rebuild the remaining missing-supplies list: drop the
+           spec we just resolved (matched by keyword against the new supply's
+           name), keep the rest so their chips persist. */
+        if (snap.missingSupplies && snap.missingSupplies.length){
+          var newIng = addId ? getIngredients().find(function(i){ return i.id === addId; }) : null;
+          var newName = (newIng && newIng.name ? newIng.name : '').toLowerCase();
+          state.missingSupplies = snap.missingSupplies.filter(function(spec){
+            /* keep spec if its keywords do NOT match the newly added supply */
+            var resolved = (spec.allKw || [spec.kw]).some(function(kw){
+              return newName.indexOf(String(kw).toLowerCase()) >= 0;
+            });
+            return !resolved;
+          });
+        } else {
+          state.missingSupplies = [];
         }
 
         loadCategories();
