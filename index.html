@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29y_forceRetryBypassBackoff';
+    window.HISAABNOW_BUILD = 'v33_29y_notifTitleHard';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -23838,6 +23838,23 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     document.getElementById('ps-drawer').classList.add('open');
     this._editingId = null;
     this._infoCloseAction = opts.onCloseAction || null;
+
+    /* (v33_29y) Belt-and-suspenders: the i18n MutationObserver fires when we
+       set sheet.innerHTML (if the body contains any data-i18n nodes) and
+       schedules an applyAll() on a timer/microtask. Although we already
+       stripped data-i18n from #ps-title above (so applyAll can't touch it),
+       re-assert the custom title on the next frame in case any async pass
+       or stale attribute reintroduced the old text. Cheap and bulletproof. */
+    if (opts.title) {
+      var _t = opts.title;
+      var _ti = title;
+      setTimeout(function(){
+        try {
+          if (_ti && _ti.hasAttribute && _ti.hasAttribute('data-i18n')) _ti.removeAttribute('data-i18n');
+          if (_ti && _ti.textContent !== _t) _ti.textContent = _t;
+        } catch(e){}
+      }, 60);
+    }
   },
 
   openBulkPriceSheet(){
