@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29i_cashTileConsistent';
+    window.HISAABNOW_BUILD = 'v33_29j_setMarginPrompt';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -501,6 +501,13 @@ body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:tou
 /* (v33_25) Belt-and-suspenders: each page is explicitly scroll-friendly */
 .page{display:none;animation:hn-page-in .18s ease-out;touch-action:pan-y}
 .page.active{display:block}
+/* (v33_29j) Gentle blink for the "Set margin" prompt in the 3rd KPI tile.
+   Draws a new shopkeeper's eye to the fact that they must enter cost
+   prices before margin is meaningful — instead of silently showing a
+   misleading 100%. Opacity-only (no layout shift), 1.6s cycle so it's
+   noticeable but not annoying. */
+@keyframes hn-setmargin-blink{0%,100%{opacity:1}50%{opacity:.35}}
+.hn-setmargin-blink{animation:hn-setmargin-blink 1.6s ease-in-out infinite}
 @keyframes hn-page-in{from{opacity:0}to{opacity:1}}
 @keyframes hn-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
@@ -13968,6 +13975,17 @@ const App = {
       } else if (todayRev === 0) {
         profEl.textContent = '—';
         if (profDelta) profDelta.innerHTML = `<span style="opacity:.5">·</span>`;
+      } else if (todayCost === 0 && todayRev > 0) {
+        /* (v33_29j) All-zero-cost detection. profitIsAccurate is technically
+           true here (products have cp=0, which counts as a "known" cost),
+           so the old code showed "100%" margin — misleading. A real shop
+           never buys stock for ₹0; a ₹0 total cost means the shopkeeper
+           hasn't entered real cost prices yet. Instead of a fake 100%, show
+           a blinking "Set margin" prompt that taps through to the catalog
+           where they set cost prices. Once any real cost is entered, this
+           branch is skipped and the genuine margin % shows. */
+        profEl.innerHTML = '<span class="hn-setmargin-blink" style="font-size:15px;font-weight:700;color:#92400E">Set margin</span>';
+        if (profDelta) profDelta.innerHTML = `<span class="hn-setmargin-blink" style="color:#92400E;font-weight:600;opacity:.85">⚠ Add cost prices →</span>`;
       } else {
 
         const marginDisplay = Math.round(todayMargin) + '%';
@@ -13993,6 +14011,7 @@ const App = {
     this._kpi3Mode = _useStaffPill ? 'staff'
                     : _useCashTile ? 'cash'
                     : (!profitIsAccurate && todaySales.length > 0) ? 'setcost'
+                    : (todayCost === 0 && todayRev > 0) ? 'setmargin'  /* (v33_29j) all-zero-cost prompt */
                     : 'margin';
   },
 
@@ -14008,7 +14027,7 @@ const App = {
     } else if (mode === 'staff') {
       // Navigate to staff
       this.nav('staff');
-    } else if (mode === 'setcost' || mode === 'margin') {
+    } else if (mode === 'setcost' || mode === 'margin' || mode === 'setmargin') {
       // Navigate to catalog (where they can set cost prices)
       this.nav('catalog');
     }
