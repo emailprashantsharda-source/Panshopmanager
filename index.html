@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29m_onboardingNotifs';
+    window.HISAABNOW_BUILD = 'v33_29p_productWording';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -22080,10 +22080,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     // during the brief post-sign-in sync window when local state is still
     // empty (same safety principle as the cash-drawer banner).
     //
-    // Sequenced to avoid double-nagging:
+    // Sequenced sensibly (not mutually exclusive):
     //   0 products            → "Add your first <item>"
-    //   products, missing cp  → "Add cost prices"
-    //   recipe vertical, 0 supplies → "Add your supplies/ingredients"
+    //   products, missing cp  → "Add cost prices" (needs products to exist)
+    //   recipe vertical, 0 supplies → "Add your supplies" (independent of products)
+    // A fresh cafe/bakery therefore sees BOTH "add first item" AND
+    // "add supplies" — they're separate setup tasks. Cost-price can only
+    // appear once products exist (you can't cost a product that isn't there).
     // Each clears automatically once the underlying state is satisfied.
     var _onbPullDone = true;
     try {
@@ -22099,8 +22102,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       var _itemNoun = _itemNounMap[this.vertical] || 'product';
       var _supplyNoun = (this.vertical === 'salon') ? 'supplies' : 'ingredients';
 
+      // Nudge 1 — no catalog yet → add your first item
       if (prods.length === 0) {
-        // No catalog yet → the single most important first action
         out.push({
           id: 'onbFirstItem',
           urgency: 'amber',
@@ -22111,9 +22114,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           cta: 'Add',
           action: "App.openProductSheet()"
         });
-      } else {
-        // Products exist but some have no cost price (recovery cue, now
-        // badged instead of a silent green alert)
+      }
+
+      // Nudge 2 — products exist but some have no cost price.
+      // (Can only apply once products exist.)
+      if (prods.length > 0) {
         var noCpProds = prods.filter(function(p){
           var sp = Number(p.sp || p.price || 0);
           return sp > 0 && (p.cp == null || p.cp === '');
@@ -22130,21 +22135,22 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
             action: "App.openCpMissingFix()"
           });
         }
+      }
 
-        // Recipe verticals only: products exist but no supplies added yet.
-        // Grocery/stationery/pan have hasConsumables:false → never nagged.
-        if (_isRecipeVertOnb && ings.length === 0) {
-          out.push({
-            id: 'onbNoSupplies',
-            urgency: 'amber',
-            onboarding: true,
-            emoji: '🌾',
-            title: 'Add your ' + _supplyNoun,
-            sub: 'Track recipe cost and real margin',
-            cta: 'Add',
-            action: "App.openIngredientSheet()"
-          });
-        }
+      // Nudge 3 — recipe vertical with no supplies yet. Independent of
+      // product count: setting up the supply pantry is its own task.
+      // Grocery/stationery/pan have hasConsumables:false → never nagged.
+      if (_isRecipeVertOnb && ings.length === 0) {
+        out.push({
+          id: 'onbNoSupplies',
+          urgency: 'amber',
+          onboarding: true,
+          emoji: '🌾',
+          title: 'Add your ' + _supplyNoun,
+          sub: 'Track recipe cost and real margin',
+          cta: 'Add',
+          action: "App.openIngredientSheet()"
+        });
       }
     }
 
@@ -40400,7 +40406,7 @@ button:not(:disabled){ user-select:none }
 
         <div class="ns-recap" id="ns-recap" style="display:none">
           <div class="row total">
-            <span>Total supply cost</span>
+            <span id="ns-recap-cost-label">Total supply cost</span>
             <span class="v">₹<span id="ns-recap-total">0</span></span>
           </div>
           <div class="ns-margin-pill">
@@ -40423,7 +40429,7 @@ button:not(:disabled){ user-select:none }
         </div>
 
         <div class="ns-field">
-          <div class="ns-fh" data-i18n="common.service">Service</div>
+          <div class="ns-fh" id="ns-rv-svc-label" data-i18n="common.service">Service</div>
           <div class="ns-rv-name" id="ns-rv-svc">service</div>
           <div class="ns-rv-meta" id="ns-rv-svc-meta">—</div>
         </div>
@@ -40439,7 +40445,7 @@ button:not(:disabled){ user-select:none }
             <div class="ns-rstat alt">
               <div class="lbl">Forecast monthly</div>
               <div class="v">₹<span id="ns-rv-monthly">0</span></div>
-              <div class="meta">at ~<span id="ns-rv-bookings">0</span> bookings</div>
+              <div class="meta">at ~<span id="ns-rv-bookings">0</span> <span id="ns-rv-bookings-noun">bookings</span></div>
             </div>
           </div>
         </div>
@@ -40450,7 +40456,7 @@ button:not(:disabled){ user-select:none }
         </div>
 
         <div class="ns-field" style="border-bottom:0">
-          <div class="ns-fh"><span>Supplies attached</span><span class="ns-opt"><span id="ns-rv-att-ct">0</span> items</span></div>
+          <div class="ns-fh"><span id="ns-rv-att-label">Supplies attached</span><span class="ns-opt"><span id="ns-rv-att-ct">0</span> items</span></div>
           <div id="ns-rv-att"></div>
         </div>
       </section>
@@ -40516,12 +40522,13 @@ button:not(:disabled){ user-select:none }
     },
     cafe: {
       label: {
-        item:        'menu item',
-        itemPlural:  'menu items',
+        item:        'product',
+        itemPlural:  'products',
+        consumableNoun: 'ingredients',  /* (v33_29o) Step-2 wording, decoupled from item label */
         recipe:      "What's in it?",
         recipeDesc:  "Add the ingredients used per order. Cost auto-fills from your purchase price ÷ pack size.",
-        saveNew:     '✓ Save menu item',
-        saveActivate:'✓ Activate menu item',
+        saveNew:     '✓ Save product',
+        saveActivate:'✓ Activate product',
         intro:       'Add a',
         introDesc:   "Tell us the basics. We'll calculate the recipe cost and gross margin in the next step."
       },
@@ -40571,12 +40578,13 @@ button:not(:disabled){ user-select:none }
 
     restaurant: {
       label: {
-        item:        'dish',
-        itemPlural:  'dishes',
+        item:        'product',
+        itemPlural:  'products',
+        consumableNoun: 'ingredients',  /* (v33_29o) */
         recipe:      "What's in the recipe?",
         recipeDesc:  "Add the ingredients used per portion. Cost auto-fills from your purchase price ÷ pack size.",
-        saveNew:     '✓ Save dish',
-        saveActivate:'✓ Activate dish',
+        saveNew:     '✓ Save product',
+        saveActivate:'✓ Activate product',
         intro:       'Add a',
         introDesc:   "Tell us the basics. We'll calculate the recipe cost and gross margin in the next step."
       },
@@ -40676,12 +40684,13 @@ button:not(:disabled){ user-select:none }
 
     bakery: {
       label: {
-        item:        'bake',
-        itemPlural:  'bakes',
+        item:        'product',
+        itemPlural:  'products',
+        consumableNoun: 'ingredients',  /* (v33_29p) */
         recipe:      "What's in the recipe?",
-        recipeDesc:  "Add the ingredients used per bake. Cost auto-fills from your purchase price ÷ pack size.",
-        saveNew:     '✓ Save bake',
-        saveActivate:'✓ Activate bake',
+        recipeDesc:  "Add the ingredients used per item. Cost auto-fills from your purchase price ÷ pack size.",
+        saveNew:     '✓ Save product',
+        saveActivate:'✓ Activate product',
         intro:       'Add a',
         introDesc:   "Tell us the basics. We'll calculate the recipe cost and gross margin in the next step."
       },
@@ -40779,12 +40788,13 @@ button:not(:disabled){ user-select:none }
 
     sweets: {
       label: {
-        item:        'sweet',
-        itemPlural:  'sweets',
+        item:        'product',
+        itemPlural:  'products',
+        consumableNoun: 'ingredients',  /* (v33_29o) */
         recipe:      "What's in the recipe? (per kg)",
         recipeDesc:  "Add the ingredients used per KG of finished mithai. We'll scale cost when you sell less than a kg.",
-        saveNew:     '✓ Save sweet',
-        saveActivate:'✓ Activate sweet',
+        saveNew:     '✓ Save product',
+        saveActivate:'✓ Activate product',
         intro:       'Add a',
         introDesc:   "Tell us the basics. We'll calculate the recipe cost per kg and gross margin in the next step."
       },
@@ -40981,11 +40991,17 @@ button:not(:disabled){ user-select:none }
     if (nameFh) nameFh.textContent = L.item.charAt(0).toUpperCase() + L.item.slice(1) + ' name';
     var nameInp = $('ns-name');
     if (nameInp){
-      var hints = {
-        'service': 'e.g., Haircut + Hair Wash',
-        'menu item': 'e.g., Cappuccino · Medium'
+      /* (v33_29o) Vertical-aware example, since cafe/restaurant/sweets now
+         share item:'product' and can't be told apart by label anymore. */
+      var _vkHint = (window.App && window.App.vertical) || '';
+      var vertHints = {
+        salon:      'e.g., Haircut + Hair Wash',
+        cafe:       'e.g., Cappuccino · Medium',
+        restaurant: 'e.g., Paneer Butter Masala',
+        bakery:     'e.g., Chocolate Truffle Pastry',
+        sweets:     'e.g., Kaju Katli'
       };
-      nameInp.placeholder = hints[L.item] || 'e.g., ' + L.item;
+      nameInp.placeholder = vertHints[_vkHint] || ('e.g., ' + L.item);
     }
 
     var durField = document.getElementById('ns-dur');
@@ -41021,20 +41037,25 @@ button:not(:disabled){ user-select:none }
     if (s2p) s2p.textContent = L.recipeDesc;
 
     var sInp = $('ns-search-inp');
+    /* (v33_29o) Step-2 supply/ingredient wording now keys off consumableNoun
+       (set per flavor) instead of item==='menu item', since cafe/restaurant/
+       sweets now use item:'product'. Salon has no consumableNoun → 'supplies'. */
+    var _consNoun = L.consumableNoun || 'supplies';
+    var _isIngredientWord = (_consNoun === 'ingredients');
     if (sInp){
-      sInp.placeholder = (f.label.item === 'menu item')
+      sInp.placeholder = _isIngredientWord
         ? 'Search your ingredients…'
         : 'Search your supplies…';
     }
     var empH4 = document.querySelector('#ns-sup-empty h4');
     if (empH4){
-      empH4.textContent = (f.label.item === 'menu item')
+      empH4.textContent = _isIngredientWord
         ? 'No ingredients added yet'
         : 'No supplies added yet';
     }
     var empP = document.querySelector('#ns-sup-empty p');
     if (empP){
-      empP.textContent = (f.label.item === 'menu item')
+      empP.textContent = _isIngredientWord
         ? 'Search your ingredients, or create a new one.'
         : 'Search your supplies, or create a new one.';
     }
@@ -41043,28 +41064,62 @@ button:not(:disabled){ user-select:none }
       var icnSvg = createCta.querySelector('svg');
       var iconHtml = icnSvg ? icnSvg.outerHTML : '';
       createCta.innerHTML = iconHtml + ' Can\'t find it? Create new ' +
-        (f.label.item === 'menu item' ? 'ingredient' : 'supply');
+        (_isIngredientWord ? 'ingredient' : 'supply');
     }
 
     var bulbB = document.querySelector('#ns-panel1 .ns-bulb .tx b');
     var bulbS = document.querySelector('#ns-panel1 .ns-bulb .tx span');
     if (bulbB && bulbS){
-      if (f.label.item === 'sweet'){
+      /* (v33_29o) Discriminate by vertical key, not item label — cafe/
+         restaurant/sweets now all share item:'product', so the old
+         item-based branching collapsed to one case. */
+      var _vk = (window.App && window.App.vertical) || '';
+      if (_vk === 'sweets'){
         bulbB.textContent = 'Mithai margins = ghee + khoya prices.';
         bulbS.textContent = "Recipe is PER KG of finished sweet. Cashew rate ka pata? Khoya kitne ka aaya? Be honest with ratios — sugar, milk, ghee, dry fruits all add up. When you sell 500g, cost auto-scales to half.";
-      } else if (f.label.item === 'bake'){
+      } else if (_vk === 'bakery'){
         bulbB.textContent = 'Bakery margins live in the recipe.';
         bulbS.textContent = "Every cake is a math problem — flour, sugar, butter, eggs, chocolate, cream all add up. Be precise with quantities in Step 2. Wholesale-priced ingredients hide your real cost per bake.";
-      } else if (f.label.item === 'dish'){
-        bulbB.textContent = 'Costing a dish? Be honest with the recipe.';
-        bulbS.textContent = "Restaurant margins live or die on portion size. Add EVERY ingredient you actually plate (oil, masalas, garnish, even the napkin if you cost it) — we'll show your real cost per dish in Step 3.";
-      } else if (f.label.item === 'menu item'){
+      } else if (_vk === 'restaurant'){
+        bulbB.textContent = 'Costing a product? Be honest with the recipe.';
+        bulbS.textContent = "Restaurant margins live or die on portion size. Add EVERY ingredient you actually plate (oil, masalas, garnish, even the napkin if you cost it) — we'll show your real cost per product in Step 3.";
+      } else if (_vk === 'cafe'){
         bulbB.textContent = 'Track recipe cost in Step 2.';
         bulbS.textContent = "Add the ingredients used per order — coffee beans, milk, syrups — and we'll calculate your gross margin to the rupee.";
       } else {
         bulbB.textContent = 'Set staff commission in Teams.';
         bulbS.textContent = "Each stylist's commission rate (e.g. Ravi 30%, Vikash 25%) is set on their profile. At checkout, tap the staff member who served the customer — their rate gets stamped on the bill automatically. Margin appears in Step 3 after you add supplies.";
       }
+    }
+
+    /* (v33_29p) STEP 3 review-panel labels — previously hardcoded to salon
+       wording ("Service", "bookings", "Supplies attached"). Now flavor-aware:
+       cafe/restaurant/sweets/bakery show "Product / orders / Ingredients";
+       salon keeps "Service / bookings / Supplies". This is why a cafe's
+       Cappuccino used to appear under a "Service" heading on Review. */
+    var _itemCap = L.item.charAt(0).toUpperCase() + L.item.slice(1);
+
+    var rvSvcLabel = $('ns-rv-svc-label');
+    if (rvSvcLabel){
+      /* strip data-i18n so the translation pass can't revert it to "Service" */
+      if (rvSvcLabel.hasAttribute('data-i18n')) rvSvcLabel.removeAttribute('data-i18n');
+      rvSvcLabel.textContent = _itemCap;
+    }
+
+    var rvBookingsNoun = $('ns-rv-bookings-noun');
+    if (rvBookingsNoun){
+      /* salon takes "bookings"; product verticals take "orders" */
+      rvBookingsNoun.textContent = (L.item === 'service') ? 'bookings' : 'orders';
+    }
+
+    var rvAttLabel = $('ns-rv-att-label');
+    if (rvAttLabel){
+      rvAttLabel.textContent = (_consNoun === 'ingredients') ? 'Ingredients used' : 'Supplies attached';
+    }
+
+    var recapCostLabel = $('ns-recap-cost-label');
+    if (recapCostLabel){
+      recapCostLabel.textContent = (_consNoun === 'ingredients') ? 'Total ingredient cost' : 'Total supply cost';
     }
 
     /* (v33_29l) renderTemplates() call removed — QUICK START grid deleted. */
@@ -41458,7 +41513,9 @@ button:not(:disabled){ user-select:none }
   function renderReview(){
     var c = compute();
 
-    var slug = state.name ? state.name.replace(/\s+/g,' ').trim().toLowerCase() : 'service';
+    var _f = currentFlavor();
+    var _itemWord = (_f && _f.label && _f.label.item) ? _f.label.item : 'item';
+    var slug = state.name ? state.name.replace(/\s+/g,' ').trim().toLowerCase() : _itemWord;
     $('ns-rv-svc').textContent = slug;
     var metaParts = ['₹' + fmt(c.customerPays)];
     if (state.duration > 0) metaParts.push(state.duration + ' min');
@@ -41591,7 +41648,9 @@ button:not(:disabled){ user-select:none }
 
     var canProceed = false, lbl = 'Continue';
     var _f = currentFlavor();
-    var _addLabel = (_f.label.item === 'menu item') ? 'Add ingredients' : 'Add supplies';
+    /* (v33_29o) Use consumableNoun so the "Continue → Add ingredients/supplies"
+       button stays correct now that cafe/restaurant/sweets use item:'product'. */
+    var _addLabel = ((_f.label.consumableNoun || 'supplies') === 'ingredients') ? 'Add ingredients' : 'Add supplies';
 
     function hasPrice(){
       if (state.sizesEnabled){
@@ -41665,12 +41724,17 @@ button:not(:disabled){ user-select:none }
     var isEdit = !!state.editingId;
     var isActivation = !!state.wasInactive;
     var isPlainEdit  = isEdit && !isActivation;
+    /* (v33_29p) Step-2 noun is flavor-aware: "Ingredients" for recipe food
+       verticals (cafe/restaurant/sweets/bakery), "Supplies" for salon. */
+    var _flForTitle = currentFlavor();
+    var _step2Noun = ((_flForTitle.label && _flForTitle.label.consumableNoun) === 'ingredients')
+      ? 'Ingredients' : 'Supplies';
     var titles;
     if (isActivation){
 
-      titles = ['Activate · Basics', 'Activate · Supplies', 'Activate · Review'];
+      titles = ['Activate · Basics', 'Activate · ' + _step2Noun, 'Activate · Review'];
     } else if (isPlainEdit){
-      titles = ['Edit · Basics', 'Edit · Supplies', 'Edit · Review'];
+      titles = ['Edit · Basics', 'Edit · ' + _step2Noun, 'Edit · Review'];
     } else {
       var _fl = currentFlavor();
       var _newTitle = 'New ' + _fl.label.item;
@@ -41688,7 +41752,7 @@ button:not(:disabled){ user-select:none }
       if (isPlainEdit){
         pips.innerHTML =
           '<span class="pip ' + (n===1?'on':'') + '" onclick="NSW.jumpTo(1)" title="Basics"></span>' +
-          '<span class="pip ' + (n===2?'on':'') + '" onclick="NSW.jumpTo(2)" title="Supplies"></span>' +
+          '<span class="pip ' + (n===2?'on':'') + '" onclick="NSW.jumpTo(2)" title="' + _step2Noun + '"></span>' +
           '<span class="pip ' + (n===3?'on':'') + '" onclick="NSW.jumpTo(3)" title="Review"></span>' +
           '<span style="margin-left:4px">' + label + '</span>';
       } else {
