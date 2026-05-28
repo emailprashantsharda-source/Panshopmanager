@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29k_inlineMissingSupply';
+    window.HISAABNOW_BUILD = 'v33_29m_onboardingNotifs';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -22069,23 +22069,86 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
     });
 
-    // ─── 🟢 GREEN — suggestions ────────────────────────────────────
-    // 7. Active products without cost price (recovery cue, not nag)
-    var noCpProds = prods.filter(function(p){
-      var sp = Number(p.sp || p.price || 0);
-      return sp > 0 && (p.cp == null || p.cp === '');
-    });
-    if (noCpProds.length > 0) {
-      out.push({
-        id: 'noCp',
-        urgency: 'green',
-        emoji: '🏷️',
-        title: noCpProds.length + ' ' + (noCpProds.length === 1 ? 'item' : 'items') + ' missing cost price',
-        sub: 'Add cost to track real profit',
-        cta: 'Fix',
-        action: "App.openCpMissingFix()"
-      });
+    // ─── 🟠 ONBOARDING — first-run setup nudges ───────────────────
+    // (v33_29m) Guide a new/incomplete shopkeeper through setup. These
+    // carry an `onboarding:true` flag so they BADGE the bell (counted
+    // alongside red) — previously the only setup cue was a green alert,
+    // which by design never badges, so new users never noticed it. That's
+    // why "setup notifications never worked".
+    //
+    // All gated on isInitialPullDone so we don't nag an existing user
+    // during the brief post-sign-in sync window when local state is still
+    // empty (same safety principle as the cash-drawer banner).
+    //
+    // Sequenced to avoid double-nagging:
+    //   0 products            → "Add your first <item>"
+    //   products, missing cp  → "Add cost prices"
+    //   recipe vertical, 0 supplies → "Add your supplies/ingredients"
+    // Each clears automatically once the underlying state is satisfied.
+    var _onbPullDone = true;
+    try {
+      if (window.HisaabSync && typeof window.HisaabSync.isInitialPullDone === 'function') {
+        _onbPullDone = window.HisaabSync.isInitialPullDone();
+      }
+    } catch(e){}
+
+    if (_onbPullDone) {
+      var _recipeVertsOnb = { salon:1, cafe:1, restaurant:1, bakery:1, sweets:1 };
+      var _isRecipeVertOnb = !!_recipeVertsOnb[this.vertical];
+      var _itemNounMap = { salon:'service', restaurant:'dish', cafe:'item', bakery:'item', sweets:'item' };
+      var _itemNoun = _itemNounMap[this.vertical] || 'product';
+      var _supplyNoun = (this.vertical === 'salon') ? 'supplies' : 'ingredients';
+
+      if (prods.length === 0) {
+        // No catalog yet → the single most important first action
+        out.push({
+          id: 'onbFirstItem',
+          urgency: 'amber',
+          onboarding: true,
+          emoji: '✨',
+          title: 'Add your first ' + _itemNoun,
+          sub: 'Set up your menu so you can start billing',
+          cta: 'Add',
+          action: "App.openProductSheet()"
+        });
+      } else {
+        // Products exist but some have no cost price (recovery cue, now
+        // badged instead of a silent green alert)
+        var noCpProds = prods.filter(function(p){
+          var sp = Number(p.sp || p.price || 0);
+          return sp > 0 && (p.cp == null || p.cp === '');
+        });
+        if (noCpProds.length > 0) {
+          out.push({
+            id: 'onbNoCp',
+            urgency: 'amber',
+            onboarding: true,
+            emoji: '🏷️',
+            title: noCpProds.length + ' ' + (noCpProds.length === 1 ? 'item' : 'items') + ' missing cost price',
+            sub: 'Add cost to track your real profit',
+            cta: 'Fix',
+            action: "App.openCpMissingFix()"
+          });
+        }
+
+        // Recipe verticals only: products exist but no supplies added yet.
+        // Grocery/stationery/pan have hasConsumables:false → never nagged.
+        if (_isRecipeVertOnb && ings.length === 0) {
+          out.push({
+            id: 'onbNoSupplies',
+            urgency: 'amber',
+            onboarding: true,
+            emoji: '🌾',
+            title: 'Add your ' + _supplyNoun,
+            sub: 'Track recipe cost and real margin',
+            cta: 'Add',
+            action: "App.openIngredientSheet()"
+          });
+        }
+      }
     }
+
+    // ─── 🟢 GREEN — suggestions ────────────────────────────────────
     // 8. Customers with udhar but no phone (can't send reminders)
     var noPhoneCusts = custs.filter(function(c){
       return !c.phone && cBal(c.id) > 0;
@@ -22153,16 +22216,21 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     return out;
   },
 
-  // Render the bell-icon badge with the count of RED alerts only.
-  // Amber + green don't add to the badge (avoids fatigue).
+  // Render the bell-icon badge. Counts RED alerts + ONBOARDING nudges.
+  // (v33_29m) Onboarding nudges (set first item / cost prices / supplies)
+  // now badge the bell so new users actually notice them. Other amber
+  // alerts (low stock, expiring, udhar 30-90d) still don't badge here —
+  // they surface via the separate amber dot to avoid fatigue.
   renderAlertsBadge(){
     try {
       var alerts = this._collectAlerts();
-      var redCount = alerts.filter(function(a){ return a.urgency === 'red'; }).length;
+      var badgeCount = alerts.filter(function(a){
+        return a.urgency === 'red' || a.onboarding === true;
+      }).length;
       var badge = document.getElementById('home-bell-badge');
       if (!badge) return;
-      if (redCount > 0) {
-        badge.textContent = redCount > 9 ? '9+' : String(redCount);
+      if (badgeCount > 0) {
+        badge.textContent = badgeCount > 9 ? '9+' : String(badgeCount);
         badge.style.display = 'flex';
       } else {
         badge.style.display = 'none';
@@ -40288,10 +40356,11 @@ button:not(:disabled){ user-select:none }
           <p>Add the items consumed per service. Cost auto-fills from your purchase price ÷ pack size.</p>
         </div>
 
-        <div class="ns-tpl-cap">Quick start</div>
-        <div class="ns-tpl-grid" id="ns-tpl-grid">
-
-        </div>
+        <!-- (v33_29l) QUICK START template grid removed. The 6 hardcoded
+             product templates (Latte/Cappuccino/etc.) were redundant with
+             Step-1 naming, rarely matched real menus, and caused "pick the
+             product twice" confusion. Recipe building is fully covered by the
+             ingredient search + "create new supply" + quick-add-missing chips. -->
 
         <div class="ns-search">
           <span class="icn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
@@ -40305,7 +40374,7 @@ button:not(:disabled){ user-select:none }
           <div class="ns-empty" id="ns-sup-empty">
             <div class="icn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
             <h4>No supplies added yet</h4>
-            <p>Pick a template above, search your supplies, or create a new one.</p>
+            <p>Search your supplies, or create a new one.</p>
           </div>
           <div class="ns-sup-list" id="ns-sup-list" style="display:none"></div>
         </div>
@@ -40891,28 +40960,12 @@ button:not(:disabled){ user-select:none }
   }
   function _munim(){ return (typeof window !== 'undefined' && window.Munim) ? window.Munim : null; }
 
-  /* Render Step 2 quick-start template buttons based on active flavor.
-     Called on open() and re-called any time the flavor might've shifted
-     (rare — flavor is fixed per session). */
+  /* (v33_29l) QUICK START template grid removed — see HTML comment in Step 2.
+     This function is now a no-op kept only so any stray caller doesn't throw.
+     applyTemplate() remains available (harmless) but is no longer reachable
+     from the UI. */
   function renderTemplates(){
-    var host = $('ns-tpl-grid');
-    if (!host) return;
-    var tmps = currentFlavor().templates || {};
-    var keys = Object.keys(tmps);
-    /* Keep "blank" last regardless of definition order */
-    keys.sort(function(a,b){
-      if (tmps[a].blank) return 1;
-      if (tmps[b].blank) return -1;
-      return 0;
-    });
-    host.innerHTML = keys.map(function(k){
-      var t = tmps[k];
-      var cls = 'ns-tpl' + (t.blank ? ' is-blank' : '');
-      return '<button class="' + cls + '" type="button" onclick="NSW.applyTemplate(\'' + k + '\')">'+
-        '<div class="icn">' + (t.emoji || '＋') + '</div>'+
-        '<div class="meta"><div class="nm">' + escHtml(t.name) + '</div>'+
-        '<div class="ds">' + escHtml(t.desc) + '</div></div></button>';
-    }).join('');
+    /* grid removed; nothing to render */
   }
 
   function applyFlavorLabels(){
@@ -40982,8 +41035,8 @@ button:not(:disabled){ user-select:none }
     var empP = document.querySelector('#ns-sup-empty p');
     if (empP){
       empP.textContent = (f.label.item === 'menu item')
-        ? 'Pick a template above, search your ingredients, or create a new one.'
-        : 'Pick a template above, search your supplies, or create a new one.';
+        ? 'Search your ingredients, or create a new one.'
+        : 'Search your supplies, or create a new one.';
     }
     var createCta = document.querySelector('.ns-create-cta button');
     if (createCta){
@@ -41014,7 +41067,7 @@ button:not(:disabled){ user-select:none }
       }
     }
 
-    renderTemplates();
+    /* (v33_29l) renderTemplates() call removed — QUICK START grid deleted. */
   }
 
   function renderPricingRows(){
@@ -56929,8 +56982,11 @@ html[data-shell="mobile"] #pg-onboarding.onb-on-step3 #hnd-onb-mob-step-3 {
       try {
         if (!window.App || typeof App._collectAlerts !== 'function') return;
         var alerts = App._collectAlerts() || [];
-        var amber = alerts.filter(function(a){ return a.urgency === 'amber'; }).length;
+        /* (v33_29m) Exclude onboarding nudges — they badge via the main red
+           badge now, so counting them here too would double-show them. */
+        var amber = alerts.filter(function(a){ return a.urgency === 'amber' && a.onboarding !== true; }).length;
         var red = alerts.filter(function(a){ return a.urgency === 'red'; }).length;
+        var onb = alerts.filter(function(a){ return a.onboarding === true; }).length;
         var bellBtn = document.getElementById('home-bell-btn');
         if (!bellBtn) return;
         var dot = bellBtn.querySelector('.hnd-mob-amber-badge');
@@ -56939,8 +56995,9 @@ html[data-shell="mobile"] #pg-onboarding.onb-on-step3 #hnd-onb-mob-step-3 {
           dot.className = 'hnd-mob-amber-badge';
           bellBtn.appendChild(dot);
         }
-        /* Show amber dot only when there are NO reds (red badge wins visually) */
-        if (red === 0 && amber > 0){
+        /* Show amber dot only when there are NO reds AND no onboarding nudges
+           (those win the main badge visually) */
+        if (red === 0 && onb === 0 && amber > 0){
           dot.textContent = amber > 9 ? '9+' : String(amber);
           dot.classList.add('live');
         } else {
