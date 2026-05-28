@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29r_shopCreateReload';
+    window.HISAABNOW_BUILD = 'v33_29s_emojiKeywordFix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -10845,6 +10845,35 @@ const App = {
   _syncFromStore(){
     if (!window.Store) return;
     SERVICES    = Store.list('prods');
+
+    /* (v33_29s) One-time repair for products corrupted by the old emoji-keyword
+       bug (emoji field holding "espresso,☕" style array-stringified garbage
+       instead of a single emoji). Detect any prods.emoji that is too long to be
+       an emoji (real emojis are 1-4 chars; corrupted ones contain commas or
+       letters) and reset to a vertical-appropriate default. Persists the fix
+       so it only runs once per corrupted record. */
+    try {
+      var _defEmoji = ({ salon:'✂️', cafe:'☕', restaurant:'🍽️', bakery:'🥐', sweets:'🍬', grocery:'🛒', stationery:'✏️', pan:'🍃' })[this.vertical] || '📦';
+      var _fixedAny = false;
+      (SERVICES || []).forEach(function(p){
+        if (!p || !p.emoji) return;
+        var e = String(p.emoji);
+        /* Corrupted if it contains a comma, contains ascii letters, or is
+           unreasonably long for an emoji. */
+        var looksCorrupt = (e.indexOf(',') >= 0) || /[a-zA-Z]/.test(e) || e.length > 8;
+        if (looksCorrupt){
+          try {
+            Store.update('prods', p.id, { emoji: _defEmoji });
+            p.emoji = _defEmoji;
+            _fixedAny = true;
+          } catch(err){ /* best-effort */ }
+        }
+      });
+      if (_fixedAny){
+        SERVICES = Store.list('prods');  /* refresh after repair */
+        console.info('[v33_29s] Repaired corrupted product emoji field(s)');
+      }
+    } catch(e){ console.warn('[v33_29s] emoji sanitize failed (non-fatal):', e); }
     SALES_TODAY = Store.todaySales();
     CUSTOMERS   = Store.list('custs');
 
@@ -41798,12 +41827,29 @@ button:not(:disabled){ user-select:none }
       setStep(1); return;
     }
 
-    var emoji = '✂️';
+    /* (v33_29s) Default emoji when no keyword matches — vertical-appropriate
+       (was hardcoded '✂️' salon scissors, wrong for cafe/sweets/etc). */
+    var _defEmojiMap = { salon:'✂️', cafe:'☕', restaurant:'🍽️', bakery:'🥐', sweets:'🍬' };
+    var emoji = _defEmojiMap[(window.App && window.App.vertical)] || '🍽️';
     try {
-      if (window.EMOJI_KEYWORDS){
+      /* (v33_29s) FIX: EMOJI_KEYWORDS is an ARRAY of [keyword, emoji] pairs,
+         not an object. The old code used `for (var k in EMOJI_KEYWORDS)` which
+         iterates ARRAY INDICES ("0","1","2"...) and then did
+         `lower.indexOf(k)`. A product named "Rasgulla · 1 piece" contains the
+         digit "1", so it matched index "1" and stored EMOJI_KEYWORDS[1] —
+         which is the pair array ['espresso','☕'] — into the emoji field. That
+         stringified to "espresso,☕" and rendered as the giant "espresso,"
+         text over sweet-shop tiles. Correct approach: iterate the pairs and
+         match the KEYWORD (pair[0]), assign the EMOJI (pair[1]). */
+      if (Array.isArray(window.EMOJI_KEYWORDS)){
         var lower = state.name.toLowerCase();
-        for (var k in window.EMOJI_KEYWORDS){
-          if (lower.indexOf(k) >= 0){ emoji = window.EMOJI_KEYWORDS[k]; break; }
+        for (var ki = 0; ki < window.EMOJI_KEYWORDS.length; ki++){
+          var pair = window.EMOJI_KEYWORDS[ki];
+          if (!pair || !pair[0]) continue;
+          if (lower.indexOf(String(pair[0]).toLowerCase()) >= 0){
+            emoji = pair[1];
+            break;
+          }
         }
       }
     } catch(e){}
