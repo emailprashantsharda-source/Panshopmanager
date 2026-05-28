@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29g_cashPersistAndBannerMove';
+    window.HISAABNOW_BUILD = 'v33_29h_cashTileLabelFix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -13822,6 +13822,17 @@ const App = {
 
     if (profLabel) {
       profLabel.textContent = _useStaffPill ? this._T('dash.perStaff', 'Per Staff') : this._T('dash.marginShort', 'Margin');
+      /* (v33_29h) Same data-i18n guard as the cash tile below: when in
+         staff-pill mode, the dynamic "Per Staff" label would be reverted
+         to "Margin" by the i18n re-render. Strip data-i18n here and let
+         the cash/restore block below manage it. For plain margin mode we
+         leave the attribute intact so it translates normally. */
+      try {
+        if (_useStaffPill && profLabel.hasAttribute('data-i18n')) {
+          profLabel.setAttribute('data-i18n-orig', profLabel.getAttribute('data-i18n'));
+          profLabel.removeAttribute('data-i18n');
+        }
+      } catch(e){}
     }
 
     /* (v33_27 Phase 2) Determine if we should show CASH IN HAND instead
@@ -13875,6 +13886,31 @@ const App = {
     /* Override label when showing cash */
     if (_useCashTile && profLabel) {
       profLabel.textContent = this._T('dash.cashInHand', 'Cash');
+      /* (v33_29h) CRITICAL: remove data-i18n so the translation system
+         doesn't overwrite "Cash" back to "Margin" on the next i18n
+         re-render. The element has data-i18n="dash.margin" baked into
+         the HTML; without removing it here, any applyTranslations() call
+         (language toggle, re-render, etc.) reverts the label to "Margin"
+         while the VALUE still shows the cash balance — producing the
+         confusing "MARGIN ₹5,000" display the user reported. We stash the
+         original key in a data attribute so non-cash modes can restore it. */
+      try {
+        if (profLabel.hasAttribute('data-i18n')) {
+          profLabel.setAttribute('data-i18n-orig', profLabel.getAttribute('data-i18n'));
+          profLabel.removeAttribute('data-i18n');
+        }
+      } catch(e){}
+    } else if (profLabel && !_useStaffPill) {
+      /* (v33_29h) Plain MARGIN mode only (not staff-pill, not cash):
+         restore the data-i18n attribute if we previously stripped it, so
+         the margin label translates normally again. Guarded with
+         !_useStaffPill so we don't restore translation onto the dynamic
+         "Per Staff" label (which the block above intentionally stripped). */
+      try {
+        if (!profLabel.hasAttribute('data-i18n') && profLabel.hasAttribute('data-i18n-orig')) {
+          profLabel.setAttribute('data-i18n', profLabel.getAttribute('data-i18n-orig'));
+        }
+      } catch(e){}
     }
 
     if (profEl) {
