@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29w_onbAckOnTap';
+    window.HISAABNOW_BUILD = 'v33_29y_forceRetryBypassBackoff';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -13340,7 +13340,10 @@ const App = {
     }
     this.toast(this._T('toast.syncing', 'Syncing…'));
     try {
-      await HisaabSync.fullSync();
+      /* (v33_29y) force:true bypasses any active upload backoff. A manual
+         "Sync now" / Retry is the user explicitly asking to try immediately;
+         it should not be silently blocked by a backoff timer. */
+      await HisaabSync.fullSync({ force: true });
       this.toast(this._T('toast.synced', '✓ Synced'));
       this.renderSettings();
     } catch (e) {
@@ -22389,7 +22392,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         + '<div style="font-size:18px;font-weight:800;color:#15803D;margin-bottom:6px;letter-spacing:-.01em" data-i18n="common.allClear">All clear</div>'
         + '<div style="font-size:13.5px;color:var(--t3);font-weight:600;line-height:1.5">No alerts right now. We\'ll let you know if anything needs attention.</div>'
         + '</div>';
-      this.openInfoSheet({ title: 'Alerts', sub: 'Everything looks good', bodyHTML: emptyBody });
+      this.openInfoSheet({ title: 'Notifications', sub: 'Everything looks good', iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a6 6 0 0 0-6 6c0 4.5-1.5 6.5-2.6 7.7A1 1 0 0 0 4.1 17h15.8a1 1 0 0 0 .7-1.3C19.5 14.5 18 12.5 18 8a6 6 0 0 0-6-6z"/><path d="M10.3 21a2 2 0 0 0 3.4 0z"/></svg>', bodyHTML: emptyBody });
       return;
     }
 
@@ -22425,7 +22428,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var sub = red.length > 0
       ? red.length + ' urgent · ' + (alerts.length - red.length) + ' other'
       : alerts.length + ' ' + (alerts.length === 1 ? 'item' : 'items') + ' to review';
-    this.openInfoSheet({ title: 'Alerts', sub: sub, bodyHTML: body });
+    this.openInfoSheet({ title: 'Notifications', sub: sub, iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a6 6 0 0 0-6 6c0 4.5-1.5 6.5-2.6 7.7A1 1 0 0 0 4.1 17h15.8a1 1 0 0 0 .7-1.3C19.5 14.5 18 12.5 18 8a6 6 0 0 0-6-6z"/><path d="M10.3 21a2 2 0 0 0 3.4 0z"/></svg>', bodyHTML: body });
 
     var sheet = document.getElementById('prod-sheet-body');
     if (sheet) {
@@ -22613,6 +22616,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   openProductSheet(id, opts){
+    /* (v33_29x) Restore the product cube icon in case a prior openInfoSheet
+       (e.g. Alerts) swapped in a different glyph. The product sheet shares
+       the same header DOM. */
+    try {
+      var _iconWrap = document.querySelector('#ps-drawer .ps-hdr-icon');
+      if (_iconWrap && _iconWrap.dataset.origIcon) {
+        _iconWrap.innerHTML = _iconWrap.dataset.origIcon;
+      }
+    } catch(e){}
     /* opts.forceRetail=true → bypass salon service wizard, open plain product
        form even on salon vertical. Used by "+ Add retail product" button on
        Product Sales page. */
@@ -23792,10 +23804,36 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (!sheet || !title) return;
 
     title.textContent = opts.title || 'Details';
+    /* (v33_29x) The shared sheet header #ps-title has data-i18n="pos.addItemLbl"
+       ("Add item") baked in because this DOM is reused from the product sheet.
+       When openInfoSheet sets a dynamic title (e.g. "Alerts"), the i18n
+       re-render reverts it to "Add item". Strip the attribute while a custom
+       title is shown; the product sheet re-adds/sets it when it opens. */
+    try {
+      if (title.hasAttribute('data-i18n')) title.removeAttribute('data-i18n');
+    } catch(e){}
     const subEl = title.parentElement.querySelector('.mn-hdr-sub');
-    if (subEl) subEl.textContent = opts.sub || '';
+    if (subEl) {
+      try { if (subEl.hasAttribute('data-i18n')) subEl.removeAttribute('data-i18n'); } catch(e){}
+      subEl.textContent = opts.sub || '';
+    }
 
     sheet.innerHTML = opts.bodyHTML || '';
+    /* (v33_29x) Optional header icon override. The shared sheet shows a
+       product "cube" icon by default (it's the product editor's DOM). For
+       non-product sheets like Alerts, pass opts.iconSvg to show a fitting
+       glyph instead of the misleading cube. */
+    try {
+      var iconWrap = document.querySelector('#ps-drawer .ps-hdr-icon');
+      if (iconWrap) {
+        if (opts.iconSvg) {
+          if (!iconWrap.dataset.origIcon) iconWrap.dataset.origIcon = iconWrap.innerHTML;
+          iconWrap.innerHTML = opts.iconSvg;
+        } else if (iconWrap.dataset.origIcon) {
+          iconWrap.innerHTML = iconWrap.dataset.origIcon;
+        }
+      }
+    } catch(e){}
     document.getElementById('ps-mask').classList.add('open');
     document.getElementById('ps-drawer').classList.add('open');
     this._editingId = null;
@@ -26412,6 +26450,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         setTimeout(function(){ self._renderSyncHealth(); }, 300);
       } else if (result === true) {
         if (this.toast) this.toast('🔄 Retrying — checking with server…');
+        /* (v33_29y) Force an immediate drain bypassing backoff. The record
+           is back in the outbox; without a forced drain it would just wait
+           behind the active backoff timer (the bug: Retry appeared to do
+           nothing). */
+        try {
+          if (window.HisaabSync && typeof HisaabSync.drainOutbox === 'function') {
+            HisaabSync.drainOutbox({ force: true }).catch(function(){});
+          }
+        } catch(e){}
         setTimeout(function(){ self._renderSyncHealth(); }, 1500);
       } else {
         if (this.toast) this.toast('Could not find record to retry');
@@ -35025,10 +35072,22 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     }, delay);
   }
 
-  async function drainOutbox() {
+  async function drainOutbox(opts) {
+    var _force = !!(opts && opts.force);
     if (_lock) return { pushed: 0, failed: 0 };
     if (!status.online) return { pushed: 0, failed: 0 };
-    if (now() < _backoffUntil) {
+    /* (v33_29y) A manual/user-initiated retry passes {force:true} to bypass
+       the backoff timer. Without this, tapping "Retry" while a backoff was
+       active did nothing — drainOutbox returned early on the backoff guard,
+       so the only way to recover was a full app restart (which resets
+       _backoffUntil to 0). Forcing clears the backoff and attempts the
+       upload immediately, which is exactly what the user intends. */
+    if (_force) {
+      _backoffUntil = 0;
+      status.backoffUntil = 0;
+      if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
+    }
+    if (!_force && now() < _backoffUntil) {
       /* (v32) In backoff: emit so UI can show a countdown rather than freezing on "Syncing…" */
       /* (v32.1) Always refresh pending from Outbox in case it drained elsewhere
          (e.g., via reconcileOnlineState, manual flush, or pull-side cleanup).
@@ -35403,7 +35462,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     return { pulled, changed };
   }
 
-  async function fullSync() {
+  async function fullSync(opts) {
     await pull();
     /* (v33_29c) After first successful pull, local state has caught up to
        cloud. Future checkpoints can now safely generate tombstones for
@@ -35423,7 +35482,9 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         }
       } catch(e){}
     }
-    await drainOutbox();
+    /* (v33_29y) Pass through force so a manual retry / forceSync bypasses
+       any active upload backoff. */
+    await drainOutbox(opts && opts.force ? { force: true } : undefined);
   }
 
   function runInitialMigration() {
@@ -35562,8 +35623,13 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
                This matters because Android aggressively suspends background
                JS — when the user returns to the app, the auto-timer could
                be most of its 2-min interval away from firing. */
-            if (status.online && Outbox.size() > 0 && !_lock && now() >= _backoffUntil) {
-              drainOutbox().catch(e => err('visibility drain', e));
+            /* (v33_29y) Force-drain on app-return, bypassing backoff. This
+               is the programmatic equivalent of what the user discovered
+               manually: swiping the app away and reopening cleared the
+               stuck sync. Returning to the foreground with pending records
+               should attempt upload immediately, not wait behind a backoff. */
+            if (status.online && Outbox.size() > 0 && !_lock) {
+              drainOutbox({ force: true }).catch(e => err('visibility drain', e));
             }
           }
         });
