@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29z_permDeniedDiag';
+    window.HISAABNOW_BUILD = 'v33_30a_appCheckRecovery';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -33622,6 +33622,21 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     catch (e) { console.warn('[v32] App Check first token failed:', e && e.code); }
   })();
 
+  /* (v33_30a) Expose App Check force-refresh to the sync engine. Used to
+     recover from permission-denied caused by an expired App Check token
+     (the auto-refresh hasn't fired yet at the moment of write). Calling
+     getToken with forceRefresh=true bypasses the cached token and asks
+     reCAPTCHA for a fresh one. See HisaabSync._forceAppCheckRefresh. */
+  window.kfForceAppCheckRefresh = async function(){
+    try {
+      const tok = await getToken(appCheck, /* forceRefresh */ true);
+      return !!(tok && tok.token);
+    } catch (e) {
+      console.warn('[v33_30a] App Check force refresh failed:', e && e.code);
+      return false;
+    }
+  };
+
   const auth = getAuth(app);
   setPersistence(auth, browserLocalPersistence).catch(function(err){
     console.warn('[v32] Auth persistence failed:', err);
@@ -35274,6 +35289,58 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
                   uidMatch: (entry.record && entry.record.createdByUid) === _authUid
                 });
               } catch(__){}
+
+              /* (v33_30a) App Check token recovery.
+                 Root cause confirmed via v33_29z diagnostic: shopIdMatch and
+                 uidMatch were BOTH true on failure, eliminating shop/UID race
+                 hypotheses. The remaining cause for permission-denied on a
+                 valid auth+shop combination is an EXPIRED App Check token
+                 (auto-refresh hadn't fired yet at the moment of write).
+                 Symptoms matched perfectly: happens every day (~hourly token
+                 expiry), first write always fails, manual retry later
+                 succeeds (by then auto-refresh ran).
+
+                 Fix: on first permission-denied of a session per record,
+                 force a fresh App Check token and retry the upload ONCE
+                 immediately. If the retry succeeds the user never sees a
+                 failure. If it still fails, normal attempt/quarantine flow
+                 takes over (so this fix is purely additive — can't make
+                 things worse). The _acRecoveryTried flag on the entry
+                 prevents infinite refresh loops if the token is genuinely
+                 invalid (vs just stale). */
+              if (typeof window.kfForceAppCheckRefresh === 'function' && !entry._acRecoveryTried) {
+                entry._acRecoveryTried = true;
+                try {
+                  var refreshed = await window.kfForceAppCheckRefresh();
+                  if (refreshed) {
+                    try {
+                      await FS.upload(entry.collection, entry.record);
+                      /* Success! Move key from bad → ok so the normal
+                         post-loop bookkeeping (removeMany, status reset,
+                         quarantine cleanup) treats it as drained. */
+                      var _badIdx = bad.indexOf(key);
+                      if (_badIdx >= 0) bad.splice(_badIdx, 1);
+                      delete errorsByKey[key];
+                      ok.push(key);
+                      pushed++; failed--;
+                      sessionFailures--;
+                      _sessionFailedKeys.delete(key);
+                      log('App Check refresh recovered upload', key);
+                    } catch (e2) {
+                      /* Retry also failed — leave in bad, normal flow handles it.
+                         Update the error so it reflects the most recent attempt. */
+                      errorsByKey[key] = {
+                        code: e2 && e2.code,
+                        message: e2 && e2.message,
+                        name: e2 && e2.name,
+                      };
+                      log('App Check refresh retry still failed', key, e2 && e2.code);
+                    }
+                  }
+                } catch (refreshErr) {
+                  log('App Check refresh threw, falling through', refreshErr && refreshErr.code);
+                }
+              }
             }
           }
         }
