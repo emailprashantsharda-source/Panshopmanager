@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29y_notifTitleHard';
+    window.HISAABNOW_BUILD = 'v33_29z_permDeniedDiag';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26258,7 +26258,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
      show up in the quarantine "Reason" box for each stuck record. */
   _errorCodeToHuman(code){
     var map = {
-      'permission-denied': 'Server refused this record. Usually means the record is missing required data or its format does not match what the server expects.',
+      'permission-denied': 'Server temporarily refused this write. This often resolves in a minute — tap Retry. If it keeps failing, your shop access may have a config issue (please contact support).',
       'invalid-argument': 'Record data is malformed (e.g. an invalid number, missing field). This will never sync as-is.',
       'failed-precondition': 'A prerequisite for this upload failed. Often happens when security checks are not ready. Retrying after a full app reload sometimes helps.',
       'unauthenticated': 'Your session expired. Try signing out and signing in again.',
@@ -35245,6 +35245,36 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
               name: e && e.name,
             };
             err('upload failed', key, (e && e.code) || '', e && e.message);
+            /* (v33_29z) Diagnostic for the recurring permission-denied bug:
+               capture the shopId in CFG (used by _docRef) vs the active shop
+               per MShop, plus the createdByUid on the record. If they
+               diverge, we have a shopId-mismatch issue at write time. Logged
+               only on permission-denied to avoid noise. */
+            if (e && (e.code === 'permission-denied' || e.code === 'PERMISSION_DENIED')) {
+              try {
+                var _activeShopId = '';
+                try {
+                  if (window.MShop && typeof window.MShop.getActive === 'function') {
+                    var _a = window.MShop.getActive();
+                    _activeShopId = (_a && _a.shopId) || '';
+                  }
+                } catch(__){}
+                var _authUid = '';
+                try {
+                  if (window.kfAuth && window.kfAuth.currentUser) _authUid = window.kfAuth.currentUser.uid || '';
+                } catch(__){}
+                console.warn('[v33_29z DIAG permission-denied]', {
+                  collection: entry.collection,
+                  recordId: entry.record && entry.record.id,
+                  cfgShopId: CFG.shopId,
+                  mshopActiveShopId: _activeShopId,
+                  shopIdMatch: CFG.shopId === _activeShopId,
+                  recordCreatedByUid: entry.record && entry.record.createdByUid,
+                  authUid: _authUid,
+                  uidMatch: (entry.record && entry.record.createdByUid) === _authUid
+                });
+              } catch(__){}
+            }
           }
         }
         if (ok.length) {
@@ -35252,6 +35282,29 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           /* (v32) Any success resets the failure streak + clears networkBlocked */
           status.consecutiveFailures = 0;
           status.networkBlocked = false;
+          /* (v33_29z) Reconciliation: if any of the successfully-drained keys
+             ALSO exist in quarantine (e.g. a previous run quarantined them
+             but a later attempt — maybe via the manual Retry path — drained
+             them successfully), clean up the stale quarantine entries.
+             Without this, Sync Health keeps showing "stuck" records that
+             are actually safely in cloud. Bug observed: tapping Retry on
+             Sync Health writes the record successfully, but the entry
+             never disappears from the screen because the cleanup happened
+             through a different code path. */
+          try {
+            var _qList = Quarantine._load();
+            if (_qList && _qList.length){
+              var _okSet = new Set(ok);
+              var _cleaned = _qList.filter(function(qe){
+                var k = qe.collection + ':' + (qe.record && qe.record.id);
+                return !_okSet.has(k);
+              });
+              if (_cleaned.length !== _qList.length){
+                Quarantine._save(_cleaned);
+                log('drain: cleaned ' + (_qList.length - _cleaned.length) + ' stale quarantine entries');
+              }
+            }
+          } catch(__){}
         }
         if (bad.length) {
           Outbox.bumpAttempts(bad, errorsByKey);
