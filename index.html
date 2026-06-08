@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29al_i18nKeyFixes';
+    window.HISAABNOW_BUILD = 'v33_29am_payMixOptionF';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -11274,21 +11274,26 @@ const App = {
         if (_totalPb <= 0){
           pb.innerHTML = `<div style="width:100%;background:rgba(255,255,255,.18);height:100%;border-radius:8px"></div>`;
         } else {
-          /* (v33_29aj) Option B palette — UPI purple (no longer fights
-             with Udhaar orange), refined green/blue/amber-orange. Each
-             segment gets border-radius for the gap-separated look. Other
-             gets a muted slate for any non-standard payment mode. */
+          /* (v33_29am) Option F palette — monochrome with brand-orange accent.
+             The bar is now a subtle status indicator, not a chart. UPI / Cash
+             / Card are different opacities of white (informational, no signal).
+             Udhaar uses your brand orange #FF6B35 — it's the only segment that
+             needs the eye because it's MONEY NOT YET COLLECTED. Other (rare)
+             modes get a muted slate.
+
+             This palette ALSO matches your overall app brand (cream + navy +
+             orange) instead of fighting it with rainbow colors. */
           var _pctU = (_mixPb.upi    / _totalPb) * 100;
           var _pctC = (_mixPb.cash   / _totalPb) * 100;
           var _pctK = (_mixPb.card   / _totalPb) * 100;
           var _pctD = (_mixPb.udhaar / _totalPb) * 100;
           var _pctO = (_mixPb.other  / _totalPb) * 100;
           pb.innerHTML =
-            (_pctU > 0 ? '<div style="width:'+_pctU+'%;background:#8B5CF6;height:100%;border-radius:2px"></div>' : '') +
-            (_pctC > 0 ? '<div style="width:'+_pctC+'%;background:#10B981;height:100%;border-radius:2px"></div>' : '') +
-            (_pctK > 0 ? '<div style="width:'+_pctK+'%;background:#3B82F6;height:100%;border-radius:2px"></div>' : '') +
-            (_pctD > 0 ? '<div style="width:'+_pctD+'%;background:#F59E0B;height:100%;border-radius:2px"></div>' : '') +
-            (_pctO > 0 ? '<div style="width:'+_pctO+'%;background:#94A3B8;height:100%;border-radius:2px"></div>' : '');
+            (_pctU > 0 ? '<div style="width:'+_pctU+'%;background:rgba(255,255,255,.92);height:100%;border-radius:2px"></div>' : '') +
+            (_pctC > 0 ? '<div style="width:'+_pctC+'%;background:rgba(255,255,255,.55);height:100%;border-radius:2px"></div>' : '') +
+            (_pctK > 0 ? '<div style="width:'+_pctK+'%;background:rgba(255,255,255,.35);height:100%;border-radius:2px"></div>' : '') +
+            (_pctD > 0 ? '<div style="width:'+_pctD+'%;background:#FF6B35;height:100%;border-radius:2px"></div>' : '') +
+            (_pctO > 0 ? '<div style="width:'+_pctO+'%;background:rgba(255,255,255,.25);height:100%;border-radius:2px"></div>' : '');
         }
       }
     }
@@ -11327,13 +11332,14 @@ const App = {
              want to know ("I have ₹200 in UPI today"). Hide any mode under
              ₹1 (rounded) so a stray rounding artifact doesn't add a row. */
           var _self = this;
-          /* (v33_29aj) Option B palette — colors must match the bar
-             segments exactly. */
+          /* (v33_29am) Option F palette — colors must match the bar segments
+             exactly. Two shades of white + brand orange for the one segment
+             that needs attention (Udhaar = money not yet collected). */
           var _items = [
-            { key: 'upi',    color: '#8B5CF6', lbl: _self._T('dash.upi',     'UPI'),    val: _mix.upi    },
-            { key: 'cash',   color: '#10B981', lbl: _self._T('dash.cash',    'Cash'),   val: _mix.cash   },
-            { key: 'card',   color: '#3B82F6', lbl: _self._T('dash.card',    'Card'),   val: _mix.card   },
-            { key: 'udhaar', color: '#F59E0B', lbl: _self._T('nav.udhaar',   'Udhaar'), val: _mix.udhaar }
+            { key: 'upi',    color: 'rgba(255,255,255,.92)', lbl: _self._T('dash.upi',     'UPI'),    val: _mix.upi    },
+            { key: 'cash',   color: 'rgba(255,255,255,.55)', lbl: _self._T('dash.cash',    'Cash'),   val: _mix.cash   },
+            { key: 'card',   color: 'rgba(255,255,255,.35)', lbl: _self._T('dash.card',    'Card'),   val: _mix.card   },
+            { key: 'udhaar', color: '#FF6B35',               lbl: _self._T('nav.udhaar',   'Udhaar'), val: _mix.udhaar }
           ].filter(function(it){ return Math.round(it.val) >= 1; });
           pbl.innerHTML = _items.map(function(it){
             return '<div style="display:flex;align-items:center;gap:5px">' +
