@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ai_udhaarConfirm_aiSalah';
+    window.HISAABNOW_BUILD = 'v33_29al_i18nKeyFixes';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -606,9 +606,12 @@ body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:tou
 .hero-delta{margin-top:6px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.95);position:relative;z-index:2}
 .hero-delta .arrow{color:#86EFAC}
 .hero-delta .arrow.down{color:#FCA5A5}
-.profit-bar{margin-top:18px;height:14px;border-radius:99px;overflow:hidden;display:flex;background:rgba(255,255,255,.18);position:relative;z-index:2}
-.profit-bar .pb-profit{background:#fff;height:100%;transition:width .4s ease}
-.profit-bar .pb-cost{background:rgba(255,255,255,.35);height:100%;transition:width .4s ease}
+/* (v33_29aj) Option B refinement — thinner (8px vs 14px), 2px gap between
+   segments via flex gap (overflow:visible so gaps render). Each segment
+   sets its own border-radius inline. */
+.profit-bar{margin-top:18px;height:8px;border-radius:4px;display:flex;gap:2px;background:rgba(255,255,255,.10);position:relative;z-index:2;padding:0;overflow:visible}
+.profit-bar .pb-profit{background:#fff;height:100%;border-radius:2px;transition:width .4s ease}
+.profit-bar .pb-cost{background:rgba(255,255,255,.35);height:100%;border-radius:2px;transition:width .4s ease}
 .profit-bar-legend{margin-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.92);position:relative;z-index:2;font-variant-numeric:tabular-nums;gap:8px}
 .profit-bar-legend > div{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profit-bar-legend .pbl-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
@@ -2489,19 +2492,19 @@ html[data-current-role="manager"] body{
             <div class="mk1-feature-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
             </div>
-            <div class="mk1-feature-label" data-i18n="login.feat.voice">Voice<br>Billing</div>
+            <div class="mk1-feature-label" data-i18n-html="login.feat.voice">Voice<br>Billing</div>
           </div>
           <div class="mk1-feature">
             <div class="mk1-feature-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
             </div>
-            <div class="mk1-feature-label" data-i18n="login.feat.profit">Profit<br>Insights</div>
+            <div class="mk1-feature-label" data-i18n-html="login.feat.profit">Profit<br>Insights</div>
           </div>
           <div class="mk1-feature">
             <div class="mk1-feature-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             </div>
-            <div class="mk1-feature-label" data-i18n="login.feat.reports">Daily<br>Reports</div>
+            <div class="mk1-feature-label" data-i18n-html="login.feat.reports">Daily<br>Reports</div>
           </div>
         </div>
       </div>
@@ -2718,11 +2721,11 @@ html[data-current-role="manager"] body{
     <div id="cash-morning-banner" style="display:none;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:13px 16px;align-items:center;gap:12px;margin-bottom:10px">
       <div style="width:38px;height:38px;border-radius:10px;background:#FEF3C7;color:#92400E;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px">🌅</div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:13.5px;color:#1E293B;letter-spacing:-.005em;line-height:1.3">Set today's opening cash</div>
-        <div style="font-size:11.5px;color:#78350F;font-weight:500;margin-top:1px;line-height:1.4">Count once · accurate numbers all day</div>
+        <div style="font-weight:700;font-size:13.5px;color:#1E293B;letter-spacing:-.005em;line-height:1.3" data-i18n="cash.morningTitle">Set today's opening cash</div>
+        <div style="font-size:11.5px;color:#78350F;font-weight:500;margin-top:1px;line-height:1.4" data-i18n="cash.morningSub">Count once · accurate numbers all day</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
-        <button type="button" onclick="window.CashDrawer && CashDrawer.setOpeningSheet()" style="background:#15803D;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:-.005em;white-space:nowrap">Set</button>
+        <button type="button" onclick="window.CashDrawer && CashDrawer.setOpeningSheet()" style="background:#15803D;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:-.005em;white-space:nowrap" data-i18n="cash.setBtn">Set</button>
         <button type="button" onclick="App._dismissCashMorningBanner()" aria-label="Dismiss" style="background:transparent;color:#92400E;border:none;padding:6px;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -2733,11 +2736,11 @@ html[data-current-role="manager"] body{
     <div id="cash-evening-banner" style="display:none;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:13px 16px;align-items:center;gap:12px">
       <div style="width:38px;height:38px;border-radius:10px;background:#DBEAFE;color:#1E40AF;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px">⚖</div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:13.5px;color:#1E293B;letter-spacing:-.005em;line-height:1.3">Closing soon? Count drawer</div>
+        <div style="font-weight:700;font-size:13.5px;color:#1E293B;letter-spacing:-.005em;line-height:1.3" data-i18n="cash.eveningTitle">Closing soon? Count drawer</div>
         <div id="ceb-detail" style="font-size:11.5px;color:#1E3A8A;font-weight:500;margin-top:1px;line-height:1.4">Expected ₹0 in drawer</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
-        <button type="button" onclick="window.CashDrawer && CashDrawer.reconcileSheet()" style="background:#1D4ED8;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:-.005em;white-space:nowrap">Count</button>
+        <button type="button" onclick="window.CashDrawer && CashDrawer.reconcileSheet()" style="background:#1D4ED8;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:-.005em;white-space:nowrap" data-i18n="cash.countBtn">Count</button>
         <button type="button" onclick="App._dismissCashEveningBanner()" aria-label="Dismiss" style="background:transparent;color:#1E40AF;border:none;padding:6px;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -4563,6 +4566,10 @@ html[data-current-role="manager"] body{
     'dash.topSellers':      { en: 'Top sellers',        hi: 'टॉप सेलर' },
     'dash.topCustomers':    { en: 'Top customers',      hi: 'टॉप ग्राहक' },
     'dash.recentBills':     { en: 'Recent bills',       hi: 'हाल के बिल' },
+    /* (v33_29al) Missing entry — was referenced from the Recent Bills
+       widget sub-line but never defined → users saw literal "dash.last5Bills"
+       in both English and Hindi modes. */
+    'dash.last5Bills':      { en: 'Last 5 bills today · tap to open',  hi: 'आज के आख़िरी 5 बिल · खोलने के लिए टैप करें' },
     'dash.netPosition':     { en: 'Net position',       hi: 'नेट पोज़ीशन' },
     'dash.lenaHai':         { en: 'Lena hai',           hi: 'लेना है' },
     'dash.denaHai':         { en: 'Dena hai',           hi: 'देना है' },
@@ -5129,6 +5136,19 @@ html[data-current-role="manager"] body{
     'dash.aov':              { en: 'AOV',                           hi: 'AOV' },
     'dash.marginShort':      { en: 'Margin',                        hi: 'मार्जिन' },
     'dash.cashInHand':       { en: 'Cash',                          hi: 'नकद' },
+
+    /* (v33_29ak) Cash drawer banners — Hindi uses "गल्ला" (galla) which
+       is the natural shopkeeper word for cash box. "दराज" (drawer)
+       technically works but "गल्ला" is what shopkeepers actually say in
+       conversation. Template uses {amt} placeholder for the formatted
+       balance so the rupee figure slots in correctly. */
+    'cash.morningTitle':     { en: "Set today's opening cash",       hi: 'आज का शुरुआती गल्ला सेट करें' },
+    'cash.morningSub':       { en: 'Count once · accurate numbers all day', hi: 'एक बार गिनें · पूरे दिन सही नंबर' },
+    'cash.setBtn':           { en: 'Set',                           hi: 'सेट करें' },
+    'cash.eveningTitle':     { en: 'Closing soon? Count drawer',    hi: 'बंद करने का समय? गल्ला गिनें' },
+    'cash.countBtn':         { en: 'Count',                         hi: 'गिनें' },
+    'cash.expectedTemplate': { en: 'Expected ₹{amt} in drawer. Verify before you close.',
+                               hi: 'गल्ले में ₹{amt} होने चाहिए। बंद करने से पहले गिनें।' },
 
     /* Common dialog/UI */
     'dlg.areYouSure':        { en: 'Are you sure?',                 hi: 'पक्का?' },
@@ -11254,22 +11274,21 @@ const App = {
         if (_totalPb <= 0){
           pb.innerHTML = `<div style="width:100%;background:rgba(255,255,255,.18);height:100%;border-radius:8px"></div>`;
         } else {
-          /* Colors picked for high contrast on the dark hero card:
-               UPI    — amber #FBBF24 (matches PAY_ICON.upi spirit)
-               Cash   — green #34D399 (PAY_ICON.cash spirit)
-               Card   — blue  #60A5FA (PAY_ICON.card spirit)
-               Credit — orange #F97316 (warns: "money owed, not in hand") */
+          /* (v33_29aj) Option B palette — UPI purple (no longer fights
+             with Udhaar orange), refined green/blue/amber-orange. Each
+             segment gets border-radius for the gap-separated look. Other
+             gets a muted slate for any non-standard payment mode. */
           var _pctU = (_mixPb.upi    / _totalPb) * 100;
           var _pctC = (_mixPb.cash   / _totalPb) * 100;
           var _pctK = (_mixPb.card   / _totalPb) * 100;
           var _pctD = (_mixPb.udhaar / _totalPb) * 100;
           var _pctO = (_mixPb.other  / _totalPb) * 100;
           pb.innerHTML =
-            (_pctU > 0 ? '<div style="width:'+_pctU+'%;background:#FBBF24;height:100%"></div>' : '') +
-            (_pctC > 0 ? '<div style="width:'+_pctC+'%;background:#34D399;height:100%"></div>' : '') +
-            (_pctK > 0 ? '<div style="width:'+_pctK+'%;background:#60A5FA;height:100%"></div>' : '') +
-            (_pctD > 0 ? '<div style="width:'+_pctD+'%;background:#F97316;height:100%"></div>' : '') +
-            (_pctO > 0 ? '<div style="width:'+_pctO+'%;background:#94A3B8;height:100%"></div>' : '');
+            (_pctU > 0 ? '<div style="width:'+_pctU+'%;background:#8B5CF6;height:100%;border-radius:2px"></div>' : '') +
+            (_pctC > 0 ? '<div style="width:'+_pctC+'%;background:#10B981;height:100%;border-radius:2px"></div>' : '') +
+            (_pctK > 0 ? '<div style="width:'+_pctK+'%;background:#3B82F6;height:100%;border-radius:2px"></div>' : '') +
+            (_pctD > 0 ? '<div style="width:'+_pctD+'%;background:#F59E0B;height:100%;border-radius:2px"></div>' : '') +
+            (_pctO > 0 ? '<div style="width:'+_pctO+'%;background:#94A3B8;height:100%;border-radius:2px"></div>' : '');
         }
       }
     }
@@ -11308,11 +11327,13 @@ const App = {
              want to know ("I have ₹200 in UPI today"). Hide any mode under
              ₹1 (rounded) so a stray rounding artifact doesn't add a row. */
           var _self = this;
+          /* (v33_29aj) Option B palette — colors must match the bar
+             segments exactly. */
           var _items = [
-            { key: 'upi',    color: '#FBBF24', lbl: _self._T('dash.upi',     'UPI'),    val: _mix.upi    },
-            { key: 'cash',   color: '#34D399', lbl: _self._T('dash.cash',    'Cash'),   val: _mix.cash   },
-            { key: 'card',   color: '#60A5FA', lbl: _self._T('dash.card',    'Card'),   val: _mix.card   },
-            { key: 'udhaar', color: '#F97316', lbl: _self._T('nav.udhaar',   'Udhaar'), val: _mix.udhaar }
+            { key: 'upi',    color: '#8B5CF6', lbl: _self._T('dash.upi',     'UPI'),    val: _mix.upi    },
+            { key: 'cash',   color: '#10B981', lbl: _self._T('dash.cash',    'Cash'),   val: _mix.cash   },
+            { key: 'card',   color: '#3B82F6', lbl: _self._T('dash.card',    'Card'),   val: _mix.card   },
+            { key: 'udhaar', color: '#F59E0B', lbl: _self._T('nav.udhaar',   'Udhaar'), val: _mix.udhaar }
           ].filter(function(it){ return Math.round(it.val) >= 1; });
           pbl.innerHTML = _items.map(function(it){
             return '<div style="display:flex;align-items:center;gap:5px">' +
@@ -27090,11 +27111,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       /* (v33_29g) Use 'flex' explicitly — see morning banner comment. */
       eveningEl.style.display = showEvening ? 'flex' : 'none';
       if (showEvening) {
-        /* Update expected balance in the banner */
+        /* Update expected balance in the banner.
+           (v33_29ak) Localized via template-style key with {amt} placeholder
+           so the formatted amount (en-IN with commas) slots into the right
+           spot in both English and Hindi sentences. Sub-line currently has
+           no data-i18n attribute, so the runtime is the sole writer — safe
+           to overwrite without worrying about applyAll stomping. */
         var det = document.getElementById('ceb-detail');
         if (det) {
           var bal = CashDrawer.currentBalance();
-          det.textContent = 'Expected ₹' + Math.round(bal).toLocaleString('en-IN') + ' in drawer. Verify before you close.';
+          var balStr = Math.round(bal).toLocaleString('en-IN');
+          var tpl = App._T('cash.expectedTemplate', 'Expected ₹{amt} in drawer. Verify before you close.');
+          det.textContent = tpl.replace('{amt}', balStr);
         }
       }
     }
@@ -73790,8 +73818,12 @@ html[data-auth="no"] #login-screen.ls-root.mk1 {
   color: #8B6F2A;
 }
 .mk1-feature-label {
-  font-size: 10.5px;
-  font-weight: 600;
+  /* (v33_29al) Bumped from 10.5px/600 to 12px/700 for readability. The
+     icons are visually strong but the text under them was almost too small
+     to scan. The label is the only text saying what the icon means, so it
+     earns extra weight. */
+  font-size: 12px;
+  font-weight: 700;
   color: #0A0A0A;
   letter-spacing: -.005em;
   line-height: 1.25;
