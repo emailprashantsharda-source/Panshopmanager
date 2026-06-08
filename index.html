@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29au_dedupePlusButtons';
+    window.HISAABNOW_BUILD = 'v33_29aw_addressPhone';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3753,6 +3753,18 @@ html[data-current-role="manager"] body{
       </div>
       <div class="menu-item" onclick="App.openEditUpiId()">
         <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px" data-i18n="settings.upiId">UPI ID (for receipts)</div><div class="menu-label" id="settings-upi-id" data-i18n="common.tapToAdd">Tap to add</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><polygon points="18.5 2.5 21.5 5.5 12 15 8 16 9 12 18.5 2.5"/></svg>
+      </div>
+
+      <!-- (v33_29aw) Shop address — optional, shows on WhatsApp bills -->
+      <div class="menu-item" onclick="App.openEditShopAddress()">
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px" data-i18n="settings.shopAddress">Address (for receipts)</div><div class="menu-label" id="settings-shop-address" data-i18n="common.tapToAdd">Tap to add</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><polygon points="18.5 2.5 21.5 5.5 12 15 8 16 9 12 18.5 2.5"/></svg>
+      </div>
+
+      <!-- (v33_29aw) Shop phone — optional, shows on WhatsApp bills -->
+      <div class="menu-item" onclick="App.openEditShopPhone()">
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px" data-i18n="settings.shopPhone">Phone (for receipts)</div><div class="menu-label" id="settings-shop-phone" data-i18n="common.tapToAdd">Tap to add</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><polygon points="18.5 2.5 21.5 5.5 12 15 8 16 9 12 18.5 2.5"/></svg>
       </div>
 
@@ -10101,6 +10113,34 @@ const App = {
      Returns null if no UPI ID is configured. Caller should prompt user
      to add UPI ID in Settings before this works.
      ──────────────────────────────────────────────────────────────────── */
+  /* (v33_29av) Auto-incrementing per-shop bill counter for human-friendly
+     bill IDs on WhatsApp receipts. Format: B-0001, B-0002, ...
+
+     Stored in localStorage keyed by active shopId so each shop keeps its
+     own sequence. Falls back to 'default' if no MShop active (single-shop
+     legacy mode). Counter is incremented atomically; on rare race the
+     last-write wins which is acceptable for human-readable IDs.
+
+     Why not Firestore? Bill numbers are display-only, not used for
+     cross-device lookups. Counter on a single device is fine; if user has
+     multiple devices, bills will have slightly different numbering per
+     device but never duplicate within a device, and the underlying
+     bill.id (UUID) remains the canonical reference. Acceptable trade-off
+     for offline-first UX. */
+  _nextBillNumber(){
+    try {
+      const shopId = (window.MShop && window.MShop.getActive && window.MShop.getActive() || {}).shopId || 'default';
+      const key = 'hn_billCounter_' + shopId;
+      let n = Number(localStorage.getItem(key) || 0);
+      n++;
+      localStorage.setItem(key, String(n));
+      return 'B-' + String(n).padStart(4, '0');
+    } catch(e) {
+      /* Fallback: timestamp-based last 4 digits. Not sequential but unique. */
+      return 'B-' + String(Date.now()).slice(-4);
+    }
+  },
+
   buildUpiPayLink(amount, note){
     const upi = (window.S && window.S.upiId) || '';
     if (!upi || !upi.includes('@')) return null;
@@ -13463,6 +13503,20 @@ const App = {
     const upiEl = document.getElementById('settings-upi-id');
     if (upiEl) upiEl.textContent = upi || 'Tap to add';
 
+    /* (v33_29aw) Populate address + phone (both optional) */
+    const addr = (window.S && S.shopAddress) || '';
+    const addrEl = document.getElementById('settings-shop-address');
+    if (addrEl) addrEl.textContent = addr || 'Tap to add';
+
+    const phone = (window.S && S.shopPhone) || '';
+    const phoneEl = document.getElementById('settings-shop-phone');
+    if (phoneEl) {
+      /* Display as +91 XXXXX XXXXX format for readability */
+      phoneEl.textContent = phone
+        ? ('+91 ' + phone.slice(0, 5) + ' ' + phone.slice(5))
+        : 'Tap to add';
+    }
+
     // Show "Restore all shops" menu item only when user has multiple owned shops
     try {
       const restoreEl = document.getElementById('settings-restore-all-shops');
@@ -13628,6 +13682,90 @@ const App = {
     window.S.upiId = '';
     if (typeof window.sA === 'function') { try { window.sA(); } catch(e){} }
     this.toast(this._T('toast.upiRemoved', '✓ UPI removed'));
+    this.closeProductSheet();
+    this.renderSettings();
+  },
+
+  /* (v33_29aw) Shop address — optional field shown on WhatsApp receipts.
+     Stored in S.shopAddress. Textarea so users can split across 2 lines.
+     Max 100 chars total — keeps the bill header compact. */
+  openEditShopAddress(){
+    const current = (window.S && S.shopAddress) || '';
+    const body = `
+      <div class="ps-section">
+        <label class="ps-label">Shop address</label>
+        <textarea id="esa-addr" class="ps-input" rows="2" maxlength="100" placeholder="e.g. Sector 18, Noida" style="resize:none;line-height:1.4">${this.escapeHtml(current)}</textarea>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">Max 100 characters · keep it short for receipts</div>
+      </div>
+      <div style="background:#EEEEEE;border:1px solid #E2E2E2;border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--p-deep);font-weight:600;line-height:1.5">
+        📍 Shows in the header of WhatsApp bills so customers can locate your shop.
+      </div>
+      <div class="ps-actions">
+        ${current ? '<button type="button" class="ps-btn ps-btn-danger" onclick="App.clearShopAddress()" style="flex:0 0 auto;background:#fff;color:var(--danger);border-color:#FECACA">Remove</button>' : ''}
+        <button type="button" class="ps-btn ps-btn-primary" onclick="App.saveShopAddress()">Save</button>
+      </div>
+    `;
+    this.openInfoSheet({ title: 'Shop address', sub: 'Optional · shown on receipts', bodyHTML: body });
+  },
+
+  saveShopAddress(){
+    const addr = ((document.getElementById('esa-addr')||{}).value || '').trim();
+    if (!window.S) window.S = {};
+    window.S.shopAddress = addr;
+    if (typeof window.sA === 'function') { try { window.sA(); } catch(e){} }
+    this.toast(addr ? '✓ Address saved' : '✓ Address removed');
+    this.closeProductSheet();
+    this.renderSettings();
+  },
+
+  clearShopAddress(){
+    if (!window.S) window.S = {};
+    window.S.shopAddress = '';
+    if (typeof window.sA === 'function') { try { window.sA(); } catch(e){} }
+    this.toast('✓ Address removed');
+    this.closeProductSheet();
+    this.renderSettings();
+  },
+
+  /* (v33_29aw) Shop phone — optional field shown on WhatsApp receipts.
+     Stored in S.shopPhone. 10-digit Indian mobile, stored as digits only. */
+  openEditShopPhone(){
+    const current = (window.S && S.shopPhone) || '';
+    const body = `
+      <div class="ps-section">
+        <label class="ps-label">Shop phone</label>
+        <input id="esp-phone" class="ps-input" type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]*" value="${this.escapeHtml(current)}" placeholder="10-digit mobile" autocomplete="off" style="font-family:ui-monospace,Menlo,monospace;letter-spacing:1px">
+      </div>
+      <div style="background:#EEEEEE;border:1px solid #E2E2E2;border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--p-deep);font-weight:600;line-height:1.5">
+        📞 Customers can call you for re-orders. Shown on WhatsApp bills.
+      </div>
+      <div class="ps-actions">
+        ${current ? '<button type="button" class="ps-btn ps-btn-danger" onclick="App.clearShopPhone()" style="flex:0 0 auto;background:#fff;color:var(--danger);border-color:#FECACA">Remove</button>' : ''}
+        <button type="button" class="ps-btn ps-btn-primary" onclick="App.saveShopPhone()">Save</button>
+      </div>
+    `;
+    this.openInfoSheet({ title: 'Shop phone', sub: 'Optional · shown on receipts', bodyHTML: body });
+  },
+
+  saveShopPhone(){
+    let phone = ((document.getElementById('esp-phone')||{}).value || '').replace(/\D/g, '');
+    if (phone && phone.length !== 10) {
+      this.toast('Phone should be 10 digits');
+      return;
+    }
+    if (!window.S) window.S = {};
+    window.S.shopPhone = phone;
+    if (typeof window.sA === 'function') { try { window.sA(); } catch(e){} }
+    this.toast(phone ? '✓ Phone saved' : '✓ Phone removed');
+    this.closeProductSheet();
+    this.renderSettings();
+  },
+
+  clearShopPhone(){
+    if (!window.S) window.S = {};
+    window.S.shopPhone = '';
+    if (typeof window.sA === 'function') { try { window.sA(); } catch(e){} }
+    this.toast('✓ Phone removed');
     this.closeProductSheet();
     this.renderSettings();
   },
@@ -19845,6 +19983,12 @@ const App = {
       createdByName: creatorMeta.createdByName
     };
 
+    /* (v33_29av) Assign human-readable bill number for receipts. Done HERE
+       before Store.add so the number is persisted with the bill. Customer
+       sees "B-0234" on WhatsApp; if they later refer back to it, this is
+       what they'll cite. */
+    bill.billNumber = this._nextBillNumber();
+
     const savedBill = Store.add('sales', bill);
 
     try {
@@ -24726,30 +24870,51 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const gstAmt = Number(bill.gstAmt || 0);
     const gstRate = Number(bill.gstRate || 0);
     const mode = bill.mode || bill.pt || 'cash';
-    const modeLabel = (PAY_ICON[mode] && PAY_ICON[mode].label) || (mode.charAt(0).toUpperCase() + mode.slice(1));
+    const isUdhaar = mode === 'udhaar' || mode === 'credit';
+    const modeLabel = (typeof PAY_ICON !== 'undefined' && PAY_ICON[mode] && PAY_ICON[mode].label)
+                      || (mode.charAt(0).toUpperCase() + mode.slice(1));
     const customerName = bill.cn || bill.name || '';
 
-    let dateStr = '';
-    if (bill.date) {
-      const d = new Date(bill.date);
-      const today = window.td();
-      if (bill.date === today) {
-        dateStr = 'Today';
-      } else if (!isNaN(d.getTime())) {
-        dateStr = d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-      } else {
-        dateStr = bill.date;
-      }
-    }
-    if (bill.time) dateStr += dateStr ? ' · ' + bill.time : bill.time;
+    /* (v33_29av) New template — bill #, full date with day-of-week,
+       per-line math (qty × unit = total), UPI pay link for udhaar,
+       branded footer. */
 
+    /* Bill number — uses persisted billNumber for new bills; falls back
+       to derived ID for legacy bills that pre-date the counter. */
+    let billNum = bill.billNumber;
+    if (!billNum) {
+      const raw = String(bill.id || bill.t || Date.now());
+      billNum = 'B-' + raw.replace(/\D/g, '').slice(-4).padStart(4, '0');
+    }
+
+    /* Date — "Mon, 9 Jun · 12:19 PM" (drop year if current year) */
+    let dateStr = '';
+    const _d = bill.date ? new Date(bill.date) : new Date();
+    if (!isNaN(_d.getTime())) {
+      const _now = new Date();
+      const _dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const _monNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      dateStr = _dayNames[_d.getDay()] + ', ' + _d.getDate() + ' ' + _monNames[_d.getMonth()];
+      if (_d.getFullYear() !== _now.getFullYear()) dateStr += ' ' + _d.getFullYear();
+    }
+    if (bill.time) dateStr += (dateStr ? ' · ' : '') + bill.time;
+
+    /* Item lines — name on one line, "qty × ₹unit = ₹total" indented below */
     let itemLines = '';
     if (Array.isArray(bill.items)) {
-      itemLines = bill.items.map(it => {
+      itemLines = bill.items.map(function(it){
         const qty = Number(it.qty || 1);
         const name = it.name || it.n || 'Item';
         const lineTotal = Number(it.total || qty * (it.price || 0));
-        return `${qty}× ${name}  ₹${lineTotal.toLocaleString('en-IN')}`;
+        /* Derive unit price from total if explicit price is missing — more
+           reliable since `total` is always set, `price` sometimes isn't. */
+        const unitPrice = (lineTotal > 0 && qty > 0)
+                          ? Math.round((lineTotal / qty) * 100) / 100
+                          : Number(it.price || 0);
+        const unitFmt = Number.isInteger(unitPrice)
+                        ? unitPrice.toLocaleString('en-IN')
+                        : unitPrice.toFixed(2);
+        return name + '\n  ' + qty + ' × ₹' + unitFmt + ' = ₹' + lineTotal.toLocaleString('en-IN');
       }).join('\n');
     } else if (typeof bill.items === 'string') {
       itemLines = bill.items;
@@ -24759,26 +24924,64 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const lines = [];
     lines.push('*' + shop + '*');
-    if (dateStr) lines.push('Bill · ' + dateStr);
-    lines.push('─────────────');
-    if (itemLines) lines.push(itemLines);
-    lines.push('─────────────');
 
-    if (discount > 0 || gstAmt > 0) {
-      lines.push(`Subtotal  ₹${subtotal.toLocaleString('en-IN')}`);
-      if (discount > 0) lines.push(`Discount  −₹${discount.toLocaleString('en-IN')}`);
-      if (gstAmt > 0) lines.push(`GST (${gstRate}%)  ₹${gstAmt.toLocaleString('en-IN')}`);
+    /* (v33_29aw) Contact line — address and/or phone if configured.
+       Both fields are independently optional. If both empty, the line is
+       skipped entirely (no awkward empty line). If only one is set, just
+       that one shows. */
+    const _shopAddr = (window.S && S.shopAddress) || '';
+    const _shopPhone = (window.S && S.shopPhone) || '';
+    const _contactParts = [];
+    if (_shopAddr) _contactParts.push(_shopAddr);
+    if (_shopPhone) _contactParts.push('📞 ' + _shopPhone.slice(0, 5) + ' ' + _shopPhone.slice(5));
+    if (_contactParts.length > 0) {
+      lines.push(_contactParts.join(' · '));
     }
-    lines.push(`*Total*  *₹${total.toLocaleString('en-IN')}*`);
+
+    if (dateStr) lines.push('Bill #' + billNum + ' · ' + dateStr);
+    else lines.push('Bill #' + billNum);
+    lines.push('');
+    lines.push('────────────────');
+    if (itemLines) lines.push(itemLines);
+    lines.push('────────────────');
+
+    /* Subtotal/Discount/GST block — only when relevant */
+    if (discount > 0 || gstAmt > 0) {
+      lines.push('Subtotal: ₹' + subtotal.toLocaleString('en-IN'));
+      if (discount > 0) lines.push('Discount: −₹' + discount.toLocaleString('en-IN'));
+      if (gstAmt > 0) lines.push('GST (' + gstRate + '%): ₹' + gstAmt.toLocaleString('en-IN'));
+    }
+    lines.push('*Total: ₹' + total.toLocaleString('en-IN') + '*');
     lines.push('');
 
-    let footer = `Paid via ${modeLabel}`;
-    if (customerName && customerName !== 'Walk-in') footer += ` · Thank you ${customerName} 🙏`;
-    else footer += ' · Thank you 🙏';
-    lines.push(footer);
+    /* Payment status block — udhaar gets a UPI link if shopkeeper has UPI ID
+       configured; otherwise just shows pending status. Paid modes get a
+       green check. */
+    if (isUdhaar) {
+      lines.push('⚠️ *Pending · Udhaar*');
+      const upiLink = (typeof this.buildUpiPayLink === 'function')
+                      ? this.buildUpiPayLink(total, 'Bill ' + billNum)
+                      : null;
+      if (upiLink) {
+        lines.push('');
+        lines.push('Pay in 2 taps:');
+        lines.push(upiLink);
+      }
+    } else {
+      lines.push('✅ *Paid via ' + modeLabel + '*');
+    }
+    lines.push('');
 
-    const upi = (window.S && S.upiId) || '';
-    if (upi) lines.push('UPI: ' + upi);
+    /* Thank-you line — skip the customer name for Walk-in (impersonal) */
+    if (customerName && customerName !== 'Walk-in') {
+      lines.push('Thank you, *' + customerName + '* 🙏');
+    } else {
+      lines.push('Thank you 🙏');
+    }
+
+    /* Footer — subtle marketing on every shared bill */
+    lines.push('');
+    lines.push('_Powered by HisaabNow_');
 
     return lines.join('\n');
   },
