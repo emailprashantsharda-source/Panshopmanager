@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ap_versionFooters';
+    window.HISAABNOW_BUILD = 'v33_29aq_hideInvDefault';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3575,7 +3575,7 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label" data-i18n="more.cashflow">Cashflow</div><div class="menu-sub" data-i18n="more.cashflowSub">Cash in hand · withdraw · deposit</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="menu-item" id="more-inventory-entry" onclick="App.nav('inventory')">
+      <button class="menu-item" id="more-inventory-entry" onclick="App.nav('inventory')" style="display:none">
         <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
         <div class="menu-text"><div class="menu-label" id="more-inventory-label" data-i18n="more.inventory">Inventory</div><div class="menu-sub" id="more-inventory-sub" data-i18n="more.stockSupplies">Stock and supplies</div></div>
         <span id="more-inventory-badge" class="menu-badge" style="background:#FEE2E2;color:#991B1B;display:none" data-i18n="more.lowBadge">LOW</span>
@@ -12214,21 +12214,29 @@ const App = {
     }
 
     const invEntry = document.getElementById('more-inventory-entry');
-    const _isSalonShop = (this.vertical === 'salon') ||
-                         (typeof this._supplyVerticalKey === 'function' &&
-                          this._supplyVerticalKey() === 'salon');
-    /* (v33_29ao) Option B refactor — for non-salon verticals (bakery, cafe,
-       restaurant, grocery, sweets, stationery, pan, other), the inventory
-       page is now redundant with the catalog page. We HIDE the inventory
-       entry from More menu entirely; stock alerts are surfaced on the
-       catalog entry instead (see badge block below).
+    /* (v33_29aq) Robust salon detection — use the ACTIVE shop's cardType as
+       the source of truth, not this.vertical which can be stale during shop
+       switches. Inventory entry is hidden by default in HTML; we only force
+       it visible when we can VERIFY this is a salon shop. */
+    let _activeCardType = '';
+    try {
+      const _act = (window.MShop && window.MShop.getActive && window.MShop.getActive()) || null;
+      _activeCardType = (_act && (_act.cardType || _act.profession)) || this.vertical || '';
+    } catch(e){ _activeCardType = this.vertical || ''; }
+    const _isSalonShop = (_activeCardType === 'salon');
 
-       For salon, inventory IS the services-management page (different from
-       Retail catalog), so the entry stays visible and shows "Services". */
+    /* Diagnostic: helps verify what's happening if the inventory entry shows
+       up incorrectly. Logged once per renderMoreMenu invocation. */
+    try {
+      console.log('%c[More menu] vertical detection',
+        'background:#1E40AF;color:#fff;padding:2px 6px;border-radius:4px',
+        { activeCardType: _activeCardType, appVertical: this.vertical, isSalon: _isSalonShop });
+    } catch(e){}
+
     if (invEntry) {
       if (_isSalonShop) {
         invEntry.style.display = '';
-        const _cfgSalon = VERTICAL_CONFIG[this.vertical] || {};
+        const _cfgSalon = VERTICAL_CONFIG[this.vertical] || VERTICAL_CONFIG['salon'] || {};
         const invLabel = document.getElementById('more-inventory-label');
         const invSubEl = document.getElementById('more-inventory-sub');
         if (invLabel) {
@@ -12240,10 +12248,10 @@ const App = {
           invSubEl.textContent = _cfgSalon.inventorySub || 'Hair, skin, beauty services you offer';
         }
       } else {
+        /* Explicitly hide, even though HTML default is also display:none —
+           in case some prior salon visit set display='' and left it stuck. */
         invEntry.style.display = 'none';
-        /* Restore data-i18n attributes in case the user previously had a
-           salon shop active. Without this, the labels remain stuck with
-           salon's "Services" text and never re-translate on lang switch. */
+        /* Restore data-i18n attributes so future salon switches re-translate. */
         const invLabel = document.getElementById('more-inventory-label');
         const invSubEl = document.getElementById('more-inventory-sub');
         if (invLabel && !invLabel.hasAttribute('data-i18n')) {
