@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ab_remainingIngredients';
+    window.HISAABNOW_BUILD = 'v33_29af_dashboardRedesign';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2682,8 +2682,13 @@ html[data-current-role="manager"] body{
   </section>
 
   <section class="kpi-row" id="kpi-row" data-role-min="manager">
-    <div class="kpi"><div class="kpi-label-v2">AOV</div><div class="kpi-value-v2" id="kpi-revenue">₹0</div><div class="kpi-delta-v2" id="kpi-revenue-delta" style="opacity:.5">—</div></div>
-    <div class="kpi" onclick="App.nav('sales')" style="cursor:pointer" aria-label="View all bills"><div class="kpi-label-v2" data-i18n="dash.bills">Bills</div><div class="kpi-value-v2" id="kpi-bills">0</div><div class="kpi-delta-v2" id="kpi-bills-delta" style="opacity:.5">—</div></div>
+    <!-- (v33_29af) Pill 1 — was AOV, now BILLS (count). Tappable → Sales screen.
+         The id="kpi-revenue" is preserved for backwards compatibility with the
+         render logic; semantically the element now holds the bill count. -->
+    <div class="kpi" onclick="App.nav('sales')" style="cursor:pointer" aria-label="View all bills"><div class="kpi-label-v2" data-i18n="dash.bills">Bills</div><div class="kpi-value-v2" id="kpi-revenue">0</div><div class="kpi-delta-v2" id="kpi-revenue-delta" style="opacity:.5">—</div></div>
+    <!-- (v33_29af) Pill 2 — was Bills, now PROFIT (₹ value). No nav target;
+         profit is informational. id="kpi-bills" preserved for back-compat. -->
+    <div class="kpi"><div class="kpi-label-v2" data-i18n="dash.profit">Profit</div><div class="kpi-value-v2" id="kpi-bills">₹—</div><div class="kpi-delta-v2" id="kpi-bills-delta" style="opacity:.5">—</div></div>
     <div class="kpi" id="kpi-tile-3" onclick="App._handleKpi3Tap()" style="cursor:pointer" aria-label="Third KPI">
       <div class="kpi-label-v2" id="kpi-profit-label" data-i18n="dash.margin">Margin</div>
       <div class="kpi-value-v2" id="kpi-profit">—</div>
@@ -3542,7 +3547,7 @@ html[data-current-role="manager"] body{
       </button>
       <button class="menu-item" id="more-cashflow-entry" onclick="App.nav('cashflow')" data-role-min="manager">
         <div class="menu-icon" style="background:#DCFCE7;color:#166534"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg></div>
-        <div class="menu-text"><div class="menu-label">Cashflow</div><div class="menu-sub">Cash in hand · withdraw · deposit</div></div>
+        <div class="menu-text"><div class="menu-label" data-i18n="more.cashflow">Cashflow</div><div class="menu-sub" data-i18n="more.cashflowSub">Cash in hand · withdraw · deposit</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <button class="menu-item" id="more-inventory-entry" onclick="App.nav('inventory')">
@@ -3636,8 +3641,8 @@ html[data-current-role="manager"] body{
       <button class="menu-item" id="more-sync-health-entry" onclick="App.openSyncHealth()">
         <div class="menu-icon" style="background:#FEF3C7;color:#92400E"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c2.5-2.7 4-6 4-9s-1.5-6.3-4-9m0 18c-2.5-2.7-4-6-4-9s1.5-6.3 4-9"/></svg></div>
         <div class="menu-text">
-          <div class="menu-label">Sync health</div>
-          <div class="menu-sub" id="more-sync-health-sub">All sales syncing</div>
+          <div class="menu-label" data-i18n="more.syncHealth">Sync health</div>
+          <div class="menu-sub" id="more-sync-health-sub" data-i18n="more.allSyncing">All sales syncing</div>
         </div>
         <span id="more-sync-health-badge" style="display:none;background:#DC2626;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums;margin-right:6px">0</span>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -4544,6 +4549,13 @@ html[data-current-role="manager"] body{
     'dash.yesterday':       { en: 'Yesterday',          hi: 'कल' },
     'dash.revenue':         { en: 'Revenue',            hi: 'बिक्री' },
     'dash.revenueToday':    { en: 'Revenue Today',      hi: 'आज की बिक्री' },
+    /* (v33_29af) Dashboard hero rename — "Revenue Today" → "Sales Today"
+       and the bar-legend trio renamed from Gross/Net/Cost to Sales/Profit/Cost.
+       Friendlier shopkeeper-vocabulary: Sales = what came in, Profit = what
+       was earned, Cost = what was spent. */
+    'dash.salesToday':      { en: 'Sales Today',        hi: 'आज की बिक्री' },
+    'dash.heroSales':       { en: 'Sales',              hi: 'बिक्री'      },
+    'dash.heroCost':        { en: 'Cost',               hi: 'लागत'        },
     'dash.profit':          { en: 'Profit',             hi: 'प्रॉफिट' },
     'dash.margin':          { en: 'Margin',             hi: 'मार्जिन' },
     'dash.bills':           { en: 'Bills',              hi: 'बिल' },
@@ -4860,6 +4872,26 @@ html[data-current-role="manager"] body{
     'more.stockSupplies':      { en: 'Stock and supplies',       hi: 'स्टॉक और सामान' },
     'more.lowBadge':           { en: 'LOW',                      hi: 'कम' },
     'more.autoTrackRawMat':    { en: 'Auto-track raw material costs', hi: 'कच्चे माल की लागत' },
+    /* (v33_29ad) Dedicated key for the Ingredients section label in More
+       menu. Previously the menu reused nav.supplies which Hindi-translates
+       to "सप्लाई" (supplies) — semantically wrong for the Ingredients page.
+       The Ingredients label needs a noun-form Hindi word; "सामग्री" is the
+       standard cooking-context word for ingredients. */
+    'more.ingredients':        { en: 'Ingredients',              hi: 'सामग्री' },
+    'more.supplies':           { en: 'Supplies',                 hi: 'सप्लाई' },
+    /* (v33_29ad) Cashflow row had no data-i18n at all → never translated.
+       Now wired with proper Hindi for label and sub. */
+    'more.cashflow':           { en: 'Cashflow',                 hi: 'कैश फ्लो' },
+    'more.cashflowSub':        { en: 'Cash in hand · withdraw · deposit', hi: 'हाथ में कैश · निकालें · जमा करें' },
+    /* (v33_29ae) Sync Health row was previously hardcoded English. */
+    'more.syncHealth':         { en: 'Sync health',              hi: 'सिंक स्थिति' },
+    'more.allSyncing':         { en: 'All sales syncing',        hi: 'सभी सेल्स सिंक हो रही हैं' },
+    'more.stuckRecord':        { en: 'stuck record',             hi: 'अटका हुआ रिकॉर्ड' },
+    'more.stuckRecords':       { en: 'stuck records',            hi: 'अटके हुए रिकॉर्ड' },
+    'more.needAttention':      { en: 'need attention',           hi: 'पर ध्यान दें' },
+    'more.dupRecord':          { en: 'possible duplicate',       hi: 'संभावित डुप्लीकेट' },
+    'more.dupRecords':         { en: 'possible duplicates',      hi: 'संभावित डुप्लीकेट' },
+    'more.toReview':           { en: 'to review',                hi: 'जांचें' },
     'more.offersCoupons':      { en: 'Offers & Coupons',         hi: 'ऑफर और कूपन' },
     'more.manageDiscounts':    { en: 'Manage discounts',         hi: 'छूट मैनेज करें' },
     'more.viewStaffPerf':      { en: 'View staff and their performance', hi: 'स्टाफ और उनकी परफॉर्मेंस देखें' },
@@ -10764,7 +10796,25 @@ const App = {
 
     const inSales = el.closest && el.closest('#pg-sales');
     if (inSales) {
-      this._salesRange = cleanLabel;
+      /* (v33_29ac) Sales date filter — derive the canonical English range
+         from the pill's data-i18n attribute, NOT from its visible text.
+         Previously we stored cleanLabel (= the displayed text), so when the
+         user switched to Hindi the pill labels became "आज / कल / इस हफ़्ते"
+         and downstream _salesInRange compared `range === 'Today'` etc. —
+         which never matched in Hindi → fell through to "return all bills"
+         → "Today" filter showed every historical bill.
+
+         data-i18n is locale-independent (set in HTML at line ~2900), so it's
+         the right key for internal state. */
+      var _i18nKey = el.getAttribute('data-i18n') || '';
+      var _rangeKey = ({
+        'sales.today':       'Today',
+        'sales.yesterday':   'Yesterday',
+        'sales.week':        'This Week',
+        'sales.month':       'This Month',
+        'common.customLbl':  'Custom'
+      })[_i18nKey];
+      this._salesRange = _rangeKey || cleanLabel;  /* fallback for safety */
       this.renderSalesScreen();
       this.renderSales();
     }
@@ -11107,7 +11157,21 @@ const App = {
     if (heroLabel) {
 
       const svgHTML = heroLabel.querySelector('svg') ? heroLabel.querySelector('svg').outerHTML : '';
-      heroLabel.innerHTML = "Revenue Today" + (svgHTML ? ' ' + svgHTML : '');
+      /* (v33_29af) Was hardcoded "Revenue Today" — now i18n-aware "Sales Today".
+         The hero label HTML default uses dash.grossProfitToday, but this JS
+         override stomps it on every renderHome call. We update both the
+         span's textContent AND its data-i18n attribute so locale switches
+         keep the translation correct. */
+      const _salesTodayTxt = this._T('dash.salesToday', 'Sales Today');
+      const _span = heroLabel.querySelector('span');
+      if (_span) {
+        _span.setAttribute('data-i18n', 'dash.salesToday');
+        _span.textContent = _salesTodayTxt;
+        heroLabel.innerHTML = _span.outerHTML + (svgHTML ? ' ' + svgHTML : '');
+      } else {
+        heroLabel.innerHTML = '<span data-i18n="dash.salesToday">' + _salesTodayTxt + '</span>' +
+                              (svgHTML ? ' ' + svgHTML : '');
+      }
     }
 
     const hd = document.getElementById('hero-delta');
@@ -11167,10 +11231,21 @@ const App = {
           });
         } catch(e){}
         var todayNetProf = todayProf - todayComm;
+        /* (v33_29af) Hero legend renamed and semantically clarified:
+             OLD: "Gross ₹todayProf | Net ₹todayNetProf | Cost ₹todayCost"
+             NEW: "Sales ₹todayRev | Profit ₹todayNetProf | Cost ₹todayCost"
+           Shopkeeper-friendly: Sales = total revenue, Profit = what was
+           earned after costs (and commission, where applicable), Cost =
+           what was spent on goods. Sums neatly: Sales = Profit + Cost.
+           The "Sales" label has no colored dot since it's the WHOLE, not
+           a component of the profit bar. */
+        var _heroSalesLbl  = this._T('dash.heroSales',  'Sales');
+        var _heroProfitLbl = this._T('dash.profit',     'Profit');
+        var _heroCostLbl   = this._T('dash.heroCost',   'Cost');
         pbl.innerHTML = `
-          <div><span class="pbl-dot profit"></span>Gross ₹${todayProf.toLocaleString('en-IN')}</div>
-          <div style="text-align:center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#A7F3D0;margin-right:6px;vertical-align:middle"></span><b>Net ₹${todayNetProf.toLocaleString('en-IN')}</b></div>
-          <div style="text-align:right"><span class="pbl-dot cost"></span>Cost ₹${todayCost.toLocaleString('en-IN')}</div>`;
+          <div>${_heroSalesLbl} ₹${todayRev.toLocaleString('en-IN')}</div>
+          <div style="text-align:center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#A7F3D0;margin-right:6px;vertical-align:middle"></span><b>${_heroProfitLbl} ₹${todayNetProf.toLocaleString('en-IN')}</b></div>
+          <div style="text-align:right"><span class="pbl-dot cost"></span>${_heroCostLbl} ₹${todayCost.toLocaleString('en-IN')}</div>`;
       }
     }
 
@@ -11738,10 +11813,27 @@ const App = {
       ingEntry.style.display = isRecipe ? '' : 'none';
 
       const _L = this._supplyLabels();
+      const _isSalonSup = (this._supplyVerticalKey() === 'salon');
       const _moreLbl = document.getElementById('more-ingredients-label');
-      if (_moreLbl) _moreLbl.textContent = _L.section;
+      if (_moreLbl) {
+        /* (v33_29ad) Update both the data-i18n key (so applyAll can localize)
+           AND the visible text (so it's right before applyAll runs). Without
+           the data-i18n update, the i18n MutationObserver re-applies
+           "nav.supplies" which translates to "सप्लाई" — wrong word for the
+           Ingredients page. The vertical-specific key (more.ingredients or
+           more.supplies) gives the right Hindi term per vertical. */
+        const _lblKey = _isSalonSup ? 'more.supplies' : 'more.ingredients';
+        _moreLbl.setAttribute('data-i18n', _lblKey);
+        _moreLbl.textContent = this._T(_lblKey, _L.section);
+      }
       const _moreSub = document.getElementById('more-ingredients-sub');
-      if (_moreSub) _moreSub.textContent = _L.moreSub;
+      if (_moreSub) {
+        /* Sub line uses _L.moreSub which is vertical-aware in English. For
+           Hindi, fall back to the existing more.autoTrackRawMat key which
+           already has good Hindi. (Future: vertical-specific subs in Hindi.) */
+        _moreSub.setAttribute('data-i18n', 'more.autoTrackRawMat');
+        _moreSub.textContent = this._T('more.autoTrackRawMat', _L.moreSub);
+      }
     }
 
     const ts = cfg.timeSlots;
@@ -11877,7 +11969,28 @@ const App = {
       const inactiveProds = allProds.filter(p => p.active === false);
       const cats = new Set(activeProds.map(p => p.cat).filter(Boolean));
       const cfgVert = VERTICAL_CONFIG[this.vertical] || {};
-      if (menuLabel) menuLabel.textContent = cfgVert.catalogTitle || 'Menu Items';
+      if (menuLabel) {
+        /* (v33_29ae) Preserve i18n: previously this stomped the
+           Hindi-translated label with English `cfgVert.catalogTitle`
+           ("Menu", "Bakery", "Catalog", "Items"). Now we:
+           1. Keep the data-i18n key (nav.catalog) for default localization
+           2. If the vertical config has a catalog title AND the active locale
+              is English, use that title (so bakery says "Bakery", cafe says
+              "Menu", etc.). For non-English locales, let i18n handle it.
+           This preserves both vertical-specificity (English) and i18n. */
+        var _isEnLocale = !window.I18n || (window.I18n.getLocale && window.I18n.getLocale() === 'en') ||
+                          (!window.I18n.getLocale);
+        if (_isEnLocale && cfgVert.catalogTitle) {
+          menuLabel.removeAttribute('data-i18n');
+          menuLabel.textContent = cfgVert.catalogTitle;
+        } else {
+          /* Ensure data-i18n is restored so applyAll can translate. */
+          if (!menuLabel.hasAttribute('data-i18n')) {
+            menuLabel.setAttribute('data-i18n', 'nav.catalog');
+          }
+          menuLabel.textContent = this._T('nav.catalog', cfgVert.catalogTitle || 'Menu');
+        }
+      }
       if (menuSub) {
         menuSub.removeAttribute('data-i18n');
         if (activeProds.length === 0 && inactiveProds.length === 0) {
@@ -13714,10 +13827,14 @@ const App = {
     try { _roleResolved = document.documentElement.getAttribute('data-role-resolved') || 'no'; } catch(e){}
     if (_roleResolved !== 'yes') {
 
+      /* (v33_29af) Pill semantics changed:
+           kpi-revenue → Bills count (was AOV ₹)
+           kpi-bills   → Profit ₹    (was Bills count)
+           kpi-profit  → dynamic (margin / cash / udhaar / staff) */
       const _resetIds = ['kpi-revenue', 'kpi-bills', 'kpi-profit'];
       _resetIds.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.textContent = id === 'kpi-bills' ? '0' : '₹—';
+        if (el) el.textContent = id === 'kpi-revenue' ? '0' : '₹—';
       });
       const _deltaIds = ['kpi-revenue-delta', 'kpi-bills-delta', 'kpi-profit-delta'];
       _deltaIds.forEach(id => {
@@ -13812,23 +13929,40 @@ const App = {
 
     const revEl = document.getElementById('kpi-revenue');
     const revDelta = document.getElementById('kpi-revenue-delta');
-    if (revEl) revEl.textContent = todayBills > 0 ? fmtCurrency(todayAov) : '₹—';
-    if (revDelta) {
-      if (todayBills === 0 && yestBills === 0) {
-        revDelta.innerHTML = `<span style="opacity:.5">· first day</span>`;
-      } else if (yestBills === 0 && todayBills > 0) {
-        revDelta.innerHTML = `<span style="color:#059669">▲ first sale</span>`;
-      } else if (todayBills === 0) {
-        revDelta.innerHTML = `<span style="opacity:.65">Yest: ${fmtCurrency(yestAov)}</span>`;
-      } else {
-        revDelta.innerHTML = renderDelta(todayAov, yestAov, true, false);
-      }
-    }
+    /* (v33_29af) Pill 1 (id=kpi-revenue) NOW SHOWS BILLS COUNT, not AOV.
+       The id is preserved for back-compat but semantics have moved here.
+       Value: today's bill count. Delta: change vs yesterday's bill count. */
+    if (revEl) revEl.textContent = todayBills;
+    if (revDelta) revDelta.innerHTML = renderDelta(todayBills, yestBills, false, false);
 
     const billsEl = document.getElementById('kpi-bills');
     const billsDelta = document.getElementById('kpi-bills-delta');
-    if (billsEl) billsEl.textContent = todayBills;
-    if (billsDelta) billsDelta.innerHTML = renderDelta(todayBills, yestBills, false, false);
+    /* (v33_29af) Pill 2 (id=kpi-bills) NOW SHOWS PROFIT in ₹, not bill count.
+       Value: today's profit in rupees (uses todayProf — gross profit before
+       commission, matching the legend's old "Gross" semantics). When cost
+       prices aren't accurate, show "—" + nudge. */
+    if (billsEl) {
+      if (!profitIsAccurate && todaySales.length > 0) {
+        billsEl.textContent = '—';
+      } else if (todayBills === 0) {
+        billsEl.textContent = '₹—';
+      } else {
+        billsEl.textContent = fmtCurrency(todayProf);
+      }
+    }
+    if (billsDelta) {
+      if (!profitIsAccurate && todaySales.length > 0) {
+        billsDelta.innerHTML = `<span style="opacity:.5" data-i18n="inv.setCpLbl">Set cost prices</span>`;
+      } else if (todayBills === 0 && yestBills === 0) {
+        billsDelta.innerHTML = `<span style="opacity:.5">· first day</span>`;
+      } else if (yestBills === 0 && todayBills > 0) {
+        billsDelta.innerHTML = `<span style="color:#059669">▲ first sale</span>`;
+      } else if (todayBills === 0) {
+        billsDelta.innerHTML = `<span style="opacity:.65">Yest: ${fmtCurrency(yestProf)}</span>`;
+      } else {
+        billsDelta.innerHTML = renderDelta(todayProf, yestProf, true, false);
+      }
+    }
 
     const profEl = document.getElementById('kpi-profit');
     const profDelta = document.getElementById('kpi-profit-delta');
@@ -13862,6 +13996,33 @@ const App = {
         }
       }
     } catch(e){}
+
+    /* (v33_29af) Pill 3 priority chain — Udhaar mode.
+       When the shop has open udhaar records (any party with lena or dena),
+       the 3rd KPI shows udhaar net position. Higher priority than cash and
+       margin per product spec, but lower than staff-pill (which is a salon-
+       specific onboarding nudge). Vertical config doesn't gate this — the
+       standalone home-udhaar-tile already shows for any shop with data,
+       so the pill mirrors that "has data → show it" rule. */
+    let _useUdhaarPill = false;
+    let _udhaarNet = 0;
+    let _udhaarLenaCount = 0;
+    let _udhaarDenaCount = 0;
+    let _udhaarOverdue = 0;
+    try {
+      if (!_useStaffPill && window.Khata) {
+        _udhaarLenaCount = Khata.countOpen('lena');
+        _udhaarDenaCount = Khata.countOpen('dena');
+        if (_udhaarLenaCount + _udhaarDenaCount > 0) {
+          _useUdhaarPill = true;
+          _udhaarNet = Math.round(Khata.totalLena() - Khata.totalDena());
+          try {
+            const parties = Khata.byParty('lena');
+            _udhaarOverdue = parties.filter(p => p.oldestDays >= 15).length;
+          } catch(e){}
+        }
+      }
+    } catch(e){ console.warn('[renderKpis] udhaar pill detection:', e); }
 
     if (profLabel) {
       profLabel.textContent = _useStaffPill ? this._T('dash.perStaff', 'Per Staff') : this._T('dash.marginShort', 'Margin');
@@ -13955,7 +14116,20 @@ const App = {
     } catch(e){ console.warn('[renderKpis] cash tile detection:', e); }
 
     /* Override label when showing cash */
-    if (_useCashTile && profLabel) {
+    if (_useUdhaarPill && profLabel) {
+      /* (v33_29af) UDHAAR mode label override. Uses nav.udhaar key for
+         English "Udhaar" / Hindi "उधार" — same key as the standalone tile
+         and More-menu row, so the vocabulary is consistent across surfaces.
+         Strip data-i18n then re-set it to nav.udhaar so applyAll keeps the
+         Hindi translation correct on locale switches. */
+      profLabel.textContent = this._T('nav.udhaar', 'Udhaar');
+      try {
+        if (profLabel.hasAttribute('data-i18n') && profLabel.getAttribute('data-i18n') !== 'nav.udhaar') {
+          profLabel.setAttribute('data-i18n-orig', profLabel.getAttribute('data-i18n'));
+        }
+        profLabel.setAttribute('data-i18n', 'nav.udhaar');
+      } catch(e){}
+    } else if (_useCashTile && profLabel) {
       profLabel.textContent = this._T('dash.cashInHand', 'Cash');
       /* (v33_29h) CRITICAL: remove data-i18n so the translation system
          doesn't overwrite "Cash" back to "Margin" on the next i18n
@@ -13972,12 +14146,18 @@ const App = {
         }
       } catch(e){}
     } else if (profLabel && !_useStaffPill) {
-      /* (v33_29h) Plain MARGIN mode only (not staff-pill, not cash):
+      /* (v33_29h) Plain MARGIN mode only (not staff-pill, not cash, not udhaar):
          restore the data-i18n attribute if we previously stripped it, so
          the margin label translates normally again. Guarded with
          !_useStaffPill so we don't restore translation onto the dynamic
          "Per Staff" label (which the block above intentionally stripped). */
       try {
+        /* (v33_29af) If currently set to nav.udhaar from a prior udhaar
+           render, restore to the saved original margin key. */
+        if (profLabel.getAttribute('data-i18n') === 'nav.udhaar' && profLabel.hasAttribute('data-i18n-orig')) {
+          profLabel.setAttribute('data-i18n', profLabel.getAttribute('data-i18n-orig'));
+          profLabel.textContent = this._T(profLabel.getAttribute('data-i18n'), 'Margin');
+        }
         if (!profLabel.hasAttribute('data-i18n') && profLabel.hasAttribute('data-i18n-orig')) {
           profLabel.setAttribute('data-i18n', profLabel.getAttribute('data-i18n-orig'));
         }
@@ -13993,6 +14173,27 @@ const App = {
         } else {
           profEl.textContent = '₹' + _todayPerStaff.toLocaleString('en-IN');
           if (profDelta) profDelta.innerHTML = `<span style="opacity:.65">${_activeStylistsToday} ${_activeStylistsToday === 1 ? 'stylist' : 'stylists'} today</span>`;
+        }
+      } else if (_useUdhaarPill) {
+        /* (v33_29af) UDHAAR mode — net position with sign + color.
+           Positive (lena > dena): green, you'll collect net X.
+           Negative (dena > lena): orange, you owe net X.
+           Sub: count summary, with overdue warning if applicable. */
+        const _udhaarSign = _udhaarNet >= 0 ? '+' : '−';
+        const _udhaarAbs = Math.abs(_udhaarNet).toLocaleString('en-IN');
+        const _udhaarColor = _udhaarNet >= 0 ? '#059669' : '#92400E';
+        profEl.innerHTML = `<span style="color:${_udhaarColor}">${_udhaarSign}₹${_udhaarAbs}</span>`;
+        if (profDelta) {
+          let _udhaarSub = '';
+          if (_udhaarLenaCount > 0) {
+            _udhaarSub = _udhaarLenaCount + ' ' + this._T('dash.toCollect', 'to collect');
+          } else if (_udhaarDenaCount > 0) {
+            _udhaarSub = _udhaarDenaCount + ' ' + this._T('dash.toPay', 'to pay');
+          }
+          if (_udhaarOverdue > 0) {
+            _udhaarSub += ' · <span style="color:#92400E">⚠ ' + _udhaarOverdue + '</span>';
+          }
+          profDelta.innerHTML = `<span style="opacity:.75">${_udhaarSub}</span>`;
         }
       } else if (_useCashTile) {
         /* CASH IN HAND mode */
@@ -14043,8 +14244,12 @@ const App = {
       }
     }
 
-    /* Remember current tile mode for tap handler */
+    /* Remember current tile mode for tap handler.
+       (v33_29af) Priority chain: staff (salon onboarding) > udhaar (has data)
+       > cash (drawer engaged) > setcost > setmargin > margin. Udhaar takes
+       precedence over cash per product spec. */
     this._kpi3Mode = _useStaffPill ? 'staff'
+                    : _useUdhaarPill ? 'udhaar'
                     : _useCashTile ? 'cash'
                     : (!profitIsAccurate && todaySales.length > 0) ? 'setcost'
                     : (todayCost === 0 && todayRev > 0) ? 'setmargin'  /* (v33_29j) all-zero-cost prompt */
@@ -14060,6 +14265,10 @@ const App = {
         if (window.haptic) haptic.tap();
       } catch(e){}
       CashDrawer.openSheet();
+    } else if (mode === 'udhaar') {
+      // (v33_29af) Navigate to udhaar screen
+      try { if (window.haptic) haptic.tap(); } catch(e){}
+      this.nav('udhaar');
     } else if (mode === 'staff') {
       // Navigate to staff
       this.nav('staff');
@@ -26863,12 +27072,27 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         }
       }
       if (sub) {
+        /* (v33_29ae) Localize all three states. Previously hardcoded English.
+           When showing the default "All syncing" state, restore data-i18n so
+           applyAll can keep it translated as locale switches. When showing
+           dynamic count text, strip data-i18n so applyAll doesn't overwrite. */
         if (qSize > 0) {
-          sub.textContent = qSize + ' stuck record' + (qSize === 1 ? '' : 's') + ' need attention';
+          sub.removeAttribute('data-i18n');
+          var _stuckWord = qSize === 1
+            ? App._T('more.stuckRecord', 'stuck record')
+            : App._T('more.stuckRecords', 'stuck records');
+          var _needsAttn = App._T('more.needAttention', 'need attention');
+          sub.textContent = qSize + ' ' + _stuckWord + ' ' + _needsAttn;
         } else if (dupeGroups > 0) {
-          sub.textContent = dupeGroups + ' possible duplicate' + (dupeGroups === 1 ? '' : 's') + ' to review';
+          sub.removeAttribute('data-i18n');
+          var _dupeWord = dupeGroups === 1
+            ? App._T('more.dupRecord', 'possible duplicate')
+            : App._T('more.dupRecords', 'possible duplicates');
+          var _toReview = App._T('more.toReview', 'to review');
+          sub.textContent = dupeGroups + ' ' + _dupeWord + ' ' + _toReview;
         } else {
-          sub.textContent = 'All sales syncing';
+          if (!sub.hasAttribute('data-i18n')) sub.setAttribute('data-i18n', 'more.allSyncing');
+          sub.textContent = App._T('more.allSyncing', 'All sales syncing');
         }
       }
     } catch(e){}
