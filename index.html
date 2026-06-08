@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ag_payMixHero';
+    window.HISAABNOW_BUILD = 'v33_29ah_dashPolish';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2647,9 +2647,6 @@ html[data-current-role="manager"] body{
   <section class="hero" data-role-min="manager">
     <div class="hero-top">
       <div class="hero-label"><span data-i18n="dash.grossProfitToday">Gross Profit Today</span></div>
-      <button class="hero-toggle"><span data-i18n="dash.cardToday">Today</span>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
     </div>
     <div class="hero-amount" id="hero-amount"><span class="hero-rupee">₹</span>—</div>
     <div class="hero-delta" id="hero-delta">
@@ -11206,8 +11203,13 @@ const App = {
              reads naturally on its own. */
           hd.innerHTML = deltaHtml.replace(/^\s*·\s*/, '').replace(/^\s+/, '');
         } else {
-          /* Edge case: no comparable yesterday data → keep the row short */
-          hd.innerHTML = `<span style="opacity:.65">${this._T('dash.todaysSales', "Today's sales")}</span>`;
+          /* (v33_29ah) Edge case: no comparable yesterday data → leave
+             the row empty rather than filling with redundant text. The
+             header above already says "Sales Today"; restating it below
+             ₹X adds nothing. Keep the element present (not removed) so
+             spacing stays consistent on subsequent renders when delta
+             data becomes available. */
+          hd.innerHTML = '';
         }
       }
     }
@@ -11288,17 +11290,22 @@ const App = {
         if (_total <= 0){
           pbl.innerHTML = `<div style="opacity:.65;width:100%;text-align:center;font-size:11.5px">${this._T('dash.payMixEmpty', 'Payment mix will appear here once you make your first sale')}</div>`;
         } else {
+          /* (v33_29ah) Show ₹ value only — drop the percentage. The colored
+             bar above already conveys proportion visually; restating it as
+             "67%" was redundant. Concrete value is what shopkeepers actually
+             want to know ("I have ₹200 in UPI today"). Hide any mode under
+             ₹1 (rounded) so a stray rounding artifact doesn't add a row. */
           var _self = this;
           var _items = [
-            { key: 'upi',    color: '#FBBF24', lbl: _self._T('dash.upi',     'UPI'),    pct: (_mix.upi    / _total) * 100 },
-            { key: 'cash',   color: '#34D399', lbl: _self._T('dash.cash',    'Cash'),   pct: (_mix.cash   / _total) * 100 },
-            { key: 'card',   color: '#60A5FA', lbl: _self._T('dash.card',    'Card'),   pct: (_mix.card   / _total) * 100 },
-            { key: 'udhaar', color: '#F97316', lbl: _self._T('nav.udhaar',   'Udhaar'), pct: (_mix.udhaar / _total) * 100 }
-          ].filter(function(it){ return it.pct >= 0.5; });  /* hide modes under 0.5% to keep legend clean */
+            { key: 'upi',    color: '#FBBF24', lbl: _self._T('dash.upi',     'UPI'),    val: _mix.upi    },
+            { key: 'cash',   color: '#34D399', lbl: _self._T('dash.cash',    'Cash'),   val: _mix.cash   },
+            { key: 'card',   color: '#60A5FA', lbl: _self._T('dash.card',    'Card'),   val: _mix.card   },
+            { key: 'udhaar', color: '#F97316', lbl: _self._T('nav.udhaar',   'Udhaar'), val: _mix.udhaar }
+          ].filter(function(it){ return Math.round(it.val) >= 1; });
           pbl.innerHTML = _items.map(function(it){
             return '<div style="display:flex;align-items:center;gap:5px">' +
                      '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+it.color+'"></span>' +
-                     '<span><b>'+it.lbl+'</b> '+Math.round(it.pct)+'%</span>' +
+                     '<span><b>'+it.lbl+'</b> ₹'+Math.round(it.val).toLocaleString('en-IN')+'</span>' +
                    '</div>';
           }).join('');
         }
