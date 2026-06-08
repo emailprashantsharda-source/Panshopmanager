@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29am_payMixOptionF';
+    window.HISAABNOW_BUILD = 'v33_29ao_catalogInventoryMerge';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3536,7 +3536,8 @@ html[data-current-role="manager"] body{
       <button class="menu-item" id="more-menu-entry" onclick="App.nav('catalog')">
         <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M2 6h20M2 18h20"/></svg></div>
         <div class="menu-text"><div class="menu-label" id="more-menu-label" data-i18n="nav.catalog">Menu Items</div><div class="menu-sub" id="more-menu-sub" data-i18n="more.tapToView">Tap to view</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <span id="more-menu-badge" class="menu-badge" style="background:#FEE2E2;color:#991B1B;display:none" data-i18n="more.lowBadge">LOW</span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <button class="menu-item" id="more-expenses-entry" onclick="App.nav('expenses')" data-role-min="manager">
         <div class="menu-icon yellow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
@@ -9935,6 +9936,40 @@ const App = {
     this._tt = setTimeout(()=>t.classList.remove('show'), 2200);
   },
 
+  /* (v33_29an) Tappable toast variant. Shows for 5s and registers a one-shot
+     click handler that fires the callback then dismisses immediately. Used
+     for auto-logged expense confirmations where the user might want to fix
+     the amount or delete the entry. Cleans up handler on dismiss to avoid
+     leaks across calls. */
+  toastAction(msg, onTap){
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    t.style.cursor = 'pointer';
+    clearTimeout(this._tt);
+    if (this._ttHandler) {
+      try { t.removeEventListener('click', this._ttHandler); } catch(e){}
+      this._ttHandler = null;
+    }
+    const _self = this;
+    this._ttHandler = function(){
+      try { if (typeof onTap === 'function') onTap(); } catch(e){}
+      t.classList.remove('show');
+      t.style.cursor = '';
+      try { t.removeEventListener('click', _self._ttHandler); } catch(e){}
+      _self._ttHandler = null;
+      clearTimeout(_self._tt);
+    };
+    t.addEventListener('click', this._ttHandler);
+    this._tt = setTimeout(function(){
+      t.classList.remove('show');
+      t.style.cursor = '';
+      try { t.removeEventListener('click', _self._ttHandler); } catch(e){}
+      _self._ttHandler = null;
+    }, 5000);
+  },
+
   /* ─── App.confirm(opts) → Promise<boolean> ─────────────────────────────
      Replaces native confirm(). Bottom-sheet style on mobile.
 
@@ -12103,6 +12138,34 @@ const App = {
           menuSub.textContent = itemLbl + catLbl;
         }
       }
+
+      /* (v33_29ao) LOW badge on catalog entry — surfaces stock alerts here
+         since the dedicated Inventory entry is now hidden for non-salon.
+         For salon, the badge stays on the Inventory entry (Services page);
+         for non-salon, the catalog IS where users manage everything. */
+      const menuBadge = document.getElementById('more-menu-badge');
+      if (menuBadge) {
+        const _vCfgM = VERTICAL_CONFIG[this.vertical] || {};
+        const _tracksStockM = _vCfgM.tracksStock !== false;
+        const _showOnCatalog = !_isSalonShop && _tracksStockM;
+        if (_showOnCatalog) {
+          let lowOutCount = 0;
+          activeProds.forEach(function(p){
+            const st = Number(p.stock || 0);
+            const mn = Number(p.min || 0);
+            if (st <= 0 || (mn > 0 && st <= mn)) lowOutCount++;
+          });
+          if (lowOutCount > 0) {
+            menuBadge.textContent = lowOutCount + ' LOW';
+            menuBadge.removeAttribute('data-i18n');
+            menuBadge.style.display = '';
+          } else {
+            menuBadge.style.display = 'none';
+          }
+        } else {
+          menuBadge.style.display = 'none';
+        }
+      }
     }
 
     const expSub = document.getElementById('more-expenses-sub');
@@ -12128,12 +12191,17 @@ const App = {
     const _isSalonShop = (this.vertical === 'salon') ||
                          (typeof this._supplyVerticalKey === 'function' &&
                           this._supplyVerticalKey() === 'salon');
-    /* (May 2026) For salon, the "inventory" route IS the Services page
-       (per VERTICAL_CONFIG.salon.inventoryTitle). Show the entry and
-       relabel it so salon owners can reach Services from More. */
+    /* (v33_29ao) Option B refactor — for non-salon verticals (bakery, cafe,
+       restaurant, grocery, sweets, stationery, pan, other), the inventory
+       page is now redundant with the catalog page. We HIDE the inventory
+       entry from More menu entirely; stock alerts are surfaced on the
+       catalog entry instead (see badge block below).
+
+       For salon, inventory IS the services-management page (different from
+       Retail catalog), so the entry stays visible and shows "Services". */
     if (invEntry) {
-      invEntry.style.display = '';
       if (_isSalonShop) {
+        invEntry.style.display = '';
         const _cfgSalon = VERTICAL_CONFIG[this.vertical] || {};
         const invLabel = document.getElementById('more-inventory-label');
         const invSubEl = document.getElementById('more-inventory-sub');
@@ -12144,6 +12212,21 @@ const App = {
         if (invSubEl) {
           invSubEl.removeAttribute('data-i18n');
           invSubEl.textContent = _cfgSalon.inventorySub || 'Hair, skin, beauty services you offer';
+        }
+      } else {
+        invEntry.style.display = 'none';
+        /* Restore data-i18n attributes in case the user previously had a
+           salon shop active. Without this, the labels remain stuck with
+           salon's "Services" text and never re-translate on lang switch. */
+        const invLabel = document.getElementById('more-inventory-label');
+        const invSubEl = document.getElementById('more-inventory-sub');
+        if (invLabel && !invLabel.hasAttribute('data-i18n')) {
+          invLabel.setAttribute('data-i18n', 'more.inventory');
+          invLabel.textContent = this._T('more.inventory', 'Inventory');
+        }
+        if (invSubEl && !invSubEl.hasAttribute('data-i18n')) {
+          invSubEl.setAttribute('data-i18n', 'more.stockSupplies');
+          invSubEl.textContent = this._T('more.stockSupplies', 'Stock and supplies');
         }
       }
     }
@@ -21718,22 +21801,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         </div>
       </div>
 
-      ${!isEdit ? `
-      <div class="ps-section" id="ig-expense-section" data-role-min="manager" style="margin-top:14px;padding:14px;background:#FFFBF5;border:1.5px solid #FED7AA;border-radius:13px">
-        <div style="display:flex;align-items:center;gap:11px">
-          <label style="position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;cursor:pointer">
-            <input type="checkbox" id="ig-log-expense" checked style="opacity:0;width:0;height:0" onchange="App._igOnExpenseToggle()">
-            <span id="ig-log-expense-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#EA580C;border-radius:99px;transition:.2s">
-              <span id="ig-log-expense-knob" style="position:absolute;height:18px;width:18px;left:21px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.15)"></span>
-            </span>
-          </label>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13.5px;font-weight:700;color:#7C2D12;letter-spacing:-.005em">💸 Log purchase as expense</div>
-            <div id="ig-expense-amount-label" style="font-size:11.5px;color:#9A3412;font-weight:600;margin-top:2px">— Will calculate from stock and pack price —</div>
-          </div>
-        </div>
-      </div>
-      ` : ''}
+      <!-- (v33_29an) The orange "Log purchase as expense" toggle is gone.
+           Behavior is now ALWAYS-ON: any stock increase auto-logs an expense
+           for the delta × pack price. Toggle was added back in early ingredient
+           builds when the behavior was unclear; now that the rule is simple
+           ("stock up = purchase"), no toggle needed. The toast after save is
+           tappable for 5 seconds so user can edit/delete the auto-entry if
+           the price was different or it was a stock correction. -->
 
       <div style="display:flex;gap:10px;margin-top:18px">
         ${isEdit ? '<button class="ps-btn-danger" onclick="App.deleteIngredient()" data-i18n="btn.delete">Delete</button>' : ''}
@@ -22111,47 +22185,80 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
     }
 
+    /* (v33_29an) Unified auto-expense logic for BOTH new and edit paths.
+       Rule: stock went UP from before = it's a purchase = log expense.
+       Stock unchanged or DOWN = data correction = no expense.
+
+       For NEW ingredient: oldStockBase = 0, so any starting stock > 0 logs.
+       For EDIT: oldStockBase = existing stock; delta = new - old. If positive,
+       log expense for (delta / packQtyInBase) × packPrice.
+
+       Toast is tappable for 5s so user can edit/delete if price was different
+       or it was a stock correction up (rare edge case). */
+    let oldStockBase = 0;
+    if (this._editingIgId) {
+      const existingIg = Store.get('ingredients', this._editingIgId);
+      oldStockBase = existingIg ? Number(existingIg.stock || 0) : 0;
+    }
+    const stockDelta = stockBase - oldStockBase;
+
+    let savedIg = null;
     if (this._editingIgId) {
       Store.update('ingredients', this._editingIgId, fields);
+      savedIg = { id: this._editingIgId };
+    } else {
+      savedIg = Store.add('ingredients', fields);
+    }
+
+    let loggedAmount = 0;
+    let loggedExpId = null;
+    try {
+      if (stockDelta > 0 && packPrice > 0 && packQtyInBase > 0) {
+        loggedAmount = Math.round(packPrice * (stockDelta / packQtyInBase));
+        if (loggedAmount > 0) {
+          const today = new Date();
+          const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+          const expFields = {
+            desc:         name + ' · purchase',
+            amt:          loggedAmount,
+            cat:          'Raw Material / Stock',
+            emoji:        fields.emoji,
+            clr:          '#EA580C',
+            date:         dateStr,
+            paid:         true,
+            ingredientId: savedIg && savedIg.id,
+            source:       'supply_purchase'
+          };
+          const savedExp = Store.add('exps', expFields);
+          loggedExpId = savedExp && savedExp.id;
+        }
+      }
+    } catch(e) {
+      console.warn('[saveIngredient] auto-expense failed (non-fatal):', e);
+    }
+
+    if (loggedAmount > 0 && loggedExpId) {
+      const _self = this;
+      this.toastAction(
+        '✓ ₹' + loggedAmount.toLocaleString('en-IN') + ' logged to expenses · tap to edit',
+        function(){
+          /* Navigate to expenses tab and open the just-created entry for edit.
+             Lookup by id since EXPENSES indexes can shift. */
+          try {
+            _self.nav('expenses');
+            setTimeout(function(){
+              const idx = (window.EXPENSES || []).findIndex(function(x){ return x && x.id === loggedExpId; });
+              if (idx >= 0 && typeof _self.openExpenseEdit === 'function') {
+                _self.openExpenseEdit(idx);
+              }
+            }, 250);
+          } catch(e){}
+        }
+      );
+    } else if (this._editingIgId) {
       this.toast(this._T('toast.updatedPrefix','Updated') + ' · ' + name);
     } else {
-      const savedIg = Store.add('ingredients', fields);
-
-      let expenseLogged = false;
-      let loggedAmount = 0;
-      try {
-        const cb = document.getElementById('ig-log-expense');
-        const wantsExpense = cb && cb.checked && stockBase > 0;
-        if (wantsExpense) {
-          loggedAmount = this._igCalcExpenseAmount();
-          if (loggedAmount > 0) {
-            const today = new Date();
-            const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-
-            const expFields = {
-              desc:         name + ' · purchase',
-              amt:          loggedAmount,
-              cat:          'Raw Material / Stock',
-              emoji:        fields.emoji,
-              clr:          '#EA580C',
-              date:         dateStr,
-              paid:         true,
-              ingredientId: savedIg && savedIg.id,
-              source:       'supply_purchase'
-            };
-            Store.add('exps', expFields);
-            expenseLogged = true;
-          }
-        }
-      } catch(e) {
-        console.warn('[saveIngredient] auto-expense failed (non-fatal):', e);
-      }
-
-      if (expenseLogged) {
-        this.toast('✓ Added · ₹' + loggedAmount.toLocaleString('en-IN') + ' logged to expenses');
-      } else {
-        this.toast(this._T('toast.addedPrefix','Added') + ' · ' + name);
-      }
+      this.toast(this._T('toast.addedPrefix','Added') + ' · ' + name);
     }
     this._editingIgId = null;
     this._igPickedEmoji = null;
@@ -30039,14 +30146,38 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           <div style="font-size:12px;color:var(--t3);font-weight:700;font-variant-numeric:tabular-nums">${active.length}</div>
         </div>`;
 
+      /* (v33_29ao) Per-row stock indicator — adds "Low" / "Out" / stock count
+         next to category. Only renders for verticals that track stock and
+         only for items that have a min/stock value set (no badge spam on
+         services-only verticals like salon). Visual style matches the
+         inventory page badges so users can map the concepts. */
+      const _vCfgCat = VERTICAL_CONFIG[this.vertical] || {};
+      const _tracksStockCat = _vCfgCat.tracksStock !== false;
+      function _stockBadge(s){
+        if (!_tracksStockCat) return '';
+        const stock = Number(s.stock || 0);
+        const min = Number(s.min || 0);
+        /* Only show badge when stock tracking is meaningful for THIS item.
+           If both stock=0 and min=0, the item isn't being tracked — no badge. */
+        if (stock === 0 && min === 0) return '';
+        if (stock <= 0) {
+          return '<span class="inv-stock stock-out" style="margin-left:auto">Out</span>';
+        }
+        if (min > 0 && stock <= min) {
+          return '<span class="inv-stock stock-low" style="margin-left:auto">Low · ' + stock + '</span>';
+        }
+        return '<span class="inv-stock stock-ok" style="margin-left:auto;opacity:.75">' + stock + '</span>';
+      }
+
       html += active.map(s => {
         const idx = SERVICES.indexOf(s);
+        const _sBadge = _stockBadge(s);
         return `
           <div class="li" onclick="App.openCatalogEdit(${idx})">
             <div class="li-avatar" style="background:var(--p-100);color:var(--p);font-size:20px">${s.emoji || '🛒'}</div>
             <div class="li-meta">
               <div class="li-row"><div class="li-name">${this.escapeHtml(s.name || '—')}</div><div class="li-amt">₹${Number(s.price || s.sp || 0).toLocaleString('en-IN')}</div></div>
-              <div class="li-sub"><span>${this.escapeHtml(s.cat || '')}</span></div>
+              <div class="li-sub"><span>${this.escapeHtml(s.cat || '')}</span>${_sBadge}</div>
             </div>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3)"><polyline points="9 18 15 12 9 6"/></svg>
           </div>`;
