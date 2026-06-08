@@ -189,10 +189,36 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ao_catalogInventoryMerge';
+    window.HISAABNOW_BUILD = 'v33_29ap_versionFooters';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
+
+    /* (v33_29ap) Populate version labels from the live build constant so
+       login footer and More-screen footer stay in sync with the actual
+       deployed build. Was: hardcoded "build v33.8" and "v30 Multi-Vertical"
+       — both completely stale, confused users into thinking they were on
+       old versions during testing. Runs on DOMContentLoaded so the elements
+       exist; falls back gracefully if they're missing. */
+    (function _pinBuildLabels(){
+      var _apply = function(){
+        try {
+          var b = window.HISAABNOW_BUILD || 'dev';
+          /* Strip the descriptive tail (e.g. "v33_29ao_catalogInventoryMerge"
+             → "v33_29ao") for a cleaner footer; show full string if no tail. */
+          var _short = b.replace(/^(v\d+_\d+[a-z]*)_.*/, '$1');
+          var loginEl = document.getElementById('login-build-version');
+          if (loginEl) loginEl.textContent = 'build ' + _short;
+          var moreEl = document.getElementById('more-build-version');
+          if (moreEl) moreEl.textContent = 'HisaabNow · ' + _short;
+        } catch(e){}
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _apply);
+      } else {
+        _apply();
+      }
+    })();
 
     var lastSeen, currentBuild = window.HISAABNOW_BUILD;
     try { lastSeen = localStorage.getItem('hn_build_seen'); } catch(e){}
@@ -2571,7 +2597,7 @@ html[data-current-role="manager"] body{
       <a href="https://hisaabnow.com/legal/privacy.html" target="_blank" rel="noopener" data-i18n="settings.privPolicy">Privacy</a>
       <span class="mk1-foot-sep">·</span>
       <span data-i18n="login.dpdpCompliant">DPDP compliant</span>
-      <div class="mk1-build">build v33.8</div>
+      <div class="mk1-build" id="login-build-version">build v33.8</div>
     </div>
 
   </div>
@@ -3658,7 +3684,7 @@ html[data-current-role="manager"] body{
     </div>
   </div>
 
-  <div style="text-align:center;padding:8px 18px 18px;font-size:11px;color:var(--t3);font-weight:500">HisaabNow · v30 Multi-Vertical</div>
+  <div id="more-build-version" style="text-align:center;padding:8px 18px 18px;font-size:11px;color:var(--t3);font-weight:500">HisaabNow · v30 Multi-Vertical</div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════
