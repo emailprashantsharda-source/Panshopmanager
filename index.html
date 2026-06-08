@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29aa_ingredientPicker';
+    window.HISAABNOW_BUILD = 'v33_29ab_remainingIngredients';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -41892,6 +41892,54 @@ button:not(:disabled){ user-select:none }
         '</button>'+
       '</div>';
     }).join('');
+
+    /* (v33_29ab) After the added-supplies list, also show the REMAINING
+       pantry ingredients (those not yet attached to this recipe) as a
+       pickable list. Without this, once the user adds the first ingredient
+       my v33_29aa picker disappears and they're back to search-only — so
+       ingredients #2 and #3 become invisible unless they happen to type.
+       Now every unadded ingredient stays visible until it's attached. */
+    var addedIds = {};
+    state.supplies.forEach(function(s){ addedIds[s.ingredientId] = true; });
+    var remaining = ings.filter(function(i){ return i && !addedIds[i.id]; });
+    if (remaining.length > 0){
+      var _vNow = (window.App && window.App.vertical) || '';
+      var _moreNoun = (_vNow === 'salon') ? 'supplies' : 'ingredients';
+      list.innerHTML += '' +
+        '<div class="ns-pick-more-h" style="font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#92400E;padding:18px 2px 8px;margin-top:6px;border-top:1px dashed #E5E7EB">' +
+          'Add more ' + _moreNoun + ' from your pantry' +
+        '</div>' +
+        remaining.map(function(ing){
+          var cpu = ingCostPerUnit(ing);
+          var unit = ingDisplayUnit(ing);
+          var brand = ing.brand ? escHtml(ing.brand) : 'Generic';
+          var emoji = ing.emoji || '📦';
+          var catTag = ingCategoryTag(ing);
+          return '' +
+            '<div class="ns-sup-row ns-sup-pick" ' +
+              'style="cursor:pointer" ' +
+              'onclick="NSW.addSupply(\'' + escHtml(ing.id) + '\')">' +
+              '<div class="em">' + emoji + '</div>' +
+              '<div class="meta">' +
+                '<div class="nm">' + escHtml(ing.name || 'Ingredient') +
+                  (catTag ? ' <span class="tag">' + escHtml(catTag) + '</span>' : '') +
+                '</div>' +
+                '<div class="sub">' +
+                  '<span class="brand">' + brand + '</span> ' +
+                  '<span class="dot">·</span> ' +
+                  '<span>₹' + cpu.toFixed(2) + '/' + unit + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="aside">' +
+                '<button type="button" class="ns-pick-add" ' +
+                  'style="background:#1E293B;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer" ' +
+                  'onclick="event.stopPropagation();NSW.addSupply(\'' + escHtml(ing.id) + '\')">' +
+                  '+ Add' +
+                '</button>' +
+              '</div>' +
+            '</div>';
+        }).join('');
+    }
   }
 
   /* (v33_29k) Render the missing-supplies quick-add chips. Each chip shows
