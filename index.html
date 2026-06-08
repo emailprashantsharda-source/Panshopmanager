@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_30a_appCheckRecovery';
+    window.HISAABNOW_BUILD = 'v33_29aa_ingredientPicker';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -20536,14 +20536,21 @@ const App = {
         <div class="sd-kv"><div class="k" data-i18n="exp.category">Category</div><div class="v">${catObj ? this.escapeHtml(catObj.label) : '<span style="color:var(--t3);font-weight:500" data-i18n="common.uncategorized">Uncategorized</span>'}</div></div>
       </div>`;
 
+    /* (v33_29aa) Vertical-aware noun: salon → "service", others → "product"/
+       "recipe". The bakery / cafe / restaurant / sweets owners think of
+       their offerings as products, not services. */
+    var _verticalForUsedIn = this.vertical || '';
+    var _itemNounUsedIn = (_verticalForUsedIn === 'salon') ? 'service' : 'product';
+    var _itemNounUsedInCap = _itemNounUsedIn.charAt(0).toUpperCase() + _itemNounUsedIn.slice(1);
+
     html += `
       <div class="sd-sec">
         <div class="sd-sec-h">
-          <span>Used in services</span>
-          <button class="sd-sec-edit" onclick="App.toast('Open a service to add this supply to its recipe')">${usedIn.length} linked</button>
+          <span>Used in ${_itemNounUsedIn}s</span>
+          <button class="sd-sec-edit" onclick="App.toast('Open a ${_itemNounUsedIn} to add this supply to its recipe')">${usedIn.length} linked</button>
         </div>`;
     if (usedIn.length === 0) {
-      html += `<div class="sd-empty">Not linked to any service yet. Open a service from Catalog and add this supply to its recipe to auto-track stock + cost.</div>`;
+      html += `<div class="sd-empty">Not linked to any ${_itemNounUsedIn} yet. Open a ${_itemNounUsedIn} from Catalog and add this supply to its recipe to auto-track stock + cost.</div>`;
     } else {
       usedIn.forEach(u => {
         const qtyStr = window.UNITS ? UNITS.format(u.qty, baseUnit) : (u.qty + baseUnit);
@@ -20551,7 +20558,7 @@ const App = {
           <div class="sd-usage" onclick="App.openProductSheet && App.openProductSheet('${u.id}')">
             <div class="left">
               <div class="svc">${u.emoji ? u.emoji + ' ' : ''}${this.escapeHtml(u.name)}</div>
-              <div class="when">${qtyStr} per service</div>
+              <div class="when">${qtyStr} per ${_itemNounUsedIn}</div>
             </div>
             <div class="qty">${u.costPerService > 0 ? '₹' + (u.costPerService < 1 ? u.costPerService.toFixed(2) : Math.round(u.costPerService)) : '—'}</div>
           </div>`;
@@ -40659,7 +40666,7 @@ button:not(:disabled){ user-select:none }
       <section class="ns-panel is-active" id="ns-panel1">
         <div class="ns-intro">
           <div class="ey">Step 1 · Basics</div>
-          <h1>Add a <em>service</em></h1>
+          <h1>Add an <em>item</em></h1>
           <p>Tell us the basics first. We'll handle the math and show your real margin in the next step.</p>
         </div>
 
@@ -41797,6 +41804,57 @@ button:not(:disabled){ user-select:none }
     var ings = getIngredients();
     if (!list || !empty) return;
     if (state.supplies.length === 0){
+      /* (v33_29aa) If the product has no supplies attached yet AND the
+         user has ingredients in their pantry, show those ingredients as
+         tappable cards directly. Previously this branch showed only the
+         "No supplies added yet" message + a search box, which confused
+         users who had just created 3 ingredients in the More → Ingredients
+         screen and expected to see them here. The search-based discovery
+         model didn't reveal the existing list.
+
+         If the pantry is also empty, fall back to the original empty state
+         (with "Create new supply" CTA below the empty card). */
+      if (ings && ings.length > 0){
+        empty.style.display = 'none';
+        list.style.display = '';
+        var _verticalNow = (window.App && window.App.vertical) || '';
+        var _ingrLabel = (_verticalNow === 'salon') ? 'supplies' : 'ingredients';
+        list.innerHTML =
+          '<div class="ns-pick-hint" style="font-size:12.5px;color:#6B7280;padding:4px 2px 10px;letter-spacing:.01em">' +
+            'Tap any ' + _ingrLabel + ' below to add it to this recipe' +
+          '</div>' +
+          ings.map(function(ing){
+            var cpu = ingCostPerUnit(ing);
+            var unit = ingDisplayUnit(ing);
+            var brand = ing.brand ? escHtml(ing.brand) : 'Generic';
+            var emoji = ing.emoji || '📦';
+            var catTag = ingCategoryTag(ing);
+            return '' +
+              '<div class="ns-sup-row ns-sup-pick" data-pick-id="' + escHtml(ing.id) + '" ' +
+                'style="cursor:pointer" ' +
+                'onclick="NSW.addSupply(\'' + escHtml(ing.id) + '\')">' +
+                '<div class="em">' + emoji + '</div>' +
+                '<div class="meta">' +
+                  '<div class="nm">' + escHtml(ing.name || 'Ingredient') +
+                    (catTag ? ' <span class="tag">' + escHtml(catTag) + '</span>' : '') +
+                  '</div>' +
+                  '<div class="sub">' +
+                    '<span class="brand">' + brand + '</span> ' +
+                    '<span class="dot">·</span> ' +
+                    '<span>₹' + cpu.toFixed(2) + '/' + unit + '</span>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="aside">' +
+                  '<button type="button" class="ns-pick-add" ' +
+                    'style="background:#1E293B;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer" ' +
+                    'onclick="event.stopPropagation();NSW.addSupply(\'' + escHtml(ing.id) + '\')">' +
+                    '+ Add' +
+                  '</button>' +
+                '</div>' +
+              '</div>';
+          }).join('');
+        return;
+      }
       list.style.display = 'none';
       list.innerHTML = '';
       empty.style.display = '';
