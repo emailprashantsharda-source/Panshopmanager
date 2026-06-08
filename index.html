@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ar_bakeryToMenu';
+    window.HISAABNOW_BUILD = 'v33_29au_dedupePlusButtons';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3510,9 +3510,8 @@ html[data-current-role="manager"] body{
 
   <div class="list" id="exp-list"></div>
 
-  <button class="fab" onclick="App.nav('add-expense')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </button>
+  <!-- (v33_29au) Removed bottom-right FAB + — the top-right header + already
+       adds expenses. Two add buttons on the same screen was confusing. -->
 </div>
 
 <div class="page" id="pg-catalog">
@@ -4305,14 +4304,13 @@ html[data-current-role="manager"] body{
   <div id="ig-cost-analysis" data-role-min="manager" style="display:none;margin-top:18px;padding:0 0 88px"></div>
 
   <div class="sup-action-bar" id="ig-action-bar" style="display:none">
-    <button class="sup-act-btn sup-act-secondary" onclick="App.openSupplyCsvImport()">
+    <button class="sup-act-btn sup-act-secondary" onclick="App.openSupplyCsvImport()" style="flex:1">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Import CSV
     </button>
-    <button class="sup-act-btn sup-act-primary" onclick="App.openIngredientSheet()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <span id="ig-add-cta-label" data-i18n="inv.addSupplyLbl">Add supply</span>
-    </button>
+    <!-- (v33_29au) Removed duplicate "Add supply" pill — the top-right + button
+         in the header already adds supplies. Keeping Import CSV as a useful
+         standalone bulk action. -->
   </div>
 </div>
 
@@ -22090,10 +22088,57 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     } else {
 
       fields.stock = packQtyInBase;
-      Store.add('ingredients', fields);
+      const savedIg = Store.add('ingredients', fields);
+
+      /* (v33_29as) Auto-log this purchase as an expense — same rule as the
+         saveIngredient() flow (v33_29an): adding a supply with stock IS
+         a purchase. price is the total amount paid for the pack, so it
+         maps 1:1 to the expense amount. */
+      let loggedAmount = 0;
+      let loggedExpId = null;
+      try {
+        if (price > 0 && packQtyInBase > 0) {
+          loggedAmount = Math.round(price);
+          const today = new Date();
+          const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+          const expFields = {
+            desc:         name + ' · purchase',
+            amt:          loggedAmount,
+            cat:          'Raw Material / Stock',
+            emoji:        fields.emoji,
+            clr:          '#EA580C',
+            date:         dateStr,
+            paid:         true,
+            ingredientId: savedIg && savedIg.id,
+            source:       'supply_purchase'
+          };
+          const savedExp = Store.add('exps', expFields);
+          loggedExpId = savedExp && savedExp.id;
+        }
+      } catch(e) {
+        console.warn('[_saveSupplyV2] auto-expense failed (non-fatal):', e);
+      }
 
       const stockStr = window.UNITS ? UNITS.format(packQtyInBase, baseUnit) : (packQtyInBase + baseUnit);
-      this.toast(this._T('toast.addedPrefix','Added') + ' · ' + name + ' (' + stockStr + ' in stock)');
+      if (loggedAmount > 0 && loggedExpId) {
+        const _self = this;
+        this.toastAction(
+          '✓ ' + name + ' · ₹' + loggedAmount.toLocaleString('en-IN') + ' logged to expenses · tap to edit',
+          function(){
+            try {
+              _self.nav('expenses');
+              setTimeout(function(){
+                const idx = (window.EXPENSES || []).findIndex(function(x){ return x && x.id === loggedExpId; });
+                if (idx >= 0 && typeof _self.openExpenseEdit === 'function') {
+                  _self.openExpenseEdit(idx);
+                }
+              }, 250);
+            } catch(e){}
+          }
+        );
+      } else {
+        this.toast(this._T('toast.addedPrefix','Added') + ' · ' + name + ' (' + stockStr + ' in stock)');
+      }
     }
 
     this._editingIgId = null;
@@ -24170,17 +24215,95 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     if (editingProd && editingProd.seeded) fields.seeded = true;
 
+    /* (v33_29at) Auto-expense for non-recipe verticals (grocery, stationery,
+       pan, other). When stock goes UP from previous value AND cost price is
+       known → auto-log a purchase expense. Mirrors v33_29an/as pattern but
+       on the catalog product save flow since these verticals don't have
+       an Ingredients page.
+
+       Skipped for recipe verticals (cafe/restaurant/sweets/bakery/salon)
+       because their products are MADE from ingredients, not purchased. */
+    let _oldStockProd = 0;
+    if (editingProd) {
+      _oldStockProd = Number(editingProd.stock || 0);
+    }
+    const _stockDeltaProd = stock - _oldStockProd;
+
+    let _autoExpAmt = 0;
+    let _autoExpId = null;
+    try {
+      const _actShop = (window.MShop && window.MShop.getActive && window.MShop.getActive()) || null;
+      const _ctype = (_actShop && (_actShop.cardType || _actShop.profession)) || this.vertical || '';
+      const _isRecipeVert = ['cafe', 'restaurant', 'sweets', 'bakery', 'salon'].indexOf(_ctype) >= 0;
+      const _isAutoExpVert = !_isRecipeVert && !!_ctype;
+      if (_isAutoExpVert && _stockDeltaProd > 0 && cp != null && cp > 0) {
+        _autoExpAmt = Math.round(cp * _stockDeltaProd);
+        if (_autoExpAmt > 0) {
+          const _today = new Date();
+          const _dateStr = _today.getFullYear() + '-' + String(_today.getMonth() + 1).padStart(2, '0') + '-' + String(_today.getDate()).padStart(2, '0');
+          const _expFields = {
+            desc:    name + ' · purchase',
+            amt:     _autoExpAmt,
+            cat:     'Raw Material / Stock',
+            emoji:   fields.emoji,
+            clr:     '#EA580C',
+            date:    _dateStr,
+            paid:    true,
+            source:  'product_purchase'
+          };
+          const _savedExp = Store.add('exps', _expFields);
+          _autoExpId = _savedExp && _savedExp.id;
+        }
+      }
+    } catch(e) {
+      console.warn('[saveProduct] auto-expense failed (non-fatal):', e);
+    }
+
     if (this._editingId) {
       Store.update('prods', this._editingId, fields);
 
       if (editingProd && editingProd.active === false && active === true) {
         this.toast('✓ ' + name + ' activated');
+      } else if (_autoExpAmt > 0 && _autoExpId) {
+        const _self = this;
+        this.toastAction(
+          '✓ ' + name + ' · ₹' + _autoExpAmt.toLocaleString('en-IN') + ' logged to expenses · tap to edit',
+          function(){
+            try {
+              _self.nav('expenses');
+              setTimeout(function(){
+                const idx = (window.EXPENSES || []).findIndex(function(x){ return x && x.id === _autoExpId; });
+                if (idx >= 0 && typeof _self.openExpenseEdit === 'function') {
+                  _self.openExpenseEdit(idx);
+                }
+              }, 250);
+            } catch(e){}
+          }
+        );
       } else {
         this.toast(this._T('toast.updatedPrefix','Updated') + ' · ' + name);
       }
     } else {
       Store.add('prods', fields);
-      this.toast(this._T('toast.addedPrefix','Added') + ' · ' + name);
+      if (_autoExpAmt > 0 && _autoExpId) {
+        const _self2 = this;
+        this.toastAction(
+          '✓ ' + name + ' · ₹' + _autoExpAmt.toLocaleString('en-IN') + ' logged to expenses · tap to edit',
+          function(){
+            try {
+              _self2.nav('expenses');
+              setTimeout(function(){
+                const idx = (window.EXPENSES || []).findIndex(function(x){ return x && x.id === _autoExpId; });
+                if (idx >= 0 && typeof _self2.openExpenseEdit === 'function') {
+                  _self2.openExpenseEdit(idx);
+                }
+              }, 250);
+            } catch(e){}
+          }
+        );
+      } else {
+        this.toast(this._T('toast.addedPrefix','Added') + ' · ' + name);
+      }
     }
     this._pickedEmoji = null;
     this._pickedCat = null;
