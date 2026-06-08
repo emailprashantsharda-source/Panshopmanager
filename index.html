@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ah_dashPolish';
+    window.HISAABNOW_BUILD = 'v33_29ai_udhaarConfirm_aiSalah';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2772,7 +2772,7 @@ html[data-current-role="manager"] body{
 
   <section class="dual stacked">
     <div class="panel">
-      <div class="panel-head"><div class="panel-title" id="top-panel-title" data-i18n="dash.topItems">Top Items</div><button class="panel-link" onclick="App.nav('catalog')" data-i18n="dash.viewAll">View All</button></div>
+      <div class="panel-head"><div class="panel-title" id="top-panel-title" data-i18n="dash.bestSellers">Best Sellers</div><button class="panel-link" onclick="App.nav('catalog')" data-i18n="dash.viewAll">View All</button></div>
       <div class="svc-list" id="top-items-list">
 
         <div class="empty-mini" style="padding:14px 8px;color:var(--t3);font-size:12.5px;font-weight:600;text-align:center">Loading top items…</div>
@@ -4930,7 +4930,7 @@ html[data-current-role="manager"] body{
     'more.activeItem':         { en: 'active item',              hi: 'चालू आइटम' },
     'more.activeItems':        { en: 'active items',             hi: 'चालू आइटम' },
     'more.needRestock':        { en: 'need restock',             hi: 'फिर भरें' },
-    'more.aiInsightsShop':     { en: 'AI insights for your shop', hi: 'आपकी दुकान के लिए AI इनसाइट्स' },
+    'more.aiInsightsShop':     { en: 'AI insights for your shop', hi: 'आपकी दुकान के लिए AI सलाह' },
     'more.bizTapCompare':      { en: 'businesses · tap to compare', hi: 'बिज़नेस · तुलना के लिए टैप करें' },
     'more.oldBadge':           { en: 'OLD',                      hi: 'पुराना' },
     'more.bookedToday':        { en: 'booked today',             hi: 'आज बुक हुए' },
@@ -5136,6 +5136,18 @@ html[data-current-role="manager"] body{
     'dlg.loading':           { en: 'Loading…',                      hi: 'लोड हो रहा है…' },
     'dlg.noData':            { en: 'No data',                       hi: 'कोई डेटा नहीं' },
     'dlg.invalidPhone':      { en: 'Invalid phone',                 hi: 'गलत फोन नंबर' },
+    /* (v33_29ai) common.cancel was referenced from confirm modals but
+       never defined → Hindi users saw "Cancel" in English. Fixed. */
+    'common.cancel':         { en: 'Cancel',                        hi: 'रद्द करें' },
+    /* (v33_29ai) Udhaar-without-customer modal */
+    'dlg.udhaarNoCustTitle': { en: 'Save without customer?',        hi: 'बिना ग्राहक के सेव करें?' },
+    'dlg.udhaarNoCustMsg':   { en: "You won't be able to remind them for this udhaar. Add the customer's name and phone first to track it properly.",
+                               hi: 'बिना ग्राहक के याद नहीं दिला पाएँगे। पहले ग्राहक का नाम और फोन जोड़ें।' },
+    'dlg.saveAnyway':        { en: 'Save anyway',                   hi: 'फिर भी सेव करें' },
+    /* (v33_29ai) Universal "Best Sellers" — replaces vertical-specific
+       Top Bakes / Top Sellers / Top Items / Top Mithai etc. on the home
+       Top Items panel. Single phrase reads cleanly in both languages. */
+    'dash.bestSellers':      { en: 'Best Sellers',                  hi: 'ज़्यादा बिकने वाले' },
 
     /* Status pills */
     'pill.synced':           { en: 'SYNCED',                        hi: 'सिंक' },
@@ -5243,7 +5255,7 @@ html[data-current-role="manager"] body{
     'dlg.deleteBtn':           { en: 'Delete',                     hi: 'डिलीट करें' },
 
     /* Munim AI */
-    'munim.title':             { en: 'AI Insights',                hi: 'AI इनसाइट्स' },
+    'munim.title':             { en: 'AI Insights',                hi: 'AI सलाह' },
     'munim.askMe':             { en: 'Ask Munim anything',         hi: 'मुनीम से कुछ भी पूछें' },
     'munim.placeholder':       { en: 'Type your question…',        hi: 'अपना सवाल टाइप करें…' },
     'munim.thinking':          { en: 'Munim is thinking…',         hi: 'मुनीम सोच रहा है…' },
@@ -5285,7 +5297,7 @@ html[data-current-role="manager"] body{
     'sub.enjoyingLockIn':      { en: 'Enjoying HisaabNow? Lock it in.', hi: 'HisaabNow पसंद आया? पक्का कर लें।' },
     'sub.youreOnBasic':        { en: "You're on Basic",            hi: 'आप बेसिक पर हैं' },
     'sub.youreOn':             { en: "You're on",                  hi: 'आप' },
-    'sub.upgradeForMore':      { en: 'Upgrade to Pro or King for more shops + AI Insights', hi: 'Pro या King लें · ज़्यादा दुकानें + AI इनसाइट्स' },
+    'sub.upgradeForMore':      { en: 'Upgrade to Pro or King for more shops + AI Insights', hi: 'Pro या King लें · ज़्यादा दुकानें + AI सलाह' },
     'sub.daysRemaining':       { en: 'days remaining on plan',     hi: 'दिन बाकी प्लान में' },
     'sub.activeSub':           { en: 'Active subscription',        hi: 'चालू सब्सक्रिप्शन' },
     'sub.seePlans':            { en: 'See plans',                  hi: 'प्लान देखें' },
@@ -5377,10 +5389,10 @@ html[data-current-role="manager"] body{
     'ai.getBrief':             { en: 'Get AI business brief',        hi: 'AI बिज़नेस ब्रीफ लें' },
     'ai.briefHeader':          { en: 'AI Business Brief',            hi: 'AI बिज़नेस ब्रीफ' },
     'ai.quickInsights':        { en: 'Quick insights',               hi: 'क्विक इनसाइट्स' },
-    'ai.munimTitle':           { en: 'AI Insights',                  hi: 'AI इनसाइट्स' },
+    'ai.munimTitle':           { en: 'AI Insights',                  hi: 'AI सलाह' },
     'ai.basedOnBizData':       { en: 'Based on your business data',  hi: 'आपके बिज़नेस डेटा पर आधारित' },
     'subs.pickKeepTracking':   { en: 'Pick a plan to keep tracking sales, customers, and inventory.', hi: 'बिक्री, ग्राहक, स्टॉक देखते रहने के लिए प्लान चुनें।' },
-    'subs.renewMakeBills':     { en: 'Renew to continue making bills and accessing AI insights.', hi: 'बिल बनाते रहने और AI इनसाइट्स देखने के लिए रिन्यू करें।' },
+    'subs.renewMakeBills':     { en: 'Renew to continue making bills and accessing AI insights.', hi: 'बिल बनाते रहने और AI सलाह देखने के लिए रिन्यू करें।' },
     'toast.shopNotFound':      { en: 'Shop not found',               hi: 'दुकान नहीं मिली' },
 
     /* Concat-toast prefixes/suffixes */
@@ -11329,17 +11341,14 @@ const App = {
 
     const tt = document.getElementById('top-panel-title');
     if (tt) {
-      /* Map English vertical-specific title to a generic i18n key */
-      var _ttEn = cfg.topPanelTitle || 'Top Items';
-      var _ttKey = 'dash.topItems';
-      if (_ttEn === 'Top Services') _ttKey = 'dash.topServices';
-      else if (_ttEn === 'Top Dishes') _ttKey = 'dash.topDishes';
-      else if (_ttEn === 'Top Sellers') _ttKey = 'dash.topSellersPanel';
-      else if (_ttEn === 'Top Mithai') _ttKey = 'dash.topMithai';
-      else if (_ttEn === 'Top Bakes') _ttKey = 'dash.topBakes';
-      tt.textContent = this._T(_ttKey, _ttEn);
-      /* Tag the element so MutationObserver-style re-apply also works on lang switch */
-      tt.setAttribute('data-i18n', _ttKey);
+      /* (v33_29ai) Universal "Best Sellers" title for all verticals.
+         Previously each vertical had its own awkward title ("Top Bakes",
+         "Top Sellers", "Top Items" etc.) — and the Hindi transliterations
+         ("टॉप बेक", "टॉप सेलर") were meaningless to Hindi users. One
+         universal phrase reads cleanly in both languages and scales to
+         any future vertical without needing new translation keys. */
+      tt.textContent = this._T('dash.bestSellers', 'Best Sellers');
+      tt.setAttribute('data-i18n', 'dash.bestSellers');
     }
     const til = document.getElementById('top-items-list');
     if (til){
@@ -19438,9 +19447,29 @@ const App = {
     this._billCustomer = null;
   },
 
-  completeSale(){
+  async completeSale(){
     const {total: subtotal, count} = this.cartTotal();
     if (count === 0) { this.toast(this._T('toast.cartEmpty', 'Cart is empty')); return; }
+
+    /* (v33_29ai) Udhaar without customer — show modal confirm instead of
+       letting it silently save as "Walk-in" with only a toast warning.
+       Walk-in udhaar is technically valid but practically useless (no way
+       to remind, no name to associate with the amount). Force a deliberate
+       choice from the user. */
+    if (this.paymentMode === 'udhaar' && !this._billCustomer) {
+      const _ok = await this.confirm({
+        title:       this._T('dlg.udhaarNoCustTitle', 'Save without customer?'),
+        message:     this._T('dlg.udhaarNoCustMsg',   "You won't be able to remind them for this udhaar. Add the customer's name and phone first to track it properly."),
+        confirmText: this._T('dlg.saveAnyway',         'Save anyway'),
+        cancelText:  this._T('common.cancel',          'Cancel')
+      });
+      if (!_ok) {
+        /* Cancel → user stays in checkout; let them tap the customer
+           search field at their own pace. No auto-focus (cross-modal
+           focus is unreliable). */
+        return;
+      }
+    }
 
     const cfgSale = VERTICAL_CONFIG[this.vertical] || {};
     if (cfgSale.requireStaffPerBill === true) {
