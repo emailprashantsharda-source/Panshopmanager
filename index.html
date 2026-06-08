@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29af_dashboardRedesign';
+    window.HISAABNOW_BUILD = 'v33_29ag_payMixHero';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2646,9 +2646,7 @@ html[data-current-role="manager"] body{
 
   <section class="hero" data-role-min="manager">
     <div class="hero-top">
-      <div class="hero-label"><span data-i18n="dash.grossProfitToday">Gross Profit Today</span>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-      </div>
+      <div class="hero-label"><span data-i18n="dash.grossProfitToday">Gross Profit Today</span></div>
       <button class="hero-toggle"><span data-i18n="dash.cardToday">Today</span>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
@@ -4554,6 +4552,10 @@ html[data-current-role="manager"] body{
        Friendlier shopkeeper-vocabulary: Sales = what came in, Profit = what
        was earned, Cost = what was spent. */
     'dash.salesToday':      { en: 'Sales Today',        hi: 'आज की बिक्री' },
+    /* (v33_29ag) Dashboard polish keys */
+    'dash.todaysSales':     { en: "Today's sales",      hi: 'आज की बिक्री' },
+    'dash.payMixEmpty':     { en: 'Payment mix will appear here once you make your first sale',
+                              hi: 'पहली सेल के बाद यहाँ पेमेंट मिक्स दिखेगा' },
     'dash.heroSales':       { en: 'Sales',              hi: 'बिक्री'      },
     'dash.heroCost':        { en: 'Cost',               hi: 'लागत'        },
     'dash.profit':          { en: 'Profit',             hi: 'प्रॉफिट' },
@@ -11194,8 +11196,19 @@ const App = {
         }
       } else {
 
+        /* (v33_29ag) Removed "X bills" from hero-delta — that info is
+           now shown in Pill 1 directly below the hero, so duplicating
+           it here wastes space. Show only the day-over-day delta. */
         const deltaHtml = _heroDeltaHtml(todayRev, yestRev_hero, 'sale');
-        hd.innerHTML = `<b>${txnCount}</b> <span style="opacity:.85">${txnCount === 1 ? 'bill' : 'bills'}</span>${deltaHtml}`;
+        if (deltaHtml && deltaHtml.trim().length > 0) {
+          /* deltaHtml usually includes a leading " · " separator since it
+             was designed to follow the bill count. Strip it so the line
+             reads naturally on its own. */
+          hd.innerHTML = deltaHtml.replace(/^\s*·\s*/, '').replace(/^\s+/, '');
+        } else {
+          /* Edge case: no comparable yesterday data → keep the row short */
+          hd.innerHTML = `<span style="opacity:.65">${this._T('dash.todaysSales', "Today's sales")}</span>`;
+        }
       }
     }
 
@@ -11203,49 +11216,92 @@ const App = {
     if (pb){
       if (isEmptyDay) {
         pb.innerHTML = `<div style="width:100%;background:rgba(255,255,255,.18);height:100%;border-radius:8px"></div>`;
-      } else if (!profitIsAccurate) {
-
-        pb.innerHTML = `<div style="width:100%;background:linear-gradient(90deg,#FACC15,#F59E0B);height:100%;border-radius:8px"></div>`;
       } else {
-        pb.innerHTML = `
-          <div class="pb-profit" style="width:${profitPct}%"></div>
-          <div class="pb-cost" style="width:${100 - profitPct}%"></div>`;
+        /* (v33_29ag) Payment-mix bar — segments colored by payment mode.
+           Was profit-vs-cost segments; now shows how today's sales were
+           paid (Cash / UPI / Card / Credit). Cost-price accuracy no longer
+           affects the bar — even if cost prices aren't set, payment mix
+           is always available because it comes from the bill's `mode`
+           field, not from product costs. */
+        var _mixPb = (function(){
+          var m = { cash: 0, upi: 0, card: 0, udhaar: 0, other: 0 };
+          (todaySales || []).forEach(function(s){
+            var mode = (s.mode || s.pt || s.paymentMode || 'cash').toLowerCase();
+            var amt = Number(s.total || s.amt || 0);
+            if (mode === 'cash') m.cash += amt;
+            else if (mode === 'upi') m.upi += amt;
+            else if (mode === 'card') m.card += amt;
+            else if (mode === 'udhaar' || mode === 'credit') m.udhaar += amt;
+            else m.other += amt;
+          });
+          return m;
+        })();
+        var _totalPb = _mixPb.cash + _mixPb.upi + _mixPb.card + _mixPb.udhaar + _mixPb.other;
+        if (_totalPb <= 0){
+          pb.innerHTML = `<div style="width:100%;background:rgba(255,255,255,.18);height:100%;border-radius:8px"></div>`;
+        } else {
+          /* Colors picked for high contrast on the dark hero card:
+               UPI    — amber #FBBF24 (matches PAY_ICON.upi spirit)
+               Cash   — green #34D399 (PAY_ICON.cash spirit)
+               Card   — blue  #60A5FA (PAY_ICON.card spirit)
+               Credit — orange #F97316 (warns: "money owed, not in hand") */
+          var _pctU = (_mixPb.upi    / _totalPb) * 100;
+          var _pctC = (_mixPb.cash   / _totalPb) * 100;
+          var _pctK = (_mixPb.card   / _totalPb) * 100;
+          var _pctD = (_mixPb.udhaar / _totalPb) * 100;
+          var _pctO = (_mixPb.other  / _totalPb) * 100;
+          pb.innerHTML =
+            (_pctU > 0 ? '<div style="width:'+_pctU+'%;background:#FBBF24;height:100%"></div>' : '') +
+            (_pctC > 0 ? '<div style="width:'+_pctC+'%;background:#34D399;height:100%"></div>' : '') +
+            (_pctK > 0 ? '<div style="width:'+_pctK+'%;background:#60A5FA;height:100%"></div>' : '') +
+            (_pctD > 0 ? '<div style="width:'+_pctD+'%;background:#F97316;height:100%"></div>' : '') +
+            (_pctO > 0 ? '<div style="width:'+_pctO+'%;background:#94A3B8;height:100%"></div>' : '');
+        }
       }
     }
 
     const pbl = document.getElementById('profit-bar-legend');
     if (pbl){
       if (isEmptyDay){
-        pbl.innerHTML = `<div style="opacity:.85;text-align:center;width:100%">Profit, cost, and revenue will appear here once you make your first sale</div>`;
-      } else if (!profitIsAccurate) {
-
-        pbl.innerHTML = `<div style="opacity:.7;width:100%;text-align:center;font-size:11.5px" data-i18n="inv.setCpToSee">Set cost prices on items to see profit/cost split</div>`;
+        pbl.innerHTML = `<div style="opacity:.85;text-align:center;width:100%">${this._T('dash.payMixEmpty', 'Payment mix will appear here once you make your first sale')}</div>`;
       } else {
-
-        var todayComm = 0;
-        try {
-          todaySales.forEach(function(b){
-            if (Array.isArray(b.items)) b.items.forEach(function(it){
-              todayComm += Number(it.staffComm || 0);
-            });
+        /* (v33_29ag) Legend now shows payment-mix percentages.
+           Was: Sales / Profit / Cost (₹ amounts).
+           Now: UPI X% · Cash Y% · Card Z% · Credit W%
+           Modes with 0% are hidden so the legend stays clean. Sub-totals
+           are computed from today's bills' `mode` field (cash/upi/card/
+           udhaar). All labels i18n-aware. */
+        var _mix = (function(){
+          var m = { cash: 0, upi: 0, card: 0, udhaar: 0, other: 0 };
+          (todaySales || []).forEach(function(s){
+            var mode = (s.mode || s.pt || s.paymentMode || 'cash').toLowerCase();
+            var amt = Number(s.total || s.amt || 0);
+            if (mode === 'cash') m.cash += amt;
+            else if (mode === 'upi') m.upi += amt;
+            else if (mode === 'card') m.card += amt;
+            else if (mode === 'udhaar' || mode === 'credit') m.udhaar += amt;
+            else m.other += amt;
           });
-        } catch(e){}
-        var todayNetProf = todayProf - todayComm;
-        /* (v33_29af) Hero legend renamed and semantically clarified:
-             OLD: "Gross ₹todayProf | Net ₹todayNetProf | Cost ₹todayCost"
-             NEW: "Sales ₹todayRev | Profit ₹todayNetProf | Cost ₹todayCost"
-           Shopkeeper-friendly: Sales = total revenue, Profit = what was
-           earned after costs (and commission, where applicable), Cost =
-           what was spent on goods. Sums neatly: Sales = Profit + Cost.
-           The "Sales" label has no colored dot since it's the WHOLE, not
-           a component of the profit bar. */
-        var _heroSalesLbl  = this._T('dash.heroSales',  'Sales');
-        var _heroProfitLbl = this._T('dash.profit',     'Profit');
-        var _heroCostLbl   = this._T('dash.heroCost',   'Cost');
-        pbl.innerHTML = `
-          <div>${_heroSalesLbl} ₹${todayRev.toLocaleString('en-IN')}</div>
-          <div style="text-align:center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#A7F3D0;margin-right:6px;vertical-align:middle"></span><b>${_heroProfitLbl} ₹${todayNetProf.toLocaleString('en-IN')}</b></div>
-          <div style="text-align:right"><span class="pbl-dot cost"></span>${_heroCostLbl} ₹${todayCost.toLocaleString('en-IN')}</div>`;
+          return m;
+        })();
+        var _total = _mix.cash + _mix.upi + _mix.card + _mix.udhaar + _mix.other;
+        if (_total <= 0){
+          pbl.innerHTML = `<div style="opacity:.65;width:100%;text-align:center;font-size:11.5px">${this._T('dash.payMixEmpty', 'Payment mix will appear here once you make your first sale')}</div>`;
+        } else {
+          var _self = this;
+          var _items = [
+            { key: 'upi',    color: '#FBBF24', lbl: _self._T('dash.upi',     'UPI'),    pct: (_mix.upi    / _total) * 100 },
+            { key: 'cash',   color: '#34D399', lbl: _self._T('dash.cash',    'Cash'),   pct: (_mix.cash   / _total) * 100 },
+            { key: 'card',   color: '#60A5FA', lbl: _self._T('dash.card',    'Card'),   pct: (_mix.card   / _total) * 100 },
+            { key: 'udhaar', color: '#F97316', lbl: _self._T('nav.udhaar',   'Udhaar'), pct: (_mix.udhaar / _total) * 100 }
+          ].filter(function(it){ return it.pct >= 0.5; });  /* hide modes under 0.5% to keep legend clean */
+          pbl.innerHTML = _items.map(function(it){
+            return '<div style="display:flex;align-items:center;gap:5px">' +
+                     '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+it.color+'"></span>' +
+                     '<span><b>'+it.lbl+'</b> '+Math.round(it.pct)+'%</span>' +
+                   '</div>';
+          }).join('');
+        }
       }
     }
 
@@ -14009,12 +14065,16 @@ const App = {
     let _udhaarLenaCount = 0;
     let _udhaarDenaCount = 0;
     let _udhaarOverdue = 0;
+    /* (v33_29ag) Udhaar pill detection retained for possible revival, but
+       _useUdhaarPill is force-disabled below so pill 3 never enters udhaar
+       mode. The standalone udhaar widget under the pills remains the
+       authoritative udhaar surface on dashboard. */
     try {
       if (!_useStaffPill && window.Khata) {
         _udhaarLenaCount = Khata.countOpen('lena');
         _udhaarDenaCount = Khata.countOpen('dena');
         if (_udhaarLenaCount + _udhaarDenaCount > 0) {
-          _useUdhaarPill = true;
+          /* _useUdhaarPill intentionally NOT set (v33_29ag) */
           _udhaarNet = Math.round(Khata.totalLena() - Khata.totalDena());
           try {
             const parties = Khata.byParty('lena');
@@ -14098,9 +14158,13 @@ const App = {
           }
         } catch(e){}
 
-        /* Refined Option A core rule: engagement gates the tile. */
+        /* Refined Option A core rule: engagement gates the tile.
+           (v33_29ag) _useCashTile force-disabled per user spec: pill 3
+           is now exclusively margin-discovery. CashDrawer.currentBalance()
+           and hasOpeningToday() still compute (low cost; could be useful
+           if the cash mode is revived). */
         if (hasUsedCashDrawer) {
-          _useCashTile = true;
+          /* _useCashTile intentionally NOT set (v33_29ag) */
           _cashBalance = CashDrawer.currentBalance();
           _cashSetToday = CashDrawer.hasOpeningToday();
         }
@@ -14245,12 +14309,12 @@ const App = {
     }
 
     /* Remember current tile mode for tap handler.
-       (v33_29af) Priority chain: staff (salon onboarding) > udhaar (has data)
-       > cash (drawer engaged) > setcost > setmargin > margin. Udhaar takes
-       precedence over cash per product spec. */
+       (v33_29ag) Per user spec — drop udhaar AND cash from pill 3 priority.
+       Udhaar still has the standalone widget right below pills, and cash
+       drawer is a separate feature. Pill 3 is now exclusively the
+       margin-discovery surface: staff (salon onboarding), setcost (needs
+       data), setmargin (zero cost prompt), or plain margin %. */
     this._kpi3Mode = _useStaffPill ? 'staff'
-                    : _useUdhaarPill ? 'udhaar'
-                    : _useCashTile ? 'cash'
                     : (!profitIsAccurate && todaySales.length > 0) ? 'setcost'
                     : (todayCost === 0 && todayRev > 0) ? 'setmargin'  /* (v33_29j) all-zero-cost prompt */
                     : 'margin';
