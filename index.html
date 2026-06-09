@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29aw_addressPhone';
+    window.HISAABNOW_BUILD = 'v33_29ay_saveGuardAll';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -19728,6 +19728,14 @@ const App = {
   },
 
   async completeSale(){
+    /* v33_29ay: re-entrancy guard. The Complete Sale button drives bill
+       creation — duplicate taps would create duplicate bills and double
+       the customer's apparent total. Critical to guard. */
+    const _g = this._startSaveGuard('_completingSale', '.ck-collect-btn', 'Saving bill…');
+    if (!_g) return;
+
+    try {
+
     const {total: subtotal, count} = this.cartTotal();
     if (count === 0) { this.toast(this._T('toast.cartEmpty', 'Cart is empty')); return; }
 
@@ -20231,6 +20239,14 @@ const App = {
     } catch (_syncErr) {
       // Outer catch — defensive only. Should never fire given the wrapping above.
       console.warn('[BillSync] Outer error (non-fatal):', _syncErr && _syncErr.message);
+    }
+
+    } finally {
+      /* v33_29ay: release the guard. The button on the bill screen is
+         destroyed/replaced when nav() happens after a successful sale,
+         so _endSaveGuard's button restore is a defensive no-op in the
+         happy path. It matters on error paths that don't navigate. */
+      this._endSaveGuard('_completingSale', _g);
     }
   },
 
@@ -22196,6 +22212,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   _saveSupplyV2(){
+    /* v33_29ay: re-entrancy guard. Prevents duplicate supply records from
+       rapid taps. This function handles the V2 supply sheet used by
+       bakery/cafe/restaurant/sweets/salon verticals — same vulnerability
+       as saveIngredient (auto-expense double-fire on duplicate save). */
+    const _g = this._startSaveGuard('_savingSupplyV2', '.sv2-btn-primary');
+    if (!_g) return;
+
+    try {
+
     const name = (document.getElementById('sv2-name').value || '').trim();
     if (!name) { this.toast(this._T('toast.pleaseEnterSupply', 'Please enter a supply name')); return; }
     const cat = (document.getElementById('sv2-cat').value || '').trim();
@@ -22293,6 +22318,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (this.current === 'supply-detail') this.renderSupplyDetail();
     try { this.renderAlertsBadge(); } catch(e){}
     if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(e){} }
+
+    } finally {
+      this._endSaveGuard('_savingSupplyV2', _g);
+    }
   },
 
   igAutoEmoji(name){
@@ -22350,6 +22379,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   saveIngredient(){
+    /* v33_29ay: re-entrancy guard. Prevents duplicate ingredient records
+       from rapid taps on slow networks. */
+    const _g = this._startSaveGuard('_savingIngredient', '.ps-btn-primary');
+    if (!_g) return;
+
+    try {
+
     const name = (document.getElementById('ig-name').value || '').trim();
     if (!name) { this.toast(this._T('toast.pleaseEnterName', 'Please enter a name')); return; }
     const packPrice = Number(document.getElementById('ig-packprice').value || 0);
@@ -22496,6 +22532,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(e){} }
     try { this.renderAlertsBadge(); } catch(e){}
 
+    } finally {
+      this._endSaveGuard('_savingIngredient', _g);
+    }
   },
 
   async deleteIngredient(){
@@ -24269,6 +24308,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   saveProduct(){
+    /* v33_29ay: re-entrancy guard. Prevents double-save creating duplicate
+       catalog items when user taps fast on slow networks. */
+    const _g = this._startSaveGuard('_savingProduct', '#ps-save-btn');
+    if (!_g) return;
+
+    try {
+
     // Validate via shared helper (used by both wizard advance + save).
     // Shows inline red borders + error text under each missing field.
     const validation = this.validateProductForm();
@@ -24469,6 +24515,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
 
     if (this.current === 'home') this.renderHome();
+
+    } finally {
+      this._endSaveGuard('_savingProduct', _g);
+    }
   },
 
   _toggleMoreOptions(btn){
@@ -26256,6 +26306,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   async saveNewOutlet(){
+    /* v33_29ay: re-entrancy guard. Prevents duplicate outlets if user
+       taps "Create outlet" multiple times during the async MShop.addShop
+       call. Note this function closes the product sheet BEFORE the async
+       work — so the button selector would not find the original button.
+       That's fine; the guard's main job here is the in-flight flag. */
+    const _g = this._startSaveGuard('_savingNewOutlet', '.ps-btn.ps-btn-primary');
+    if (!_g) return;
+
+    try {
+
     const name = ((document.getElementById('ao-name')||{}).value || '').trim();
     const profession = this._aoProfession || 'cafe';
     const cardType = this._aoCardType || profession;
@@ -26276,6 +26336,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       else if (msg === 'LIMIT_REACHED') this.toast(this._T('toast.outletLimit', 'Outlet limit reached · upgrade for more'));
       else if (msg === 'FB_NOT_READY') this.toast(this._T('toast.connIssue', 'Connection issue · please retry'));
       else this.toast(this._T('toast.failedOutlet', 'Failed to create outlet'));
+    }
+
+    } finally {
+      this._endSaveGuard('_savingNewOutlet', _g);
     }
   },
 
@@ -27203,6 +27267,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           allGroups.slice(0, 10).forEach(function(g){
             var first = g.recs[0];
             var summary = self2._recordSummary(g.coll, first);
+            var dupExtra = g.recs.length - 1;
+            var safeHash = self2.escapeHtml(g.hash).replace(/'/g, "\\'");
             dupesHTML += '<div class="sh-card">'
               + '<div class="sh-card-h">'
                 + '<div class="sh-card-tl">'
@@ -27217,6 +27283,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
               + '<div class="sh-card-reason" style="background:#FEF3C7;border-color:#FDE68A">'
                 + '<div class="sh-card-reason-t">What this means</div>'
                 + '<div class="sh-card-reason-b">' + g.recs.length + ' records in this collection have identical content. They may be the same event recorded twice. Review before deleting.</div>'
+              + '</div>'
+              /* v33_29ax: one-tap cleanup. Keeps the OLDEST record (most
+                 likely the legitimate original), removes the rest. For
+                 staff, also deactivates orphan salary recurring rules. */
+              + '<div style="display:flex;gap:6px;margin-top:8px">'
+                + '<button class="sh-act sh-act-delete" style="background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;flex:1" onclick="App._syncHealthCleanupDupes(\'' + g.coll + '\',\'' + safeHash + '\')">Keep one · remove ' + dupExtra + '</button>'
               + '</div>'
             + '</div>';
           });
@@ -27368,6 +27440,82 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (this.toast) this.toast('✓ Record deleted');
     var self = this;
     setTimeout(function(){ self._renderSyncHealth(); }, 300);
+  },
+
+  /* v33_29ax: One-tap cleanup of duplicate records. Triggered from the
+     "Keep one · remove N" button on duplicate cards in Sync Health.
+
+     Strategy:
+       1. Find all records with the given content-hash
+       2. Sort by createdAt ASC — the OLDEST is most likely the legitimate
+          original (the user's first tap), so we keep it
+       3. Soft-delete the rest (_deleted=true)
+       4. For staff dupes: also deactivate the orphan salary recurring rules
+          attached to the removed staff IDs, so they don't keep generating
+          duplicate expenses every month
+
+     This is a destructive action — requires user confirmation. */
+  async _syncHealthCleanupDupes(coll, hash){
+    if (!coll || !hash) return;
+    if (!window.Store || typeof Store.findByHash !== 'function') {
+      this.toast('Cleanup not supported in this build');
+      return;
+    }
+    var records = Store.findByHash(coll, hash);
+    if (!records || records.length < 2) {
+      this.toast('No duplicates found here');
+      var self0 = this;
+      setTimeout(function(){ self0._renderSyncHealth(); }, 300);
+      return;
+    }
+    var removeN = records.length - 1;
+    var summary = this._recordSummary(coll, records[0]);
+    var ok = await this.confirm({
+      title: 'Remove ' + removeN + ' duplicate' + (removeN === 1 ? '' : 's') + '?',
+      message: summary + '\n\nKeeps 1 record, removes ' + removeN + '. The oldest record is kept. This cannot be undone.',
+      confirmText: 'Remove ' + removeN,
+      dangerous: true
+    });
+    if (!ok) return;
+
+    /* Sort oldest first, keep [0], remove the rest */
+    records.sort(function(a, b){ return (a.createdAt || a.t || 0) - (b.createdAt || b.t || 0); });
+    var toRemove = records.slice(1);
+
+    var self = this;
+    var ok_count = 0;
+    toRemove.forEach(function(r){
+      try {
+        /* For duplicate staff: also deactivate the orphan salary rule.
+           Otherwise the rule keeps firing and generating new expenses. */
+        if (coll === 'staff' && r && r.id) {
+          try { self._deactivateStaffSalaryRule(r.id); } catch(e){}
+        }
+        Store.update(coll, r.id, { _deleted: true, deletedAt: Date.now() });
+        ok_count++;
+      } catch(e) {
+        console.warn('[syncHealth cleanup] failed for', coll, r && r.id, e);
+      }
+    });
+
+    /* Audit log entry */
+    try {
+      if (window.AuditLog && AuditLog.record) {
+        AuditLog.record('sync.cleanupDupes', {
+          resource: coll,
+          resourceId: hash,
+          details: { hash: hash, removed: ok_count, kept: records[0] && records[0].id },
+          outcome: 'success'
+        });
+      }
+    } catch(e){}
+
+    this.toast('✓ Removed ' + ok_count + ' duplicate' + (ok_count === 1 ? '' : 's'));
+
+    /* Refresh related screens */
+    try { if (this.current === 'staff') this.renderStaff(); } catch(e){}
+    try { if (typeof this.renderExpenses === 'function') this.renderExpenses(); } catch(e){}
+    setTimeout(function(){ self._renderSyncHealth(); }, 400);
   },
 
   /* Updates the badge on the More menu entry — called periodically + on
@@ -29484,7 +29632,89 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     return 'https://wa.me/' + phoneClean + '?text=' + encodeURIComponent(msg);
   },
 
+  /* ════════════════════════════════════════════════════════════════
+     v33_29ay: reusable re-entrancy guard helpers for save functions.
+
+     Async save functions (completeSale, saveStaff, saveNewOutlet, etc.)
+     await network calls — during the await, the JS event loop is free
+     to process more tap events. Without a guard, rapid tapping fires
+     parallel save chains that each create their own database records.
+
+     Sync save functions (saveProduct, saveIngredient, _saveSupplyV2)
+     don't have this exact bug at the JS level, but rapid tapping still
+     produces confusing UX (the second tap fires after the sheet closes,
+     causing "Please enter a name" toast). The guard normalizes UX
+     across both kinds.
+
+     Usage pattern (works for both sync + async):
+       const _g = this._startSaveGuard('_savingFoo', '#btn-selector');
+       if (!_g) return;                       // already saving
+       try {
+         ...do the work...
+       } finally {
+         this._endSaveGuard('_savingFoo', _g);
+       }
+
+     The guard handles 3 things:
+       1. Per-key in-flight flag (prevents parallel calls)
+       2. Visual button disable + spinner ("Saving…" with rotating icon)
+       3. Cleanup in finally so all early-return paths restore state.
+     ════════════════════════════════════════════════════════════════ */
+  _startSaveGuard(key, btnSelector, savingLabel) {
+    if (this[key]) {
+      this.toast(this._T('toast.alreadySaving', '⏳ Saving — please wait…'));
+      return null;
+    }
+    this[key] = true;
+    const btn = btnSelector ? document.querySelector(btnSelector) : null;
+    const orig = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.pointerEvents = 'none';
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:8px"><span style="width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:hn-spin 0.7s linear infinite;display:inline-block"></span><span>' + (savingLabel || 'Saving…') + '</span></span>';
+    }
+    return { btn: btn, orig: orig };
+  },
+
+  _endSaveGuard(key, ctx) {
+    this[key] = false;
+    if (ctx && ctx.btn) {
+      try {
+        ctx.btn.disabled = false;
+        ctx.btn.style.opacity = '';
+        ctx.btn.style.pointerEvents = '';
+        if (ctx.orig) ctx.btn.innerHTML = ctx.orig;
+      } catch(e){}
+    }
+  },
+
   async saveStaff(){
+
+    /* v33_29ax: re-entrancy guard. Prevents the rapid-tap bug that caused
+       duplicate staff + duplicate salary expense entries. Without this,
+       async saveStaff() chains run in parallel — each Store.add() creates
+       a fresh staff record (new id), and each _ensureSalaryRecurring()
+       creates a fresh recurring rule, multiplying expenses. */
+    if (this._savingStaff) {
+      this.toast(this._T('toast.alreadySavingStaff', '⏳ Saving — please wait…'));
+      return;
+    }
+    this._savingStaff = true;
+
+    /* Disable the Save button visually so user knows the tap registered.
+       Restore in finally{} regardless of outcome. */
+    const _saveBtn = document.querySelector('#pg-add-staff .btn.btn-primary.btn-block');
+    let _saveBtnHTML = '';
+    if (_saveBtn) {
+      _saveBtnHTML = _saveBtn.innerHTML;
+      _saveBtn.disabled = true;
+      _saveBtn.style.opacity = '0.6';
+      _saveBtn.style.pointerEvents = 'none';
+      _saveBtn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:8px"><span style="width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:hn-spin 0.7s linear infinite;display:inline-block"></span><span>Saving…</span></span>';
+    }
+
+    try {
 
     try {
       let _r = 'owner';
@@ -29509,6 +29739,22 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       try { document.getElementById('staff-phone').focus(); } catch(e){}
       return;
     }
+
+    /* v33_29ax: active-duplicate check. Only for NEW staff (not edits).
+       If a staff member with same phoneE164 already exists and is not
+       deleted, block the save and tell the user. This is the second line
+       of defense — even if the re-entrancy guard above somehow fails, a
+       duplicate can't sneak through. */
+    if (!this._editingStaffId) {
+      const _activeDup = (Store.list('staff') || []).find(s =>
+        s && !s._deleted && (s.phoneE164 === phoneE164 || s.phone === phoneE164)
+      );
+      if (_activeDup) {
+        this.toast('⚠ ' + (_activeDup.name || 'A team member') + ' already exists with this phone');
+        return;
+      }
+    }
+
     const salary = parseInt((document.getElementById('staff-salary')||{}).value || '0') || 0;
     const comm = parseFloat((document.getElementById('staff-comm')||{}).value || '15') || 0;
 
@@ -29692,6 +29938,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       this.toast(`✓ ${name} added to your team${salary > 0 ? ' · ₹' + salary.toLocaleString('en-IN') + ' salary auto-logs monthly' : ''}`);
     }
     setTimeout(()=> this.nav('staff'), (cfOk && loginAllowed) ? 1400 : 800);
+
+    } finally {
+      /* v33_29ax: ALWAYS release the guard + restore the button, even
+         if an error was thrown or an early-return path was taken. */
+      this._savingStaff = false;
+      if (_saveBtn) {
+        _saveBtn.disabled = false;
+        _saveBtn.style.opacity = '';
+        _saveBtn.style.pointerEvents = '';
+        if (_saveBtnHTML) _saveBtn.innerHTML = _saveBtnHTML;
+      }
+    }
   },
 
   apptCustSearchInput(){
@@ -30091,6 +30349,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       const currSal = (s.salary != null && s.salary !== '') ? Number(s.salary) : null;
       if (prevSal != null && currSal == null) merged.salary = prevSal;
       else if (currSal != null && prevSal == null) merged.salary = currSal;
+      else if (prevSal != null && currSal != null) {
+        /* v33_29ax: when BOTH have a salary set, prefer the higher value.
+           This fixes the dedup-merge bug where a late-firing duplicate save
+           with salary=0 (form was navigated away) could override a real
+           salary=15000 from the legitimate save. The higher value is almost
+           always the correct one. */
+        merged.salary = Math.max(prevSal, currSal);
+      }
 
       ['color', 'initials', 'roleEmoji'].forEach(f => {
         if (prev[f] && !s[f]) merged[f] = prev[f];
@@ -30973,6 +31239,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   async saveNewStaff(){
+    /* v33_29ay: re-entrancy guard. This is the Session1 onboarding flow's
+       staff-add path (separate from the main saveStaff in the team section).
+       Same vulnerability — async CF call, no built-in guard. */
+    const _g = this._startSaveGuard('_savingNewStaff', '#as-save-btn');
+    if (!_g) return;
+
+    try {
+
     const phoneInput = ((document.getElementById('as-phone') || {}).value || '').trim();
     const name = ((document.getElementById('as-name') || {}).value || '').trim();
     const roleEl = document.querySelector('input[name="as-role"]:checked');
@@ -31036,6 +31310,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       else if (msg.indexOf('not-found') >= 0 || msg.indexOf('NOT_DEPLOYED') >= 0) showErr('Cloud Functions not deployed yet. Please deploy first (see SESSION_1_DEPLOY.md).');
       else showErr(msg);
       if (btn) { btn.disabled = false; btn.textContent = 'Send invite'; }
+    }
+
+    } finally {
+      this._endSaveGuard('_savingNewStaff', _g);
     }
   },
 
@@ -31115,6 +31393,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   async saveEditStaff(){
+    /* v33_29ay: re-entrancy guard. Edit staff in Session1 flow. */
+    const _g = this._startSaveGuard('_savingEditStaff', '#es-save-btn');
+    if (!_g) return;
+
+    try {
+
     const phoneE164 = this._editingStaffPhone;
     if (!phoneE164) return;
     const name = ((document.getElementById('es-name') || {}).value || '').trim();
@@ -31157,6 +31441,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       console.error('[Session1] updateStaff failed:', e);
       showErr((e && e.message) || 'Failed to update');
       if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
+    }
+
+    } finally {
+      this._endSaveGuard('_savingEditStaff', _g);
     }
   },
 
