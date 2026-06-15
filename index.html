@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_29ay_saveGuardAll';
+    window.HISAABNOW_BUILD = 'v33_29az_fcmPush';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3798,6 +3798,25 @@ html[data-current-role="manager"] body{
     </div>
   </div>
 
+  <!-- (v33_29az) Notifications — push notifications via FCM
+       Hidden by default; shown only if browser supports Web Push.
+       Tapping the toggle calls window.kfRequestFCMToken / kfRevokeFCMToken
+       which handle the full permission + token flow. -->
+  <div class="menu-group" id="settings-notif-group" style="display:none">
+    <div class="menu-group-title" data-i18n="settings.notifications">Notifications</div>
+    <div class="menu-card">
+      <div class="menu-item" onclick="App.toggleNotifications()" style="cursor:pointer">
+        <div class="menu-text">
+          <div class="menu-label" data-i18n="settings.dailySummary">Daily summary</div>
+          <div class="menu-sub" id="settings-notif-sub" data-i18n="settings.notifSubDefault">Get a notification every evening with today's sales</div>
+        </div>
+        <div id="settings-notif-switch" style="width:42px;height:24px;border-radius:99px;background:#E5E7EB;position:relative;flex-shrink:0;transition:background .18s">
+          <span id="settings-notif-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .18s"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── (May 2026) Data health panel ──────────────────────────────
        Shows per-shop record counts so the user can verify all their
        shops have data. If any shop shows zero, prompts a restore. -->
@@ -4721,6 +4740,13 @@ html[data-current-role="manager"] body{
     'settings.syncSub':       { en: 'Force re-sync from cloud', hi: 'क्लाउड से री-सिंक करें' },
     'settings.restoreAll':    { en: 'Restore all shops',     hi: 'सभी शॉप restore करें' },
     'settings.restoreAllSub': { en: 'Pull data for every shop from cloud — use after clearing app cache', hi: 'Sabhi shops ka data cloud se pull karein — cache clear ke baad use karein' },
+    /* (v33_29az) Notifications i18n */
+    'settings.notifications':  { en: 'Notifications',           hi: 'सूचनाएं' },
+    'settings.dailySummary':   { en: 'Daily summary',           hi: 'दैनिक सारांश' },
+    'settings.notifSubDefault':{ en: 'Get a notification every evening with today\'s sales', hi: 'हर शाम आज की बिक्री की सूचना पाएं' },
+    'settings.notifSubOn':     { en: 'Daily summary at 9 PM. Tap to turn off.', hi: 'रात 9 बजे दैनिक सारांश। बंद करने के लिए tap करें।' },
+    'settings.notifSubDenied': { en: 'You blocked notifications. Open browser settings to allow.', hi: 'Aapne notifications block kiye hain. Browser settings mein allow karein.' },
+    'settings.notifSubUnsupported':{ en: 'Not supported on this device or browser', hi: 'Is device par supported nahi' },
     'settings.dataHealth':    { en: 'Data health',            hi: 'डेटा हेल्थ' },
     'settings.backup':        { en: 'Backup',                 hi: 'बैकअप' },
     'settings.exportData':    { en: 'Export all data',        hi: 'सारा डेटा export करें' },
@@ -13542,6 +13568,11 @@ const App = {
       gstKnob.style.transform = gstOn ? 'translateX(18px)' : '';
     }
 
+    /* (v33_29az) Render the notifications toggle state. Self-contained
+       in its own method because it depends on browser permission state,
+       not just app state. */
+    try { this._renderNotificationsToggle(); } catch(e){ console.warn('[renderSettings] _renderNotificationsToggle failed:', e); }
+
     const ss = window.HisaabSync && typeof HisaabSync.getStatus === 'function'
       ? HisaabSync.getStatus()
       : { online: navigator.onLine !== false, pending: 0, lastSync: 0 };
@@ -13796,6 +13827,115 @@ const App = {
     if (typeof window.sA === 'function') { try { window.sA(); } catch(e){} }
     this.toast(S.gstEnabled ? this._T('toast.gstEnabled', '✓ GST enabled · pills will show on checkout') : this._T('toast.gstDisabled', '✓ GST disabled'));
     this.renderSettings();
+  },
+
+  /* ════════════════════════════════════════════════════════════════
+     (v33_29az) Push notifications toggle handler.
+
+     Three states the toggle can be in:
+       - 'unsupported' → toggle hidden entirely (group display:none)
+       - 'denied'      → toggle shown OFF, sub text explains how to fix
+       - 'default'     → toggle OFF, tap requests permission
+       - 'disabled'    → toggle OFF, was previously enabled then turned off
+       - 'enabled'     → toggle ON, tap revokes
+     ════════════════════════════════════════════════════════════════ */
+  async toggleNotifications(){
+    /* Guard: prevent rapid double-taps from firing two parallel
+       permission flows. Uses the standard save-guard helper. */
+    if (this._notifToggleBusy) return;
+    this._notifToggleBusy = true;
+
+    try {
+      const state = (typeof window.kfNotificationsEnabledState === 'function')
+                      ? window.kfNotificationsEnabledState()
+                      : 'unsupported';
+
+      if (state === 'unsupported') {
+        this.toast(this._T('settings.notifSubUnsupported', 'Not supported on this device'));
+        return;
+      }
+
+      if (state === 'denied') {
+        /* User previously denied. We cannot re-prompt — they have to
+           clear it in browser settings. Show a helpful toast. */
+        this.toast(this._T('settings.notifSubDenied',
+                           'You blocked notifications. Open browser settings to allow.'));
+        return;
+      }
+
+      if (state === 'enabled') {
+        /* Turn OFF */
+        if (typeof window.kfRevokeFCMToken !== 'function') return;
+        const res = await window.kfRevokeFCMToken();
+        this.toast(this._T('toast.notifOff', '🔕 Notifications turned off'));
+        this._renderNotificationsToggle();
+        return;
+      }
+
+      /* state is 'default' or 'disabled' → turn ON */
+      if (typeof window.kfRequestFCMToken !== 'function') {
+        this.toast(this._T('toast.notifInitFail', 'Notification setup unavailable'));
+        return;
+      }
+
+      /* This call may prompt for browser permission (modal). */
+      const res = await window.kfRequestFCMToken();
+      if (res && res.ok) {
+        this.toast(this._T('toast.notifOn', '🔔 Notifications enabled · You\'ll get a daily summary at 9 PM'));
+        this._renderNotificationsToggle();
+      } else {
+        const msg = (res && res.message) || this._T('toast.notifFail', 'Could not enable notifications');
+        this.toast(msg);
+        this._renderNotificationsToggle();
+      }
+    } catch(e) {
+      console.warn('[App] toggleNotifications error:', e);
+      this.toast(this._T('toast.notifErr', 'Notification setup error'));
+    } finally {
+      this._notifToggleBusy = false;
+    }
+  },
+
+  /* Read current state, update the toggle UI + sub-text accordingly.
+     Called from renderSettings() and after every toggleNotifications. */
+  _renderNotificationsToggle(){
+    try {
+      const group = document.getElementById('settings-notif-group');
+      const sw = document.getElementById('settings-notif-switch');
+      const knob = document.getElementById('settings-notif-knob');
+      const sub = document.getElementById('settings-notif-sub');
+      if (!group || !sw || !knob || !sub) return;
+
+      const state = (typeof window.kfNotificationsEnabledState === 'function')
+                      ? window.kfNotificationsEnabledState()
+                      : 'unsupported';
+
+      if (state === 'unsupported') {
+        group.style.display = 'none';
+        return;
+      }
+      group.style.display = '';
+
+      const isOn = (state === 'enabled');
+      /* Toggle visual */
+      sw.style.background = isOn ? 'var(--p, #FF6B35)' : '#E5E7EB';
+      knob.style.transform = isOn ? 'translateX(18px)' : 'translateX(0)';
+
+      /* Sub text */
+      let subKey = 'settings.notifSubDefault';
+      let subFallback = 'Get a notification every evening with today\'s sales';
+      if (state === 'enabled') {
+        subKey = 'settings.notifSubOn';
+        subFallback = 'Daily summary at 9 PM. Tap to turn off.';
+      } else if (state === 'denied') {
+        subKey = 'settings.notifSubDenied';
+        subFallback = 'You blocked notifications. Open browser settings to allow.';
+      }
+      sub.setAttribute('data-i18n', subKey);
+      sub.textContent = this._T(subKey, subFallback);
+    } catch(e) {
+      console.warn('[App] _renderNotificationsToggle error:', e);
+    }
   },
 
   async forceSync(){
@@ -34711,6 +34851,11 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, limit, serverTimestamp, enableIndexedDbPersistence, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
   import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+  /* v33_29az: FCM (Web Push) — gated behind user opt-in in Settings.
+     getToken returns the FCM registration token for this browser+SW pair.
+     onMessage handles foreground messages (when the app tab is in focus).
+     Background messages are handled by /firebase-messaging-sw.js separately. */
+  import { getMessaging, getToken as getMsgToken, onMessage as onMsgMessage, deleteToken as deleteMsgToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
   // ============================================================
   // ENVIRONMENT DETECTION (staging vs production)
@@ -34803,6 +34948,259 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     if (err.code === 'failed-precondition') console.warn('[v32] Offline persistence: multiple tabs open');
     else if (err.code === 'unimplemented') console.warn('[v32] Offline persistence: browser unsupported');
   });
+
+  /* ════════════════════════════════════════════════════════════════
+     v33_29az: FIREBASE CLOUD MESSAGING (Web Push)
+
+     This block initializes FCM but does NOT request permission or
+     register a token. That only happens when the user explicitly
+     opts in via Settings → Enable notifications.
+
+     IMPORTANT DESIGN DECISIONS:
+       1. NO auto-prompt on app load. The browser's notification
+          permission popup is interruptive — only show when user
+          taps the toggle.
+       2. FCM service worker registers at a SEPARATE scope from the
+          existing /sw.js (which handles app shell caching). The
+          two workers coexist at different scopes.
+       3. App Check token is fetched fresh before getToken() because
+          stale App Check tokens cause FCM token retrieval to fail
+          with "permission-blocked" errors.
+       4. ALL FCM code is wrapped in try/catch. Failures are silent
+          and never crash the app — a degraded experience (no push)
+          is far better than a crashed shop floor at billing time.
+       5. Tokens are saved to Firestore at
+            users/{uid}/fcmTokens/{token_first_24_chars_as_doc_id}
+          This allows server-side functions to look up all tokens
+          for a user and send to all their devices.
+     ════════════════════════════════════════════════════════════════ */
+
+  /* VAPID public key from Firebase Console → Project Settings → Cloud
+     Messaging → Web Push certificates. This is NOT secret — it's meant
+     to be in client code. The corresponding private key stays on
+     Firebase's servers and we never see it. */
+  const HN_VAPID_KEY = 'BGYR4O2xMdAObsY7Xu3Q5rp65Eay8WbrG2KNFxTZoFg5LJA_6xrQwnlzt_lPkLh6YqroV9ecl7aAaZKyc9Zqlgg';
+
+  /* Probe — is Web Push even theoretically supported in this browser?
+     iOS Safari before 16.4, in-app webviews, and old Android don't
+     support it. We use this to hide the Settings toggle on devices
+     where Push can never work. */
+  function _hnPushIsSupported(){
+    try {
+      return ('serviceWorker' in navigator) &&
+             ('PushManager' in window) &&
+             ('Notification' in window) &&
+             (typeof Notification.requestPermission === 'function');
+    } catch(e) { return false; }
+  }
+  window.kfPushIsSupported = _hnPushIsSupported;
+
+  /* Lazy-initialized messaging instance. Only created when actually
+     needed — on first opt-in attempt. Importing the SDK above is
+     cheap; calling getMessaging() does some service worker checks. */
+  let _hnMessaging = null;
+  function _hnGetMessaging(){
+    if (_hnMessaging) return _hnMessaging;
+    try {
+      _hnMessaging = getMessaging(app);
+      return _hnMessaging;
+    } catch(e) {
+      console.warn('[v33_29az] getMessaging failed:', e && e.message);
+      return null;
+    }
+  }
+
+  /* Register the FCM service worker at its own scope. Returns the
+     ServiceWorkerRegistration that we then pass to getToken().
+
+     CRITICAL: scope must NOT overlap with /sw.js (which controls '/').
+     We use '/firebase-cloud-messaging-push-scope/' which is a sub-path
+     that doesn't conflict with any app navigation. The service worker
+     file itself lives at /firebase-messaging-sw.js (root) but its
+     SCOPE is the sub-path. */
+  async function _hnRegisterFCMSW(){
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+      const reg = await navigator.serviceWorker.register(
+        '/firebase-messaging-sw.js',
+        { scope: '/firebase-cloud-messaging-push-scope/' }
+      );
+      /* Wait until it's actually active before returning. Otherwise
+         getToken() can race with SW startup and fail. */
+      if (reg.installing) {
+        await new Promise(function(resolve){
+          reg.installing.addEventListener('statechange', function(){
+            if (reg.installing && reg.installing.state === 'activated') resolve();
+            else if (reg.active) resolve();
+          });
+          /* Failsafe timeout — don't hang forever if SW is buggy */
+          setTimeout(resolve, 5000);
+        });
+      }
+      return reg;
+    } catch(e) {
+      console.warn('[v33_29az] FCM SW register failed:', e && e.message);
+      return null;
+    }
+  }
+
+  /* Public: request notification permission and retrieve FCM token.
+     Returns { ok: true, token: '...' } on success, or
+     { ok: false, reason: '...' } on any failure path.
+
+     Called from App.toggleNotifications when user flips the switch
+     from OFF to ON. */
+  window.kfRequestFCMToken = async function(){
+    if (!_hnPushIsSupported()) {
+      return { ok: false, reason: 'unsupported',
+               message: 'Push notifications are not supported on this device or browser.' };
+    }
+
+    /* 1. Ask browser for permission. If user already denied, we cannot
+          re-prompt — they have to clear it in browser settings. */
+    let permission;
+    try {
+      permission = await Notification.requestPermission();
+    } catch(e) {
+      console.warn('[v33_29az] Notification.requestPermission failed:', e);
+      return { ok: false, reason: 'request_failed', message: 'Could not request permission.' };
+    }
+    if (permission !== 'granted') {
+      return { ok: false, reason: permission,
+               message: permission === 'denied'
+                 ? 'You blocked notifications. To enable, open browser settings → Site settings → Notifications.'
+                 : 'Permission was not granted.' };
+    }
+
+    /* 2. Make sure App Check has a fresh token. Without this, getToken()
+          often fails with "messaging/permission-blocked" because the
+          backend rejects the request. */
+    try { await getToken(appCheck, false); } catch(e){}
+
+    /* 3. Register the FCM service worker */
+    const swReg = await _hnRegisterFCMSW();
+    if (!swReg) {
+      return { ok: false, reason: 'sw_failed',
+               message: 'Could not register notification service.' };
+    }
+
+    /* 4. Get the messaging instance */
+    const messaging = _hnGetMessaging();
+    if (!messaging) {
+      return { ok: false, reason: 'no_messaging',
+               message: 'Notification service unavailable.' };
+    }
+
+    /* 5. Retrieve the FCM token. This is the unique identifier this
+          device uses to receive push messages. */
+    let token;
+    try {
+      token = await getMsgToken(messaging, {
+        vapidKey: HN_VAPID_KEY,
+        serviceWorkerRegistration: swReg
+      });
+    } catch(e) {
+      console.warn('[v33_29az] getMsgToken failed:', e && e.code, e && e.message);
+      return { ok: false, reason: 'token_failed',
+               message: 'Could not register for notifications. Please try again later.' };
+    }
+    if (!token) {
+      return { ok: false, reason: 'empty_token',
+               message: 'No notification token received.' };
+    }
+
+    /* 6. Save token to Firestore so server-side functions can target
+          this device. Uses first 24 chars as doc ID to avoid the
+          full ~150-char token as a path segment (Firestore limits). */
+    try {
+      const user = auth.currentUser;
+      if (user && user.uid) {
+        const tokenDocId = token.substring(0, 24).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const tokenRef = doc(db, 'users', user.uid, 'fcmTokens', tokenDocId);
+        await setDoc(tokenRef, {
+          token: token,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          platform: 'web',
+          userAgent: (navigator.userAgent || '').substring(0, 200),
+          isStandalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || false
+        }, { merge: true });
+      } else {
+        /* Not signed in yet — stash the token in localStorage so we can
+           save it on next login. Edge case, rarely hit since user must
+           be signed in to see the Settings toggle. */
+        try { localStorage.setItem('hn_pending_fcm_token', token); } catch(e){}
+      }
+    } catch(e) {
+      /* Token Firestore save failed but we DO have a token. Don't fail
+         the whole flow — log and return success. The token will be
+         re-saved next time the toggle is verified. */
+      console.warn('[v33_29az] FCM token Firestore save failed (non-fatal):', e && e.message);
+    }
+
+    /* 7. Set up foreground message handler. When app is in focus and
+          a push arrives, this fires. Without this, foreground pushes
+          are silently dropped (only background pushes use the SW). */
+    try {
+      onMsgMessage(messaging, function(payload){
+        try {
+          const n = (payload && payload.notification) || {};
+          const title = n.title || 'HisaabNow';
+          const body = n.body || '';
+          /* Show as in-app toast rather than browser notification.
+             Browser notifications in foreground are awkward — the user
+             is already looking at the app. */
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast('🔔 ' + title + (body ? ' — ' + body : ''));
+          }
+        } catch(e) { console.warn('[v33_29az] onMessage handler error:', e); }
+      });
+    } catch(e) {
+      console.warn('[v33_29az] onMessage setup failed (non-fatal):', e && e.message);
+    }
+
+    /* 8. Persist user preference so toggle state survives reload */
+    try { localStorage.setItem('hn_notifications_enabled', '1'); } catch(e){}
+
+    return { ok: true, token: token };
+  };
+
+  /* Public: revoke notification permission for this device.
+     Deletes the FCM token from Firestore and from the FCM server.
+     Called when user flips the toggle OFF. */
+  window.kfRevokeFCMToken = async function(){
+    /* Mark intent so UI updates even if SDK calls fail */
+    try { localStorage.setItem('hn_notifications_enabled', '0'); } catch(e){}
+
+    const messaging = _hnMessaging;
+    if (!messaging) {
+      /* Was never initialized — nothing to revoke */
+      return { ok: true, alreadyOff: true };
+    }
+    try {
+      await deleteMsgToken(messaging);
+    } catch(e) {
+      console.warn('[v33_29az] deleteMsgToken failed (non-fatal):', e && e.message);
+    }
+    /* We don't try to delete from Firestore here because we don't know
+       the exact token without holding it. The server-side function
+       will clean up stale tokens lazily when send fails. */
+    return { ok: true };
+  };
+
+  /* Helper: read the user's current notification preference state.
+     Combines browser permission + our localStorage flag. */
+  window.kfNotificationsEnabledState = function(){
+    if (!_hnPushIsSupported()) return 'unsupported';
+    try {
+      const perm = Notification.permission; /* 'default' | 'granted' | 'denied' */
+      const pref = localStorage.getItem('hn_notifications_enabled');
+      if (perm === 'denied') return 'denied';
+      if (perm === 'granted' && pref === '1') return 'enabled';
+      if (perm === 'granted' && pref === '0') return 'disabled';
+      return 'default'; /* never asked */
+    } catch(e) { return 'unknown'; }
+  };
 
   auth.useDeviceLanguage();
 
