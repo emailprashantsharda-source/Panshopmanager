@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_36_lockleak_fix';
+    window.HISAABNOW_BUILD = 'v33_37_payu_override_fix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -65488,34 +65488,10 @@ html[data-shell="desktop"] #pg-settings .toggle {
      (Skip the redirect when we're in TWA — Google Play handles it)
   ═══════════════════════════════════════════════════════ */
   function hookSubscribeTo(){
-    if (!window.App || App.__hnd_tSubscribeHooked) return;
-    if (typeof App.subscribeTo !== 'function') return;
-    var origSubscribeTo = App.subscribeTo.bind(App);
-    App.subscribeTo = function(tier, cycle){
-      /* TWA users still go through Play Billing */
-      if (window.__hnIsTWA){
-        return origSubscribeTo(tier, cycle);
-      }
-      /* Web users get the QR flow */
-      var planKey = tier + '-' + cycle;
-      if (PLAN_DETAILS[planKey]){
-        /* Close the existing subscription modal first so the pay modal is on top */
-        try {
-          if (window.App && App.closeProductSheet) App.closeProductSheet();
-          /* Try other close patterns just in case */
-          var sheets = document.querySelectorAll('.ps-sheet, .info-sheet, .modal');
-          sheets.forEach(function(s){
-            if (s.classList) s.classList.remove('open','active','show');
-          });
-        } catch(e){}
-        /* Open QR modal */
-        setTimeout(function(){ PayModal.open(planKey); }, 200);
-        return;
-      }
-      /* Fall through if unknown plan */
-      return origSubscribeTo(tier, cycle);
-    };
-    App.__hnd_tSubscribeHooked = true;
+    /* DISABLED (PayU upgrade): App.subscribeTo now owns the full PayU flow —
+       Checkout Plus (bolt overlay) for browsers, Hosted redirect for TWA/WebView.
+       The old QR "send proof" override must NOT wrap it. No-op. */
+    if (window.App) App.__hnd_tSubscribeHooked = true;
   }
 
   /* ═══════════════════════════════════════════════════════
