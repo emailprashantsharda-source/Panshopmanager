@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_43_payu_warm';
+    window.HISAABNOW_BUILD = 'v33_44_activate_hard';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26983,22 +26983,94 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
   /* After a seamless SUCCESS, the S2S webhook is the source of truth; poll a few
      times to let it land, then activate locally and refresh the UI. */
+  _ensureActivatingStyle(){
+    if (document.getElementById('hn-activate-style')) return;
+    var css = ""
+      + "#hn-activate-overlay{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,10,10,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);font-family:'Inter',system-ui,sans-serif;animation:hnactIn .2s ease}"
+      + "@keyframes hnactIn{from{opacity:0}to{opacity:1}}"
+      + ".hnact-card{width:100%;max-width:360px;background:#FFFBF5;border:1px solid #EFE7D8;border-radius:22px;padding:28px 22px 22px;text-align:center;box-shadow:0 24px 60px -12px rgba(0,0,0,.5)}"
+      + ".hnact-icon{width:74px;height:74px;margin:0 auto 16px;border-radius:20px;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);box-shadow:0 0 0 1px rgba(250,204,21,.3), 0 12px 30px -8px rgba(0,0,0,.55)}"
+      + ".hnact-spin{width:30px;height:30px;border-radius:50%;border:3px solid rgba(250,204,21,.25);border-top-color:#FACC15;animation:hnactSpin .8s linear infinite}"
+      + "@keyframes hnactSpin{to{transform:rotate(360deg)}}"
+      + ".hnact-title{font-size:19px;font-weight:900;color:#0A0A0A;letter-spacing:-.02em;line-height:1.2}"
+      + ".hnact-msg{font-size:13.5px;font-weight:600;color:#545454;margin-top:7px;line-height:1.5}"
+      + ".hnact-actions{margin-top:18px;display:flex;flex-direction:column;gap:9px}"
+      + ".hnact-btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;letter-spacing:-.01em}"
+      + ".hnact-btn-primary{background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);color:#fff;box-shadow:0 0 0 1px rgba(250,204,21,.32), 0 10px 26px -8px rgba(0,0,0,.5)}"
+      + ".hnact-btn-text{background:transparent;color:#6B6B6B;font-weight:700;font-size:13px;padding:8px}";
+    var st=document.createElement('style'); st.id='hn-activate-style'; st.textContent=css; document.head.appendChild(st);
+  },
+
+  _renderActivating(state){
+    this._ensureActivatingStyle();
+    var ov=document.getElementById('hn-activate-overlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='hn-activate-overlay'; document.body.appendChild(ov); }
+    var crown='<svg width="32" height="32" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>';
+    var check='<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    var html='';
+    if(state==='success'){
+      var tier=(window.Subs && Subs.getCurrentTier())||''; var tCfg=(window.Subs && Subs.getTierConfig(tier))||{};
+      var nm=(tCfg.name||'Pro');
+      html='<div class="hnact-card"><div class="hnact-icon">'+check+'</div>'
+         +'<div class="hnact-title">You\u2019re '+this.escapeHtml(nm)+' \u2713</div>'
+         +'<div class="hnact-msg">All features unlocked. Welcome aboard!</div></div>';
+    } else if(state==='recover'){
+      html='<div class="hnact-card"><div class="hnact-icon">'+crown+'</div>'
+         +'<div class="hnact-title">Taking a little longer\u2026</div>'
+         +'<div class="hnact-msg">Your payment is safe and will activate automatically \u2014 you won\u2019t be charged again.</div>'
+         +'<div class="hnact-actions">'
+         +'<button class="hnact-btn hnact-btn-primary" onclick="App._payuActivateRetry()">Tap to finish unlocking</button>'
+         +'<button class="hnact-btn hnact-btn-text" onclick="App._dismissActivating()">Close \u2014 I\u2019ll check later</button>'
+         +'</div></div>';
+    } else { /* working */
+      html='<div class="hnact-card"><div class="hnact-icon"><div class="hnact-spin"></div></div>'
+         +'<div class="hnact-title">Unlocking your account\u2026</div>'
+         +'<div class="hnact-msg">Payment received \u2713 \u00a0This can take up to a minute.</div></div>';
+    }
+    ov.innerHTML=html;
+  },
+
+  _dismissActivating(){
+    var ov=document.getElementById('hn-activate-overlay');
+    if(ov && ov.parentNode){ ov.parentNode.removeChild(ov); }
+  },
+
+  _payuActivateSuccess(){
+    try { if (window.Subs && typeof Subs.refreshUI === 'function') Subs.refreshUI(); } catch(e){}
+    try { if (this.current === 'home' && typeof this.renderHome === 'function') this.renderHome(); } catch(e){}
+    try { this.closeProductSheet(); } catch(e){}
+    this._renderActivating('success');
+    var self=this;
+    setTimeout(function(){ self._dismissActivating(); }, 1900);
+  },
+
   async _payuActivateAfterCheckout(){
-    var self = this;
-    var attempts = 0;
+    var self=this;
+    this._renderActivating('working');
+    /* Patient, backed-off poll (~78s total) so a slow S2S webhook still gets caught. */
+    var delays=[800,1200,1600,2200,3000,4000,5000,6500,8000,10000,12000,14000];
+    var i=0;
     (async function tryOnce(){
-      attempts++;
-      var ok = false;
-      try { ok = await self.reconcileSubFromServer(); } catch(e){}
-      if (ok) {
-        self.toast('✓ Payment successful — subscription active');
-        try { if (window.Subs && typeof Subs.refreshUI === 'function') Subs.refreshUI(); } catch(e){}
-        try { if (self.current === 'home' && typeof self.renderHome === 'function') self.renderHome(); } catch(e){}
-        try { self.closeProductSheet(); } catch(e){}
-        return;
-      }
-      if (attempts < 6) { setTimeout(tryOnce, 1800); }
-      else { self.toast('✓ Payment received — syncing your plan…'); }
+      var ok=false;
+      try { ok=await self.reconcileSubFromServer(); } catch(e){}
+      if(ok){ self._payuActivateSuccess(); return; }
+      if(i<delays.length){ var d=delays[i++]; setTimeout(tryOnce, d); }
+      else { self._renderActivating('recover'); }   /* guaranteed recovery UI */
+    })();
+  },
+
+  async _payuActivateRetry(){
+    var self=this;
+    this._renderActivating('working');
+    /* Shorter re-poll (~20s) when the user taps the recovery button. */
+    var delays=[500,1500,2500,3500,5000,7000];
+    var i=0;
+    (async function tryOnce(){
+      var ok=false;
+      try { ok=await self.reconcileSubFromServer(); } catch(e){}
+      if(ok){ self._payuActivateSuccess(); return; }
+      if(i<delays.length){ var d=delays[i++]; setTimeout(tryOnce, d); }
+      else { self._renderActivating('recover'); }
     })();
   },
 

@@ -12,7 +12,7 @@
  *   the new worker, skips waiting, and purges every old cache on activate.
  */
 
-const SW_VERSION = 'v33_42_sw_netfirst';
+const SW_VERSION = 'v33_44_activate_hard';
 const CACHE = 'hisaabnow-' + SW_VERSION;
 
 /* ---- install: precache the shell (best-effort) + take over immediately ---- */
