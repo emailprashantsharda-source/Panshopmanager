@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_53_desktop_lock';
+    window.HISAABNOW_BUILD = 'v33_56_desktop_fit';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -66852,7 +66852,8 @@ html[data-shell="desktop"] #pg-settings .toggle {
 
 .hnd-plans-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 360px));
+  justify-content: center;
   gap: 14px;
   padding: 0 28px 28px;
 }
@@ -67788,6 +67789,32 @@ html[data-shell="desktop"] body.hnd-on-dash .hnd-d-munim .hnd-d-munim-step:hover
   align-items: baseline !important;
   gap: 6px !important;
   flex-wrap: wrap !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FIX 3 · Desktop plans modal — fit ONE view, no scroll.
+   Compresses vertical rhythm; all features retained.
+   ═══════════════════════════════════════════════════════ */
+.hnd-plans-h { padding: 16px 70px 8px 32px !important; }
+.hnd-plans-h-tag { margin-bottom: 3px !important; }
+.hnd-plans-h-title { font-size: 21px !important; line-height: 1.12 !important; }
+.hnd-plans-h-sub { font-size: 12px !important; margin: 4px 0 0 !important; }
+.hnd-plans-toggle-wrap { padding: 10px 0 12px !important; }
+.hnd-plans-toggle button { padding: 6px 18px !important; font-size: 12.5px !important; }
+.hnd-plans-grid { padding: 0 32px 18px !important; gap: 14px !important; }
+.hnd-plan-card { padding: 16px 20px 16px !important; }
+.hnd-plan-badge { top: -9px !important; padding: 4px 11px !important; }
+.hnd-plan-tier { margin-bottom: 5px !important; }
+.hnd-plan-num { font-size: 32px !important; margin-bottom: 2px !important; }
+.hnd-plan-period { font-size: 12px !important; margin-bottom: 2px !important; }
+.hnd-plan-save { margin-top: 1px !important; margin-bottom: 3px !important; padding: 2px 8px !important; }
+.hnd-plan-feats { margin: 9px 0 10px !important; }
+.hnd-plan-feats li { font-size: 12px !important; padding: 2.5px 0 2.5px 21px !important; line-height: 1.3 !important; }
+.hnd-plan-feats li::before { top: 3px !important; }
+.hnd-plan-feats li.grp { font-size: 10px !important; padding-top: 8px !important; padding-bottom: 2px !important; }
+.hnd-plan-cta { padding: 10px !important; }
+@media (max-width: 800px){
+  .hnd-plans-grid { grid-template-columns: 1fr !important; }
 }
 </style>
 
