@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_31_payu';
+    window.HISAABNOW_BUILD = 'v33_32_payu_notrial';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5387,7 +5387,7 @@ html[data-current-role="manager"] body{
     'sub.choosePlan':          { en: 'Choose a plan',              hi: 'प्लान चुनें' },
 
     /* Subscription / Trial banner (Tranche A) */
-    'sub.trialExpiredCta':     { en: 'Trial expired · Choose plan', hi: 'ट्रायल खत्म · प्लान चुनें' },
+    'sub.trialExpiredCta':     { en: 'Subscribe · Choose plan', hi: 'सब्सक्राइब करें · प्लान चुनें' },
     'sub.trialEndsToday':      { en: 'Trial ends today',           hi: 'ट्रायल आज खत्म' },
     'sub.oneDayLeftTrial':     { en: '1 day left in trial',        hi: 'ट्रायल में 1 दिन बाकी' },
     'sub.oneDayLeft':          { en: '1 day left',                 hi: '1 दिन बाकी' },
@@ -5403,7 +5403,7 @@ html[data-current-role="manager"] body{
     'sub.tagBasic':            { en: 'BASIC',                      hi: 'बेसिक' },
     'sub.tagPro':              { en: '⭐ PRO',                     hi: '⭐ प्रो' },
     'sub.tagKing':             { en: '👑 KING',                    hi: '👑 किंग' },
-    'sub.trialExpiredTitle':   { en: 'Trial expired',              hi: 'ट्रायल खत्म' },
+    'sub.trialExpiredTitle':   { en: 'Choose your plan',           hi: 'अपना प्लान चुनें' },
     'sub.pickPlanKeepUsing':   { en: 'Pick a plan to keep using HisaabNow', hi: 'HisaabNow चलाने के लिए प्लान चुनें' },
     'sub.subscribeNowKeep':    { en: 'Subscribe now to keep your data and bills', hi: 'डेटा और बिल रखने के लिए अभी सब्सक्राइब करें' },
     'sub.enjoyingLockIn':      { en: 'Enjoying HisaabNow? Lock it in.', hi: 'HisaabNow पसंद आया? पक्का कर लें।' },
@@ -17327,14 +17327,14 @@ const App = {
         <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#94A3B8,#64748B);color:#fff;margin-bottom:12px">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
-        <div style="font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.018em">${wasTrial ? 'Your trial has ended' : 'Your subscription expired'}</div>
-        <div style="font-size:14px;color:var(--t2);font-weight:600;margin-top:6px;line-height:1.5;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? this._T('subs.pickKeepTracking','Pick a plan to keep tracking sales, customers, and inventory.') : this._T('subs.renewMakeBills','Renew to continue making bills and accessing AI insights.')}</div>
+        <div style="font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.018em">${wasTrial ? 'Subscribe to start' : 'Your subscription expired'}</div>
+        <div style="font-size:14px;color:var(--t2);font-weight:600;margin-top:6px;line-height:1.5;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? this._T('subs.pickKeepTracking','Choose a plan to start billing, tracking sales, customers, and inventory.') : this._T('subs.renewMakeBills','Renew to continue making bills and accessing AI insights.')}</div>
       </div>
       <div class="ps-actions">
         <button type="button" class="ps-btn ps-btn-primary" onclick="App.closeProductSheet(); setTimeout(() => App.openSubscription(), 200)">${wasTrial ? 'See plans' : 'Renew now'}</button>
       </div>
     `;
-    this.openInfoSheet({ title: wasTrial ? 'Upgrade to continue' : 'Renew to continue', sub: 'Subscription required', bodyHTML: body });
+    this.openInfoSheet({ title: wasTrial ? 'Subscribe to continue' : 'Renew to continue', sub: 'Subscription required', bodyHTML: body });
   },
 
   cancelSale(){
@@ -26528,8 +26528,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       headerHtml = `
         <div style="padding:18px;background:linear-gradient(135deg,#94A3B8 0%,#64748B 100%);border-radius:16px;margin-bottom:16px;color:#fff;box-shadow:0 8px 20px -4px rgba(100,116,139,.4)">
           <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.85;margin-bottom:6px">${this._T("subs.subscription","Subscription")}</div>
-          <div style="font-size:22px;font-weight:900;letter-spacing:-.02em">${tCfg.name}</div>
-          <div style="font-size:13px;opacity:.85;font-weight:600;margin-top:4px">${this._T("subs.pickPlanContinue","Pick a plan below to continue using HisaabNow")}</div>
+          <div style="font-size:22px;font-weight:900;letter-spacing:-.02em">${this._T("subs.chooseYourPlan","Choose your plan")}</div>
+          <div style="font-size:13px;opacity:.85;font-weight:600;margin-top:4px">${this._T("subs.pickPlanContinue","Pick a plan below to start using HisaabNow")}</div>
         </div>`;
     } else if (isPaid) {
       headerHtml = `
@@ -26557,9 +26557,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let dockHtml = '';
     if (!isPaid || isExpired) {
       const plans = [
-        { tier: 'basic', cycle: 'monthly', price: '₹99',   per: '/mo', label: 'Basic',  desc: this._T('subs.basicDesc','1 outlet · all features') },
-        { tier: 'pro',   cycle: 'annual',  price: '₹490',  per: '/yr', label: 'Pro',    desc: this._T('subs.proDesc','1 outlet · save 60% vs monthly'), highlight: true },
-        { tier: 'king',  cycle: 'annual',  price: '₹1,499',per: '/yr', label: 'King',   desc: this._T('subs.kingDesc','Up to 5 outlets · for chains') }
+        { tier: 'pro',   cycle: 'monthly', price: '₹99',    per: '/mo', label: 'Pro Monthly',   desc: this._T('subs.proMo','1 outlet · all features') },
+        { tier: 'pro',   cycle: 'annual',  price: '₹990',   per: '/yr', label: 'Pro Annual',    desc: this._T('subs.proYr','1 outlet · save ₹198/yr'), highlight: true },
+        { tier: 'king',  cycle: 'monthly', price: '₹199',   per: '/mo', label: 'King Monthly',  desc: this._T('subs.kingMo','Up to 5 outlets · for chains') },
+        { tier: 'king',  cycle: 'annual',  price: '₹1,990', per: '/yr', label: 'King Annual',   desc: this._T('subs.kingYr','Up to 5 outlets · save ₹398/yr') }
       ];
 
       const selectedTier = this._selectedSubTier || 'pro';
@@ -38859,14 +38860,14 @@ log('module loaded — call StaffDiscovery.discoverFromUser(user) after sign-in'
 'use strict';
 if (window.Subs) return;
 
-var TRIAL_DAYS    = 7;
+var TRIAL_DAYS    = 0;
 var STORAGE_KEY   = 'kf_subs';
 
 var TIERS = {
   trial:   { name: 'Trial',    monthlyPrice: 10,  annualPrice: null, maxShops: 5, color: '#F59E0B' },
   basic:   { name: 'Basic',    monthlyPrice: 99,  annualPrice: null, maxShops: 1, color: '#0891B2' },
-  pro:     { name: 'Pro',      monthlyPrice: null, annualPrice: 490,  maxShops: 1, color: '#000000' },
-  king:    { name: 'King',     monthlyPrice: null, annualPrice: 1499, maxShops: 5, color: '#DC2626' },
+  pro:     { name: 'Pro',      monthlyPrice: 99,   annualPrice: 990,  maxShops: 1, color: '#000000' },
+  king:    { name: 'King',     monthlyPrice: 199,  annualPrice: 1990, maxShops: 5, color: '#DC2626' },
   'trial-expired': { name: 'Trial expired', monthlyPrice: 0, annualPrice: 0, maxShops: 1, color: '#94A3B8' },
   expired: { name: 'Expired',  monthlyPrice: 0, annualPrice: 0, maxShops: 1, color: '#94A3B8' }
 };
@@ -38924,17 +38925,8 @@ function _recomputeTier(){
      login flows that haven't yet resolved currentUserId (e.g. just
      after OTP verify) still match via the phone number.
   ═══════════════════════════════════════════════════════════════ */
-  var ADMIN_UIDS = [
-    '9AV0qb9zfLakdw0oua4cBV7YF6Z2'   /* Prashant — primary admin */
-  ];
-  var ADMIN_PHONES = [
-    '7838361200',    /* Dev test number — Prashant */
-    '+917838361200',
-    '917838361200',
-    '9999999995',    /* Dev test number — King access bypass */
-    '+919999999995',
-    '919999999995'
-  ];
+  var ADMIN_UIDS = []; /* King bypass disabled */
+  var ADMIN_PHONES = []; /* King bypass disabled */
 
   try {
     var uid = window.currentUserId || null;
@@ -72108,8 +72100,8 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
        Same identity check as _recomputeTier + TrialSync.
     ═══════════════════════════════════════════════════════════════ */
     try {
-      var ADMIN_UIDS = ['9AV0qb9zfLakdw0oua4cBV7YF6Z2'];
-      var ADMIN_PHONES_RAW = ['7838361200', '9999999995'];
+      var ADMIN_UIDS = []; /* King bypass disabled */
+      var ADMIN_PHONES_RAW = []; /* King bypass disabled */
       var uid = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid) || window.currentUserId || null;
       var phone = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || null;
       var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
@@ -72309,8 +72301,8 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
        TrialSync v2 doesn't overwrite the bypass after auth resolves.
     ═══════════════════════════════════════════════════════════════ */
     try {
-      var ADMIN_UIDS = ['9AV0qb9zfLakdw0oua4cBV7YF6Z2'];
-      var ADMIN_PHONES_RAW = ['7838361200', '9999999995'];
+      var ADMIN_UIDS = []; /* King bypass disabled */
+      var ADMIN_PHONES_RAW = []; /* King bypass disabled */
       var uid = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.uid) || window.currentUserId || null;
       var phone = (window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || null;
       var phoneClean = phone ? String(phone).replace(/[^\d]/g, '') : '';
