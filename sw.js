@@ -1,10 +1,11 @@
 /* HisaabNow service worker — network-first HTML shell.
  *
  * ROOT-CAUSE FIX for "new build won't show until I clear cache":
- *   The HTML document (index.html) is served NETWORK-FIRST. When the device
- *   is online, the freshest index.html is always fetched, so a new deploy
- *   loads on the very next open — no manual cache clear, ever. The cached
- *   copy is only used as an OFFLINE fallback.
+ *   The HTML document (index.html) is served STALE-WHILE-REVALIDATE: the cached
+ *   app renders INSTANTLY, while a fresh copy is fetched in the background for
+ *   the next open. A SW_VERSION bump pre-caches a fresh index.html at install,
+ *   so deploys still reach users automatically — with no 3.8MB download ever
+ *   blocking the screen, and no manual cache clear.
  *
  * DEPLOY RULE: bump SW_VERSION on every deploy (easiest: set it to the same
  *   value as window.HISAABNOW_BUILD in index.html). Changing this one line
@@ -12,7 +13,7 @@
  *   the new worker, skips waiting, and purges every old cache on activate.
  */
 
-const SW_VERSION = 'v33_44_activate_hard';
+const SW_VERSION = 'v33_45_swr_fast';
 const CACHE = 'hisaabnow-' + SW_VERSION;
 
 /* ---- install: precache the shell (best-effort) + take over immediately ---- */
@@ -72,19 +73,23 @@ self.addEventListener('fetch', function (event) {
     url.pathname.endsWith('/') ||
     url.pathname.endsWith('/index.html');
 
-  /* HTML document → NETWORK-FIRST (newest build wins), cache only for offline. */
+  /* HTML document → STALE-WHILE-REVALIDATE.
+     Serve the cached app INSTANTLY (fast load, like before), and refresh the
+     cache in the background so the next open shows the newest build. On a
+     SW_VERSION bump the new worker pre-caches a fresh index.html at install,
+     so a deploy still reaches users without any manual cache clear — the
+     3.8MB download never blocks the screen. */
   if (isNavigation) {
     event.respondWith(
-      fetch(req).then(function (res) {
-        if (res && res.status === 200) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put('./index.html', copy); }).catch(function () {});
-        }
-        return res;
-      }).catch(function () {
-        return caches.match('./index.html').then(function (m) {
-          return m || caches.match(req);
-        });
+      caches.match('./index.html').then(function (cached) {
+        var fresh = fetch(req).then(function (res) {
+          if (res && res.status === 200) {
+            var copy = res.clone();
+            caches.open(CACHE).then(function (c) { c.put('./index.html', copy); }).catch(function () {});
+          }
+          return res;
+        }).catch(function () { return cached; });
+        return cached || fresh;   /* instant when cached; network only on first ever load */
       })
     );
     return;
