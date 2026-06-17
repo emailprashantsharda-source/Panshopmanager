@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_52_cream_header';
+    window.HISAABNOW_BUILD = 'v33_53_desktop_lock';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -66059,18 +66059,17 @@ html[data-shell="desktop"] #pg-settings .toggle {
 .hnd-lock-icon {
   width: 84px; height: 84px;
   border-radius: 21px;
-  background: linear-gradient(135deg, #FEE2E2, #FCA5A5);
+  background: radial-gradient(120% 90% at 50% 0%, #2a2a2a, #0A0A0A 60%, #000);
   display: grid; place-items: center;
   margin: 0 auto 24px;
-  font-size: 38px;
-  box-shadow: 0 12px 32px -8px rgba(220,38,38,0.5);
+  box-shadow: 0 0 0 1px rgba(250,204,21,.4), 0 12px 32px -8px rgba(0,0,0,0.6);
 }
 .hnd-lock-tag {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--hnd-gold, #D4A574);
+  color: #FACC15;
   margin-bottom: 12px;
 }
 .hnd-lock-title {
@@ -66097,8 +66096,8 @@ html[data-shell="desktop"] #pg-settings .toggle {
 }
 .hnd-lock-cta {
   padding: 14px 24px;
-  background: linear-gradient(135deg, var(--hnd-gold, #D4A574), #B88A56);
-  color: #0A0A0A;
+  background: linear-gradient(135deg, #E8C24A, #B8860B);
+  color: #1a1300;
   border: 0;
   border-radius: 12px;
   font-size: 15px;
@@ -66107,7 +66106,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
   font-family: inherit;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   letter-spacing: -.005em;
-  box-shadow: 0 10px 28px -6px rgba(212,165,116,0.4);
+  box-shadow: 0 0 0 1px rgba(184,134,11,.4), 0 10px 28px -6px rgba(184,134,11,0.5);
   transition: transform .12s;
 }
 .hnd-lock-cta:hover { transform: translateY(-1px); }
@@ -66139,7 +66138,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
 <!-- ── App lock overlay markup ── -->
 <div id="hnd-lock-overlay" role="dialog" aria-modal="true">
   <div class="hnd-lock-content">
-    <div class="hnd-lock-icon">🔒</div>
+    <div class="hnd-lock-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg></div>
     <div class="hnd-lock-tag" id="hnd-lock-tag">SUBSCRIBE</div>
     <h1 class="hnd-lock-title" id="hnd-lock-title">Subscribe to unlock HisaabNow</h1>
     <p class="hnd-lock-sub" id="hnd-lock-sub">Subscribe to keep your <b>shop data, bills, and customers</b> safe — and continue making sales without interruption.</p>
@@ -66405,8 +66404,10 @@ html[data-shell="desktop"] #pg-settings .toggle {
   ═══════════════════════════════════════════════════════ */
   function isTrialExpired(){
     try {
+      /* Match mobile: allow 5 free bills, then lock. App._shouldGateBilling()
+         is true only when not paid AND the 5 free bills are used up. */
+      if (window.App && typeof App._shouldGateBilling === 'function') return App._shouldGateBilling();
       if (!window.Subs) return false;
-      /* No free trial: lock whenever the user is not on an active paid plan. */
       if (typeof Subs.isPaid === 'function' && Subs.isPaid()) return false;
       if (typeof Subs.isExpired === 'function') return Subs.isExpired();
       return false;
