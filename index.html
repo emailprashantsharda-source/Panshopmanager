@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_30_nativeApis';
+    window.HISAABNOW_BUILD = 'v33_31_payu';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3729,8 +3729,8 @@ html[data-current-role="manager"] body{
 
       <div class="menu-item" onclick="App.openManageSubscription()">
         <div class="menu-icon" style="background:#E8F5E9;color:#2E7D32"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5V3.5l13.5 8.5L3 20.5zm15-7l-3-2 3-2 3 2-3 2z"/></svg></div>
-        <div class="menu-text"><div class="menu-label" data-i18n="settings.manageSub">Manage subscription</div><div class="menu-sub" data-i18n="settings.opensPlay">Opens Google Play</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <div class="menu-text"><div class="menu-label" data-i18n="settings.manageSub">Manage subscription</div><div class="menu-sub" data-i18n="settings.opensPlay">View your plan</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <div class="menu-item" onclick="App.restorePurchases()">
         <div class="menu-icon" style="background:#FFF3E0;color:#E65100"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
@@ -4951,7 +4951,7 @@ html[data-current-role="manager"] body{
     /* ── Settings page expansion ── */
     'settings.tapToView':      { en: 'Tap to view plans',        hi: 'प्लान देखने के लिए टैप करें' },
     'settings.manageSub':      { en: 'Manage subscription',      hi: 'सब्सक्रिप्शन मैनेज करें' },
-    'settings.opensPlay':      { en: 'Opens Google Play',        hi: 'Google Play खुलेगा' },
+    'settings.opensPlay':      { en: 'View your plan',           hi: 'अपना प्लान देखें' },
     'settings.restore':        { en: 'Restore purchases',        hi: 'खरीदारी रिस्टोर करें' },
     'settings.restoreSub':     { en: 'Re-sync your subscription', hi: 'सब्सक्रिप्शन फिर से सिंक करें' },
     'settings.bizType':        { en: 'Type',                     hi: 'प्रकार' },
@@ -5473,9 +5473,7 @@ html[data-current-role="manager"] body{
     'subs.choosePlan':         { en: 'Choose a plan',                   hi: 'प्लान चुनें' },
     'subs.bestValue':          { en: 'BEST VALUE',                      hi: 'सबसे बेहतर' },
     'subs.subscribe':          { en: 'Subscribe',                       hi: 'सब्सक्राइब करें' },
-    'subs.subViaPlay':         { en: 'Subscribe via Google Play',       hi: 'Google Play से सब्सक्राइब करें' },
-    'subs.cancelAnytime':      { en: 'Cancel anytime · Managed by Google Play', hi: 'कभी भी कैंसल करें · Google Play संभालेगा' },
-    'subs.cancelAnytimeGst':   { en: 'Cancel anytime · Managed by Google Play · Prices include GST', hi: 'कभी भी कैंसल करें · Google Play संभालेगा · दाम में GST शामिल' },
+    'subs.cancelAnytimePayu':  { en: 'Secure payment by PayU · No auto-renewal · GST included', hi: 'PayU से सुरक्षित भुगतान · ऑटो-रिन्यू नहीं · GST शामिल' },
     'subs.selected':           { en: 'Selected',                        hi: 'चुना गया' },
     'subs.allPlansInclude':    { en: 'All paid plans include',          hi: 'सभी पेड प्लान में मिलेगा' },
     'subs.featBills':          { en: 'Unlimited bills + customers',     hi: 'बेहिसाब बिल + ग्राहक' },
@@ -13668,7 +13666,7 @@ const App = {
         subStatusEl.textContent = 'Tap to renew';
       } else {
         subTierEl.textContent = (tCfg.name || 'Pro') + ' plan';
-        subStatusEl.textContent = days + ' day' + (days === 1 ? '' : 's') + ' left · managed by Google Play';
+        subStatusEl.textContent = days + ' day' + (days === 1 ? '' : 's') + ' left';
       }
     }
   },
@@ -26597,11 +26595,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         }).join('')}
       `;
 
-      const inTWA = !!window.__hnIsTWA;
-      const ctaText = inTWA ? this._T('subs.subViaPlay','Subscribe via Google Play') : this._T('subs.subscribe','Subscribe');
-      const footText = inTWA
-        ? this._T('subs.cancelAnytimeGst','Cancel anytime · Managed by Google Play · Prices include GST')
-        : this._T('subs.cancelAnytime','Cancel anytime · Managed by Google Play');
+      const ctaText = this._T('subs.subscribe','Subscribe');
+      const footText = this._T('subs.cancelAnytimePayu','Secure payment by PayU · No auto-renewal · GST included');
       dockHtml = `
         <div style="background:linear-gradient(180deg,#fff 0%,#FAF9FF 100%);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-top:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -26669,34 +26664,61 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
     this.closeProductSheet();
 
-    if (window.PlayBilling && typeof PlayBilling.isReady === 'function' && PlayBilling.isReady()) {
-      this.toast(this._T('toast.openPlayBilling', 'Opening Play Billing…'));
-      try {
-        const result = await PlayBilling.subscribe(tier, cycle);
-        if (result && result.ok) {
+    if (!window.kfCallable || !window.kfFunctions) {
+      this.toast('Still loading — try again in a moment.');
+      return;
+    }
 
-          Subs.markPurchased(tier, cycle, result.purchaseToken || 'pending', result.expiryMs);
-          this.toast('✓ Subscribed to ' + Subs.getTierConfig(tier).name);
-
-        } else {
-          const errMsg = result && result.error;
-          if (errMsg === 'user_cancelled' || errMsg === 'cancelled') {
-            this.toast(this._T('toast.cancelled', 'Cancelled'));
-          } else {
-            this.toast(this._T('toast.purchaseFailPrefix','Purchase failed') + ' · ' + (errMsg || 'unknown'));
-          }
-        }
-      } catch (e) {
-        console.error('[App] subscribeTo failed:', e);
-        this.toast(this._T('toast.purchaseFailPrefix','Purchase failed') + ' · ' + (e.message || 'unknown'));
+    this.toast('Opening secure checkout…');
+    try {
+      const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
+      const res = await fn({ tier: tier, cycle: cycle });
+      const d = res && res.data;
+      if (!d || !d.paymentUrl || !d.params) {
+        this.toast('Could not start payment. Try again.');
+        return;
       }
-    } else {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = d.paymentUrl;
+      form.style.display = 'none';
+      Object.keys(d.params).forEach(function(k){
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = (d.params[k] == null) ? '' : String(d.params[k]);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    } catch (e) {
+      console.error('[PayU] subscribeTo failed:', e);
+      this.toast(this._T('toast.purchaseFailPrefix','Payment failed') + ' · ' + (e.message || 'unknown'));
+    }
+  },
 
-      const cfg = Subs.getTierConfig(tier);
-      if (await this.confirm({title: 'Play Billing not available in this browser', message: 'Apply ' + cfg.name + ' (' + cycle + ') as test mode? OK = mark as subscribed locally.', confirmText: 'Apply test mode'})) {
-        Subs.markPurchased(tier, cycle, 'dev_token', null);
-        this.toast(this._T('toast.testSub', '✓ Test subscription · ') + cfg.name);
-      }
+  async reconcileSubFromServer(){
+    try {
+      if (!window.kfCallable || !window.kfFunctions || !window.Subs) return false;
+      const fn = window.kfCallable(window.kfFunctions, 'getSubscription');
+      const res = await fn({});
+      const d = res && res.data;
+      if (!d || d.active !== true || !d.plan) return false;
+      const MAP = {
+        pro_monthly:['pro','monthly'], pro_annual:['pro','annual'],
+        business_monthly:['king','monthly'], business_annual:['king','annual'],
+        pro:['pro','monthly'], king:['king','monthly'], basic:['basic','monthly'],
+        monthly:['pro','monthly'], annual:['pro','annual']
+      };
+      const m = MAP[d.plan];
+      if (!m) return false;
+      const expiryMs = d.expiry ? new Date(d.expiry).getTime() : null;
+      Subs.markPurchased(m[0], m[1], 'payu', expiryMs);
+      if (typeof this._syncFromStore === 'function') { try { this._syncFromStore(); } catch(e){} }
+      return true;
+    } catch (e) {
+      console.warn('[PayU] reconcileSubFromServer failed:', e && e.message);
+      return false;
     }
   },
 
@@ -26707,73 +26729,56 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   openManageSubscription(){
-    const tier = (window.Subs && Subs.getCurrentTier()) || 'pro';
-    const skuMap = { basic:'hisaab_basic', pro:'hisaab_pro', king:'hisaab_king' };
-    const sku = skuMap[tier];
-    const pkg = 'com.hisaabnow.app';
-    let url = `https://play.google.com/store/account/subscriptions?package=${pkg}`;
-    if (sku) url += `&sku=${sku}`;
-    window.open(url, '_blank', 'noopener');
     this.closeProductSheet();
+    setTimeout(() => this.openSubscription(), 200);
   },
 
   async restorePurchases(){
-    this.toast(this._T('toast.checkingPurch', 'Checking for purchases…'));
+    this.toast(this._T('toast.checkingPurch', 'Checking your subscription…'));
     try {
-      let restored = 0;
-
-      if (window.PlayBilling && typeof PlayBilling.restorePurchases === 'function' && PlayBilling.isReady()) {
-        const result = await PlayBilling.restorePurchases();
-        if (result && result.ok) restored = result.count || 0;
-      }
-
-      if (window.Subs && typeof Subs.reconcileFromPlay === 'function') {
-        await Subs.reconcileFromPlay();
-      }
+      const ok = await this.reconcileSubFromServer();
       const tier = (window.Subs && Subs.getCurrentTier()) || 'trial';
       const tCfg = (window.Subs && Subs.getTierConfig(tier)) || {};
-      if (restored > 0 || tCfg.name && tCfg.name !== 'Trial' && tCfg.name !== 'Trial expired') {
+      if (ok || (tCfg.name && tCfg.name !== 'Trial' && tCfg.name !== 'Trial expired')) {
         this.toast('✓ Restored: ' + (tCfg.name || tier) + ' plan');
       } else {
-        this.toast(this._T('toast.noPrevPurch', 'No previous purchases found'));
+        this.toast(this._T('toast.noPrevPurch', 'No active subscription found'));
       }
-
       this.closeProductSheet();
       setTimeout(() => this.openSubscription(), 300);
     } catch (e) {
       console.error('[App] restorePurchases failed:', e);
-      this.toast(this._T('toast.restoreFail', 'Restore failed · check internet and retry'));
+      this.toast(this._T('toast.restoreFail', 'Sync failed · check internet and retry'));
     }
   },
 
   openRefundPolicy(){
     const body = `
       <div style="margin-bottom:14px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:14px;font-size:13.5px;color:#1E293B;font-weight:600;line-height:1.55">
-        📜 Subscription refunds are handled by Google Play, not by HisaabNow directly.
+        📜 Payments are processed securely by PayU. For any refund or billing help, just message us — we’re happy to sort it out.
       </div>
 
       <div style="margin-bottom:14px">
         <div class="ps-label">How to request a refund</div>
         <ol style="margin:8px 0 0 18px;padding:0;font-size:13.5px;color:var(--t1);font-weight:600;line-height:1.65">
-          <li>Open the Play Store app on your phone</li>
-          <li>Tap your profile icon → Payments &amp; subscriptions</li>
-          <li>Tap Budget &amp; history → find your HisaabNow purchase</li>
-          <li>Tap the order → "Request refund"</li>
+          <li>Message us on WhatsApp using the button below</li>
+          <li>Share your registered phone number and payment date</li>
+          <li>We verify the payment and process eligible refunds</li>
         </ol>
       </div>
 
       <div style="margin-bottom:14px">
         <div class="ps-label">Refund timeline</div>
         <div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 14px;font-size:13px;color:var(--t1);font-weight:600;line-height:1.6">
-          <div><strong>Within 48 hours</strong> of purchase — Play Store typically grants automatic refunds.</div>
-          <div style="margin-top:6px"><strong>After 48 hours</strong> — refunds are at Google Play's discretion. You can still request, but it requires Google's review.</div>
+          <div><strong>Within 7 days</strong> of payment — full refund if the paid features have not been actively used.</div>
+          <div style="margin-top:6px"><strong>After 7 days</strong> — reviewed case by case. Reach out and we’ll help.</div>
         </div>
       </div>
 
       <div style="margin-bottom:14px">
         <div class="ps-label">Cancellation</div>
         <div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 14px;font-size:13px;color:var(--t1);font-weight:600;line-height:1.6">
-          You can cancel anytime via Play Store → Subscriptions. Cancellation stops the next billing cycle. You keep access until the end of the current paid period — no early termination.
+          Your plan is a one-time payment for the selected period — it does not auto-renew, so there is nothing to cancel. You keep full access until it expires, then simply renew whenever you like.
         </div>
       </div>
 
@@ -81187,5 +81192,33 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 </script>
 <!-- =================== END v33_30 Native Features Module =================== -->
 
+<script>
+(function(){
+  try {
+    var sp = new URLSearchParams(location.search);
+    var payu = sp.get('payu');
+    if (!payu) return;
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+    var tries = 0;
+    var timer = setInterval(function(){
+      tries++;
+      var ready = window.App && window.kfFunctions && window.kfCallable &&
+                  window.kfAuth && window.kfAuth.currentUser && App.reconcileSubFromServer;
+      if (payu === 'success' && ready) {
+        clearInterval(timer);
+        App.reconcileSubFromServer().then(function(ok){
+          if (App.toast) App.toast(ok ? '✓ Payment successful — subscription active'
+                                       : '✓ Payment received — syncing…');
+        });
+      } else if (payu !== 'success' && window.App && App.toast) {
+        clearInterval(timer);
+        App.toast('Payment was not completed. You can try again.');
+      } else if (tries > 40) {
+        clearInterval(timer);
+      }
+    }, 500);
+  } catch(e){}
+})();
+</script>
 </body>
 </html>
