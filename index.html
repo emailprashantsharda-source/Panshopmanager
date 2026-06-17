@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_38_review_pay';
+    window.HISAABNOW_BUILD = 'v33_39_review_theme';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26790,7 +26790,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         + '</div>'
         + '<div class="hnrp-scroll">'
           + '<div class="hnrp-plan">'
-            + '<div class="hnrp-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg></div>'
+            + '<div class="hnrp-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg></div>'
             + '<div class="hnrp-plan-main"><div class="hnrp-nm">' + info.name + ' ' + badge + '</div><div class="hnrp-sub">' + info.desc + ' \u00b7 ' + (cycle==='annual'?'12 months':'1 month') + '</div></div>'
             + '<div class="hnrp-price">' + priceBlock + '</div>'
           + '</div>'
@@ -26839,7 +26839,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       '#hn-review-overlay.hnrp-open{display:block}',
       '.hnrp-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.5);opacity:0;transition:opacity .2s}',
       '#hn-review-overlay.hnrp-open .hnrp-backdrop{opacity:1}',
-      '.hnrp-sheet{position:absolute;left:50%;bottom:0;transform:translate(-50%,100%);width:100%;max-width:480px;background:var(--bg,#F9FAFB);border-radius:24px 24px 0 0;display:flex;flex-direction:column;max-height:94vh;transition:transform .26s cubic-bezier(.32,.72,0,1);box-shadow:0 -10px 40px rgba(0,0,0,.22)}',
+      '.hnrp-sheet{position:absolute;left:50%;bottom:0;transform:translate(-50%,100%);width:100%;max-width:480px;background:#FFFBF5;font-family:Inter,system-ui,sans-serif;border-radius:24px 24px 0 0;display:flex;flex-direction:column;max-height:94vh;transition:transform .26s cubic-bezier(.32,.72,0,1);box-shadow:0 -10px 40px rgba(0,0,0,.22)}',
       '#hn-review-overlay.hnrp-open .hnrp-sheet{transform:translate(-50%,0)}',
       '.hnrp-grip{width:40px;height:5px;border-radius:99px;background:#D6D3CE;margin:9px auto 2px;flex:0 0 auto}',
       '.hnrp-head{display:flex;align-items:center;gap:12px;padding:8px 18px 12px;flex:0 0 auto}',
@@ -26858,13 +26858,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       '.hnrp-price s{display:block;font-size:11.5px;color:var(--t3,#94A3B8);font-weight:700}',
       '.hnrp-per{font-size:12px;color:var(--t3,#94A3B8);font-weight:700}',
       '.hnrp-change{display:block;text-align:center;margin:10px 0 0;font-size:12.5px;font-weight:800;color:var(--p-deep,#E64A1B);background:none;border:none;width:100%;padding:6px;cursor:pointer;font-family:inherit}',
-      '.hnrp-save{margin-top:13px;background:#ECFDF5;border:1px solid #BBF7D0;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px}',
-      '.hnrp-save-dot{width:26px;height:26px;border-radius:8px;background:#16A34A;flex:0 0 auto;display:flex;align-items:center;justify-content:center}',
-      '.hnrp-save-tx{font-size:13px;font-weight:700;color:#15803D;line-height:1.35}',
+      '.hnrp-save{margin-top:13px;background:#FBF7EC;border:1px solid #EFE2B8;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px}',
+      '.hnrp-save-dot{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#E8C24A,#B8860B);flex:0 0 auto;display:flex;align-items:center;justify-content:center}',
+      '.hnrp-save-tx{font-size:13px;font-weight:700;color:#2A2A2A;line-height:1.35}',
+      '.hnrp-save-tx b{color:#8A6A0A;font-weight:900}',
       '.hnrp-bill{margin-top:13px;background:#fff;border:1px solid var(--bd,#E5E7EB);border-radius:18px;padding:15px 16px}',
       '.hnrp-bill-ttl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t3,#94A3B8);margin-bottom:11px}',
       '.hnrp-row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:600;color:var(--t1,#1E293B);padding:6px 0}',
-      '.hnrp-free{color:#15803D;font-weight:800}',
+      '.hnrp-free{color:var(--success,#06C167);font-weight:800}',
       '.hnrp-mut{color:var(--t2,#64748B);font-weight:600}',
       '.hnrp-hr{height:1px;background:var(--bd,#E5E7EB);margin:9px 0}',
       '.hnrp-topay{display:flex;justify-content:space-between;align-items:baseline;padding-top:3px}',
@@ -26874,7 +26875,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       '.hnrp-trust{margin:13px 0 4px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}',
       '.hnrp-pill{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--bd,#E5E7EB);border-radius:99px;padding:5px 10px;color:var(--t2,#64748B);font-size:11.5px;font-weight:700}',
       '.hnrp-paybar{flex:0 0 auto;background:#fff;border-top:1px solid var(--bd,#E5E7EB);padding:13px 18px calc(13px + env(safe-area-inset-bottom))}',
-      '.hnrp-paybtn{width:100%;border:none;border-radius:15px;padding:16px;color:#fff;font-family:inherit;font-weight:900;font-size:16px;letter-spacing:-.01em;cursor:pointer;background:linear-gradient(135deg,var(--p,#FF6B35),var(--p-deep,#E64A1B));box-shadow:0 10px 24px -6px rgba(230,74,27,.55);display:flex;align-items:center;justify-content:center;gap:9px}',
+      '.hnrp-paybtn{width:100%;border:none;border-radius:15px;padding:16px;color:#fff;font-family:inherit;font-weight:900;font-size:16px;letter-spacing:-.01em;cursor:pointer;background:linear-gradient(135deg,var(--p,#FF6B35),var(--p-deep,#E64A1B));box-shadow:0 10px 26px -8px rgba(184,134,11,.5);display:flex;align-items:center;justify-content:center;gap:9px}',
       '.hnrp-monthly{display:block;width:100%;text-align:center;background:none;border:none;margin-top:9px;font-size:12.5px;font-weight:700;color:var(--t2,#64748B);cursor:pointer;font-family:inherit}',
       '.hnrp-monthly b{color:var(--p-deep,#E64A1B);font-weight:800}'
     ].join('\n');
