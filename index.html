@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_42_sw_netfirst';
+    window.HISAABNOW_BUILD = 'v33_43_payu_warm';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26670,6 +26670,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const body = headerHtml + planPickerHtml + dockHtml + featuresHtml + footerHtml;
     const sub = isExpired ? this._T('subs.renewContinue','Renew to continue') : (isPaid ? `${tCfg.name} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}` : `${this._T('subs.trialShort','Trial')} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}`);
     this.openInfoSheet({ title: this._T('subs.subscription','Subscription'), sub: sub, bodyHTML: body, iconSvg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>' });
+    /* Warm payuCreateOrder + bolt SDK while the user reads the plans, so Pay
+       opens fast. Default selection is Pro Monthly; review re-prefetches the
+       actually-chosen plan (idempotent -- won't double-call the same plan). */
+    if (!isPaid || isExpired) { try { this._prefetchPayu('pro','monthly'); } catch(e){} }
   },
 
   selectSubPlan(tier, cycle){
@@ -26694,15 +26698,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this.toast('Opening secure checkout…');
     try {
       let d = null;
-      const pf = this._reviewOrder;
-      if (pf && pf.key === (tier + '|' + cycle) && pf.d) {
-        d = pf.d;                       /* prefetched during review — instant */
-      } else {
+      const key = tier + '|' + cycle;
+      const pf = this._reviewOrderPromise;
+      if (pf && pf.key === key && pf.p) {
+        d = await pf.p;                 /* await the warm-up call started on sheet open */
+      }
+      if (!d) {                         /* no prefetch, or it failed -> create now */
         const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
         const res = await fn({ tier: tier, cycle: cycle });
         d = res && res.data;
       }
       this._reviewOrder = null;
+      this._reviewOrderPromise = null;
       if (!d || !d.paymentUrl || !d.params) {
         this.toast('Could not start payment. Try again.');
         return;
@@ -26835,17 +26842,26 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   async _prefetchPayu(tier, cycle){
     try {
       if (!window.kfCallable || !window.kfFunctions) return;
+      const key = tier + '|' + cycle;
+      const cur = this._reviewOrderPromise;
+      if (cur && cur.key === key && cur.p) return;   /* already warming this plan */
+      const self = this;
       const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
-      const res = await fn({ tier: tier, cycle: cycle });
-      const d = res && res.data;
-      if (d && d.paymentUrl && d.params) {
-        this._reviewOrder = { key: tier + '|' + cycle, d: d };
-        const useRedirect = !!window.__hnIsTWA || this._isInAppWebView();
-        if (!useRedirect) {
-          const isTest = /test\.payu\.in|uat/i.test(String(d.paymentUrl));
-          this._loadBoltSdk(isTest).catch(function(){});
+      /* Remember the IN-FLIGHT promise (not just the resolved value) so a fast
+         Pay tap awaits this same call instead of firing a 2nd cold-start one. */
+      const p = fn({ tier: tier, cycle: cycle }).then(function(res){
+        const d = res && res.data;
+        if (d && d.paymentUrl && d.params) {
+          const useRedirect = !!window.__hnIsTWA || self._isInAppWebView();
+          if (!useRedirect) {
+            const isTest = /test\.payu\.in|uat/i.test(String(d.paymentUrl));
+            self._loadBoltSdk(isTest).catch(function(){});
+          }
+          return d;
         }
-      }
+        return null;
+      }).catch(function(){ return null; });
+      this._reviewOrderPromise = { key: key, p: p };
     } catch (e) { /* best-effort; Pay will create on demand */ }
   },
 
