@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_32_payu_notrial';
+    window.HISAABNOW_BUILD = 'v33_35_checkout_plus';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2633,6 +2633,19 @@ html[data-current-role="manager"] body{
   <!-- Phase 1.6 — Stale sync banner. Appears when last successful sync was
        >24h ago OR never (with local data present). Higher visibility than
        the pill because data loss risk is real, not just transient. -->
+  <div id="hn-subscribe-banner" style="display:none;margin:0 16px 12px;border-radius:16px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1E293B 0%,#0F172A 100%);padding:15px 16px;display:flex;align-items:center;gap:13px">
+      <div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#FF6B35,#E64A1B);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="#fff"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-weight:800;font-size:14.5px;letter-spacing:-.01em">Unlock HisaabNow</div>
+        <div style="color:#CBD5E1;font-size:12.5px;font-weight:600;margin-top:2px;line-height:1.4">Subscribe to bill, track customers & get AI insights.</div>
+      </div>
+      <button type="button" onclick="App.openSubscription()" style="flex:0 0 auto;background:#fff;color:#0F172A;border:none;padding:10px 15px;border-radius:11px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Subscribe</button>
+    </div>
+  </div>
+
   <div id="sync-stale-banner" style="display:none;margin:0 16px 12px;padding:14px 16px;border-radius:14px;font-size:13.5px;line-height:1.5">
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
       <div id="ssb-icon" style="font-size:20px;line-height:1;flex-shrink:0;margin-top:1px">⚠️</div>
@@ -5044,7 +5057,7 @@ html[data-current-role="manager"] body{
     'more.day':                { en: 'day',                      hi: 'दिन' },
     'more.days':               { en: 'days',                     hi: 'दिन' },
     'more.left':               { en: 'left',                     hi: 'बाकी' },
-    'more.expiredRenew':       { en: 'Expired · tap to renew',   hi: 'खत्म · रिन्यू के लिए टैप करें' },
+    'more.expiredRenew':       { en: 'Tap to subscribe',         hi: 'सब्सक्राइब के लिए टैप करें' },
     'more.planLc':             { en: 'plan',                     hi: 'प्लान' },
 
     /* ── Onboarding ── */
@@ -5397,7 +5410,7 @@ html[data-current-role="manager"] body{
     'sub.mShort':              { en: 'm',                          hi: 'मिनट' },
     'sub.sShort':              { en: 's',                          hi: 'सेकंड' },
     'sub.expired':             { en: 'Expired',                    hi: 'खत्म' },
-    'sub.tagExpired':          { en: '⚠ EXPIRED',                  hi: '⚠ खत्म' },
+    'sub.tagExpired':          { en: '✦ SUBSCRIBE',               hi: '✦ सब्सक्राइब' },
     'sub.tagUrgent':           { en: '🔥 URGENT',                  hi: '🔥 ज़रूरी' },
     'sub.tagFreeTrial':        { en: 'FREE TRIAL',                 hi: 'फ्री ट्रायल' },
     'sub.tagBasic':            { en: 'BASIC',                      hi: 'बेसिक' },
@@ -11132,6 +11145,7 @@ const App = {
     /* (v33_28) Cash drawer banners — morning prompt + evening reminder.
        Both self-hide based on conditions. Cheap to call on every render. */
     try { this._renderCashBanners(); } catch(e){ console.warn('[cashBanner] render:', e); }
+    try { this._renderSubscribeBanner(); } catch(e){}
 
     const greetName = document.getElementById('greet-name');
     if (greetName) {
@@ -12020,8 +12034,8 @@ const App = {
               fg = '#1E293B';
             }
           } else if (tier === 'trial-expired' || tier === 'expired') {
-            badgeText = '⚠ EXPIRED · TAP TO RENEW';
-            bg = 'rgba(239,68,68,.95)';
+            badgeText = '✦ SUBSCRIBE TO UNLOCK';
+            bg = 'rgba(255,107,53,.97)';
             fg = '#fff';
           } else if (tierCfg) {
 
@@ -17323,17 +17337,20 @@ const App = {
     const tier = window.Subs ? Subs.getCurrentTier() : 'expired';
     const wasTrial = tier === 'trial-expired';
     const body = `
-      <div style="text-align:center;padding:8px 0 18px">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#94A3B8,#64748B);color:#fff;margin-bottom:12px">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="text-align:center;padding:4px 0 4px">
+        <div style="display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--p),var(--p-deep));color:#fff;margin-bottom:10px">
+          <svg width="27" height="27" viewBox="0 0 24 24" fill="#fff"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
         </div>
         <div style="font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.018em">${wasTrial ? 'Subscribe to start' : 'Your subscription expired'}</div>
-        <div style="font-size:14px;color:var(--t2);font-weight:600;margin-top:6px;line-height:1.5;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? this._T('subs.pickKeepTracking','Choose a plan to start billing, tracking sales, customers, and inventory.') : this._T('subs.renewMakeBills','Renew to continue making bills and accessing AI insights.')}</div>
+        <div style="font-size:13px;color:var(--t2);font-weight:600;margin-top:5px;line-height:1.45;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? 'Unlock everything from just ₹99/mo.' : 'Renew to keep billing and AI insights.'}</div>
       </div>
-      <div class="ps-actions">
+      <div style="margin:12px 0 2px;display:flex;flex-direction:column;gap:7px">
+        ${['Unlimited bills & customers','AI Munim insights','Cloud backup & voice billing'].map(function(t){ return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border:1px solid var(--bd);border-radius:11px;font-size:13px;font-weight:600;color:var(--t1)"><span style="color:var(--success);font-weight:800;font-size:15px">✓</span><span>'+t+'</span></div>'; }).join('')}
+      </div>
+      <div class="ps-actions" style="margin-top:14px">
         <button type="button" class="ps-btn ps-btn-primary" onclick="App.closeProductSheet(); setTimeout(() => App.openSubscription(), 200)">${wasTrial ? 'See plans' : 'Renew now'}</button>
       </div>
-    `;
+    `
     this.openInfoSheet({ title: wasTrial ? 'Subscribe to continue' : 'Renew to continue', sub: 'Subscription required', bodyHTML: body });
   },
 
@@ -26560,7 +26577,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         { tier: 'pro',   cycle: 'monthly', price: '₹99',    per: '/mo', label: 'Pro Monthly',   desc: this._T('subs.proMo','1 outlet · all features') },
         { tier: 'pro',   cycle: 'annual',  price: '₹990',   per: '/yr', label: 'Pro Annual',    desc: this._T('subs.proYr','1 outlet · save ₹198/yr'), highlight: true },
         { tier: 'king',  cycle: 'monthly', price: '₹199',   per: '/mo', label: 'King Monthly',  desc: this._T('subs.kingMo','Up to 5 outlets · for chains') },
-        { tier: 'king',  cycle: 'annual',  price: '₹1,990', per: '/yr', label: 'King Annual',   desc: this._T('subs.kingYr','Up to 5 outlets · save ₹398/yr') }
+        { tier: 'king',  cycle: 'annual',  price: '₹1,990', per: '/yr', label: 'King Annual',   desc: this._T('subs.kingYr','All outlets, one dashboard · save ₹398/yr'), badge: this._T('subs.forChains','FOR CHAINS') }
       ];
 
       const selectedTier = this._selectedSubTier || 'pro';
@@ -26583,7 +26600,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
               <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <span style="font-size:15px;font-weight:800;color:var(--t1);letter-spacing:-.01em">${p.label}</span>
-                  ${p.highlight ? '<span style="font-size:10px;font-weight:800;background:var(--p);color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">' + this._T('subs.bestValue','BEST VALUE') + '</span>' : ''}
+                  ${p.highlight ? '<span style="font-size:10px;font-weight:800;background:var(--p);color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:.04em">' + this._T('subs.bestValue','BEST VALUE') + '</span>' : (p.badge ? '<span style="font-size:10px;font-weight:800;background:#1E293B;color:#FACC15;padding:2px 7px;border-radius:99px;letter-spacing:.04em">' + p.badge + '</span>' : '')}
                 </div>
                 <div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:2px">${p.desc}</div>
               </div>
@@ -26605,7 +26622,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
             <div style="font-size:18px;font-weight:900;color:var(--t1);font-variant-numeric:tabular-nums;letter-spacing:-.02em">${sel.price}<span style="font-size:13px;color:var(--t3);font-weight:700">${sel.per}</span></div>
           </div>
           <button type="button" onclick="App.subscribeTo('${sel.tier}','${sel.cycle}')" style="width:100%;padding:14px;border:none;background:linear-gradient(135deg,var(--p),var(--p-deep));color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;border-radius:12px;letter-spacing:-.005em;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px -4px rgba(0,0,0,.45)">
-            <span style="font-size:18px">👑</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
             <span>${ctaText}</span>
           </button>
           <div style="margin-top:10px;font-size:11.5px;color:var(--t3);text-align:center;line-height:1.5;font-weight:600">${footText}</div>
@@ -26679,23 +26696,117 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         this.toast('Could not start payment. Try again.');
         return;
       }
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = d.paymentUrl;
-      form.style.display = 'none';
-      Object.keys(d.params).forEach(function(k){
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = k;
-        input.value = (d.params[k] == null) ? '' : String(d.params[k]);
-        form.appendChild(input);
+
+      /* Checkout Plus (bolt overlay) is NOT supported inside WebView / TWA /
+         in-app browsers — PayU recommends the redirect flow there. */
+      const useRedirect = !!window.__hnIsTWA || this._isInAppWebView();
+      if (useRedirect) { this._payuRedirect(d); return; }
+
+      const isTest = /test\.payu\.in|uat/i.test(String(d.paymentUrl));
+      let sdkOk = true;
+      try { await this._loadBoltSdk(isTest); }
+      catch (e) { console.warn('[PayU] bolt SDK failed → redirect fallback', e); sdkOk = false; }
+      if (!sdkOk || !window.bolt || typeof window.bolt.launch !== 'function') {
+        this._payuRedirect(d);
+        return;
+      }
+
+      const self = this;
+      window.bolt.launch(d.params, {
+        responseHandler: function(BOLT){
+          var st = (BOLT && BOLT.response && BOLT.response.txnStatus) || '';
+          if (st === 'SUCCESS') {
+            self.toast('✓ Payment received — activating…');
+            self._payuActivateAfterCheckout();
+          } else if (st === 'FAILED') {
+            self.toast('Payment failed. Please try again.');
+          } else if (st === 'CANCEL') {
+            self.toast('Payment cancelled.');
+          }
+        },
+        catchException: function(BOLT){
+          console.warn('[PayU] bolt exception', BOLT);
+          self.toast('Checkout error. Please try again.');
+        }
       });
-      document.body.appendChild(form);
-      form.submit();
     } catch (e) {
       console.error('[PayU] subscribeTo failed:', e);
       this.toast(this._T('toast.purchaseFailPrefix','Payment failed') + ' · ' + (e.message || 'unknown'));
     }
+  },
+
+  /* Hosted Checkout fallback (redirect via form POST — used in TWA/WebView). */
+  _payuRedirect(d){
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = d.paymentUrl;
+    form.style.display = 'none';
+    Object.keys(d.params).forEach(function(k){
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = k;
+      input.value = (d.params[k] == null) ? '' : String(d.params[k]);
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  },
+
+  _isInAppWebView(){
+    try {
+      var ua = navigator.userAgent || '';
+      if (/;\s*wv\)/.test(ua)) return true;                       /* Android WebView */
+      if (/FBAN|FBAV|Instagram|Line\/|Twitter|GSA\//.test(ua)) return true; /* common in-app browsers */
+      return false;
+    } catch(e){ return false; }
+  },
+
+  /* Inject the PayU Checkout Plus (bolt) SDK on demand; resolves when bolt.launch is ready. */
+  _loadBoltSdk(isTest){
+    return new Promise(function(resolve, reject){
+      if (window.bolt && typeof window.bolt.launch === 'function') { resolve(); return; }
+      var src = isTest
+        ? 'https://jssdk-uat.payu.in/bolt/bolt.min.js'
+        : 'https://jssdk.payu.in/bolt/bolt.min.js';
+      function waitReady(){
+        var t0 = Date.now();
+        (function poll(){
+          if (window.bolt && typeof window.bolt.launch === 'function') { resolve(); return; }
+          if (Date.now() - t0 > 8000) { reject(new Error('bolt not ready')); return; }
+          setTimeout(poll, 150);
+        })();
+      }
+      var existing = document.getElementById('hn-bolt-sdk');
+      if (existing) { waitReady(); return; }
+      var sc = document.createElement('script');
+      sc.id = 'hn-bolt-sdk';
+      sc.src = src;
+      sc.async = true;
+      sc.onload = waitReady;
+      sc.onerror = function(){ reject(new Error('bolt script error')); };
+      document.head.appendChild(sc);
+    });
+  },
+
+  /* After a seamless SUCCESS, the S2S webhook is the source of truth; poll a few
+     times to let it land, then activate locally and refresh the UI. */
+  async _payuActivateAfterCheckout(){
+    var self = this;
+    var attempts = 0;
+    (async function tryOnce(){
+      attempts++;
+      var ok = false;
+      try { ok = await self.reconcileSubFromServer(); } catch(e){}
+      if (ok) {
+        self.toast('✓ Payment successful — subscription active');
+        try { if (window.Subs && typeof Subs.refreshUI === 'function') Subs.refreshUI(); } catch(e){}
+        try { if (self.current === 'home' && typeof self.renderHome === 'function') self.renderHome(); } catch(e){}
+        try { self.closeProductSheet(); } catch(e){}
+        return;
+      }
+      if (attempts < 6) { setTimeout(tryOnce, 1800); }
+      else { self.toast('✓ Payment received — syncing your plan…'); }
+    })();
   },
 
   async reconcileSubFromServer(){
@@ -27741,6 +27852,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     } catch(e){
       return null;
     }
+  },
+
+  _renderSubscribeBanner(){
+    var b = document.getElementById('hn-subscribe-banner');
+    if (!b) return;
+    var paid = false;
+    try { paid = !!(window.Subs && Subs.isPaid && Subs.isPaid()); } catch(e){}
+    b.style.display = (this.current === 'home' && !paid) ? 'block' : 'none';
   },
 
   _renderSyncStaleBanner(){
@@ -65856,14 +65975,11 @@ html[data-shell="desktop"] #pg-settings .toggle {
   ═══════════════════════════════════════════════════════ */
   function isTrialExpired(){
     try {
-      if (!window.Subs || !window.Subs._state) return false;
-      var state = window.Subs._state;
-      /* Don't lock paid users */
-      if (state.paidExpiryMs && state.paidExpiryMs > Date.now()) return false;
-      if (state.tier === 'pro' || state.tier === 'business' || state.tier === 'king' || state.tier === 'basic') return false;
-      /* Check days left */
-      var daysLeft = getAccurateDaysLeft();
-      return daysLeft <= 0 && !!state.trialStartMs;
+      if (!window.Subs) return false;
+      /* No free trial: lock whenever the user is not on an active paid plan. */
+      if (typeof Subs.isPaid === 'function' && Subs.isPaid()) return false;
+      if (typeof Subs.isExpired === 'function') return Subs.isExpired();
+      return false;
     } catch(e){ return false; }
   }
 
@@ -65941,7 +66057,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
         + '<div class="hnd-plans-h">'
           + '<div>'
             + '<div class="hnd-plans-h-tag">Choose your plan</div>'
-            + '<h2 class="hnd-plans-h-title">Pick a plan. <span class="ac">Start with 7 days free.</span></h2>'
+            + '<h2 class="hnd-plans-h-title">Pick a plan to <span class="ac">unlock HisaabNow.</span></h2>'
             + '<p class="hnd-plans-h-sub">All paid plans include voice billing, AI Insights, and GST invoicing.</p>'
           + '</div>'
           + '<button class="hnd-plans-h-close" id="hnd-plans-close" type="button" aria-label="Close">'
@@ -65951,7 +66067,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
         + '<div class="hnd-plans-toggle-wrap">'
           + '<div class="hnd-plans-toggle">'
             + '<button data-pcycle="monthly" id="hnd-plans-toggle-m">Monthly</button>'
-            + '<button data-pcycle="annual" id="hnd-plans-toggle-a">Annual <span class="save">SAVE 30%</span></button>'
+            + '<button data-pcycle="annual" id="hnd-plans-toggle-a">Annual <span class="save">SAVE 17%</span></button>'
           + '</div>'
         + '</div>'
         + '<div class="hnd-plans-grid" id="hnd-plans-grid"></div>';
@@ -65984,10 +66100,10 @@ html[data-shell="desktop"] #pg-settings .toggle {
           + '</div>'
         + '</div>';
 
-      var proPrice = cycle === 'monthly' ? '499' : '4,190';
-      var proSub = cycle === 'monthly' ? 'per month · billed monthly' : 'per year · ₹349/month effective';
-      var proSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹1,798/year vs monthly</div>' : '';
-      var proWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹5,988</span>' : '';
+      var proPrice = cycle === 'monthly' ? '99' : '990';
+      var proSub = cycle === 'monthly' ? 'per month · billed monthly' : 'per year · ₹83/month effective';
+      var proSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹198/year vs monthly</div>' : '';
+      var proWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹1,188</span>' : '';
       var proKey = 'pro-' + cycle;
       var proCard = ''
         + '<div class="hnd-plan-card featured">'
@@ -66012,14 +66128,14 @@ html[data-shell="desktop"] #pg-settings .toggle {
           + '</div>'
         + '</div>';
 
-      var bizPrice = cycle === 'monthly' ? '799' : '6,710';
-      var bizSub = cycle === 'monthly' ? 'per month · billed monthly' : 'per year · ₹559/month effective';
-      var bizSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹2,878/year vs monthly</div>' : '';
-      var bizWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹9,588</span>' : '';
+      var bizPrice = cycle === 'monthly' ? '199' : '1,990';
+      var bizSub = cycle === 'monthly' ? 'per month · billed monthly' : 'per year · ₹166/month effective';
+      var bizSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹398/year vs monthly</div>' : '';
+      var bizWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹2,388</span>' : '';
       var bizKey = 'business-' + cycle;
       var bizCard = ''
         + '<div class="hnd-plan-card">'
-          + '<div class="hnd-plan-tier" data-i18n="vert.business">Business</div>'
+          + '<div class="hnd-plan-tier">King</div>'
           + '<div class="hnd-plan-num">₹' + bizPrice + ' ' + bizWas + '</div>'
           + '<div class="hnd-plan-period">' + bizSub + '</div>'
           + bizSave
@@ -66035,11 +66151,11 @@ html[data-shell="desktop"] #pg-settings .toggle {
             + '<li>Phone + WhatsApp · within 2 hrs</li>'
           + '</ul>'
           + '<div class="hnd-plan-cta-wrap">'
-            + '<button class="hnd-plan-cta" data-plan-pick="' + bizKey + '">Subscribe to Business</button>'
+            + '<button class="hnd-plan-cta" data-plan-pick="' + bizKey + '">Subscribe to King</button>'
           + '</div>'
         + '</div>';
 
-      grid.innerHTML = freeCard + proCard + bizCard;
+      grid.innerHTML = proCard + bizCard;
     }
   };
   window.HND = window.HND || {};
@@ -66090,9 +66206,11 @@ html[data-shell="desktop"] #pg-settings .toggle {
     if (planBtn){
       var planKey = planBtn.getAttribute('data-plan-pick');
       PlansModal.close();
+      var _pmap = { 'pro-monthly':['pro','monthly'], 'pro-annual':['pro','annual'], 'business-monthly':['king','monthly'], 'business-annual':['king','annual'] };
+      var _pc = _pmap[planKey];
       setTimeout(function(){
-        if (window.HND && window.HND.pay && window.HND.pay.open){
-          window.HND.pay.open(planKey);
+        if (_pc && window.App && typeof App.subscribeTo === 'function'){
+          App.subscribeTo(_pc[0], _pc[1]);
         }
       }, 200);
       return;
