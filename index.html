@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_49_features_merged';
+    window.HISAABNOW_BUILD = 'v33_51_plan_cards';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5497,6 +5497,12 @@ html[data-current-role="manager"] body{
     'subs.featVoice':          { en: 'Voice billing',                   hi: 'वॉइस बिलिंग' },
     'subs.featBackup':         { en: 'Cloud backup (encrypted)',        hi: 'क्लाउड बैकअप (सुरक्षित)' },
     'subs.featSupport':        { en: 'Priority support',                hi: 'प्रायोरिटी सपोर्ट' },
+    'subs.featProfit':         { en: 'Real profit on every sale',      hi: 'हर बिक्री पर असली मुनाफ़ा' },
+    'subs.featGst':            { en: 'GST-ready invoicing',            hi: 'GST-रेडी इनवॉइसिंग' },
+    'subs.featStock':          { en: 'Inventory & stock alerts',       hi: 'इन्वेंटरी और स्टॉक अलर्ट' },
+    'subs.featAppt':           { en: 'Appointments & bookings',        hi: 'अपॉइंटमेंट और बुकिंग' },
+    'subs.featUdhaar':         { en: 'Udhaar khaata + reminders',      hi: 'उधार खाता + रिमाइंडर' },
+    'subs.featStaff':          { en: 'Staff & commission tracking',    hi: 'स्टाफ और कमीशन ट्रैकिंग' },
     'subs.manage':             { en: 'Manage',                          hi: 'मैनेज करें' },
     'subs.changePlan':         { en: 'Change plan',                     hi: 'प्लान बदलें' },
     'subs.restorePurchases':   { en: 'Restore purchases',               hi: 'खरीदारी रिस्टोर करें' },
@@ -26538,6 +26544,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   openSubscription(){
+    this._planCycle = 'monthly';
     const tier = (window.Subs && Subs.getCurrentTier()) || 'trial';
     const tCfg = (window.Subs && Subs.getTierConfig(tier)) || { name: 'Trial', color: '#F59E0B' };
     const days = (window.Subs && Subs.daysLeft()) || 0;
@@ -26642,9 +26649,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         <div class="ps-label">${this._T("subs.allPlansInclude","All paid plans include")}</div>
         ${[
           this._T('subs.featBills','Unlimited bills + customers'),
-          this._T('subs.featAi','AI Business Advisor'),
-          this._T('subs.featWa','WhatsApp daily digest'),
+          this._T('subs.featProfit','Real profit on every sale'),
           this._T('subs.featVoice','Voice billing'),
+          this._T('subs.featAi','AI Business Advisor'),
+          this._T('subs.featGst','GST-ready invoicing'),
+          this._T('subs.featStock','Inventory & stock alerts'),
+          this._T('subs.featAppt','Appointments & bookings'),
+          this._T('subs.featUdhaar','Udhaar khaata + reminders'),
+          this._T('subs.featStaff','Staff & commission tracking'),
+          this._T('subs.featWa','WhatsApp daily digest'),
           this._T('subs.featBackup','Cloud backup (encrypted)'),
           this._T('subs.featSupport','Priority support')
         ].map(f => `
@@ -26671,7 +26684,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         <button type="button" onclick="App.openRefundPolicy()" style="margin-top:8px;width:100%;padding:11px;border:none;background:transparent;color:var(--t2);font-weight:600;font-size:12.5px;font-family:inherit;cursor:pointer;letter-spacing:-.005em;text-decoration:underline">${this._T("subs.refundPolicy","Refund & cancellation policy")}</button>`;
     }
 
-    const body = headerHtml + planPickerHtml + dockHtml + featuresHtml + footerHtml;
+    const body = headerHtml + '<div id="hn-plan-cards-wrap">' + this._planCardsHtml() + '</div>' + footerHtml;
     const sub = isExpired ? this._T('subs.renewContinue','Renew to continue') : (isPaid ? `${tCfg.name} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}` : `${this._T('subs.trialShort','Trial')} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}`);
     this.openInfoSheet({ title: this._T('subs.subscription','Subscription'), sub: sub, bodyHTML: body, iconSvg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>' });
     /* Warm payuCreateOrder + bolt SDK while the user reads the plans, so Pay
@@ -28162,6 +28175,96 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       + ".hnfs-more .hnfs-ic{background:linear-gradient(135deg,#E8C24A,#B8860B);box-shadow:none}";
     var st=document.createElement('style'); st.id='hn-fs-style'; st.textContent=css; document.head.appendChild(st);
   },
+  _ensurePlanCardStyle(){
+    if (document.getElementById('hn-pc-style')) return;
+    var css = ""
+      + ".hnpc-tog{display:flex;background:#F0E9DA;border-radius:13px;padding:4px;position:relative;margin:4px 0 16px}"
+      + ".hnpc-tog button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:800;font-size:13.5px;padding:11px;border-radius:10px;cursor:pointer;color:#545454;z-index:1;display:flex;align-items:center;justify-content:center;gap:7px}"
+      + ".hnpc-tog button.on{color:#1a1300}"
+      + ".hnpc-pill{position:absolute;top:4px;bottom:4px;width:calc(50% - 4px);border-radius:10px;background:linear-gradient(135deg,#E8C24A,#B8860B);transition:left .22s cubic-bezier(.4,0,.2,1)}"
+      + ".hnpc-save-badge{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:99px;background:#06C167;color:#fff}"
+      + ".hnpc-tog button.on .hnpc-save-badge{background:#1a1300;color:#FACC15}"
+      + ".hnpc-card{background:#fff;border:1px solid #E2E2E2;border-radius:20px;padding:18px;margin-bottom:14px;position:relative}"
+      + ".hnpc-card.feat{border:2px solid #B8860B;box-shadow:0 14px 36px -14px rgba(184,134,11,.5)}"
+      + ".hnpc-badge{position:absolute;top:-11px;left:18px;background:radial-gradient(120% 90% at 50% 0%,#2a2a2a,#000);color:#FACC15;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:5px 11px;border-radius:99px;box-shadow:0 0 0 1px rgba(250,204,21,.35)}"
+      + ".hnpc-tier{font-size:20px;font-weight:900;letter-spacing:-.02em;color:#0A0A0A}"
+      + ".hnpc-tag{font-size:12.5px;color:#6B6B6B;font-weight:600;margin-top:2px}"
+      + ".hnpc-pricewrap{display:flex;align-items:baseline;gap:9px;margin:13px 0 2px}"
+      + ".hnpc-price{font-size:33px;font-weight:900;letter-spacing:-.03em;color:#0A0A0A}"
+      + ".hnpc-price .ru{font-size:21px;vertical-align:top;font-weight:800;margin-right:1px}"
+      + ".hnpc-was{font-size:15px;color:#6B6B6B;text-decoration:line-through;font-weight:700}"
+      + ".hnpc-per{font-size:12.5px;color:#545454;font-weight:600}"
+      + ".hnpc-save{display:inline-block;font-size:12px;font-weight:800;color:#0a8a4d;background:#E7F9F0;border:1px solid #BBEBD2;padding:3px 9px;border-radius:8px;margin-top:9px}"
+      + ".hnpc-list{list-style:none;margin:14px 0 0;padding:0}"
+      + ".hnpc-grp{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#B8860B;margin:14px 0 8px}"
+      + ".hnpc-grp.first{margin-top:0}"
+      + ".hnpc-li{display:flex;align-items:flex-start;gap:9px;font-size:13px;font-weight:600;color:#0A0A0A;line-height:1.4;margin-bottom:8px}"
+      + ".hnpc-li svg{flex-shrink:0;margin-top:1px}"
+      + ".hnpc-cta{width:100%;margin-top:16px;padding:15px;border:none;border-radius:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;letter-spacing:-.01em;display:flex;align-items:center;justify-content:center;gap:8px}"
+      + ".hnpc-cta.dark{background:radial-gradient(120% 90% at 50% 0%,#2a2a2a,#0A0A0A 60%,#000);color:#fff;box-shadow:0 0 0 1px rgba(250,204,21,.32),0 10px 26px -8px rgba(0,0,0,.5)}"
+      + ".hnpc-cta.gold{background:linear-gradient(135deg,#E8C24A,#B8860B);color:#1a1300;box-shadow:0 0 0 1px rgba(184,134,11,.4),0 12px 28px -8px rgba(184,134,11,.55)}"
+      + ".hnpc-foot{text-align:center;font-size:11.5px;color:#6B6B6B;font-weight:600;margin-top:4px;line-height:1.5}";
+    var st=document.createElement('style'); st.id='hn-pc-style'; st.textContent=css; document.head.appendChild(st);
+  },
+  _setPlanCycle(c){
+    this._planCycle = (c === 'annual') ? 'annual' : 'monthly';
+    var wrap = document.getElementById('hn-plan-cards-wrap');
+    if (wrap) wrap.innerHTML = this._planCardsHtml();
+  },
+  _planCardsHtml(){
+    this._ensurePlanCardStyle();
+    var cyc = (this._planCycle === 'annual') ? 'annual' : 'monthly';
+    var CHK = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#06C167" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    function grp(title, items, first){
+      var h = '<div class="hnpc-grp'+(first?' first':'')+'">'+title+'</div>';
+      return h + items.map(function(t){ return '<li class="hnpc-li">'+CHK+'<span>'+t+'</span></li>'; }).join('');
+    }
+    var proGroups = ''
+      + grp('What you get', ['1 outlet \u00b7 unlimited bills','Appointments & bookings (WhatsApp confirmations)','Voice billing in Hindi + English','Staff & commission tracking','Inventory & stock management','Udhaar khaata with WhatsApp reminders'], true)
+      + grp('Marketing & CRM', ['Bulk WhatsApp offers (Diwali, slow days, birthdays)','Customer loyalty CRM (auto-rewards)'])
+      + grp('Insights', ['Daily profit insights (gross + net margin)','Cash flow tracker','Reports & analytics'])
+      + grp('Works anywhere', ['Works offline \u00b7 auto cloud sync'])
+      + grp('Support', ['WhatsApp support \u00b7 same-day']);
+    var kingGroups = ''
+      + grp('Everything in Pro, plus', ['Up to 5 outlets, one dashboard','Recipe & cost-of-goods calculator','Predictive reorder alerts','Cross-outlet benchmarking','Advanced AI Munim (any business question)','Multi-shop staff & commission'], true)
+      + grp('Priority support', ['Priority phone + WhatsApp \u00b7 within 2 hrs']);
+    var crownGold = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>';
+    var crownDark = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#1a1300"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>';
+    var proPrice = (cyc==='annual')
+      ? '<span class="hnpc-price"><span class="ru">\u20b9</span>990</span><span class="hnpc-was">\u20b91,188</span>'
+      : '<span class="hnpc-price"><span class="ru">\u20b9</span>99</span>';
+    var proPer = (cyc==='annual') ? 'per year \u00b7 \u20b983/month effective' : 'per month \u00b7 billed monthly';
+    var proSave = (cyc==='annual') ? '<div class="hnpc-save">Save \u20b9198/year</div>' : '';
+    var kingPrice = (cyc==='annual')
+      ? '<span class="hnpc-price"><span class="ru">\u20b9</span>1,990</span><span class="hnpc-was">\u20b92,388</span>'
+      : '<span class="hnpc-price"><span class="ru">\u20b9</span>199</span>';
+    var kingPer = (cyc==='annual') ? 'per year \u00b7 \u20b9166/month effective' : 'per month \u00b7 billed monthly';
+    var kingSave = (cyc==='annual') ? '<div class="hnpc-save">Save \u20b9398/year</div>' : '';
+    var pillLeft = (cyc==='annual') ? '50%' : '4px';
+    var toggle = ''
+      + '<div class="hnpc-tog">'
+      +   '<span class="hnpc-pill" style="left:'+pillLeft+'"></span>'
+      +   '<button class="'+(cyc==='monthly'?'on':'')+'" onclick="App._setPlanCycle(\'monthly\')">Monthly</button>'
+      +   '<button class="'+(cyc==='annual'?'on':'')+'" onclick="App._setPlanCycle(\'annual\')">Annual <span class="hnpc-save-badge">SAVE 17%</span></button>'
+      + '</div>';
+    var proCard = ''
+      + '<div class="hnpc-card feat">'
+      +   '<div class="hnpc-badge">Most popular</div>'
+      +   '<div class="hnpc-tier">Pro</div><div class="hnpc-tag">Everything for one shop</div>'
+      +   '<div class="hnpc-pricewrap">'+proPrice+'</div><div class="hnpc-per">'+proPer+'</div>'+proSave
+      +   '<ul class="hnpc-list">'+proGroups+'</ul>'
+      +   '<button class="hnpc-cta dark" onclick="App.reviewAndPay(\'pro\',\''+cyc+'\')">'+crownGold+' Subscribe to Pro</button>'
+      + '</div>';
+    var kingCard = ''
+      + '<div class="hnpc-card">'
+      +   '<div class="hnpc-tier">King</div><div class="hnpc-tag">For chains & multi-outlet</div>'
+      +   '<div class="hnpc-pricewrap">'+kingPrice+'</div><div class="hnpc-per">'+kingPer+'</div>'+kingSave
+      +   '<ul class="hnpc-list">'+kingGroups+'</ul>'
+      +   '<button class="hnpc-cta gold" onclick="App.reviewAndPay(\'king\',\''+cyc+'\')">'+crownDark+' Subscribe to King</button>'
+      + '</div>';
+    return toggle + proCard + kingCard + '<div class="hnpc-foot">Secure payment by PayU \u00b7 No auto-renewal \u00b7 GST included</div>';
+  },
+
   _renderFeatureStrip(){
     var el = document.getElementById('hn-feature-strip');
     if (!el) return;
