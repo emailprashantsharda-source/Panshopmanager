@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_51_plan_cards';
+    window.HISAABNOW_BUILD = 'v33_52_cream_header';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26554,14 +26554,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let headerHtml = '';
     if (isExpired) {
       headerHtml = `
-        <div style="position:relative;overflow:hidden;padding:20px;background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);border:1px solid #2A2A2A;border-radius:18px;margin-bottom:16px;color:#fff;box-shadow:0 12px 30px -10px rgba(0,0,0,.55)">
-          <div style="position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle, rgba(250,204,21,.18), transparent 70%);pointer-events:none"></div>
+        <div style="position:relative;overflow:hidden;padding:20px;background:#FFFBF5;border:1px solid rgba(184,134,11,.28);border-radius:18px;margin-bottom:16px;color:#0A0A0A;box-shadow:0 8px 22px -12px rgba(184,134,11,.35)">
+          <div style="position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle, rgba(250,204,21,.30), transparent 70%);pointer-events:none"></div>
           <div style="position:relative;display:flex;align-items:center;gap:7px;margin-bottom:9px">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
-            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#FACC15">${this._T("subs.subscription","Subscription")}</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#B8860B"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
+            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#B8860B">${this._T("subs.subscription","Subscription")}</span>
           </div>
-          <div style="position:relative;font-size:23px;font-weight:900;letter-spacing:-.02em;line-height:1.1">${this._T("subs.chooseYourPlan","Choose your plan")}</div>
-          <div style="position:relative;font-size:13px;font-weight:600;margin-top:5px;color:#CFCFCF">${this._T("subs.pickPlanContinue","Pick a plan below to start using HisaabNow")}</div>
+          <div style="position:relative;font-size:23px;font-weight:900;letter-spacing:-.02em;line-height:1.1;color:#0A0A0A">${this._T("subs.chooseYourPlan","Choose your plan")}</div>
+          <div style="position:relative;font-size:13px;font-weight:600;margin-top:5px;color:#6B6B6B">${this._T("subs.pickPlanContinue","Pick a plan below to start using HisaabNow")}</div>
         </div>`;
     } else if (isPaid) {
       headerHtml = `
@@ -28178,7 +28178,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   _ensurePlanCardStyle(){
     if (document.getElementById('hn-pc-style')) return;
     var css = ""
-      + ".hnpc-tog{display:flex;background:#F0E9DA;border-radius:13px;padding:4px;position:relative;margin:4px 0 16px}"
+      + ".hnpc-tog{display:flex;background:#fff;border:1px solid #EADFCB;border-radius:13px;padding:4px;position:relative;margin:4px 0 16px}"
       + ".hnpc-tog button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:800;font-size:13.5px;padding:11px;border-radius:10px;cursor:pointer;color:#545454;z-index:1;display:flex;align-items:center;justify-content:center;gap:7px}"
       + ".hnpc-tog button.on{color:#1a1300}"
       + ".hnpc-pill{position:absolute;top:4px;bottom:4px;width:calc(50% - 4px);border-radius:10px;background:linear-gradient(135deg,#E8C24A,#B8860B);transition:left .22s cubic-bezier(.4,0,.2,1)}"
