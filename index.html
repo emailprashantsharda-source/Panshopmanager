@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_37_payu_override_fix';
+    window.HISAABNOW_BUILD = 'v33_38_review_pay';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26621,7 +26621,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
             <div style="font-size:12.5px;font-weight:700;color:var(--t2);letter-spacing:-.005em">${this._T("subs.selected","Selected")}: <span style="color:var(--t1);font-weight:800">${sel.label}</span></div>
             <div style="font-size:18px;font-weight:900;color:var(--t1);font-variant-numeric:tabular-nums;letter-spacing:-.02em">${sel.price}<span style="font-size:13px;color:var(--t3);font-weight:700">${sel.per}</span></div>
           </div>
-          <button type="button" onclick="App.subscribeTo('${sel.tier}','${sel.cycle}')" style="width:100%;padding:14px;border:none;background:linear-gradient(135deg,var(--p),var(--p-deep));color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;border-radius:12px;letter-spacing:-.005em;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px -4px rgba(0,0,0,.45)">
+          <button type="button" onclick="App.reviewAndPay('${sel.tier}','${sel.cycle}')" style="width:100%;padding:14px;border:none;background:linear-gradient(135deg,var(--p),var(--p-deep));color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;border-radius:12px;letter-spacing:-.005em;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px -4px rgba(0,0,0,.45)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
             <span>${ctaText}</span>
           </button>
@@ -26736,7 +26736,152 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   /* Hosted Checkout fallback (redirect via form POST — used in TWA/WebView). */
-  _payuRedirect(d){
+  /* Branded "Review & pay" sheet — shown before PayU checkout opens (Zepto-style). */
+  reviewAndPay(tier, cycle){
+    if (!window.Subs || !Subs.getTierConfig(tier)) { this.toast(this._T('toast.invalidPlanT','Invalid plan')); return; }
+    cycle = (cycle === 'annual') ? 'annual' : 'monthly';
+    const INFO = {
+      'pro|monthly':  { name:'Pro \u00b7 Monthly',  price:99,   per:'mo', desc:'1 outlet \u00b7 all features' },
+      'pro|annual':   { name:'Pro \u00b7 Annual',   price:990,  per:'yr', desc:'1 outlet \u00b7 all features', was:1188, save:198, badge:'BEST VALUE' },
+      'king|monthly': { name:'King \u00b7 Monthly', price:199,  per:'mo', desc:'Up to 5 outlets \u00b7 for chains' },
+      'king|annual':  { name:'King \u00b7 Annual',  price:1990, per:'yr', desc:'Up to 5 outlets \u00b7 for chains', was:2388, save:398, badge:'FOR CHAINS' }
+    };
+    const info = INFO[tier+'|'+cycle];
+    if (!info) { this.toast(this._T('toast.invalidPlanT','Invalid plan')); return; }
+    this._reviewSel = { tier:tier, cycle:cycle };
+    this.closeProductSheet();
+
+    let shopName = '';
+    try { const a = window.MShop && MShop.getActive && MShop.getActive(); shopName = (a && a.name) || ''; } catch(e){}
+    if (!shopName) shopName = 'Your shop';
+    const inr = function(n){ return '\u20b9' + Number(n).toLocaleString('en-IN'); };
+
+    let secondary = '', secAction = '';
+    if (cycle === 'annual') {
+      const mo = (tier === 'king') ? INFO['king|monthly'].price : INFO['pro|monthly'].price;
+      secondary = 'Prefer monthly? <b>Pay ' + inr(mo) + '/mo instead</b>';
+      secAction = "App.reviewAndPay('" + tier + "','monthly')";
+    } else {
+      const annual = INFO[tier+'|annual'];
+      secondary = 'Switch to annual &amp; <b>save ' + inr(annual.save) + '/yr</b>';
+      secAction = "App.reviewAndPay('" + tier + "','annual')";
+    }
+
+    const savingsHtml = info.save ? (
+      '<div class="hnrp-save"><div class="hnrp-save-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>'
+      + '<div class="hnrp-save-tx">You save <b>' + inr(info.save) + ' a year</b> vs paying monthly.</div></div>'
+    ) : '';
+    const priceBlock = info.was ? ('<b>' + inr(info.price) + '</b><s>' + inr(info.was) + '</s>')
+                                : ('<b>' + inr(info.price) + '</b><span class="hnrp-per">/' + info.per + '</span>');
+    const toPayBlock = info.was ? ('<s>' + inr(info.was) + '</s><b>' + inr(info.price) + '</b>') : ('<b>' + inr(info.price) + '</b>');
+    const badge = info.badge ? ('<span class="hnrp-badge">' + info.badge + '</span>') : '';
+    const outletLbl = info.desc.split(' \u00b7 ')[0];
+
+    this._ensureReviewStyle();
+    let ov = document.getElementById('hn-review-overlay');
+    if (!ov){ ov = document.createElement('div'); ov.id='hn-review-overlay'; document.body.appendChild(ov); }
+    ov.innerHTML = ''
+      + '<div class="hnrp-backdrop" onclick="App._reviewClose()"></div>'
+      + '<div class="hnrp-sheet" role="dialog" aria-modal="true">'
+        + '<div class="hnrp-grip"></div>'
+        + '<div class="hnrp-head">'
+          + '<button type="button" class="hnrp-bk" onclick="App._reviewClose()" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>'
+          + '<div><h2 class="hnrp-h-title">Review &amp; pay</h2><p class="hnrp-h-sub">' + shopName + ' \u00b7 ' + outletLbl + '</p></div>'
+        + '</div>'
+        + '<div class="hnrp-scroll">'
+          + '<div class="hnrp-plan">'
+            + '<div class="hnrp-ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg></div>'
+            + '<div class="hnrp-plan-main"><div class="hnrp-nm">' + info.name + ' ' + badge + '</div><div class="hnrp-sub">' + info.desc + ' \u00b7 ' + (cycle==='annual'?'12 months':'1 month') + '</div></div>'
+            + '<div class="hnrp-price">' + priceBlock + '</div>'
+          + '</div>'
+          + '<button type="button" class="hnrp-change" onclick="App._reviewClose(); setTimeout(function(){ App.openSubscription(); }, 180)">Change plan</button>'
+          + savingsHtml
+          + '<div class="hnrp-bill">'
+            + '<div class="hnrp-bill-ttl">Bill summary</div>'
+            + '<div class="hnrp-row"><span>' + info.name + '</span><span>' + inr(info.price) + '</span></div>'
+            + '<div class="hnrp-row"><span class="hnrp-mut">GST (18%)</span><span class="hnrp-free">Included</span></div>'
+            + '<div class="hnrp-row"><span class="hnrp-mut">Auto-renewal</span><span class="hnrp-mut">None \u00b7 one-time</span></div>'
+            + '<div class="hnrp-hr"></div>'
+            + '<div class="hnrp-topay"><div class="hnrp-topay-l">To pay</div><div class="hnrp-topay-r">' + toPayBlock + '</div></div>'
+          + '</div>'
+          + '<div class="hnrp-trust">'
+            + '<span class="hnrp-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Secured by PayU</span>'
+            + '<span class="hnrp-pill">UPI \u00b7 Cards \u00b7 NetBanking</span>'
+          + '</div>'
+        + '</div>'
+        + '<div class="hnrp-paybar">'
+          + '<button type="button" class="hnrp-paybtn" onclick="App._reviewPayNow()"><span>Pay <b>' + inr(info.price) + '</b></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>'
+          + '<button type="button" class="hnrp-monthly" onclick="' + secAction + '">' + secondary + '</button>'
+        + '</div>'
+      + '</div>';
+    requestAnimationFrame(function(){ ov.classList.add('hnrp-open'); });
+    document.body.style.overflow = 'hidden';
+  },
+
+  _reviewPayNow(){
+    const sel = this._reviewSel || {};
+    this._reviewClose();
+    if (sel.tier && sel.cycle){ this.subscribeTo(sel.tier, sel.cycle); }
+  },
+
+  _reviewClose(){
+    var ov = document.getElementById('hn-review-overlay');
+    if (ov){ ov.classList.remove('hnrp-open'); }
+    document.body.style.overflow = '';
+  },
+
+  _ensureReviewStyle(){
+    if (document.getElementById('hn-review-style')) return;
+    var st = document.createElement('style');
+    st.id = 'hn-review-style';
+    st.textContent = [
+      '#hn-review-overlay{position:fixed;inset:0;z-index:100000;display:none}',
+      '#hn-review-overlay.hnrp-open{display:block}',
+      '.hnrp-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.5);opacity:0;transition:opacity .2s}',
+      '#hn-review-overlay.hnrp-open .hnrp-backdrop{opacity:1}',
+      '.hnrp-sheet{position:absolute;left:50%;bottom:0;transform:translate(-50%,100%);width:100%;max-width:480px;background:var(--bg,#F9FAFB);border-radius:24px 24px 0 0;display:flex;flex-direction:column;max-height:94vh;transition:transform .26s cubic-bezier(.32,.72,0,1);box-shadow:0 -10px 40px rgba(0,0,0,.22)}',
+      '#hn-review-overlay.hnrp-open .hnrp-sheet{transform:translate(-50%,0)}',
+      '.hnrp-grip{width:40px;height:5px;border-radius:99px;background:#D6D3CE;margin:9px auto 2px;flex:0 0 auto}',
+      '.hnrp-head{display:flex;align-items:center;gap:12px;padding:8px 18px 12px;flex:0 0 auto}',
+      '.hnrp-bk{width:34px;height:34px;border-radius:11px;border:1px solid var(--bd,#E5E7EB);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--t1,#1E293B);cursor:pointer}',
+      '.hnrp-h-title{margin:0;font-size:18px;font-weight:900;letter-spacing:-.02em;color:var(--t1,#1E293B)}',
+      '.hnrp-h-sub{margin:1px 0 0;font-size:12px;font-weight:600;color:var(--t3,#94A3B8)}',
+      '.hnrp-scroll{overflow-y:auto;padding:2px 18px 8px;flex:1 1 auto}',
+      '.hnrp-plan{background:#fff;border:1px solid var(--bd,#E5E7EB);border-radius:18px;padding:15px;display:flex;align-items:center;gap:13px}',
+      '.hnrp-ic{width:46px;height:46px;border-radius:13px;flex:0 0 auto;background:linear-gradient(135deg,var(--p,#FF6B35),var(--p-deep,#E64A1B));display:flex;align-items:center;justify-content:center}',
+      '.hnrp-plan-main{flex:1 1 auto;min-width:0}',
+      '.hnrp-nm{font-size:16px;font-weight:900;color:var(--t1,#1E293B);letter-spacing:-.01em;display:flex;align-items:center;gap:7px;flex-wrap:wrap}',
+      '.hnrp-badge{font-size:9.5px;font-weight:800;background:var(--t1,#1E293B);color:#FACC15;padding:2px 7px;border-radius:99px;letter-spacing:.04em}',
+      '.hnrp-sub{font-size:12.5px;font-weight:600;color:var(--t2,#64748B);margin-top:2px}',
+      '.hnrp-price{margin-left:auto;text-align:right;flex:0 0 auto}',
+      '.hnrp-price b{font-size:19px;font-weight:900;color:var(--t1,#1E293B);letter-spacing:-.02em}',
+      '.hnrp-price s{display:block;font-size:11.5px;color:var(--t3,#94A3B8);font-weight:700}',
+      '.hnrp-per{font-size:12px;color:var(--t3,#94A3B8);font-weight:700}',
+      '.hnrp-change{display:block;text-align:center;margin:10px 0 0;font-size:12.5px;font-weight:800;color:var(--p-deep,#E64A1B);background:none;border:none;width:100%;padding:6px;cursor:pointer;font-family:inherit}',
+      '.hnrp-save{margin-top:13px;background:#ECFDF5;border:1px solid #BBF7D0;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px}',
+      '.hnrp-save-dot{width:26px;height:26px;border-radius:8px;background:#16A34A;flex:0 0 auto;display:flex;align-items:center;justify-content:center}',
+      '.hnrp-save-tx{font-size:13px;font-weight:700;color:#15803D;line-height:1.35}',
+      '.hnrp-bill{margin-top:13px;background:#fff;border:1px solid var(--bd,#E5E7EB);border-radius:18px;padding:15px 16px}',
+      '.hnrp-bill-ttl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--t3,#94A3B8);margin-bottom:11px}',
+      '.hnrp-row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:600;color:var(--t1,#1E293B);padding:6px 0}',
+      '.hnrp-free{color:#15803D;font-weight:800}',
+      '.hnrp-mut{color:var(--t2,#64748B);font-weight:600}',
+      '.hnrp-hr{height:1px;background:var(--bd,#E5E7EB);margin:9px 0}',
+      '.hnrp-topay{display:flex;justify-content:space-between;align-items:baseline;padding-top:3px}',
+      '.hnrp-topay-l{font-size:15px;font-weight:900;color:var(--t1,#1E293B)}',
+      '.hnrp-topay-r s{font-size:13px;color:var(--t3,#94A3B8);font-weight:700;margin-right:7px}',
+      '.hnrp-topay-r b{font-size:21px;font-weight:900;color:var(--t1,#1E293B);letter-spacing:-.02em}',
+      '.hnrp-trust{margin:13px 0 4px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}',
+      '.hnrp-pill{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--bd,#E5E7EB);border-radius:99px;padding:5px 10px;color:var(--t2,#64748B);font-size:11.5px;font-weight:700}',
+      '.hnrp-paybar{flex:0 0 auto;background:#fff;border-top:1px solid var(--bd,#E5E7EB);padding:13px 18px calc(13px + env(safe-area-inset-bottom))}',
+      '.hnrp-paybtn{width:100%;border:none;border-radius:15px;padding:16px;color:#fff;font-family:inherit;font-weight:900;font-size:16px;letter-spacing:-.01em;cursor:pointer;background:linear-gradient(135deg,var(--p,#FF6B35),var(--p-deep,#E64A1B));box-shadow:0 10px 24px -6px rgba(230,74,27,.55);display:flex;align-items:center;justify-content:center;gap:9px}',
+      '.hnrp-monthly{display:block;width:100%;text-align:center;background:none;border:none;margin-top:9px;font-size:12.5px;font-weight:700;color:var(--t2,#64748B);cursor:pointer;font-family:inherit}',
+      '.hnrp-monthly b{color:var(--p-deep,#E64A1B);font-weight:800}'
+    ].join('\n');
+    document.head.appendChild(st);
+  },
+
+    _payuRedirect(d){
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = d.paymentUrl;
@@ -66192,7 +66337,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
       var _pc = _pmap[planKey];
       setTimeout(function(){
         if (_pc && window.App && typeof App.subscribeTo === 'function'){
-          App.subscribeTo(_pc[0], _pc[1]);
+          App.reviewAndPay(_pc[0], _pc[1]);
         }
       }, 200);
       return;
