@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_56_desktop_fit';
+    window.HISAABNOW_BUILD = 'v33_57_day1_notrend';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -14429,13 +14429,13 @@ const App = {
     const fmtCurrency = (n) => '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN');
     const renderDelta = (today, yesterday, isCurrency, isProfitProxy) => {
 
+      /* Day 1: no previous day to compare against, so show no trend line.
+         The real ▲/▼ vs-yesterday comparison appears from day 2 onward. */
       if (yestBills === 0 && yesterday === 0) {
-        return today > 0
-          ? `<span style="color:#059669">▲ first day</span>`
-          : `<span style="opacity:.5">· first day</span>`;
+        return '';
       }
       if (yesterday === 0 && today > 0) {
-        return `<span style="color:#059669">▲ first ${isCurrency ? 'sale' : 'bill'}</span>`;
+        return '';
       }
       if (yesterday > 0 && today === 0) {
         return `<span style="opacity:.65">Yest: ${isCurrency ? fmtCurrency(yesterday) : yesterday}</span>`;
@@ -14496,9 +14496,9 @@ const App = {
       if (!profitIsAccurate && todaySales.length > 0) {
         billsDelta.innerHTML = `<span style="opacity:.5" data-i18n="inv.setCpLbl">Set cost prices</span>`;
       } else if (todayBills === 0 && yestBills === 0) {
-        billsDelta.innerHTML = `<span style="opacity:.5">· first day</span>`;
+        billsDelta.innerHTML = '';  /* day 1: no comparison yet */
       } else if (yestBills === 0 && todayBills > 0) {
-        billsDelta.innerHTML = `<span style="color:#059669">▲ first sale</span>`;
+        billsDelta.innerHTML = '';  /* day 1: first sale, nothing to compare against */
       } else if (todayBills === 0) {
         billsDelta.innerHTML = `<span style="opacity:.65">Yest: ${fmtCurrency(yestProf)}</span>`;
       } else {
