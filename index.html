@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_35_checkout_plus';
+    window.HISAABNOW_BUILD = 'v33_36_lockleak_fix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -65710,13 +65710,13 @@ html[data-shell="desktop"] #pg-settings .toggle {
 <div id="hnd-lock-overlay" role="dialog" aria-modal="true">
   <div class="hnd-lock-content">
     <div class="hnd-lock-icon">🔒</div>
-    <div class="hnd-lock-tag" id="hnd-lock-tag">TRIAL ENDED</div>
-    <h1 class="hnd-lock-title" id="hnd-lock-title">Your 7-day free trial is over</h1>
+    <div class="hnd-lock-tag" id="hnd-lock-tag">SUBSCRIBE</div>
+    <h1 class="hnd-lock-title" id="hnd-lock-title">Subscribe to unlock HisaabNow</h1>
     <p class="hnd-lock-sub" id="hnd-lock-sub">Subscribe to keep your <b>shop data, bills, and customers</b> safe — and continue making sales without interruption.</p>
     <div class="hnd-lock-actions">
       <button class="hnd-lock-cta" id="hnd-lock-cta-subscribe" type="button">
         <span style="font-size:18px">⚡</span>
-        See plans · From ₹499/month
+        See plans · From ₹99/month
       </button>
       <button class="hnd-lock-secondary" id="hnd-lock-cta-whatsapp" type="button">Need help? WhatsApp us</button>
     </div>
@@ -65997,9 +65997,15 @@ html[data-shell="desktop"] #pg-settings .toggle {
     document.body.style.overflow = '';
   }
   function checkAndLock(){
+    /* Desktop-only full-screen lock. On mobile / TWA, the in-app subscribe
+       gate sheet handles non-paid users — never show this overlay there. */
+    var shell = document.documentElement.getAttribute('data-shell');
+    if (shell !== 'desktop' || window.__hnIsTWA){
+      hideLockScreen();
+      return;
+    }
     /* Don't show lock screen when user isn't signed in yet —
-       the login screen is on top anyway. Lock should only appear
-       AFTER login when trial has expired. */
+       the login screen is on top anyway. */
     var authState = document.documentElement.getAttribute('data-auth');
     if (authState !== 'yes'){
       hideLockScreen();
@@ -69335,7 +69341,7 @@ html[data-shell="mobile"] .hnd-help-btn { display: none; }
       brief: 'Pro ₹499/mo · Business ₹799/mo',
       kw: 'subscription plan pricing pro business upgrade payment',
       body: [
-        { t: 'p', x: 'After your 7-day free trial, pick a plan that fits your shop:' },
+        { t: 'p', x: 'Pick a plan that fits your shop:' },
         { t: 'steps', items: [
           '<b>Pro</b> — ₹499/month or ₹4,190/year (saves ₹1,798) — 1 outlet, unlimited bills, GST, AI Insights',
           '<b data-i18n="vert.business">Business</b> — ₹799/month or ₹6,710/year (saves ₹2,878) — up to 5 outlets, staff management, advanced AI'
