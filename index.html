@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_39_review_theme';
+    window.HISAABNOW_BUILD = 'v33_42_sw_netfirst';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -404,7 +404,7 @@
   var SW_TAG = '[' + (window.HISAABNOW_BUILD || 'v?') + ' SW]';
 
   try {
-    navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function(reg){
+    navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then(function(reg){
       console.log(SW_TAG + ' registered scope=', reg.scope);
 
       // AGGRESSIVE: force update check immediately AND on every navigation
@@ -17338,8 +17338,8 @@ const App = {
     const wasTrial = tier === 'trial-expired';
     const body = `
       <div style="text-align:center;padding:4px 0 4px">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--p),var(--p-deep));color:#fff;margin-bottom:10px">
-          <svg width="27" height="27" viewBox="0 0 24 24" fill="#fff"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
+        <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);box-shadow:0 0 0 1px rgba(250,204,21,.3), 0 12px 30px -8px rgba(0,0,0,.55);margin-bottom:12px">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
         </div>
         <div style="font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.018em">${wasTrial ? 'Subscribe to start' : 'Your subscription expired'}</div>
         <div style="font-size:13px;color:var(--t2);font-weight:600;margin-top:5px;line-height:1.45;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? 'Unlock everything from just ₹99/mo.' : 'Renew to keep billing and AI insights.'}</div>
@@ -17351,7 +17351,7 @@ const App = {
         <button type="button" class="ps-btn ps-btn-primary" onclick="App.closeProductSheet(); setTimeout(() => App.openSubscription(), 200)">${wasTrial ? 'See plans' : 'Renew now'}</button>
       </div>
     `
-    this.openInfoSheet({ title: wasTrial ? 'Subscribe to continue' : 'Renew to continue', sub: 'Subscription required', bodyHTML: body });
+    this.openInfoSheet({ title: wasTrial ? 'Subscribe to continue' : 'Renew to continue', sub: 'Subscription required', bodyHTML: body, iconSvg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>' });
   },
 
   cancelSale(){
@@ -26543,10 +26543,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let headerHtml = '';
     if (isExpired) {
       headerHtml = `
-        <div style="padding:18px;background:linear-gradient(135deg,#94A3B8 0%,#64748B 100%);border-radius:16px;margin-bottom:16px;color:#fff;box-shadow:0 8px 20px -4px rgba(100,116,139,.4)">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.85;margin-bottom:6px">${this._T("subs.subscription","Subscription")}</div>
-          <div style="font-size:22px;font-weight:900;letter-spacing:-.02em">${this._T("subs.chooseYourPlan","Choose your plan")}</div>
-          <div style="font-size:13px;opacity:.85;font-weight:600;margin-top:4px">${this._T("subs.pickPlanContinue","Pick a plan below to start using HisaabNow")}</div>
+        <div style="position:relative;overflow:hidden;padding:20px;background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);border:1px solid #2A2A2A;border-radius:18px;margin-bottom:16px;color:#fff;box-shadow:0 12px 30px -10px rgba(0,0,0,.55)">
+          <div style="position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle, rgba(250,204,21,.18), transparent 70%);pointer-events:none"></div>
+          <div style="position:relative;display:flex;align-items:center;gap:7px;margin-bottom:9px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
+            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#FACC15">${this._T("subs.subscription","Subscription")}</span>
+          </div>
+          <div style="position:relative;font-size:23px;font-weight:900;letter-spacing:-.02em;line-height:1.1">${this._T("subs.chooseYourPlan","Choose your plan")}</div>
+          <div style="position:relative;font-size:13px;font-weight:600;margin-top:5px;color:#CFCFCF">${this._T("subs.pickPlanContinue","Pick a plan below to start using HisaabNow")}</div>
         </div>`;
     } else if (isPaid) {
       headerHtml = `
@@ -26665,7 +26669,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const body = headerHtml + planPickerHtml + dockHtml + featuresHtml + footerHtml;
     const sub = isExpired ? this._T('subs.renewContinue','Renew to continue') : (isPaid ? `${tCfg.name} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}` : `${this._T('subs.trialShort','Trial')} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}`);
-    this.openInfoSheet({ title: this._T('subs.subscription','Subscription'), sub: sub, bodyHTML: body });
+    this.openInfoSheet({ title: this._T('subs.subscription','Subscription'), sub: sub, bodyHTML: body, iconSvg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>' });
   },
 
   selectSubPlan(tier, cycle){
@@ -26689,9 +26693,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     this.toast('Opening secure checkout…');
     try {
-      const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
-      const res = await fn({ tier: tier, cycle: cycle });
-      const d = res && res.data;
+      let d = null;
+      const pf = this._reviewOrder;
+      if (pf && pf.key === (tier + '|' + cycle) && pf.d) {
+        d = pf.d;                       /* prefetched during review — instant */
+      } else {
+        const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
+        const res = await fn({ tier: tier, cycle: cycle });
+        d = res && res.data;
+      }
+      this._reviewOrder = null;
       if (!d || !d.paymentUrl || !d.params) {
         this.toast('Could not start payment. Try again.');
         return;
@@ -26816,6 +26827,26 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       + '</div>';
     requestAnimationFrame(function(){ ov.classList.add('hnrp-open'); });
     document.body.style.overflow = 'hidden';
+    /* Warm the order + PayU SDK now, so tapping Pay opens checkout instantly. */
+    this._reviewOrder = null;
+    this._prefetchPayu(tier, cycle);
+  },
+
+  async _prefetchPayu(tier, cycle){
+    try {
+      if (!window.kfCallable || !window.kfFunctions) return;
+      const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
+      const res = await fn({ tier: tier, cycle: cycle });
+      const d = res && res.data;
+      if (d && d.paymentUrl && d.params) {
+        this._reviewOrder = { key: tier + '|' + cycle, d: d };
+        const useRedirect = !!window.__hnIsTWA || this._isInAppWebView();
+        if (!useRedirect) {
+          const isTest = /test\.payu\.in|uat/i.test(String(d.paymentUrl));
+          this._loadBoltSdk(isTest).catch(function(){});
+        }
+      }
+    } catch (e) { /* best-effort; Pay will create on demand */ }
   },
 
   _reviewPayNow(){
