@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_44_activate_hard';
+    window.HISAABNOW_BUILD = 'v33_46_free5_funnel';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2732,6 +2732,8 @@ html[data-current-role="manager"] body{
       <div class="kpi-delta-v2" id="kpi-profit-delta" style="opacity:.5">—</div>
     </div>
   </section>
+
+  <div id="hn-feature-strip" style="display:none;margin:2px 16px 14px"></div>
 
   <section id="home-udhaar-tile" data-role-min="manager" style="display:none;padding:0 18px 14px">
     <div onclick="App.nav('udhaar')" role="button" style="cursor:pointer;background:#fff;border:1.5px solid var(--border-strong);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:transform .15s">
@@ -11146,6 +11148,7 @@ const App = {
        Both self-hide based on conditions. Cheap to call on every render. */
     try { this._renderCashBanners(); } catch(e){ console.warn('[cashBanner] render:', e); }
     try { this._renderSubscribeBanner(); } catch(e){}
+    try { this._renderFeatureStrip(); } catch(e){}
 
     const greetName = document.getElementById('greet-name');
     if (greetName) {
@@ -12410,7 +12413,7 @@ const App = {
   },
 
   openBusinessManager(){
-    if (window.Subs && Subs.isExpired && Subs.isExpired()) {
+    if (this._shouldGateBilling()) {
       this._showSubsExpiredGate && this._showSubsExpiredGate();
       return;
     }
@@ -16891,7 +16894,7 @@ const App = {
 
   addToCart(id){
 
-    if (window.Subs && Subs.isExpired && Subs.isExpired()) {
+    if (this._shouldGateBilling()) {
       this._showSubsExpiredGate();
       return;
     }
@@ -17066,7 +17069,7 @@ const App = {
   },
 
   openCustomWeight(){
-    if (window.Subs && Subs.isExpired && Subs.isExpired()) {
+    if (this._shouldGateBilling()) {
       this._showSubsExpiredGate();
       return;
     }
@@ -20188,6 +20191,7 @@ const App = {
     bill.billNumber = this._nextBillNumber();
 
     const savedBill = Store.add('sales', bill);
+    try { this._freeBillNudgeAfterSale(); } catch(e){}
 
     try {
       const _disc = Number(bill.discount || 0);
@@ -28119,12 +28123,87 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
   },
 
+  _FREE_BILLS: 5,
+  _freeBillsUsed(){
+    try {
+      var shopId = (window.MShop && MShop.getActive && MShop.getActive() || {}).shopId || 'default';
+      return Number(localStorage.getItem('hn_billCounter_' + shopId) || 0);
+    } catch(e){ return 0; }
+  },
+  _freeBillsLeft(){ return Math.max(0, this._FREE_BILLS - this._freeBillsUsed()); },
+  _isPaidUser(){ try { return !!(window.Subs && Subs.isPaid && Subs.isPaid()); } catch(e){ return false; } },
+  _shouldGateBilling(){ return !this._isPaidUser() && this._freeBillsUsed() >= this._FREE_BILLS; },
+  _freeBillNudgeAfterSale(){
+    if (this._isPaidUser()) return;
+    var left = this._freeBillsLeft();
+    var self = this;
+    setTimeout(function(){
+      try {
+        if (left <= 0)       self.toast('✓ Saved · that was your last free bill — subscribe to keep billing');
+        else if (left === 1) self.toast('✓ Saved · 1 free bill left');
+        else                 self.toast('✓ Saved · ' + left + ' free bills left');
+      } catch(e){}
+    }, 2600);
+  },
+  _ensureFeatureStripStyle(){
+    if (document.getElementById('hn-fs-style')) return;
+    var css = ""
+      + ".hnfs-head{display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 10px}"
+      + ".hnfs-head h3{font-size:15px;font-weight:800;letter-spacing:-.015em;color:#0A0A0A;margin:0}"
+      + ".hnfs-head span{font-size:12px;font-weight:700;color:#B8860B}"
+      + ".hnfs-row{display:flex;gap:11px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x mandatory;scrollbar-width:none}"
+      + ".hnfs-row::-webkit-scrollbar{display:none}"
+      + ".hnfs-card{scroll-snap-align:start;flex:0 0 150px;background:#fff;border:1px solid #E2E2E2;border-radius:16px;padding:14px;box-shadow:0 4px 14px -10px rgba(0,0,0,.25)}"
+      + ".hnfs-ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 0%,#2a2a2a,#0A0A0A 60%,#000);box-shadow:0 0 0 1px rgba(250,204,21,.28);margin-bottom:11px}"
+      + ".hnfs-card h4{font-size:13.5px;font-weight:800;letter-spacing:-.01em;color:#0A0A0A;line-height:1.25;margin:0}"
+      + ".hnfs-card p{font-size:11.5px;color:#545454;font-weight:600;margin:5px 0 0;line-height:1.4}"
+      + ".hnfs-more{background:radial-gradient(120% 90% at 50% 0%,#2a2a2a,#0A0A0A 60%,#000);border:none;cursor:pointer;display:flex;flex-direction:column;justify-content:center}"
+      + ".hnfs-more h4{color:#fff}.hnfs-more p{color:#CFCFCF}"
+      + ".hnfs-more .hnfs-ic{background:linear-gradient(135deg,#E8C24A,#B8860B);box-shadow:none}";
+    var st=document.createElement('style'); st.id='hn-fs-style'; st.textContent=css; document.head.appendChild(st);
+  },
+  _renderFeatureStrip(){
+    var el = document.getElementById('hn-feature-strip');
+    if (!el) return;
+    if (this.current !== 'home' || this._isPaidUser()) { el.style.display='none'; return; }
+    if (el.dataset.built === '1') { el.style.display='block'; return; }
+    this._ensureFeatureStripStyle();
+    var F = [
+      ['<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>','Voice Billing','Bill hands-free in Hindi & English'],
+      ['<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>','AI Munim','Daily insights on your money'],
+      ['<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>','Live Profit','Know your real margin, instantly'],
+      ['<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>','Customers','Khata + WhatsApp reminders'],
+      ['<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>','Multi-Outlet','All your shops, one dashboard'],
+      ['<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>','Cloud Backup','Your data, safe forever']
+    ];
+    var cards = F.map(function(f){
+      return '<div class="hnfs-card"><div class="hnfs-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+f[0]+'</svg></div><h4>'+f[1]+'</h4><p>'+f[2]+'</p></div>';
+    }).join('');
+    var more = '<div class="hnfs-card hnfs-more" onclick="App.openSubscription()"><div class="hnfs-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1300" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div><h4>See all plans</h4><p>From ₹99/mo</p></div>';
+    el.innerHTML = '<div class="hnfs-head"><h3>Everything you get</h3><span>Swipe →</span></div><div class="hnfs-row">'+cards+more+'</div>';
+    el.dataset.built='1';
+    el.style.display='block';
+  },
+
   _renderSubscribeBanner(){
     var b = document.getElementById('hn-subscribe-banner');
     if (!b) return;
-    var paid = false;
-    try { paid = !!(window.Subs && Subs.isPaid && Subs.isPaid()); } catch(e){}
-    b.style.display = (this.current === 'home' && !paid) ? 'block' : 'none';
+    var exhausted = !this._isPaidUser() && this._freeBillsUsed() >= this._FREE_BILLS;
+    /* Contextual funnel: NO top banner while free bills remain (stages 1-2).
+       The earned black-gold ask appears only once the 5 free bills are used. */
+    if (this.current !== 'home' || !exhausted) { b.style.display = 'none'; return; }
+    b.innerHTML = ''
+      + '<div style="background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);border:1px solid #2A2A2A;padding:15px 16px;display:flex;align-items:center;gap:13px">'
+      +   '<div style="width:44px;height:44px;border-radius:13px;background:radial-gradient(120% 90% at 50% 0%, #3a3a3a, #000);box-shadow:0 0 0 1px rgba(250,204,21,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+      +     '<svg width="23" height="23" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>'
+      +   '</div>'
+      +   '<div style="flex:1;min-width:0">'
+      +     '<div style="color:#fff;font-weight:800;font-size:14.5px;letter-spacing:-.01em">Free bills used up</div>'
+      +     '<div style="color:#CFCFCF;font-size:12.5px;font-weight:600;margin-top:2px;line-height:1.4">Subscribe to keep billing &amp; keep your data.</div>'
+      +   '</div>'
+      +   '<button type="button" onclick="App.openSubscription()" style="flex:0 0 auto;background:linear-gradient(135deg,#E8C24A,#B8860B);color:#1a1300;border:none;padding:10px 15px;border-radius:11px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Subscribe</button>'
+      + '</div>';
+    b.style.display = 'block';
   },
 
   _renderSyncStaleBanner(){
