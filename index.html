@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_57_day1_notrend';
+    window.HISAABNOW_BUILD = 'v33_58_profile_shopname';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -20420,6 +20420,12 @@ const App = {
           revenueToday: Math.round(_revToday),
           revenueTodayDate: _todayKey
         };
+        // Mirror the shop identity to the profile so the admin's Top Shops /
+        // Conversion-Funnel "onboarded" read the real name, not "Unknown".
+        var _sn = (window.S && (window.S.store || window.S.shopName)) || '';
+        if (_sn) _payload.shopName = _sn;
+        if (window.S && window.S.ownerName)  _payload.ownerName  = window.S.ownerName;
+        if (window.S && window.S.profession) _payload.profession = window.S.profession;
         if (_isPaid) {
           _payload.billCountMonth = _billCountMonth;
           _payload.billCountTrial = 0;
