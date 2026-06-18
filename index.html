@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_59_profile_addr';
+    window.HISAABNOW_BUILD = 'v33_60_loc_localcache';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -81517,6 +81517,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
                 },
                 updatedAt: Date.now()
               }, { merge: true });
+              // Also cache locally so the bill-sync can mirror lat/lng to the
+              // user profile (admin Subscriptions reads it from there).
+              try { localStorage.setItem('hn_outlet_location', JSON.stringify({ lat: lat, lng: lng, acc: acc, ts: Date.now() })); } catch(e){}
               toast('✓ Location tagged');
             } catch(err) {
               console.warn('[v33_30] Location save failed', err);
