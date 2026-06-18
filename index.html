@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_58_profile_shopname';
+    window.HISAABNOW_BUILD = 'v33_59_profile_addr';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -20426,6 +20426,11 @@ const App = {
         if (_sn) _payload.shopName = _sn;
         if (window.S && window.S.ownerName)  _payload.ownerName  = window.S.ownerName;
         if (window.S && window.S.profession) _payload.profession = window.S.profession;
+        if (window.S && window.S.shopAddress) _payload.shopAddress = window.S.shopAddress;
+        try {
+          var _loc = JSON.parse(localStorage.getItem('hn_outlet_location') || 'null');
+          if (_loc && _loc.lat && _loc.lng) { _payload.shopLat = _loc.lat; _payload.shopLng = _loc.lng; }
+        } catch(e){}
         if (_isPaid) {
           _payload.billCountMonth = _billCountMonth;
           _payload.billCountTrial = 0;
