@@ -33,6 +33,24 @@
 </script>
 
 <title>HisaabNow · Smart Business Dashboard</title>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1670925877471743');
+fbq('track', 'PageView');
+window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('trackCustom', 'InstallApp'); } catch(e){} });
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 
 <!-- ====================================================
      Step EEE v2 · True anti-FOUC pre-paint mask
@@ -189,7 +207,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_61_desktop_plan_feats';
+    window.HISAABNOW_BUILD = 'v33_63_pixel_funnel';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -26795,6 +26813,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const info = INFO[tier+'|'+cycle];
     if (!info) { this.toast(this._T('toast.invalidPlanT','Invalid plan')); return; }
     this._reviewSel = { tier:tier, cycle:cycle };
+    try { localStorage.setItem('hn_pending_amt', String(info.price)); } catch (e) {}
     this.closeProductSheet();
 
     let shopName = '';
@@ -29111,6 +29130,20 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     // Show toast immediately, then nav home
     const seedSuffix = seedResult.added > 0 ? ' · ' + seedResult.added + ' items added' : '';
     this.toast(this._T('toast.welcomePrefix','Welcome') + ', ' + (ownerName || shopName) + '!' + seedSuffix);
+
+    // ── Meta Pixel: real signup conversion (fires once per user) ──
+    // This is the TRUE "Lead"/registration — a new shopkeeper who finished
+    // onboarding and created their shop. Gated by localStorage so returning
+    // logins and multi-shop adds don't re-fire it.
+    try {
+      if (window.fbq && !localStorage.getItem('hn_ev_registered')) {
+        var _ph = ((window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || '').replace(/[^0-9]/g, '');
+        if (_ph) { try { fbq('init', '1670925877471743', { ph: _ph }); } catch (e) {} }
+        fbq('track', 'CompleteRegistration', { content_name: 'shop_signup', status: true });
+        localStorage.setItem('hn_ev_registered', '1');
+        console.log('[pixel] CompleteRegistration fired (new signup)');
+      }
+    } catch (e) { console.warn('[pixel] CompleteRegistration failed (non-fatal):', e); }
 
     // Background: persist to Firestore (won't block UI). Writes to the
     // currently-active shop's record (default shopId === user.uid for first run).
@@ -36115,6 +36148,16 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         createdAt: serverTimestamp(),
         activeShopId: user.uid
       });
+      // Meta Pixel: SIGNED UP — brand-new user (OTP verified, first time).
+      // This is the optimization event Facebook treats as the "Lead".
+      try {
+        if (window.fbq) {
+          var _phS = (user.phoneNumber || '').replace(/[^0-9]/g, '');
+          if (_phS) { try { fbq('init', '1670925877471743', { ph: _phS }); } catch (e) {} }
+          fbq('track', 'Lead', { content_name: 'signup' });
+          console.log('[pixel] Lead fired (signed up)');
+        }
+      } catch (e) {}
     } else if (!userSnap.data().activeShopId) {
       await setDoc(userRef, { activeShopId: user.uid }, { merge: true });
     }
@@ -81828,6 +81871,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       if (payu === 'success' && ready) {
         clearInterval(timer);
         App.reconcileSubFromServer().then(function(ok){
+          if (ok) {
+            // Meta Pixel: PAID — successful subscription purchase.
+            try {
+              if (window.fbq) {
+                var _amt = parseFloat(localStorage.getItem('hn_pending_amt') || '0');
+                fbq('track', 'Purchase', _amt > 0 ? { value: _amt, currency: 'INR' } : { currency: 'INR' });
+                try { localStorage.removeItem('hn_pending_amt'); } catch (e) {}
+                console.log('[pixel] Purchase fired', _amt);
+              }
+            } catch (e) {}
+          }
           if (App.toast) App.toast(ok ? '✓ Payment successful — subscription active'
                                        : '✓ Payment received — syncing…');
         });
