@@ -207,7 +207,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_63_pixel_funnel';
+    window.HISAABNOW_BUILD = 'v33_65_otp_race_guard';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -12011,6 +12011,15 @@ const App = {
   renderMoreMenu(){
     const cfg = VERTICAL_CONFIG[this.vertical]; if (!cfg) return;
 
+    // (hoisted) Salon detection — declared up-front so the More-menu badge
+    // logic below can reference it without a temporal-dead-zone error.
+    let _activeCardType = '';
+    try {
+      const _actHM = (window.MShop && window.MShop.getActive && window.MShop.getActive()) || null;
+      _activeCardType = (_actHM && (_actHM.cardType || _actHM.profession)) || this.vertical || '';
+    } catch(e){ _activeCardType = this.vertical || ''; }
+    const _isSalonShop = (_activeCardType === 'salon');
+
     const active = (window.MShop && window.MShop.getActive()) || null;
     const realShopName = (active && active.name) || (window.S && S.store) || 'Your shop';
 
@@ -12350,12 +12359,7 @@ const App = {
        the source of truth, not this.vertical which can be stale during shop
        switches. Inventory entry is hidden by default in HTML; we only force
        it visible when we can VERIFY this is a salon shop. */
-    let _activeCardType = '';
-    try {
-      const _act = (window.MShop && window.MShop.getActive && window.MShop.getActive()) || null;
-      _activeCardType = (_act && (_act.cardType || _act.profession)) || this.vertical || '';
-    } catch(e){ _activeCardType = this.vertical || ''; }
-    const _isSalonShop = (_activeCardType === 'salon');
+    // (salon detection hoisted to top of renderMoreMenu — see above)
 
     /* Diagnostic: helps verify what's happening if the inventory entry shows
        up incorrectly. Logged once per renderMoreMenu invocation. */
@@ -36067,6 +36071,15 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
     } catch (err) {
       console.error('[v32] verifyOTP error:', err);
+      // Defensive (Bug 1): confirm() sometimes resolves the sign-in — the user
+      // IS authenticated and onAuthStateChanged is already navigating them in —
+      // but a transient Firestore permission race throws right after. If the
+      // user is genuinely signed in, suppress the scary UI error; the auth
+      // listener handles the rest. Only show the error if auth truly failed.
+      if (window.kfAuth && window.kfAuth.currentUser) {
+        console.warn('[v32] verifyOTP: post-sign-in race — user is authenticated, suppressing UI error.');
+        return;
+      }
       const fe = friendlyError(err);
       showLoginError(fe.text, { recoverable: fe.recoverable, hardReset: fe.hardReset });
     }
