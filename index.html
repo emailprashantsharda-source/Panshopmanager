@@ -189,7 +189,7 @@
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_60_loc_localcache';
+    window.HISAABNOW_BUILD = 'v33_61_desktop_plan_feats';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -66563,14 +66563,27 @@ html[data-shell="desktop"] #pg-settings .toggle {
           + '<ul class="hnd-plan-feats">'
             + '<li class="grp" data-i18n="common.whatYouGet">What you get</li>'
             + '<li>1 outlet · unlimited bills</li>'
+            + '<li>Voice billing · Hindi + English</li>'
             + '<li>GST invoicing · KOT printing</li>'
             + '<li>Customer udhaar · WhatsApp reminders</li>'
-            + '<li class="grp" data-i18n="munim.title">AI Insights</li>'
-            + '<li>Daily profit insights</li>'
-            + '<li>Top sellers · peak hours · slow movers</li>'
-            + '<li class="grp" data-i18n="common.supportLbl">Support</li>'
-            + '<li>WhatsApp · same-day reply</li>'
+            + '<li>Daily profit insights · gross + net</li>'
           + '</ul>'
+          + '<details class="hnd-feat-more">'
+            + '<summary><span class="m-show">Read more</span><span class="m-hide">Show less</span></summary>'
+            + '<ul class="hnd-plan-feats">'
+              + '<li>Appointments &amp; bookings · WhatsApp</li>'
+              + '<li>Inventory &amp; stock management</li>'
+              + '<li>Staff &amp; commission tracking</li>'
+              + '<li class="grp">Marketing &amp; CRM</li>'
+              + '<li>Bulk WhatsApp offers</li>'
+              + '<li>Loyalty CRM · auto-rewards</li>'
+              + '<li class="grp">More AI &amp; reports</li>'
+              + '<li>Top sellers · peak hours · slow movers</li>'
+              + '<li>Cash flow tracker · reports</li>'
+              + '<li class="grp">Support</li>'
+              + '<li>Works offline · WhatsApp same-day</li>'
+            + '</ul>'
+          + '</details>'
           + '<div class="hnd-plan-cta-wrap">'
             + '<button class="hnd-plan-cta primary" data-plan-pick="' + proKey + '">Subscribe to Pro</button>'
           + '</div>'
@@ -66590,14 +66603,19 @@ html[data-shell="desktop"] #pg-settings .toggle {
           + '<ul class="hnd-plan-feats">'
             + '<li class="grp">Everything in Pro, plus</li>'
             + '<li>Up to 5 outlets · one dashboard</li>'
-            + '<li>Staff management + commissions</li>'
-            + '<li>Recipe-level cost tracking</li>'
-            + '<li class="grp">Advanced AI</li>'
-            + '<li>Predictive reorder alerts</li>'
-            + '<li>Cross-outlet benchmarking</li>'
-            + '<li class="grp">Priority support</li>'
-            + '<li>Phone + WhatsApp · within 2 hrs</li>'
+            + '<li>Recipe &amp; cost-of-goods calculator</li>'
+            + '<li>Advanced AI Munim · any question</li>'
           + '</ul>'
+          + '<details class="hnd-feat-more">'
+            + '<summary><span class="m-show">Read more</span><span class="m-hide">Show less</span></summary>'
+            + '<ul class="hnd-plan-feats">'
+              + '<li>Predictive reorder alerts</li>'
+              + '<li>Cross-outlet benchmarking</li>'
+              + '<li>Multi-shop staff &amp; commission</li>'
+              + '<li class="grp">Priority support</li>'
+              + '<li>Priority phone + WhatsApp · within 2 hrs</li>'
+            + '</ul>'
+          + '</details>'
           + '<div class="hnd-plan-cta-wrap">'
             + '<button class="hnd-plan-cta" data-plan-pick="' + bizKey + '">Subscribe to King</button>'
           + '</div>'
@@ -67827,6 +67845,21 @@ html[data-shell="desktop"] body.hnd-on-dash .hnd-d-munim .hnd-d-munim-step:hover
 @media (max-width: 800px){
   .hnd-plans-grid { grid-template-columns: 1fr !important; }
 }
+/* Read more toggle inside plan cards */
+.hnd-feat-more { margin: -4px 0 2px !important; }
+.hnd-feat-more > summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 700; color: #B8860B; padding: 4px 0 6px; user-select: none;
+}
+.hnd-feat-more > summary::-webkit-details-marker { display: none; }
+.hnd-feat-more > summary::after { content: '\25BE'; font-size: 10px; transition: transform .2s; }
+.hnd-feat-more[open] > summary::after { transform: rotate(180deg); }
+.hnd-feat-more[open] > summary { color: #6B7280; }
+.hnd-feat-more > summary:hover { text-decoration: underline; }
+.hnd-feat-more .m-hide { display: none; }
+.hnd-feat-more[open] .m-show { display: none; }
+.hnd-feat-more[open] .m-hide { display: inline; }
+.hnd-feat-more .hnd-plan-feats { margin-top: 2px !important; }
 </style>
 
 <script>
