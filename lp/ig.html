@@ -1,1 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>HisaabNow — Billing & POS app for Indian shops. Know your real profit.</title>
+<meta name="description" content="HisaabNow is a billing + POS app for every Indian shop. Bill by voice, manage udhaar, stock and GST, and know your real profit every single day. Free to try.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFFBF5; --paper:#FFFFFF; --ink:#18181B; --muted:#545454;
+    --gold:#FFC043; --gold-deep:#B8860B; --gold-tint:#FFF7E0; --orange:#FF7A1A;
+    --green:#06C167; --wa:#25D366; --line:#F0E9DD;
+    --disp:'Bricolage Grotesque',sans-serif; --body:'Inter',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--body);background:var(--cream);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;padding-bottom:74px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  a{text-decoration:none;color:inherit}
 
+  /* header */
+  header{position:sticky;top:0;z-index:50;background:rgba(255,251,245,.93);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .bar{max-width:1080px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));display:grid;place-items:center;box-shadow:0 4px 12px -4px rgba(184,134,11,.5)}
+  .btn-sm{font-family:var(--body);font-weight:700;font-size:14px;color:#1a1300;background:linear-gradient(135deg,var(--gold),var(--gold-deep));padding:9px 17px;border-radius:10px;box-shadow:0 5px 14px -5px rgba(184,134,11,.6)}
+
+  /* CTA */
+  .cta{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#1a1300;font-family:var(--body);font-weight:800;font-size:18px;padding:16px 30px;border-radius:14px;box-shadow:0 12px 30px -8px rgba(184,134,11,.55);transition:transform .14s,box-shadow .14s}
+  .cta:active{transform:translateY(1px)}
+  .cta:hover{box-shadow:0 16px 36px -8px rgba(184,134,11,.65)}
+  .cta.full{display:flex;width:100%;max-width:340px;margin:0 auto}
+  .cta-note{font-size:13.5px;color:var(--muted);margin-top:11px}
+
+  /* hero */
+  .hero{padding:34px 0 8px}
+  .hero-grid{text-align:center}
+  .tag{display:inline-block;font-size:13px;font-weight:600;color:var(--gold-deep);background:var(--gold-tint);border:1px solid #F2E3B8;padding:6px 13px;border-radius:999px;margin-bottom:16px}
+  h1{font-family:var(--disp);font-weight:800;font-size:clamp(32px,8.4vw,46px);line-height:1.08;letter-spacing:-.025em}
+  h1 .g{color:var(--gold-deep)}
+  .lead{font-size:16.5px;color:var(--muted);margin:16px auto 0;max-width:440px}
+  .lead b{color:var(--ink);font-weight:600}
+  .lead .hook{color:var(--gold-deep);font-weight:600;font-style:italic}
+  .cta-row{margin-top:24px}
+
+  /* phone mock */
+  .phone{width:250px;margin:30px auto 0;background:#0d0a04;border-radius:34px;padding:9px;box-shadow:0 30px 60px -24px rgba(24,24,27,.45)}
+  .screen{background:var(--cream);border-radius:26px;overflow:hidden}
+  .ph-top{background:linear-gradient(135deg,#221a08,#0d0a04);padding:14px 16px 13px;color:#fff;text-align:left}
+  .ph-top .s{font-size:11px;color:var(--gold);font-weight:600;letter-spacing:.04em}
+  .ph-top .shop{font-family:var(--disp);font-weight:700;font-size:16px;margin-top:1px}
+  .ph-body{padding:13px}
+  .ph-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 13px;text-align:left}
+  .ph-card+.ph-card{margin-top:9px}
+  .ph-row{display:flex;justify-content:space-between;align-items:center}
+  .ph-row .l{font-size:12px;color:var(--muted)}
+  .ph-row .v{font-family:var(--disp);font-weight:700;font-size:15px}
+  .ph-row .v.green{color:var(--green)}
+  .ph-mic{display:flex;align-items:center;gap:8px;background:var(--gold-tint);border-radius:10px;padding:9px 11px;margin-top:9px}
+  .ph-mic .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(6,193,103,.5);animation:p 1.8s infinite;flex:0 0 auto}
+  .ph-mic .t{font-size:11.5px;color:var(--gold-deep);font-weight:600}
+  @keyframes p{0%{box-shadow:0 0 0 0 rgba(6,193,103,.5)}70%{box-shadow:0 0 0 7px rgba(6,193,103,0)}100%{box-shadow:0 0 0 0 rgba(6,193,103,0)}}
+  .demo-cap{font-size:11.5px;color:#A99878;margin-top:9px;text-align:center}
+
+  /* problem */
+  .problem{margin:44px auto 0;max-width:680px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px;text-align:center}
+  .problem p{font-size:16px}
+  .problem .big{font-family:var(--disp);font-weight:700;font-size:20px;margin-top:4px}
+  .problem .big .g{color:var(--gold-deep)}
+  .problem .sub{margin-top:10px;font-size:14.5px;color:var(--muted)}
+
+  /* section heads */
+  .sec{padding:50px 0 0;text-align:center}
+  .ey{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange)}
+  .sec h2{font-family:var(--disp);font-weight:800;font-size:clamp(26px,6.6vw,34px);line-height:1.16;letter-spacing:-.02em;margin-top:8px}
+  .sec .lede{font-size:15.5px;color:var(--muted);margin:10px auto 0;max-width:460px}
+
+  /* features */
+  .feats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px auto 0;max-width:980px}
+  .feat{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 15px;text-align:left;transition:transform .18s,box-shadow .18s}
+  .feat:hover{transform:translateY(-3px);box-shadow:0 18px 40px -22px rgba(0,0,0,.26)}
+  .feat .ic{width:44px;height:44px;border-radius:12px;background:var(--gold-tint);display:grid;place-items:center;font-size:22px;margin-bottom:12px}
+  .feat h3{font-family:var(--disp);font-weight:700;font-size:16px;line-height:1.25}
+  .feat p{font-size:13.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .feat.lead-feat{border-color:#F2E3B8;background:linear-gradient(180deg,#FFFDF7,var(--paper))}
+  .feat.wide{grid-column:1/-1}
+
+  /* verticals */
+  .verts{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin:24px auto 0;max-width:760px}
+  .vert{font-size:14px;font-weight:600;background:var(--paper);border:1px solid var(--line);padding:10px 16px;border-radius:999px}
+  .vert .e{margin-right:6px}
+
+  /* how it works */
+  .steps{margin:26px auto 0;max-width:680px;display:grid;gap:12px}
+  .step{display:flex;gap:14px;align-items:flex-start;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .step .n{flex:0 0 auto;width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#1a1300;font-family:var(--disp);font-weight:800;display:grid;place-items:center;font-size:17px}
+  .step h3{font-family:var(--disp);font-weight:700;font-size:16.5px}
+  .step p{font-size:14px;color:var(--muted);margin-top:3px}
+
+  .trust{margin:24px auto 0;max-width:680px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .tr{font-size:13.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);padding:9px 14px;border-radius:999px}
+  .tr .c{color:var(--green);font-weight:800}
+
+  /* close */
+  .close{margin:54px auto 0;max-width:760px;background:linear-gradient(155deg,#221a08,#0d0a04);border-radius:26px;padding:46px 30px;text-align:center;color:#fff}
+  .close .crown{width:48px;height:48px;margin:0 auto 16px;border-radius:13px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));display:grid;place-items:center}
+  .close h2{font-family:var(--disp);font-weight:800;font-size:clamp(25px,6.2vw,32px);line-height:1.2;color:#fff}
+  .close .g{color:var(--gold)}
+  .close .lede{color:rgba(255,255,255,.72);font-size:15px;margin:12px auto 0;max-width:400px}
+  .close .cta{margin-top:24px;background:linear-gradient(135deg,var(--gold),#FFD66B)}
+  .close .cta-note{color:rgba(255,255,255,.6)}
+
+  footer{padding:30px 0 40px;text-align:center}
+  .foot-tag{font-family:var(--disp);font-weight:700;font-size:15px;color:var(--gold-deep)}
+  .foot-sub{font-size:13px;color:var(--muted);margin-top:5px}
+
+  /* sticky bottom CTA (mobile) */
+  .sticky{position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(255,251,245,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:11px 20px calc(11px + env(safe-area-inset-bottom))}
+  .sticky .inner{max-width:540px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between}
+  .sticky .txt{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+  .sticky .txt span{display:block;font-size:11.5px;color:var(--muted);font-weight:500}
+  .sticky .cta{padding:13px 22px;font-size:16px;flex:0 0 auto}
+
+  .wa-float{position:fixed;right:16px;bottom:84px;z-index:55;width:52px;height:52px;border-radius:50%;background:var(--wa);display:grid;place-items:center;box-shadow:0 10px 26px -6px rgba(37,211,102,.6)}
+
+  .rv{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
+  .rv.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}.ph-mic .dot{animation:none}}
+
+  /* ───────── DESKTOP / LAPTOP ───────── */
+  @media (min-width:860px){
+    body{padding-bottom:0}
+    .sticky{display:none}
+    .wa-float{bottom:20px;right:20px}
+
+    .hero{padding:56px 0 20px}
+    .hero-grid{display:grid;grid-template-columns:1fr 300px;gap:56px;align-items:center;text-align:left}
+    .tag{margin-bottom:18px}
+    .lead{margin-left:0;font-size:18px;max-width:520px}
+    .cta-row{margin-top:28px}
+    .cta.full{margin:0;max-width:none;width:auto;display:inline-flex;padding:17px 36px;font-size:19px}
+    .hero .cta-note{text-align:left}
+    .phone{margin:0 0 0 auto;width:280px}
+    .demo-cap{text-align:center}
+
+    .sec{padding:64px 0 0}
+    .feats{grid-template-columns:repeat(3,1fr)}
+    .feat.wide{grid-column:1/-1;display:flex;align-items:center;gap:18px}
+    .feat.wide .ic{margin-bottom:0}
+    .feat.wide div{flex:1}
+
+    .close{padding:56px 40px}
+  }
+  @media (min-width:1024px){
+    h1{font-size:50px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="logo">
+      <span class="mark"><svg width="17" height="17" viewBox="0 0 24 24" fill="#1a1300"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg></span>
+      HisaabNow
+    </div>
+    <a class="btn-sm" href="https://app.hisaabnow.com/?utm_source=instagram&utm_medium=paid&utm_campaign=launch_video">Get Started</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="tag rv">Billing & POS app · for every Indian shop</span>
+        <h1 class="rv">Know your <span class="g">real profit</span> — not just your sales.</h1>
+        <p class="lead rv">HisaabNow runs your <b>billing, udhaar, stock and GST</b> in one app — and tells you exactly what you earned today, not just what you sold. <span class="hook">Bolkar bill banao, profit samjho.</span></p>
+        <div class="cta-row rv">
+          <a class="cta full" href="https://app.hisaabnow.com/?utm_source=instagram&utm_medium=paid&utm_campaign=launch_video">Get Started →</a>
+          <p class="cta-note">Free to try · No card needed · Setup in 2 minutes</p>
+        </div>
+      </div>
+      <div class="hero-visual rv">
+        <div class="phone">
+          <div class="screen">
+            <div class="ph-top"><div class="s">TODAY'S HISAAB</div><div class="shop">Sharma Cafe</div></div>
+            <div class="ph-body">
+              <div class="ph-card">
+                <div class="ph-row"><span class="l">Today's Sales</span><span class="v">₹12,400</span></div>
+              </div>
+              <div class="ph-card">
+                <div class="ph-row"><span class="l">Real profit today</span><span class="v green">₹3,180 ↑</span></div>
+                <div class="ph-row" style="margin-top:7px"><span class="l">Top earner</span><span class="v" style="font-size:13px">Cold Coffee</span></div>
+              </div>
+              <div class="ph-mic"><span class="dot"></span><span class="t">"Do chai, ek samosa" — billed by voice</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="demo-cap">App demo view</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM → SOLUTION -->
+  <section class="problem rv">
+    <p>You can see your sales. But at month-end, the real question is —</p>
+    <p class="big">"What's my <span class="g">actual profit</span>?"</p>
+    <p class="sub">HisaabNow subtracts the real cost of every bill and shows your true net profit — an exact number, not a guess.</p>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="sec rv">
+    <div class="ey">Everything in one app</div>
+    <h2>Not just billing — run your whole shop</h2>
+    <p class="lede">What you do across four different places today, HisaabNow does in one.</p>
+  </section>
+  <section class="feats">
+    <div class="feat lead-feat rv"><div class="ic">📈</div><h3>Real profit on every sale</h3><p>Subtracts the actual cost of every item to show net + gross margin — updated with each bill. This is the one most billing apps skip.</p></div>
+    <div class="feat rv"><div class="ic">🎙️</div><h3>Voice billing</h3><p>Speak in Hindi or English and the bill is ready — your hands never leave the counter.</p></div>
+    <div class="feat rv"><div class="ic">🧾</div><h3>GST-ready invoicing</h3><p>HSN codes, GSTIN, CGST/SGST splits, clean filing reports. Receipts on WhatsApp in two taps.</p></div>
+    <div class="feat rv"><div class="ic">🤝</div><h3>CRM & udhaar khaata</h3><p>Every customer's history and dues in one place, with automatic WhatsApp payment reminders.</p></div>
+    <div class="feat rv"><div class="ic">📦</div><h3>Inventory & stock</h3><p>Real-time stock, low-stock alerts before you run out, and which items move fast or sit dead.</p></div>
+    <div class="feat rv"><div class="ic">👥</div><h3>Staff & commission</h3><p>Each staff member's sales and tips, with commissions calculated automatically — per person.</p></div>
+    <div class="feat rv"><div class="ic">📅</div><h3>Appointments & bookings</h3><p>Take bookings with automatic WhatsApp reminders — built for salons, clinics and restaurants.</p></div>
+    <div class="feat rv"><div class="ic">🏪</div><h3>Up to 5 outlets</h3><p>Manage multiple shops from one dashboard. Works offline and syncs to the cloud automatically.</p></div>
+    <div class="feat wide rv"><div class="ic">🧠</div><div><h3>Munim — your AI Business Advisor</h3><p>The built-in AI that reads your day and flags what matters — a dish priced below cost, a slow afternoon, a customer who hasn't returned. Ask it any business question and get a plain answer in Hindi or English.</p></div></div>
+  </section>
+
+  <!-- VERTICALS -->
+  <section class="sec rv">
+    <h2>For every kind of shop</h2>
+    <p class="lede">Whatever you run — HisaabNow is built for it.</p>
+  </section>
+  <section class="verts rv">
+    <span class="vert"><span class="e">☕</span>Cafe</span>
+    <span class="vert"><span class="e">✂️</span>Salon</span>
+    <span class="vert"><span class="e">🍽️</span>Restaurant</span>
+    <span class="vert"><span class="e">🍰</span>Bakery</span>
+    <span class="vert"><span class="e">🛒</span>Kirana</span>
+    <span class="vert"><span class="e">🍎</span>Fruit Shop</span>
+    <span class="vert"><span class="e">🪔</span>Pan Shop</span>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="sec rv">
+    <div class="ey">2-minute setup</div>
+    <h2>Getting started is easy</h2>
+  </section>
+  <section class="steps">
+    <div class="step rv"><span class="n">1</span><div><h3>Open the app</h3><p>Tap Get Started — no card, no payment. Add your shop name and you're in.</p></div></div>
+    <div class="step rv"><span class="n">2</span><div><h3>Bill by voice</h3><p>Your first 5 bills are completely free. Speak or type — the bill is ready.</p></div></div>
+    <div class="step rv"><span class="n">3</span><div><h3>See your profit</h3><p>Every evening, HisaabNow shows today's real profit and your top-earning item.</p></div></div>
+  </section>
+  <section class="trust rv">
+    <span class="tr"><span class="c">✓</span>Works offline</span>
+    <span class="tr"><span class="c">✓</span>Data secure & private</span>
+    <span class="tr"><span class="c">✓</span>Made in India</span>
+  </section>
+
+  <!-- CLOSE -->
+  <section class="close rv">
+    <div class="crown"><svg width="22" height="22" viewBox="0 0 24 24" fill="#1a1300"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg></div>
+    <h2>Smart shopkeepers don't just track <span class="g">sales</span> —<br>they track <span class="g">profit</span>.</h2>
+    <p class="lede">Start today. Your first 5 bills are free, no card needed.</p>
+    <a class="cta full" href="https://app.hisaabnow.com/?utm_source=instagram&utm_medium=paid&utm_campaign=launch_video">Get Started →</a>
+    <p class="cta-note">Bolkar bill banao · Profit samjho · Business badhao</p>
+  </section>
+
+  <footer>
+    <div class="foot-tag">HisaabNow</div>
+    <div class="foot-sub">www.hisaabnow.com</div>
+  </footer>
+
+</main>
+
+<!-- sticky bottom CTA (mobile only) -->
+<div class="sticky">
+  <div class="inner">
+    <div class="txt">First 5 bills free<span>No card · 2-min setup</span></div>
+    <a class="cta" href="https://app.hisaabnow.com/?utm_source=instagram&utm_medium=paid&utm_campaign=launch_video">Get Started →</a>
+  </div>
+</div>
+
+<a class="wa-float" href="https://wa.me/917838361200?text=I%20want%20to%20know%20more%20about%20HisaabNow" aria-label="WhatsApp">
+  <svg width="27" height="27" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.7 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.7.8-2.7-.2-.3A8 8 0 1 1 12 20zm4.5-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7 1-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2.1-.1 0-.3 0-.4l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-1 2.3c0 1.3 1 2.6 1.1 2.8a10.5 10.5 0 0 0 4 3.5c1.5.6 2 .6 2.7.6a2.4 2.4 0 0 0 1.6-1.1c.2-.5.2-1 .1-1.1s-.2-.1-.4-.2z"/></svg>
+</a>
+
+<script>
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.1});
+  document.querySelectorAll('.rv').forEach(function(el){io.observe(el)});
+</script>
+</body>
+</html>
