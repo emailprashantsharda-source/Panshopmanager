@@ -46,6 +46,140 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 fbq('init', '1670925877471743');
 fbq('track', 'PageView');
 window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('trackCustom', 'InstallApp'); } catch(e){} });
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * (v33_67) DIRECT-INSTALL BANNER — restored (was lost after v25.9).
+ * Captures beforeinstallprompt, then shows a branded "Install HisaabNow"
+ * banner ONLY after the user is past login + onboarding (never on those
+ * screens). Tapping it triggers the native install — no Play Store, so no
+ * closed-testing warning. iOS (no beforeinstallprompt) gets an A2HS hint.
+ * ────────────────────────────────────────────────────────────────────────── */
+(function(){
+  var deferredPrompt = null;
+  var DISMISS_KEY = 'hn_install_dismissed_v1';
+  var shown = false;
+
+  function isStandalone(){
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true
+        || (document.referrer && document.referrer.indexOf('android-app://') === 0);
+  }
+  function isHidden(id){
+    var el = document.getElementById(id);
+    if (!el) return true;
+    var cs = window.getComputedStyle(el);
+    return cs.display === 'none' || cs.visibility === 'hidden' || el.offsetParent === null;
+  }
+  // Only ready once login + onboarding overlays are gone (the v25.9 gate).
+  function isAppReady(){
+    return isHidden('login-screen') && isHidden('pg-onboarding');
+  }
+  function isIOS(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+
+  function buildBanner(iosHint){
+    if (document.getElementById('hn-install-banner')) return;
+    var bar = document.createElement('div');
+    bar.id = 'hn-install-banner';
+    bar.setAttribute('role','dialog');
+    bar.style.cssText = [
+      'position:fixed','left:12px','right:12px','bottom:14px','z-index:99999',
+      'display:flex','align-items:center','gap:12px',
+      'background:#FFFBF5','border:1.5px solid #FFC043',
+      'box-shadow:0 8px 28px rgba(0,0,0,.18)','border-radius:16px',
+      'padding:12px 14px','font-family:inherit','max-width:560px','margin:0 auto'
+    ].join(';');
+
+    var icon = document.createElement('div');
+    icon.style.cssText = 'flex:0 0 auto;width:40px;height:40px;border-radius:11px;background:#FF7A1A;display:flex;align-items:center;justify-content:center;font-size:22px';
+    icon.textContent = '📲';
+
+    var txt = document.createElement('div');
+    txt.style.cssText = 'flex:1 1 auto;min-width:0';
+    var t1 = document.createElement('div');
+    t1.style.cssText = 'font-weight:800;font-size:14px;color:#18181B;letter-spacing:-.01em';
+    t1.textContent = 'Install HisaabNow';
+    var t2 = document.createElement('div');
+    t2.style.cssText = 'font-size:12px;color:#6B7280;margin-top:1px';
+    t2.textContent = iosHint
+      ? 'Tap Share → "Add to Home Screen"'
+      : 'Add to your home screen — faster, works offline';
+    txt.appendChild(t1); txt.appendChild(t2);
+
+    bar.appendChild(icon); bar.appendChild(txt);
+
+    if (!iosHint){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'Install';
+      btn.style.cssText = 'flex:0 0 auto;background:#FF7A1A;color:#fff;border:none;font-weight:800;font-size:13.5px;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:inherit';
+      btn.onclick = function(){
+        if (!deferredPrompt){ hide(); return; }
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choice){
+          try { console.log('[install] choice:', choice && choice.outcome); } catch(e){}
+          deferredPrompt = null; hide();
+        });
+      };
+      bar.appendChild(btn);
+    }
+
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.setAttribute('aria-label','Dismiss');
+    x.textContent = '✕';
+    x.style.cssText = 'flex:0 0 auto;background:transparent;border:none;color:#9CA3AF;font-size:16px;padding:6px 4px;cursor:pointer;font-family:inherit';
+    x.onclick = function(){ try { localStorage.setItem(DISMISS_KEY,'1'); } catch(e){} hide(); };
+    bar.appendChild(x);
+
+    document.body.appendChild(bar);
+  }
+
+  function hide(){
+    var el = document.getElementById('hn-install-banner');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function maybeShow(iosHint){
+    if (shown) return;
+    if (isStandalone()) return;            // already installed
+    try { if (localStorage.getItem(DISMISS_KEY)) return; } catch(e){}
+    if (!isAppReady()) return;             // still on login/onboarding
+    shown = true;
+    buildBanner(!!iosHint);
+  }
+
+  // Poll until the app is ready, then show (mirrors the v25.9 approach).
+  function startPolling(iosHint){
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      if (shown || isStandalone()){ clearInterval(iv); return; }
+      if (isAppReady()){
+        setTimeout(function(){ maybeShow(iosHint); }, 2500); // settle after dashboard paints
+        clearInterval(iv);
+      }
+      if (tries > 120) clearInterval(iv);  // give up after ~3 min
+    }, 1500);
+  }
+
+  // Android / Chromium: capture the real install prompt.
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    startPolling(false);
+  });
+
+  // iOS Safari: no beforeinstallprompt — offer the A2HS hint instead.
+  if (isIOS() && !isStandalone()){
+    if (document.readyState === 'complete') startPolling(true);
+    else window.addEventListener('load', function(){ startPolling(true); });
+  }
+
+  // Clean up if they install while the banner is up.
+  window.addEventListener('appinstalled', function(){ try { localStorage.setItem(DISMISS_KEY,'1'); } catch(e){} hide(); });
+})();
 </script>
 <noscript><img height="1" width="1" style="display:none"
 src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
@@ -207,7 +341,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_66_onb_profile_sync';
+    window.HISAABNOW_BUILD = 'v33_67_install_banner';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
