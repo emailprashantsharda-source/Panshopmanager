@@ -386,7 +386,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_72_banner_settle';
+    window.HISAABNOW_BUILD = 'v33_73_firestore_longpoll';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -35714,7 +35714,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, deleteUser, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, limit, serverTimestamp, enableIndexedDbPersistence, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, initializeFirestore, doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, limit, serverTimestamp, enableIndexedDbPersistence, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
   import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
   /* v33_29az: FCM (Web Push) — gated behind user opt-in in Settings.
@@ -35796,7 +35796,14 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   setPersistence(auth, browserLocalPersistence).catch(function(err){
     console.warn('[v32] Auth persistence failed:', err);
   });
-  const db = getFirestore(app);
+  // (v33_73) CRITICAL mobile-data fix: Firestore's default streaming transport
+  // (WebChannel) is broken by many Indian mobile carriers / Android WebViews,
+  // which made the app falsely report "Offline / Network blocked" on mobile data
+  // and silently stranded users' bills locally. Auto-detect long-polling falls
+  // back to a transport that works on those networks.
+  const db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+  });
 
   window.HisaabSyncDeps = {
     db, auth,
