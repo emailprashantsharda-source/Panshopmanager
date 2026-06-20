@@ -74,9 +74,20 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
   // pg-home. Onboarding & login are .page elements toggled by the .active class,
   // so this guarantees the banner never overlaps them.
   function isAppReady(){
+    // Reject if the login overlay is up.
     if (!isHidden('login-screen')) return false;
-    var active = document.querySelector('.page.active');
-    return !!active && active.id === 'pg-home';
+    // Reject if onboarding is in progress. (pg-onboarding can be .active at the
+    // SAME TIME as pg-home — onboarding overlays the dashboard — so we must
+    // check it explicitly rather than trust querySelector('.page.active').)
+    var onb = document.getElementById('pg-onboarding');
+    if (onb && onb.classList.contains('active')) return false;
+    // Reject if the onboarding language picker step is visible.
+    var lang0 = document.getElementById('onb-step-0');
+    if (lang0 && lang0.offsetParent !== null) return false;
+    // Require the dashboard to be active.
+    var home = document.getElementById('pg-home');
+    if (!home || !home.classList.contains('active')) return false;
+    return true;
   }
   function isIOS(){
     return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
@@ -370,7 +381,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_68_install_gate';
+    window.HISAABNOW_BUILD = 'v33_69_install_gate2';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
