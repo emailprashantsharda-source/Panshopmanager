@@ -74,19 +74,20 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
   // pg-home. Onboarding & login are .page elements toggled by the .active class,
   // so this guarantees the banner never overlaps them.
   function isAppReady(){
-    // Reject if the login overlay is up.
+    // 1) Login overlay must be gone.
     if (!isHidden('login-screen')) return false;
-    // Reject if onboarding is in progress. (pg-onboarding can be .active at the
-    // SAME TIME as pg-home — onboarding overlays the dashboard — so we must
-    // check it explicitly rather than trust querySelector('.page.active').)
+    // 2) Onboarding must NOT be on screen. When active it is position:fixed,
+    //    inset:0 — so check its COMPUTED display (reliable regardless of how the
+    //    .active class is toggled or the fixed positioning).
     var onb = document.getElementById('pg-onboarding');
-    if (onb && onb.classList.contains('active')) return false;
-    // Reject if the onboarding language picker step is visible.
-    var lang0 = document.getElementById('onb-step-0');
-    if (lang0 && lang0.offsetParent !== null) return false;
-    // Require the dashboard to be active.
+    if (onb && window.getComputedStyle(onb).display !== 'none') return false;
+    // 3) The home dashboard must be the active page.
     var home = document.getElementById('pg-home');
     if (!home || !home.classList.contains('active')) return false;
+    // 4) POSITIVE proof onboarding is genuinely complete: a shop name exists.
+    //    This is the key guard — during language/login/onboarding it is empty,
+    //    so the banner can never appear before the user is truly set up.
+    if (!(window.S && (window.S.store || window.S.shopName))) return false;
     return true;
   }
   function isIOS(){
@@ -156,40 +157,30 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
     if (el && el.parentNode) el.parentNode.removeChild(el);
   }
 
-  function maybeShow(iosHint){
-    if (shown) return;
-    if (isStandalone()) return;            // already installed
-    try { if (localStorage.getItem(DISMISS_KEY)) return; } catch(e){}
-    if (!isAppReady()) return;             // still on login/onboarding
-    shown = true;
-    buildBanner(!!iosHint);
-  }
+  var iosMode = false;
 
-  // Poll until the app is ready, then show (mirrors the v25.9 approach).
-  function startPolling(iosHint){
-    var tries = 0;
-    var iv = setInterval(function(){
-      tries++;
-      if (shown || isStandalone()){ clearInterval(iv); return; }
-      if (isAppReady()){
-        setTimeout(function(){ maybeShow(iosHint); }, 2500); // settle after dashboard paints
-        clearInterval(iv);
-      }
-      if (tries > 120) clearInterval(iv);  // give up after ~3 min
-    }, 1500);
+  // Continuously reconcile (NON-latching): show only while genuinely ready,
+  // and HIDE the moment we're not (e.g. if onboarding/login re-appears). This
+  // kills the old bug where an early ready-looking frame latched the banner on.
+  function reconcile(){
+    if (isStandalone()){ hide(); return; }          // installed
+    try { if (localStorage.getItem(DISMISS_KEY)){ hide(); return; } } catch(e){}
+    var ready = isAppReady() && (deferredPrompt || iosMode);
+    if (ready) buildBanner(iosMode);
+    else hide();
   }
+  setInterval(reconcile, 1200);
 
   // Android / Chromium: capture the real install prompt.
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
-    startPolling(false);
+    reconcile();
   });
 
   // iOS Safari: no beforeinstallprompt — offer the A2HS hint instead.
   if (isIOS() && !isStandalone()){
-    if (document.readyState === 'complete') startPolling(true);
-    else window.addEventListener('load', function(){ startPolling(true); });
+    iosMode = true;
   }
 
   // Post-install hint — many Android launchers (MIUI/OneUI/ColorOS) drop the
@@ -381,7 +372,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_69_install_gate2';
+    window.HISAABNOW_BUILD = 'v33_70_install_gate3';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
