@@ -158,18 +158,32 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
   }
 
   var iosMode = false;
+  // Don't allow the banner to show until the app has settled past first paint,
+  // so a transient "ready-looking" frame on load can't flash it on. Set once the
+  // user has been seen on a NON-dashboard screen (login/onboarding) OR after a
+  // grace period — whichever proves the auth flow has actually rendered.
+  var settledAt = Date.now() + 3500;   // earliest the banner may ever appear
+  var sawAuthScreen = false;
 
-  // Continuously reconcile (NON-latching): show only while genuinely ready,
-  // and HIDE the moment we're not (e.g. if onboarding/login re-appears). This
-  // kills the old bug where an early ready-looking frame latched the banner on.
   function reconcile(){
     if (isStandalone()){ hide(); return; }          // installed
     try { if (localStorage.getItem(DISMISS_KEY)){ hide(); return; } } catch(e){}
+
+    // Track whether we've actually seen the login/onboarding flow render. If we
+    // have, we KNOW any later "ready" is a genuine post-onboarding dashboard.
+    var loginUp = !isHidden('login-screen');
+    var onb = document.getElementById('pg-onboarding');
+    var onbUp = onb && window.getComputedStyle(onb).display !== 'none';
+    if (loginUp || onbUp) sawAuthScreen = true;
+
+    // Settle gate: never show before the grace period is up.
+    if (Date.now() < settledAt){ hide(); return; }
+
     var ready = isAppReady() && (deferredPrompt || iosMode);
     if (ready) buildBanner(iosMode);
     else hide();
   }
-  setInterval(reconcile, 1200);
+  setInterval(reconcile, 1000);
 
   // Android / Chromium: capture the real install prompt.
   window.addEventListener('beforeinstallprompt', function(e){
@@ -372,7 +386,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_70_install_gate3';
+    window.HISAABNOW_BUILD = 'v33_72_banner_settle';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -36268,6 +36282,26 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       // listener handles the rest. Only show the error if auth truly failed.
       if (window.kfAuth && window.kfAuth.currentUser) {
         console.warn('[v32] verifyOTP: post-sign-in race — user is authenticated, suppressing UI error.');
+        return;
+      }
+      // (v33_70) The sign-in can succeed while confirm() still throws a transient
+      // error (code-expired / permission race), and currentUser may not be
+      // populated for a tick — which previously caused a ~1s red error flash.
+      // For these transient codes, wait a beat and re-check before showing any
+      // error; if the user got signed in, suppress it entirely.
+      var _ecode = (err && err.code) || '';
+      var _transient = _ecode.indexOf('code-expired') !== -1
+                    || _ecode.indexOf('permission') !== -1
+                    || _ecode.indexOf('internal') !== -1;
+      if (_transient) {
+        setTimeout(function(){
+          if (window.kfAuth && window.kfAuth.currentUser) {
+            console.warn('[v32] verifyOTP: transient error after successful sign-in — suppressed.');
+            return; // signed in — say nothing
+          }
+          var fe2 = friendlyError(err);
+          showLoginError(fe2.text, { recoverable: fe2.recoverable, hardReset: fe2.hardReset });
+        }, 700);
         return;
       }
       const fe = friendlyError(err);
