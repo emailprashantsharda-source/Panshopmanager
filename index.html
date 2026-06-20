@@ -207,7 +207,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_65_otp_race_guard';
+    window.HISAABNOW_BUILD = 'v33_66_onb_profile_sync';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -29180,6 +29180,31 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     // Update More menu profile name immediately
     const pn = document.getElementById('more-profile-name');
     if (pn) pn.textContent = shopName;
+
+    // (v33_66) Mirror onboarding identity to the user profile NOW, so the admin
+    // Conversion-Funnel counts this user as "onboarded" the moment setup finishes
+    // — not only after their first bill (when BillSync used to write shopName).
+    // Also makes new signups appear in admin "All Users"/"Top Shops" instantly.
+    // Non-blocking and fully non-fatal.
+    try {
+      if (window.kfCallable && window.kfFunctions) {
+        var _onbPayload = { shopName: shopName, profession: this.vertical };
+        if (ownerName) _onbPayload.ownerName = ownerName;
+        if (window.S && window.S.shopAddress) _onbPayload.shopAddress = window.S.shopAddress;
+        try {
+          var _onbLoc = JSON.parse(localStorage.getItem('hn_outlet_location') || 'null');
+          if (_onbLoc && _onbLoc.lat && _onbLoc.lng) { _onbPayload.shopLat = _onbLoc.lat; _onbPayload.shopLng = _onbLoc.lng; }
+        } catch(e){}
+        var _onbSync = window.kfCallable(window.kfFunctions, 'syncUserProfile');
+        _onbSync(_onbPayload).then(function(){
+          console.log('[onb] profile synced — onboarded recorded');
+        }).catch(function(err){
+          console.warn('[onb] syncUserProfile failed (non-fatal):', err && err.message);
+        });
+      }
+    } catch (e) {
+      console.warn('[onb] profile sync outer error (non-fatal):', e && e.message);
+    }
 
     setTimeout(() => this.nav('home'), 700);
   },
