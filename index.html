@@ -70,9 +70,13 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
     var cs = window.getComputedStyle(el);
     return cs.display === 'none' || cs.visibility === 'hidden' || el.offsetParent === null;
   }
-  // Only ready once login + onboarding overlays are gone (the v25.9 gate).
+  // Ready ONLY on the home dashboard: login overlay gone AND the active .page is
+  // pg-home. Onboarding & login are .page elements toggled by the .active class,
+  // so this guarantees the banner never overlaps them.
   function isAppReady(){
-    return isHidden('login-screen') && isHidden('pg-onboarding');
+    if (!isHidden('login-screen')) return false;
+    var active = document.querySelector('.page.active');
+    return !!active && active.id === 'pg-home';
   }
   function isIOS(){
     return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
@@ -84,7 +88,7 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
     bar.id = 'hn-install-banner';
     bar.setAttribute('role','dialog');
     bar.style.cssText = [
-      'position:fixed','left:12px','right:12px','bottom:14px','z-index:99999',
+      'position:fixed','left:12px','right:12px','bottom:calc(82px + env(safe-area-inset-bottom))','z-index:80',
       'display:flex','align-items:center','gap:12px',
       'background:#FFFBF5','border:1.5px solid #FFC043',
       'box-shadow:0 8px 28px rgba(0,0,0,.18)','border-radius:16px',
@@ -177,8 +181,33 @@ window.addEventListener('appinstalled', function(){ try { if (window.fbq) fbq('t
     else window.addEventListener('load', function(){ startPolling(true); });
   }
 
-  // Clean up if they install while the banner is up.
-  window.addEventListener('appinstalled', function(){ try { localStorage.setItem(DISMISS_KEY,'1'); } catch(e){} hide(); });
+  // Post-install hint — many Android launchers (MIUI/OneUI/ColorOS) drop the
+  // icon in the app drawer, not the home screen, so users think it failed.
+  function showInstalledHint(){
+    if (document.getElementById('hn-installed-hint')) return;
+    var t = document.createElement('div');
+    t.id = 'hn-installed-hint';
+    t.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:81;background:#065F46;color:#fff;border-radius:14px;padding:13px 16px;font-family:inherit;font-size:13.5px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.22);max-width:560px;margin:0 auto;text-align:center';
+    t.textContent = '✓ HisaabNow installed! Find it in your apps or on your home screen.';
+    document.body.appendChild(t);
+    setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, 6000);
+  }
+
+  // Clean up if they install while the banner is up; show the where-is-it hint.
+  window.addEventListener('appinstalled', function(){
+    try { localStorage.setItem(DISMISS_KEY,'1'); } catch(e){}
+    hide();
+    showInstalledHint();
+    // (v33_68) Record the install on the user profile so admin can track
+    // install-rate per signup. Non-blocking, non-fatal.
+    try {
+      if (window.kfCallable && window.kfFunctions) {
+        window.kfCallable(window.kfFunctions, 'syncUserProfile')({ installedApp: true })
+          .then(function(){ console.log('[install] recorded on profile'); })
+          .catch(function(e){ console.warn('[install] profile record failed (non-fatal):', e && e.message); });
+      }
+    } catch(e){}
+  });
 })();
 </script>
 <noscript><img height="1" width="1" style="display:none"
@@ -341,7 +370,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_67_install_banner';
+    window.HISAABNOW_BUILD = 'v33_68_install_gate';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
