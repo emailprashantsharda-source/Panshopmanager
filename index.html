@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_89_strip_left';
+    window.HISAABNOW_BUILD = 'v33_91_kot_kds';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5252,6 +5252,20 @@ html[data-current-role="manager"] body{
     'tables.free':             { en: 'Free',                     hi: 'खाली' },
     'tables.setCount':         { en: 'Set number of tables',     hi: 'टेबल संख्या सेट करें' },
     'tables.howMany':          { en: 'How many tables?',         hi: 'कितने टेबल?' },
+    'tables.kitchen':          { en: 'Kitchen',                  hi: 'Kitchen' },
+    'tables.sendKitchen':      { en: 'Send to kitchen',          hi: 'Kitchen भेजें' },
+    'tables.sentKitchen':      { en: 'sent to kitchen',          hi: 'kitchen भेजा गया' },
+    'tables.note':             { en: 'Note',                     hi: 'Note' },
+    'tables.rename':           { en: 'Rename',                   hi: 'Rename' },
+    'tables.kitchenNote':      { en: 'Kitchen note (e.g. less spicy, no onion)', hi: 'Kitchen note (जैसे कम मिर्च, बिना प्याज़)' },
+    'tables.addFirst':         { en: 'Add items first',          hi: 'पहले items जोड़ें' },
+    'tables.clearReady':       { en: 'Clear ready',              hi: 'Ready हटाएं' },
+    'tables.openTickets':      { en: 'open tickets',             hi: 'खुले tickets' },
+    'tables.noTickets':        { en: 'No kitchen tickets yet. Send an order to the kitchen to see it here.', hi: 'अभी कोई kitchen ticket नहीं। Order को kitchen भेजें।' },
+    'tables.start':            { en: 'Start',                    hi: 'शुरू करें' },
+    'tables.markReady':        { en: 'Mark ready',               hi: 'Ready करें' },
+    'tables.done':             { en: 'Done ✓',                   hi: 'हो गया ✓' },
+    'tables.justNow':          { en: 'just now',                 hi: 'अभी' },
     'more.signOut':            { en: 'Sign out',                 hi: 'लॉगआउट' },
 
     /* More page · dynamic content */
@@ -48867,7 +48881,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 
     filtered: function(){
       var self = this;
-      /* (v33_88) Show inactive/preloaded (seeded) items too. */
+      /* (v33_88) Show inactive/preloaded items too. */
       var list = getProds().slice();
       /* Vertical catalog filter — salon Product Sales shows retail only */
       list = list.filter(function(p){ return self._verticalFilter(p); });
@@ -82579,177 +82593,198 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 <!-- ============== END AI Business Advisor welcome ============== -->
 
 <!-- ============================================================
-     HisaabNow Desktop · Tables / Open Orders — v1
-     ─────────────────────────────────────────────────────────────
-     Lets the desktop POS hold several orders in parallel (Table 1,
-     Table 2 …). A "table" is just a saved snapshot of the live cart
-     state that clearCart resets: cart, customLines, _cartStaff,
-     _cartStaffOverridden (+ paymentMode). Switching parks the active
-     order and recalls another; settling bills the active order via the
-     existing App.completeSale() and removes it.
-
-     Integrates with: window.HNDPOS.renderCart(), App.cart,
-     App.customLines, App._cartStaff, App.cartTotal(), App.completeSale(),
-     App.updateCartSummary().  Renders ONLY on the desktop POS panel
-     (.hnd-pos-r), so mobile is untouched.  Gated to food verticals
-     (override: localStorage hn_tables_on = '1' / '0').
-
-     API: HNTables.newTable() .switchTo(id) .removeTable(id) .isEnabled()
+     HisaabNow Desktop · Orders / Tables + KOT/KDS — v2
+     v1 engine: parallel open orders (park/recall/switch/settle).
+     v2 adds:  • Order-type tag (Dine-in/Takeaway/Delivery/Swiggy/Zomato)
+               • KOT "Send to kitchen" + printable slip
+               • KDS in-app kitchen screen (New->Preparing->Ready, age colour)
+     Desktop POS only (.hnd-pos-l). Food-vertical gated. Per-shop localStorage.
 ============================================================ -->
 <style>
 #hntab-strip{border:1px solid var(--hnd-line,#E2E2E2);border-radius:10px;padding:10px 12px;background:var(--hnd-card,#fff);margin-bottom:2px}
 .hntab-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--hnd-muted,#8A8A8A);margin-bottom:8px}
 .hntab-head .hntab-n{background:#FAF0E0;color:#B8860B;border-radius:99px;padding:1px 7px;font-size:10px}
-.hntab-chips{display:flex;flex-wrap:wrap;gap:7px}
-.hntab-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--hnd-line,#E2E2E2);background:var(--hnd-card,#fff);border-radius:9px;padding:6px 9px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--hnd-ink,#1a1a1a);transition:border-color .12s,background .12s}
-.hntab-chip:hover{border-color:#FFC043}
-.hntab-chip.active{border-color:#FFC043;background:#FFF8EA}
-.hntab-chip .t{font-weight:700}
-.hntab-chip .amt{font-size:11px;font-weight:700;color:#B8860B;font-variant-numeric:tabular-nums}
-.hntab-chip .amt.zero{color:var(--hnd-muted,#9C9C9C)}
-.hntab-chip .x{display:inline-flex;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;color:var(--hnd-muted,#9C9C9C);font-size:12px;line-height:1}
-.hntab-chip .x:hover{background:#F0F0F0;color:#C0392B}
-.hntab-new{display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--hnd-muted,#C8C8C8);background:none;border-radius:9px;padding:6px 11px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--hnd-gold-rich,#B8860B)}
-.hntab-new:hover{background:#FAF0E0}
-
-.hntab-modebar{margin-left:auto;display:inline-flex;border:1px solid var(--hnd-line,#E2E2E2);border-radius:8px;overflow:hidden}
+.hntab-kds-btn{margin-left:auto;border:1px solid var(--hnd-line,#E2E2E2);background:none;border-radius:8px;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer;color:var(--hnd-ink,#1a1a1a);display:inline-flex;align-items:center;gap:5px}
+.hntab-kds-btn .b{background:#E23744;color:#fff;border-radius:99px;padding:0 6px;font-size:10px}
+.hntab-modebar{display:inline-flex;border:1px solid var(--hnd-line,#E2E2E2);border-radius:8px;overflow:hidden}
 .hntab-mbtn{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer;color:var(--hnd-muted,#8A8A8A)}
 .hntab-mbtn.on{background:#FFC043;color:#1a1a1a}
+.hntab-chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.hntab-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--hnd-line,#E2E2E2);background:var(--hnd-card,#fff);border-radius:9px;padding:6px 9px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--hnd-ink,#1a1a1a)}
+.hntab-chip:hover{border-color:#FFC043}.hntab-chip.active{border-color:#FFC043;background:#FFF8EA}
+.hntab-chip .ty{font-size:12px}.hntab-chip .t{font-weight:700}
+.hntab-chip .amt{font-size:11px;font-weight:700;color:#B8860B;font-variant-numeric:tabular-nums}
+.hntab-chip .amt.zero{color:var(--hnd-muted,#9C9C9C)}
+.hntab-chip .x{display:inline-flex;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;color:var(--hnd-muted,#9C9C9C);font-size:12px;line-height:1}
+.hntab-chip .x:hover{background:#F0F0F0;color:#C0392B}
+.hntab-new{display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--hnd-muted,#C8C8C8);background:none;border-radius:9px;padding:6px 11px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#B8860B}
+.hntab-new:hover{background:#FAF0E0}
+.hntab-menu{position:absolute;top:calc(100% + 5px);left:0;z-index:30;background:#fff;border:1px solid var(--hnd-line,#E2E2E2);border-radius:10px;box-shadow:0 10px 26px -8px rgba(0,0,0,.28);padding:5px;min-width:152px}
+.hntab-menu button{display:flex;width:100%;align-items:center;gap:9px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--hnd-ink,#1a1a1a);padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left}
+.hntab-menu button:hover{background:#FAF0E0}
+.hntab-acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--hnd-line,#ECECEC)}
+.hntab-act{border:1px solid var(--hnd-line,#E2E2E2);background:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;padding:6px 11px;cursor:pointer;color:var(--hnd-ink,#1a1a1a);display:inline-flex;align-items:center;gap:5px}
+.hntab-act.kot{background:#1C1C1C;color:#FFC043;border-color:#1C1C1C}
+.hntab-act:hover{filter:brightness(.97)}
 .hntab-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .hntab-tcell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid var(--hnd-line,#E2E2E2);border-radius:9px;padding:10px 6px;cursor:pointer;font-family:inherit;background:var(--hnd-card,#fff);min-height:54px}
-.hntab-tcell .tn{font-size:14px;font-weight:700;color:var(--hnd-ink,#1a1a1a)}
-.hntab-tcell .ts{font-size:10.5px;font-weight:600}
+.hntab-tcell .tn{font-size:14px;font-weight:700;color:var(--hnd-ink,#1a1a1a)}.hntab-tcell .ts{font-size:10.5px;font-weight:600}
 .hntab-tcell.free{border-style:dashed}.hntab-tcell.free .ts{color:var(--hnd-muted,#9C9C9C)}
 .hntab-tcell.occ{background:#FFF8EA;border-color:#FFE2A0}.hntab-tcell.occ .ts{color:#B8860B}
 .hntab-tcell.active{border-color:#FFC043;box-shadow:0 0 0 2px rgba(255,192,67,.35)}
 .hntab-tcell .x{position:absolute;top:2px;right:5px;font-size:11px;color:var(--hnd-muted,#9C9C9C)}
-.hntab-cfg{margin-top:8px;width:100%;border:0;background:none;font-family:inherit;font-size:11px;font-weight:600;color:var(--hnd-muted,#8A8A8A);cursor:pointer;display:inline-flex;align-items:center;gap:5px;justify-content:center}
+.hntab-cfg{margin-top:8px;width:100%;border:0;background:none;font-family:inherit;font-size:11px;font-weight:600;color:var(--hnd-muted,#8A8A8A);cursor:pointer}
+#hnkds{position:fixed;inset:0;z-index:9500;background:rgba(20,18,15,.55);display:none;font-family:'Inter',-apple-system,sans-serif}
+#hnkds.on{display:block}
+.hnkds-panel{position:absolute;inset:0;background:#13110F;display:flex;flex-direction:column}
+.hnkds-top{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #2A2722;color:#fff}
+.hnkds-top h3{margin:0;font-size:17px;font-weight:700}.hnkds-top .sub{font-size:12px;color:#9A958C}
+.hnkds-x{margin-left:auto;background:#2A2722;border:0;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px}
+.hnkds-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;padding:16px 20px;align-content:start}
+.hnkds-card{background:#1F1C18;border:1px solid #34302A;border-radius:11px;overflow:hidden;display:flex;flex-direction:column}
+.hnkds-card.s-new{border-top:4px solid #F0A800}.hnkds-card.s-prep{border-top:4px solid #378ADD}.hnkds-card.s-ready{border-top:4px solid #1D9E75}
+.hnkds-card.old{box-shadow:0 0 0 2px rgba(226,75,74,.6)}
+.hnkds-ch{display:flex;align-items:center;gap:8px;padding:10px 12px;color:#fff;border-bottom:1px solid #2A2722}
+.hnkds-ch .lbl{font-size:14px;font-weight:700}.hnkds-ch .kno{font-size:11px;color:#9A958C;margin-left:auto}
+.hnkds-ty{font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.03em}
+.hnkds-items{list-style:none;margin:0;padding:8px 12px;color:#EDE9E2;font-size:13.5px;flex:1}
+.hnkds-items li{display:flex;justify-content:space-between;gap:8px;padding:3px 0}.hnkds-items li .q{color:#FFC043;font-weight:800}
+.hnkds-note{margin:0 12px 8px;font-size:12px;color:#F0A800;background:rgba(240,168,0,.1);padding:6px 8px;border-radius:6px}
+.hnkds-cf{display:flex;gap:7px;padding:10px 12px;border-top:1px solid #2A2722}
+.hnkds-b{flex:1;border:0;border-radius:8px;padding:9px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.hnkds-b.go{background:#FFC043;color:#1a1a1a}.hnkds-b.gh{background:#2A2722;color:#EDE9E2}
+.hnkds-age{font-size:10.5px;color:#9A958C;padding:0 12px 8px}
+.hnkds-empty{grid-column:1/-1;text-align:center;color:#7C766C;padding:60px 20px;font-size:14px}
 </style>
-
 <script>
 (function(){
   'use strict';
   if (window.HNTables) return;
-
-  var FOOD = ['cafe','restaurant','sweets','bakery','cloudkitchen','cloud_kitchen','cloud-kitchen','dhaba','tiffin','food','mithai'];
-  var orders = [];          // [{id,label,total,count,snap,createdAt}]
-  var activeId = null;      // id of the order mirrored by the live cart
-  var seq = 0;
-  var _wrappedRender = false, _wrappedSale = false, _busy = false;
-
-  function clone(o){ try { return JSON.parse(JSON.stringify(o||{})); } catch(e){ return Array.isArray(o)?[]:{}; } }
+  var FOOD=['cafe','restaurant','sweets','bakery','cloudkitchen','cloud_kitchen','cloud-kitchen','dhaba','tiffin','food','mithai'];
+  var TABLE_VERTS=['restaurant','dhaba','bar','finedine','fine-dine','casualdine','diner'];
+  var ORDER_TYPES=[
+    {k:'dinein',   l:'Dine-in',  e:'\uD83C\uDF7D\uFE0F', c:'#0F6E56', bg:'#E1F5EE'},
+    {k:'takeaway', l:'Takeaway', e:'\uD83E\uDD61', c:'#854F0B', bg:'#FAEEDA'},
+    {k:'delivery', l:'Delivery', e:'\uD83D\uDEF5', c:'#185FA5', bg:'#E6F1FB'},
+    {k:'swiggy',   l:'Swiggy',   e:'\uD83D\uDEF5', c:'#C2410C', bg:'#FAECE7'},
+    {k:'zomato',   l:'Zomato',   e:'\uD83C\uDF45', c:'#A32D2D', bg:'#FCEBEB'}
+  ];
+  function typeMeta(k){ for(var i=0;i<ORDER_TYPES.length;i++) if(ORDER_TYPES[i].k===k) return ORDER_TYPES[i]; return ORDER_TYPES[0]; }
+  var orders=[], activeId=null, seq=0, kots=[], kotSeq=0;
+  var _wrappedRender=false,_wrappedSale=false,_busy=false,_menuOpen=false,_kdsOpen=false;
+  function clone(o){ try{ return JSON.parse(JSON.stringify(o||{})); }catch(e){ return Array.isArray(o)?[]:{}; } }
   function A(){ return window.App; }
-  function vertical(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return ((a&&(a.cardType||a.profession))||(A()&&A().vertical)||(window.S&&window.S.prof)||'').toLowerCase(); } catch(e){ return ''; } }
-  function isEnabled(){ try { var f=localStorage.getItem('hn_tables_on'); if(f==='1') return true; if(f==='0') return false; } catch(e){} return FOOD.indexOf(vertical())>=0; }
-  function shopId(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&a.shopId)||(A()&&A().uid)||'default'; } catch(e){ return 'default'; } }
+  function T(k,f){ return (A()&&A()._T)?A()._T(k,f):f; }
+  function toast(m){ try{ if(A()&&A().toast) A().toast(m); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function vertical(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); return ((a&&(a.cardType||a.profession))||(A()&&A().vertical)||'').toLowerCase(); }catch(e){ return ''; } }
+  function isEnabled(){ try{ var f=localStorage.getItem('hn_tables_on'); if(f==='1')return true; if(f==='0')return false; }catch(e){} return FOOD.indexOf(vertical())>=0; }
+  function shopId(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&a.shopId)||(A()&&A().uid)||'default'; }catch(e){ return 'default'; } }
   function pkey(){ return 'hn_tables_v1_'+shopId(); }
-  var TABLE_VERTS = ['restaurant','dhaba','bar','finedine','fine-dine','casualdine','diner'];
-  function mode(){ try { var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; } catch(e){} return TABLE_VERTS.indexOf(vertical())>=0 ? 'tables' : 'orders'; }
-  function setMode(m){ if(m!=='tables'&&m!=='orders') return; try { localStorage.setItem('hn_orders_mode',m); } catch(e){} renderStrip(); }
-  function tableCount(){ try { var n=parseInt(localStorage.getItem('hn_table_count'),10); if(n>0&&n<=60) return n; } catch(e){} return 12; }
-  function setTableCount(){ var v=null; try { v=window.prompt((A()&&A()._T?A()._T('tables.howMany','How many tables?'):'How many tables?'), String(tableCount())); } catch(e){ return; } var n=parseInt(v,10); if(n>0&&n<=60){ try{ localStorage.setItem('hn_table_count',String(n)); }catch(e){} renderStrip(); } }
-  function occupiedCount(){ return orders.filter(function(o){ return o.tableNo!=null; }).length; }
-  function openTable(n){ var ex=orders.filter(function(o){return o.tableNo===n;})[0]; if(ex){ if(ex.id!==activeId) switchTo(ex.id); return; } parkActive(); _busy=true; clearLive(); seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, tableNo:n, label:'Table '+n, total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; save(); renderStrip(); }
-  function clearTable(n){ var o=orders.filter(function(x){return x.tableNo===n;})[0]; if(o) removeTable(o.id); }
-
-  function load(){ try { var raw=localStorage.getItem(pkey()); if(raw){ var d=JSON.parse(raw); orders=Array.isArray(d.orders)?d.orders:[]; seq=d.seq||orders.length; } } catch(e){ orders=[]; } activeId=null; }
-  function save(){ try { localStorage.setItem(pkey(), JSON.stringify({orders:orders, seq:seq})); } catch(e){} }
+  function kkey(){ return 'hn_kds_v1_'+shopId(); }
+  function mode(){ try{ var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; }catch(e){} return TABLE_VERTS.indexOf(vertical())>=0?'tables':'orders'; }
+  function setMode(m){ if(m!=='tables'&&m!=='orders') return; try{ localStorage.setItem('hn_orders_mode',m); }catch(e){} _menuOpen=false; renderStrip(); }
+  function tableCount(){ try{ var n=parseInt(localStorage.getItem('hn_table_count'),10); if(n>0&&n<=60) return n; }catch(e){} return 12; }
+  function setTableCount(){ var v=null; try{ v=window.prompt(T('tables.howMany','How many tables?'),String(tableCount())); }catch(e){ return; } var n=parseInt(v,10); if(n>0&&n<=60){ try{ localStorage.setItem('hn_table_count',String(n)); }catch(e){} renderStrip(); } }
+  function load(){ try{ var raw=localStorage.getItem(pkey()); if(raw){ var d=JSON.parse(raw); orders=Array.isArray(d.orders)?d.orders:[]; seq=d.seq||orders.length; } }catch(e){ orders=[]; } activeId=null; }
+  function save(){ try{ localStorage.setItem(pkey(),JSON.stringify({orders:orders,seq:seq})); }catch(e){} }
+  function loadKDS(){ try{ var raw=localStorage.getItem(kkey()); if(raw){ var d=JSON.parse(raw); kots=Array.isArray(d.kots)?d.kots:[]; kotSeq=d.kotSeq||0; } }catch(e){ kots=[]; } }
+  function saveKDS(){ try{ localStorage.setItem(kkey(),JSON.stringify({kots:kots,kotSeq:kotSeq})); }catch(e){} }
   function find(id){ for(var i=0;i<orders.length;i++) if(orders[i].id===id) return orders[i]; return null; }
-
-  /* ---- live cart <-> snapshot ---- */
   function liveSnap(){ var a=A()||{}; return { cart:clone(a.cart), customLines:clone(a.customLines), staff:clone(a._cartStaff), staffOv:clone(a._cartStaffOverridden), pay:a.paymentMode }; }
-  function liveTotals(){ try { var t=A().cartTotal(); return { total:Math.round(t.total||0), count:t.count||0 }; } catch(e){ var c=(A()&&A().cart)||{}; var n=0; for(var k in c) n+=(+c[k]||0); return { total:0, count:n }; } }
-  function applySnap(s){ var a=A(); if(!a||!s) return; a.cart=clone(s.cart); a.customLines=clone(s.customLines)||[]; a._cartStaff=clone(s.staff); a._cartStaffOverridden=clone(s.staffOv); if(s.pay) a.paymentMode=s.pay; repaint(); }
+  function liveTotals(){ try{ var t=A().cartTotal(); return { total:Math.round(t.total||0), count:t.count||0 }; }catch(e){ var c=(A()&&A().cart)||{},n=0; for(var k in c)n+=(+c[k]||0); return {total:0,count:n}; } }
+  function applySnap(s){ var a=A(); if(!a||!s) return; a.cart=clone(s.cart); a.customLines=clone(s.customLines)||[]; a._cartStaff=clone(s.staff); a._cartStaffOverridden=clone(s.staffOv); if(s.pay)a.paymentMode=s.pay; repaint(); }
   function clearLive(){ var a=A(); if(!a) return; a.cart={}; a.customLines=[]; a._cartStaff={}; a._cartStaffOverridden={}; repaint(); }
-  function repaint(){ try { if(window.HNDPOS&&HNDPOS.renderCart) HNDPOS.renderCart(); } catch(e){} try { if(A()&&A().updateCartSummary) A().updateCartSummary(); } catch(e){} }
-
+  function repaint(){ try{ if(window.HNDPOS&&HNDPOS.renderCart) HNDPOS.renderCart(); }catch(e){} try{ if(A()&&A().updateCartSummary) A().updateCartSummary(); }catch(e){} }
   function syncActive(){ if(_busy||activeId==null) return; var o=find(activeId); if(!o) return; o.snap=liveSnap(); var t=liveTotals(); o.total=t.total; o.count=t.count; }
   function parkActive(){ syncActive(); }
-
-  /* ---- ops ---- */
-  function promptName(def){ try { var t=(A()&&A()._T)?A()._T('tables.namePrompt','Customer name (optional)'):'Customer name (optional)'; var v=window.prompt(t, def||''); return (v==null)?null:String(v).trim(); } catch(e){ return ''; } }
-  function newTable(){ parkActive(); _busy=true; clearLive(); seq++; var nm=promptName(''); var id='t'+Date.now()+'_'+seq; var o={ id:id, label:(nm||('Order '+seq)), total:0, count:0, snap:liveSnap(), createdAt:Date.now() }; orders.push(o); activeId=id; _busy=false; save(); renderStrip(); }
-  function renameTable(id){ var o=find(id); if(!o) return; var nm=promptName(o.label); if(nm){ o.label=nm; save(); renderStrip(); } }
-  function switchTo(id){ if(id===activeId){ renameTable(id); return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
-  function removeTable(id){ var o=find(id); if(!o) return; var hasItems=(o.count||0)>0; if(hasItems){ var msg=(A()&&A()._T)?A()._T('tables.removeConfirm','Remove '+o.label+' and discard its order?'):'Remove '+o.label+' and discard its order?'; if(!window.confirm(msg)) return; } orders=orders.filter(function(x){return x.id!==id;}); if(activeId===id){ activeId=null; _busy=true; clearLive(); _busy=false; } save(); ensureSeed(); renderStrip(); }
+  function newOrder(type){ parkActive(); _busy=true; clearLive(); seq++; var tm=typeMeta(type||'dinein'); var id='t'+Date.now()+'_'+seq; var lbl=(mode()==='tables')?('Order '+seq):(tm.l+' '+seq);
+    orders.push({ id:id, label:lbl, type:tm.k, note:'', total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; _menuOpen=false; save(); renderStrip(); }
+  function newTable(){ newOrder('dinein'); }
+  function switchTo(id){ if(id===activeId){ return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
+  function renameTable(id){ id=id||activeId; var o=find(id); if(!o) return; var nm=null; try{ nm=window.prompt(T('tables.namePrompt','Customer name (optional)'),o.label); }catch(e){ return; } if(nm&&String(nm).trim()){ o.label=String(nm).trim(); save(); renderStrip(); } }
+  function setNote(id){ id=id||activeId; var o=find(id); if(!o) return; var n=null; try{ n=window.prompt(T('tables.kitchenNote','Kitchen note (e.g. less spicy, no onion)'),o.note||''); }catch(e){ return; } if(n!=null){ o.note=String(n).trim(); save(); renderStrip(); } }
+  function removeTable(id){ var o=find(id); if(!o) return; if((o.count||0)>0){ if(!window.confirm(T('tables.removeConfirm','Remove '+o.label+' and discard its order?'))) return; } orders=orders.filter(function(x){return x.id!==id;}); if(activeId===id){ activeId=null; _busy=true; clearLive(); _busy=false; } save(); ensureSeed(); renderStrip(); }
   function afterSale(){ if(activeId==null) return; orders=orders.filter(function(x){return x.id!==activeId;}); activeId=null; save(); ensureSeed(); renderStrip(); }
-  function ensureSeed(){ if(!isEnabled()||mode()!=='orders') return; if(orders.length===0 && activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Order '+seq, snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
-
-  /* ---- strip UI ---- */
+  function ensureSeed(){ if(!isEnabled()||mode()!=='orders') return; if(orders.length===0&&activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Dine-in '+seq, type:'dinein', note:'', snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
+  function setType(id,k){ var o=find(id); if(!o) return; o.type=typeMeta(k).k; save(); renderStrip(); }
+  function occupiedCount(){ return orders.filter(function(o){ return o.tableNo!=null; }).length; }
+  function openTable(n){ var ex=orders.filter(function(o){return o.tableNo===n;})[0]; if(ex){ if(ex.id!==activeId) switchTo(ex.id); return; } parkActive(); _busy=true; clearLive(); seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, tableNo:n, label:'Table '+n, type:'dinein', note:'', total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; save(); renderStrip(); }
+  function clearTable(n){ var o=orders.filter(function(x){return x.tableNo===n;})[0]; if(o) removeTable(o.id); }
+  function lblOf(key){ try{ if(A()._cartKeyLabel) return A()._cartKeyLabel(key); }catch(e){} try{ var bare=String(key).split('::')[0]; var p=(window.SERVICES||[]).find(function(s){return (s.id||s.name)===bare;}); return p?p.name:String(key); }catch(e){ return String(key); } }
+  function itemsOf(o){ var out=[]; var live=(o.id===activeId); var cart=live?((A()&&A().cart)||{}):((o.snap&&o.snap.cart)||{}); var cl=live?((A()&&A().customLines)||[]):((o.snap&&o.snap.customLines)||[]);
+    Object.keys(cart).forEach(function(k){ var q=+cart[k]||0; if(q>0) out.push({name:lblOf(k),qty:q}); });
+    (cl||[]).forEach(function(l){ out.push({name:l.name||'Item',qty:l.qty||1}); }); return out; }
+  function sendKOT(id){ id=id||activeId; var o=find(id); if(!o){ toast('No active order'); return; } var items=itemsOf(o); if(!items.length){ toast(T('tables.addFirst','Add items first')); return; }
+    kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:items, note:o.note||'', ts:Date.now(), status:'new' };
+    kots.push(kot); saveKDS(); toast('KOT #'+kotSeq+' '+T('tables.sentKitchen','sent to kitchen')); if(_kdsOpen) renderKDS(); renderStrip(); return kot; }
+  function kdsAdvance(kid){ var k=null; for(var i=0;i<kots.length;i++) if(kots[i].id===kid) k=kots[i]; if(!k) return; if(k.status==='new')k.status='prep'; else if(k.status==='prep')k.status='ready'; else { kots=kots.filter(function(x){return x.id!==kid;}); } saveKDS(); renderKDS(); renderStrip(); }
+  function kdsClearReady(){ kots=kots.filter(function(k){return k.status!=='ready';}); saveKDS(); renderKDS(); renderStrip(); }
+  function printKOT(kot){ try{
+    var rows=kot.items.map(function(i){ return '<tr><td style="font-weight:700;padding-right:8px">'+esc(i.qty)+'\u00d7</td><td>'+esc(i.name)+'</td></tr>'; }).join('');
+    var tm=typeMeta(kot.type);
+    var html='<div style="font-family:monospace;width:280px;color:#000">'
+      +'<div style="text-align:center;font-weight:800;font-size:15px">KOT #'+kot.no+'</div>'
+      +'<div style="text-align:center;font-size:12px">'+esc(tm.l)+' \u00b7 '+esc(kot.label)+'</div>'
+      +'<div style="text-align:center;font-size:11px;margin-bottom:6px">'+new Date(kot.ts).toLocaleString()+'</div>'
+      +'<table style="width:100%;font-size:13px;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0">'+rows+'</table>'
+      +(kot.note?'<div style="font-size:12px;margin-top:6px">NOTE: '+esc(kot.note)+'</div>':'')+'</div>';
+    var f=document.createElement('iframe'); f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(f); var d=f.contentWindow.document; d.open(); d.write('<html><head><title>KOT</title></head><body onload="window.focus();window.print()">'+html+'</body></html>'); d.close();
+    setTimeout(function(){ try{f.remove();}catch(e){} },1500);
+  }catch(e){} }
+  function printByNo(no){ var k=null; for(var i=0;i<kots.length;i++) if(kots[i].no===no) k=kots[i]; if(k) printKOT(k); }
+  function ensureKDS(){ var ov=document.getElementById('hnkds'); if(ov) return ov; ov=document.createElement('div'); ov.id='hnkds';
+    ov.innerHTML='<div class="hnkds-panel"><div class="hnkds-top"><div><h3>'+T('tables.kitchen','Kitchen Display')+'</h3><div class="sub" id="hnkds-sub"></div></div>'
+      +'<button class="hnkds-b gh" style="flex:0;padding:8px 12px" onclick="HNTables.kdsClearReady()">'+T('tables.clearReady','Clear ready')+'</button>'
+      +'<button class="hnkds-x" onclick="HNTables.closeKDS()">\u2715</button></div><div class="hnkds-grid" id="hnkds-grid"></div></div>';
+    document.body.appendChild(ov); return ov; }
+  function openKDS(){ ensureKDS(); _kdsOpen=true; document.getElementById('hnkds').classList.add('on'); renderKDS(); }
+  function closeKDS(){ _kdsOpen=false; var o=document.getElementById('hnkds'); if(o) o.classList.remove('on'); }
+  function renderKDS(){ var g=document.getElementById('hnkds-grid'); if(!g) return; var sub=document.getElementById('hnkds-sub'); if(sub) sub.textContent=kots.length+' '+T('tables.openTickets','open tickets');
+    if(!kots.length){ g.innerHTML='<div class="hnkds-empty">'+T('tables.noTickets','No kitchen tickets yet. Send an order to the kitchen to see it here.')+'</div>'; return; }
+    var now=Date.now();
+    g.innerHTML=kots.slice().sort(function(a,b){return a.ts-b.ts;}).map(function(k){ var tm=typeMeta(k.type); var mins=Math.floor((now-k.ts)/60000); var old=mins>=10;
+      var items=k.items.map(function(i){ return '<li><span>'+esc(i.name)+'</span><span class="q">\u00d7'+esc(i.qty)+'</span></li>'; }).join('');
+      var btn=k.status==='new'?T('tables.start','Start'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
+      return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="kno">#'+k.no+'</span></div>'
+        +'<ul class="hnkds-items">'+items+'</ul>'+(k.note?'<div class="hnkds-note">\uD83D\uDCDD '+esc(k.note)+'</div>':'')
+        +'<div class="hnkds-age">'+(mins<=0?T('tables.justNow','just now'):(mins+'m'))+'</div>'
+        +'<div class="hnkds-cf"><button class="hnkds-b gh" style="flex:0;padding:9px 11px" onclick="HNTables.printKOT('+k.no+')">\uD83D\uDDA8</button><button class="hnkds-b go" onclick="HNTables.kdsAdvance(\''+k.id+'\')">'+btn+'</button></div></div>';
+    }).join(''); }
   function host(){ return document.querySelector('html[data-shell="desktop"] .hnd-pos-l') || document.querySelector('.hnd-pos-l'); }
-  function ensureStrip(){
-    if(!isEnabled()){ var ex=document.getElementById('hntab-strip'); if(ex) ex.remove(); return false; }
-    var h=host(); if(!h) return false;
-    var strip=document.getElementById('hntab-strip');
-    if(!strip){ strip=document.createElement('div'); strip.id='hntab-strip'; h.insertBefore(strip, h.firstChild); }
-    return true;
-  }
-  function T(k,f){ return (A()&&A()._T)?A()._T(k,f):f; }
-  function modeBar(){ var m=mode();
-    return '<div class="hntab-modebar">'
-      + '<button class="hntab-mbtn'+(m==='orders'?' on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button>'
-      + '<button class="hntab-mbtn'+(m==='tables'?' on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button>'
-      + '</div>'; }
-  function renderStrip(){
-    if(!ensureStrip()) return;
-    syncActive();
-    var strip=document.getElementById('hntab-strip'); if(!strip) return;
-    var m=mode();
-    var head='<div class="hntab-head"><i class="ti ti-layout-grid" aria-hidden="true"></i> '
-      + (m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))
-      + ' <span class="hntab-n">'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</span>'
-      + modeBar()+'</div>';
+  function ensureStrip(){ if(!isEnabled()){ var ex=document.getElementById('hntab-strip'); if(ex)ex.remove(); return false; } var h=host(); if(!h) return false; var s=document.getElementById('hntab-strip'); if(!s){ s=document.createElement('div'); s.id='hntab-strip'; h.insertBefore(s,h.firstChild); } return true; }
+  function typeMenuHTML(){ if(!_menuOpen) return ''; return '<div class="hntab-menu">'+ORDER_TYPES.map(function(t){ return '<button type="button" onclick="HNTables.newOrder(\''+t.k+'\')"><span>'+t.e+'</span> '+t.l+'</button>'; }).join('')+'</div>'; }
+  function kdsBtn(){ var n=kots.length; return '<button class="hntab-kds-btn" type="button" onclick="HNTables.openKDS()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.kitchen','Kitchen')+(n?'<span class="b">'+n+'</span>':'')+'</button>'; }
+  function modeBar(){ var m=mode(); return '<div class="hntab-modebar"><button class="hntab-mbtn'+(m==='orders'?' on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="hntab-mbtn'+(m==='tables'?' on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></div>'; }
+  function actsRow(){ if(activeId==null) return ''; return '<div class="hntab-acts">'
+      +'<button class="hntab-act kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button>'
+      +'<button class="hntab-act" type="button" onclick="HNTables.setNote()">\uD83D\uDCDD '+T('tables.note','Note')+'</button>'
+      +(mode()==='orders'?'<button class="hntab-act" type="button" onclick="HNTables.renameTable(\''+activeId+'\')">\u270F\uFE0F '+T('tables.rename','Rename')+'</button>':'')+'</div>'; }
+  function renderStrip(){ if(!ensureStrip()) return; syncActive(); var strip=document.getElementById('hntab-strip'); if(!strip) return; var m=mode();
+    var head='<div class="hntab-head">\uD83E\uDDFE '+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <span class="hntab-n">'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</span>'+kdsBtn()+modeBar()+'</div>';
     var body;
-    if(m==='tables'){
-      var n=tableCount(), cells='';
-      for(var i=1;i<=n;i++){
-        var o=orders.filter(function(x){return x.tableNo===i;})[0];
-        var occ=!!o, live=(o&&o.id===activeId);
-        var amt= o ? (live?liveTotals():{total:o.total,count:o.count}) : {total:0};
-        var sub= occ ? ('₹'+amt.total) : T('tables.free','Free');
-        cells += '<button class="hntab-tcell'+(occ?' occ':' free')+(live?' active':'')+'" type="button" onclick="HNTables.openTable('+i+')">'
-          + '<span class="tn">'+i+'</span><span class="ts">'+sub+'</span>'
-          + (occ?'<span class="x" title="Clear" onclick="event.stopPropagation();HNTables.clearTable('+i+')">\u00d7</span>':'')
-          + '</button>';
-      }
-      body='<div class="hntab-grid">'+cells+'</div>'
-        + '<button class="hntab-cfg" type="button" onclick="HNTables.setTableCount()"><i class="ti ti-settings" aria-hidden="true"></i> '+T('tables.setCount','Set number of tables')+'</button>';
+    if(m==='tables'){ var n=tableCount(),cells='';
+      for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
+        cells+='<button class="hntab-tcell'+(occ?' occ':' free')+(live?' active':'')+'" type="button" onclick="HNTables.openTable('+i+')"><span class="tn">'+i+'</span><span class="ts">'+sub+'</span>'+(occ?'<span class="x" onclick="event.stopPropagation();HNTables.clearTable('+i+')">\u00d7</span>':'')+'</button>'; }
+      body='<div class="hntab-grid">'+cells+'</div>'+actsRow()+'<button class="hntab-cfg" type="button" onclick="HNTables.setTableCount()">\u2699\uFE0F '+T('tables.setCount','Set number of tables')+'</button>';
     } else {
-      var chips=orders.map(function(o){
-        var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count};
-        var amtTxt=(amt.total>0)?('₹'+amt.total):(((amt.count||0)>0)?(amt.count+' item'):'empty');
-        return '<button class="hntab-chip'+(live?' active':'')+'" onclick="HNTables.switchTo(\''+o.id+'\')" type="button">'
-          + '<span class="t">'+(o.label||'Order')+'</span>'
-          + '<span class="amt'+(amt.total>0?'':' zero')+'">'+amtTxt+'</span>'
-          + '<span class="x" title="Remove" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span>'
-          + '</button>';
-      }).join('');
-      body='<div class="hntab-chips">'+chips
-        + '<button class="hntab-new" type="button" onclick="HNTables.newTable()">+ '+T('tables.newTable','New order')+'</button></div>';
+      var chips=orders.map(function(o){ var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count}; var amtTxt=(amt.total>0)?('\u20B9'+amt.total):(((amt.count||0)>0)?(amt.count+' item'):'empty'); var tm=typeMeta(o.type);
+        return '<button class="hntab-chip'+(live?' active':'')+'" type="button" onclick="HNTables.switchTo(\''+o.id+'\')"><span class="ty" title="'+tm.l+'">'+tm.e+'</span><span class="t">'+esc(o.label)+'</span><span class="amt'+(amt.total>0?'':' zero')+'">'+amtTxt+'</span><span class="x" title="Close" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span></button>'; }).join('');
+      body='<div class="hntab-chips">'+chips+'<span style="position:relative"><button class="hntab-new" type="button" onclick="HNTables.toggleNewMenu()">+ '+T('tables.newTable','New order')+' \u25BE</button>'+typeMenuHTML()+'</span></div>'+actsRow();
     }
-    strip.innerHTML = head + body;
-  }
-
-  /* ---- hooks ---- */
-  function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return;
-    var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(isEnabled()){ ensureSeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
-  function wrapSale(){ if(_wrappedSale||!A()||typeof A().completeSale!=='function') return;
-    var orig=A().completeSale.bind(A()); A().completeSale=function(){ var hadActive=(activeId!=null); var r=orig.apply(A(),arguments);
-      Promise.resolve(r).then(function(){ check(); }).catch(function(){});
-      setTimeout(check,350); setTimeout(check,900);
-      function check(){ try{ if(hadActive){ var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0){ afterSale(); } } }catch(e){} }
-      return r; }; _wrappedSale=true; }
-
-  function tick(){ try { wrapRender(); wrapSale(); if(isEnabled() && host()){ ensureSeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex && !isEnabled()) ex.remove(); } } catch(e){} }
-
-  function init(){ load(); setInterval(tick, 1000); tick(); }
-  if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded', init);
-
-  window.HNTables = { newTable:newTable, switchTo:switchTo, renameTable:renameTable, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, isEnabled:isEnabled,
-    _state:function(){ return { orders:orders, activeId:activeId }; } };
+    strip.innerHTML=head+body; }
+  function toggleNewMenu(){ _menuOpen=!_menuOpen; renderStrip(); }
+  document.addEventListener('click',function(e){ if(_menuOpen && !e.target.closest('.hntab-new') && !e.target.closest('.hntab-menu')){ _menuOpen=false; var s=document.getElementById('hntab-strip'); if(s) renderStrip(); } }, true);
+  function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return; var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(!_busy&&isEnabled()){ ensureSeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
+  function wrapSale(){ if(_wrappedSale||!A()||typeof A().completeSale!=='function') return; var orig=A().completeSale.bind(A()); A().completeSale=function(){ var had=(activeId!=null); var r=orig.apply(A(),arguments); Promise.resolve(r).then(check).catch(function(){}); setTimeout(check,350); setTimeout(check,900); function check(){ try{ if(had){ var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0) afterSale(); } }catch(e){} } return r; }; _wrappedSale=true; }
+  function tick(){ try{ wrapRender(); wrapSale(); if(isEnabled()&&host()){ ensureSeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
+  function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); }
+  if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
+  window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, _state:function(){ return { orders:orders, activeId:activeId, kots:kots }; } };
 })();
 </script>
-<!-- ============== END Tables / Open Orders (desktop) ============== -->
+<!-- ============== END Orders/Tables + KOT/KDS ============== -->
 
 </body>
 </html>
