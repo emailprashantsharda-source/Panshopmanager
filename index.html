@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_77_advisor_v3';
+    window.HISAABNOW_BUILD = 'v33_78_advisor_v4';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3776,6 +3776,14 @@ html[data-current-role="manager"] body{
   </section>
 
   <div class="menu-group">
+      <button class="menu-item" onclick="try{ if(window.HNAdvisor&&HNAdvisor.openChat) HNAdvisor.openChat(); }catch(e){}">
+        <div class="menu-icon" style="background:linear-gradient(160deg,#1C1C1C,#000);color:#FFC043"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></div>
+        <div class="menu-text"><div class="menu-label" data-i18n="more.aiAdvisor">AI Advisor</div><div class="menu-sub" data-i18n="more.aiAdvisorSub">Chat & ask anything · voice</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+  </div>
+
+  <div class="menu-group">
     <div class="menu-group-title" data-i18n="nav.menu">Manage</div>
     <div class="menu-card">
       <button class="menu-item" id="more-menu-entry" onclick="App.nav('catalog')">
@@ -3894,11 +3902,6 @@ html[data-current-role="manager"] body{
       <button class="menu-item" onclick="App.openHelp()">
         <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
         <div class="menu-text"><div class="menu-label" data-i18n="more.helpSupport">Help & support</div><div class="menu-sub" data-i18n="more.helpSub">Tutorials, WhatsApp us</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-      <button class="menu-item" onclick="try{ App.nav('home'); if(window.HNAdvisor&&HNAdvisor.replay) HNAdvisor.replay(); }catch(e){}">
-        <div class="menu-icon" style="background:#FEF3C7;color:#B8860B"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></div>
-        <div class="menu-text"><div class="menu-label" data-i18n="more.aiWelcome">AI Welcome Tour</div><div class="menu-sub" data-i18n="more.aiWelcomeSub">Replay the voice introduction</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <button class="menu-item" onclick="App.signOut()">
@@ -5238,8 +5241,8 @@ html[data-current-role="manager"] body{
     'more.subscription':       { en: 'Subscription',             hi: 'सब्सक्रिप्शन' },
     'more.helpSupport':        { en: 'Help & support',           hi: 'मदद और सपोर्ट' },
     'more.helpSub':            { en: 'Tutorials, WhatsApp us',   hi: 'ट्यूटोरियल, WhatsApp करें' },
-    'more.aiWelcome':          { en: 'AI Welcome Tour',          hi: 'AI वेलकम टूर' },
-    'more.aiWelcomeSub':       { en: 'Replay the voice introduction', hi: 'वॉइस इंट्रो दोबारा सुनें' },
+    'more.aiAdvisor':          { en: 'AI Advisor',               hi: 'AI सलाहकार' },
+    'more.aiAdvisorSub':       { en: 'Chat & ask anything · voice', hi: 'Chat करें, कुछ भी पूछें · voice' },
     'more.signOut':            { en: 'Sign out',                 hi: 'लॉगआउट' },
 
     /* More page · dynamic content */
@@ -82155,64 +82158,45 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 })();
 </script>
 <!-- ============================================================
-     HisaabNow · AI Business Advisor — First-Run Voice Welcome (v2)
+     HisaabNow · AI Business Advisor — First-Run Welcome (v4)
      ─────────────────────────────────────────────────────────────
-     Interactive, action-gated tour. The advisor highlights a target,
-     speaks the instruction, then WAITS for the user to actually do it
-     (tap +, pick/price an item, complete the bill) before advancing.
+     • Language follows the app: English UI -> English voice+text+CTA;
+       Hindi UI -> Hindi voice + Hinglish (casual) text+CTA.
+     • Voice: optional cloud TTS hook (HNAdvisor.setTTS) for a natural
+       female Indian voice; falls back to the device Web-Speech voice.
+     • Tour is gated on ROBUST milestones (a product is priced/activated,
+       then a bill is completed) — not fragile per-screen state.
+     • No screen dim — only a glowing ring, so no CTA is ever hidden.
+     • After the demo the widget auto-dismisses.
+     • More -> "AI Advisor" opens a CHAT applet (text + voice + FAQ),
+       separate from the first-run tour.
 
-     v2 changes vs v1:
-       • Overlay is non-blocking (pointer-events:none) so the user can
-         tap the real app. Only the coach dock is interactive.
-       • Dock auto-moves to the TOP when the highlighted element is low
-         on screen, so it never covers what it's pointing at.
-       • Highlight ring reliably lands on each target and follows re-renders.
-       • Voice prefers a natural Google FEMALE voice in the app's
-         language (Hindi female when the app is in Hindi).
-       • Tour is gated on real actions, not a "Next" button.
-
-     Public API: HNAdvisor.start() .replay() .answer(q) .setAnswerProvider(fn) .prime()
-     Reuses only: I18n.getLang() · App.nav/current/cart/addToCart/completeSale ·
-                  SERVICES · window.S · Munim.openDrawer()
+     API: HNAdvisor.start() .replay() .openChat() .answer(q)
+          .setAnswerProvider(fn) .setTTS(fn) .setLang('en'|'hi'|'auto') .prime()
 ============================================================ -->
 <style>
 #hnadv-root{position:fixed;inset:0;z-index:9000;font-family:inherit;display:none;pointer-events:none}
 #hnadv-root.on{display:block}
-
-/* glowing highlight ring — NO full-screen dim, so no CTA is ever hidden.
-   Just a bright pulsing gold ring around the current target. */
-#hnadv-ring{position:fixed;left:0;top:0;width:0;height:0;border-radius:16px;
-  pointer-events:none;background:rgba(255,192,67,.06);
+#hnadv-ring{position:fixed;left:0;top:0;width:0;height:0;border-radius:16px;pointer-events:none;background:rgba(255,192,67,.06);
   transition:left .32s cubic-bezier(.4,0,.2,1),top .32s cubic-bezier(.4,0,.2,1),width .32s cubic-bezier(.4,0,.2,1),height .32s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0}
 #hnadv-ring.show{opacity:1}
-#hnadv-ring::after{content:"";position:absolute;inset:-4px;border-radius:20px;
-  border:3px solid #FFC043;box-shadow:0 0 0 4px rgba(255,192,67,.28),0 0 26px 6px rgba(255,192,67,.6);
-  animation:hnadvRing 1.3s ease-in-out infinite}
-@keyframes hnadvRing{0%,100%{box-shadow:0 0 0 4px rgba(255,192,67,.28),0 0 22px 4px rgba(255,192,67,.5)}
-  50%{box-shadow:0 0 0 8px rgba(255,192,67,.14),0 0 34px 10px rgba(255,192,67,.85)}}
+#hnadv-ring::after{content:"";position:absolute;inset:-4px;border-radius:20px;border:3px solid #FFC043;
+  box-shadow:0 0 0 4px rgba(255,192,67,.28),0 0 26px 6px rgba(255,192,67,.6);animation:hnadvRing 1.3s ease-in-out infinite}
+@keyframes hnadvRing{0%,100%{box-shadow:0 0 0 4px rgba(255,192,67,.28),0 0 22px 4px rgba(255,192,67,.5)}50%{box-shadow:0 0 0 8px rgba(255,192,67,.14),0 0 34px 10px rgba(255,192,67,.85)}}
 
-/* advisor coach dock (the only interactive overlay surface) */
-#hnadv-dock{position:fixed;left:50%;width:min(560px,calc(100% - 24px));
-  background:#fff;border-radius:22px;pointer-events:auto;
-  box-shadow:0 18px 50px -12px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.05);
-  padding:16px 16px 14px;opacity:0;transition:opacity .3s,transform .3s}
+#hnadv-dock{position:fixed;left:50%;width:min(560px,calc(100% - 24px));background:#fff;border-radius:22px;pointer-events:auto;
+  box-shadow:0 18px 50px -12px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.05);padding:16px 16px 14px;opacity:0;transition:opacity .3s,transform .3s}
 #hnadv-dock.bottom{bottom:18px;transform:translateX(-50%) translateY(14px)}
 #hnadv-dock.top{top:18px;transform:translateX(-50%) translateY(-14px)}
 #hnadv-dock.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-.hnadv-skip{position:absolute;top:10px;right:12px;background:none;border:none;
-  color:#9C9C9C;font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;font-family:inherit;border-radius:8px}
+.hnadv-skip{position:absolute;top:10px;right:12px;background:none;border:none;color:#9C9C9C;font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;font-family:inherit;border-radius:8px}
 .hnadv-skip:active{background:#F6F6F6}
-
 .hnadv-row{display:flex;gap:12px;align-items:flex-start}
-.hnadv-avatar{flex-shrink:0;width:44px;height:44px;border-radius:50%;
-  background:linear-gradient(160deg,#1C1C1C 0%,#000 100%);
-  display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.hnadv-avatar{flex-shrink:0;width:44px;height:44px;border-radius:50%;background:linear-gradient(160deg,#1C1C1C 0%,#000 100%);display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 .hnadv-avatar svg{width:22px;height:22px;color:#FFC043}
 .hnadv-avatar::before{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(255,192,67,0);transition:border-color .2s}
 .hnadv-avatar.speaking::before{animation:hnadvPulse 1.1s ease-in-out infinite}
 @keyframes hnadvPulse{0%,100%{border-color:rgba(255,192,67,0);transform:scale(1)}50%{border-color:rgba(255,192,67,.6);transform:scale(1.06)}}
-
 .hnadv-name{font-size:11.5px;font-weight:800;color:#B8860B;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}
 .hnadv-bubble{font-size:14.5px;line-height:1.5;color:#000;font-weight:500;min-height:22px}
 .hnadv-bubble .cur{display:inline-block;width:2px;height:15px;background:#FFC043;margin-left:1px;vertical-align:-2px;animation:hnadvBlink .8s step-end infinite}
@@ -82221,38 +82205,26 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 .hnadv-wait i{width:6px;height:6px;border-radius:50%;background:#FFC043;animation:hnadvWait 1s infinite}
 .hnadv-wait i:nth-child(2){animation-delay:.15s}.hnadv-wait i:nth-child(3){animation-delay:.3s}
 @keyframes hnadvWait{0%,100%{opacity:.3}50%{opacity:1}}
-
 .hnadv-mute{margin-left:auto;flex-shrink:0;background:#F6F6F6;border:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#545454;padding:0}
 .hnadv-mute svg{width:15px;height:15px}
-
-.hnadv-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.hnadv-actions:empty{margin-top:0}
+.hnadv-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.hnadv-actions:empty{margin-top:0}
 .hnadv-btn{flex:1 1 auto;min-width:120px;border:none;border-radius:12px;padding:12px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .1s,filter .15s}
 .hnadv-btn:active{transform:scale(.97)}
 .hnadv-btn.pri{background:linear-gradient(180deg,#000 0%,#1C1C1C 100%);color:#FFC043}
 .hnadv-btn.sec{background:#F6F6F6;color:#000;flex:0 1 auto;min-width:auto}
 .hnadv-btn.gold{background:linear-gradient(180deg,#FFC043 0%,#F0A800 100%);color:#1a1a1a}
-
-.hnadv-ask{display:none;margin-top:12px;gap:8px;align-items:center}
-.hnadv-ask.show{display:flex}
+.hnadv-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.hnadv-chip{border:1.5px solid #FFE2A0;background:#FFF7E0;color:#7a5b00;border-radius:99px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.hnadv-chip:active{transform:scale(.96)}
+.hnadv-ask{display:none;margin-top:12px;gap:8px;align-items:center}.hnadv-ask.show{display:flex}
 .hnadv-ask input{flex:1;min-width:0;border:1.5px solid #E2E2E2;border-radius:12px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;color:#000}
 .hnadv-ask input:focus{border-color:#FFC043}
 .hnadv-mic,.hnadv-send{flex-shrink:0;width:42px;height:42px;border-radius:12px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-.hnadv-mic{background:#F6F6F6;color:#000}
-.hnadv-mic.listening{background:#E11900;color:#fff;animation:hnadvPulse 1s infinite}
-.hnadv-mic svg,.hnadv-send svg{width:19px;height:19px}
-.hnadv-send{background:#000;color:#FFC043}
-
-.hnadv-dots{display:flex;gap:5px;justify-content:center;margin-top:13px}
-.hnadv-dots:empty{margin-top:0}
-.hnadv-dots i{width:6px;height:6px;border-radius:50%;background:#E2E2E2;transition:all .25s}
-.hnadv-dots i.on{background:#FFC043;width:18px;border-radius:3px}
-
-@media(max-width:420px){
-  #hnadv-dock.bottom{bottom:12px}#hnadv-dock.top{top:12px}
-  #hnadv-dock{padding:14px 13px 12px;border-radius:20px}
-  .hnadv-bubble{font-size:14px}
-}
+.hnadv-mic{background:#F6F6F6;color:#000}.hnadv-mic.listening{background:#E11900;color:#fff;animation:hnadvPulse 1s infinite}
+.hnadv-mic svg,.hnadv-send svg{width:19px;height:19px}.hnadv-send{background:#000;color:#FFC043}
+.hnadv-dots{display:flex;gap:5px;justify-content:center;margin-top:13px}.hnadv-dots:empty{margin-top:0}
+.hnadv-dots i{width:6px;height:6px;border-radius:50%;background:#E2E2E2;transition:all .25s}.hnadv-dots i.on{background:#FFC043;width:18px;border-radius:3px}
+@media(max-width:420px){#hnadv-dock.bottom{bottom:12px}#hnadv-dock.top{top:12px}#hnadv-dock{padding:14px 13px 12px;border-radius:20px}.hnadv-bubble{font-size:14px}}
 </style>
 
 <div id="hnadv-root" aria-live="polite">
@@ -82260,26 +82232,16 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   <div id="hnadv-dock" class="bottom" role="dialog" aria-label="AI Business Advisor">
     <button class="hnadv-skip" id="hnadv-skip" type="button">Skip ✕</button>
     <div class="hnadv-row">
-      <div class="hnadv-avatar" id="hnadv-avatar">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="hnadv-name" id="hnadv-name">AI Business Advisor</div>
-        <div class="hnadv-bubble" id="hnadv-bubble"></div>
-      </div>
-      <button class="hnadv-mute" id="hnadv-mute" type="button" aria-label="Mute voice">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-      </button>
+      <div class="hnadv-avatar" id="hnadv-avatar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></div>
+      <div style="flex:1;min-width:0"><div class="hnadv-name" id="hnadv-name">AI Business Advisor</div><div class="hnadv-bubble" id="hnadv-bubble"></div></div>
+      <button class="hnadv-mute" id="hnadv-mute" type="button" aria-label="Mute voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
     </div>
+    <div class="hnadv-chips" id="hnadv-chips" style="display:none"></div>
     <div class="hnadv-actions" id="hnadv-actions"></div>
     <div class="hnadv-ask" id="hnadv-ask">
       <input id="hnadv-input" type="text" autocomplete="off" />
-      <button class="hnadv-mic" id="hnadv-mic" type="button" aria-label="Ask by voice">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-      </button>
-      <button class="hnadv-send" id="hnadv-send" type="button" aria-label="Send">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
+      <button class="hnadv-mic" id="hnadv-mic" type="button" aria-label="Ask by voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+      <button class="hnadv-send" id="hnadv-send" type="button" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
     </div>
     <div class="hnadv-dots" id="hnadv-dots"></div>
   </div>
@@ -82290,219 +82252,172 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   'use strict';
   if (window.HNAdvisor) return;
 
-  var DONE_KEY = 'hn_advisor_demo_done';
-  var muted = false;
-  var recog = null, listening = false;
-  var answerProvider = null;
-  var _speechStarted = false;
-  var _pollTimer = null;
-  var _billMade = false;
+  var DONE_KEY='hn_advisor_demo_done';
+  var muted=false, recog=null, listening=false;
+  var answerProvider=null, ttsProvider=null;
+  var _speechStarted=false, _pollTimer=null, _billMade=false, _prodSaved=false, _chatMode=false;
 
   function $(id){ return document.getElementById(id); }
-  // Advisor speaks Hindi by default (warm female Google voice) for the SMB
-  // audience. Set to 'en' for English, or 'auto' to follow the app language.
-  var FORCE_LANG = 'hi';
+  // Language follows the app. 'auto' = follow app; or force 'en' / 'hi'.
+  var FORCE_LANG='auto';
   function appLang(){ try { return (window.I18n && I18n.getLang && I18n.getLang()==='hi') ? 'hi' : 'en'; } catch(e){ return 'en'; } }
   function lang(){ return (FORCE_LANG==='hi'||FORCE_LANG==='en') ? FORCE_LANG : appLang(); }
-  function L(en, hi){ return lang()==='hi' ? hi : en; }
+  function L(en, hi){ return lang()==='hi' ? hi : en; }   // hi strings are written as casual Hinglish
   function owner(){ try { return (window.S && (S.ownerName || S.store)) || ''; } catch(e){ return ''; } }
   function buzz(){ try { if (window.haptic && window.haptic.nav) window.haptic.nav(); } catch(e){} }
 
-  /* ---------- voice OUT — prefer a natural Google FEMALE voice ---------- */
-  var _voices = [];
-  function loadVoices(){ try { _voices = window.speechSynthesis.getVoices() || []; } catch(e){ _voices = []; } }
-  if ('speechSynthesis' in window){ loadVoices(); try { window.speechSynthesis.onvoiceschanged = loadVoices; } catch(e){} }
-
-  var FEMALE_HINT = /female|woman|kalpana|heera|swara|lekha|veena|raveena|aditi|समीरा/i;
-  var MALE_HINT   = /\bmale\b|\bman\b|ravi|hemant/i;
+  /* ---------- voice OUT ---------- */
+  var _voices=[];
+  function loadVoices(){ try { _voices = window.speechSynthesis.getVoices() || []; } catch(e){ _voices=[]; } }
+  if ('speechSynthesis' in window){ loadVoices(); try { window.speechSynthesis.onvoiceschanged=loadVoices; } catch(e){} }
+  var FEMALE_HINT=/female|woman|kalpana|heera|swara|lekha|veena|raveena|aditi|समीरा/i;
+  var MALE_HINT=/\bmale\b|\bman\b|ravi|hemant/i;
   function pickVoice(lc){
-    if (!_voices.length) loadVoices();
-    var want = lc==='hi' ? 'hi' : 'en';
-    var pool = _voices.filter(function(v){ return (v.lang||'').toLowerCase().indexOf(want)===0; });
-    if (!pool.length) pool = _voices.slice();
-    var score = function(v){
-      var n = (v.name||''), s = 0;
-      if (/google/i.test(n)) s += 6;            // Google voices are the natural ones
-      if (FEMALE_HINT.test(n)) s += 5;          // prefer female
-      if (MALE_HINT.test(n))  s -= 5;
-      if (/IN$/i.test(v.lang)) s += 3;          // Indian locale (hi-IN / en-IN)
-      if (lc==='hi' && /^hi/i.test(v.lang)) s += 2;
-      return s;
-    };
+    if(!_voices.length) loadVoices();
+    var want = lc==='hi'?'hi':'en';
+    var pool=_voices.filter(function(v){ return (v.lang||'').toLowerCase().indexOf(want)===0; });
+    if(!pool.length) pool=_voices.slice();
+    var score=function(v){ var n=(v.name||''),s=0;
+      if(/google/i.test(n)) s+=6; if(FEMALE_HINT.test(n)) s+=5; if(MALE_HINT.test(n)) s-=5;
+      if(/IN$/i.test(v.lang)) s+=4;                 // strongly prefer Indian accent (hi-IN / en-IN)
+      if(lc==='hi' && /^hi/i.test(v.lang)) s+=2; return s; };
     pool.sort(function(a,b){ return score(b)-score(a); });
-    return pool[0] || null;
+    return pool[0]||null;
   }
-  function speak(text){
-    var av = $('hnadv-avatar');
-    if (muted || !('speechSynthesis' in window) || !text) return;
-    var doSpeak = function(){
-      try {
-        window.speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(text);
-        var lc = lang();
-        u.lang  = lc==='hi' ? 'hi-IN' : 'en-IN';
-        u.rate  = 0.92;     // a touch slower = warmer, less robotic
-        u.pitch = 1.12;     // slightly higher = more feminine
-        var v = pickVoice(lc); if (v){ u.voice = v; u.lang = v.lang; }
-        u.onstart = function(){ _speechStarted = true; if(av) av.classList.add('speaking'); };
-        u.onend   = function(){ if(av) av.classList.remove('speaking'); };
-        u.onerror = function(){ if(av) av.classList.remove('speaking'); };
-        window.speechSynthesis.speak(u);
-      } catch(e){}
-    };
-    // If the voice list hasn't loaded yet, wait one tick so we don't fall back
-    // to the robotic default for the very first line.
-    if (!_voices.length){
-      loadVoices();
-      if (!_voices.length){ setTimeout(function(){ loadVoices(); doSpeak(); }, 250); return; }
-    }
+  var _audio=null;
+  function deviceSpeak(text){
+    var av=$('hnadv-avatar');
+    var doSpeak=function(){ try {
+      window.speechSynthesis.cancel();
+      var u=new SpeechSynthesisUtterance(text); var lc=lang();
+      u.lang=lc==='hi'?'hi-IN':'en-IN'; u.rate=0.94; u.pitch=1.08;
+      var v=pickVoice(lc); if(v){ u.voice=v; u.lang=v.lang; }
+      u.onstart=function(){ _speechStarted=true; if(av) av.classList.add('speaking'); };
+      u.onend=function(){ if(av) av.classList.remove('speaking'); };
+      u.onerror=function(){ if(av) av.classList.remove('speaking'); };
+      window.speechSynthesis.speak(u);
+    } catch(e){} };
+    if(!_voices.length){ loadVoices(); if(!_voices.length){ setTimeout(function(){ loadVoices(); doSpeak(); },250); return; } }
     doSpeak();
   }
-  function stopSpeak(){ try { window.speechSynthesis.cancel(); } catch(e){} var av=$('hnadv-avatar'); if(av) av.classList.remove('speaking'); }
-
+  function speak(text){
+    var av=$('hnadv-avatar');
+    if(muted || !text) return;
+    // Cloud TTS (natural voice) if wired; otherwise device Web-Speech voice.
+    if(ttsProvider){
+      try {
+        Promise.resolve(ttsProvider(text, lang())).then(function(src){
+          if(!src){ deviceSpeak(text); return; }
+          try {
+            if(_audio){ _audio.pause(); _audio=null; }
+            var url = (typeof src==='string') ? src : URL.createObjectURL(src);
+            _audio=new Audio(url); _speechStarted=true;
+            if(av) av.classList.add('speaking');
+            _audio.onended=function(){ if(av) av.classList.remove('speaking'); };
+            _audio.onerror=function(){ if(av) av.classList.remove('speaking'); deviceSpeak(text); };
+            _audio.play().catch(function(){ deviceSpeak(text); });
+          } catch(e){ deviceSpeak(text); }
+        }).catch(function(){ deviceSpeak(text); });
+      } catch(e){ deviceSpeak(text); }
+      return;
+    }
+    if(!('speechSynthesis' in window)) return;
+    deviceSpeak(text);
+  }
+  function stopSpeak(){ try { window.speechSynthesis.cancel(); } catch(e){} try{ if(_audio){_audio.pause();_audio=null;} }catch(e){} var av=$('hnadv-avatar'); if(av) av.classList.remove('speaking'); }
   function armSpeechFallback(text){
-    if (muted || !('speechSynthesis' in window)) return;
-    setTimeout(function(){
-      if (_speechStarted) return;
-      var once = function(){ document.removeEventListener('pointerdown', once, true); speak(text); };
-      document.addEventListener('pointerdown', once, true);
-    }, 900);
+    if(muted) return;
+    setTimeout(function(){ if(_speechStarted) return;
+      var once=function(){ document.removeEventListener('pointerdown',once,true); speak(text); };
+      document.addEventListener('pointerdown',once,true); },900);
   }
 
-  /* ---------- typewriter bubble ---------- */
-  var _typeTimer = null;
-  function say(text, opts){
-    opts = opts || {};
-    var b = $('hnadv-bubble'); if(!b) return;
-    if (_typeTimer){ clearInterval(_typeTimer); _typeTimer=null; }
-    if (opts.silent !== true) speak(text);
+  /* ---------- bubble ---------- */
+  var _typeTimer=null;
+  function say(text,opts){ opts=opts||{}; var b=$('hnadv-bubble'); if(!b) return;
+    if(_typeTimer){ clearInterval(_typeTimer); _typeTimer=null; }
+    if(opts.silent!==true) speak(text);
     var i=0; b.innerHTML='<span class="cur"></span>';
-    _typeTimer = setInterval(function(){
-      i++; b.innerHTML = text.slice(0,i).replace(/</g,'&lt;') + (i<text.length?'<span class="cur"></span>':'');
-      if (i>=text.length){ clearInterval(_typeTimer); _typeTimer=null; }
-    }, 18);
+    _typeTimer=setInterval(function(){ i++; b.innerHTML=text.slice(0,i).replace(/</g,'&lt;')+(i<text.length?'<span class="cur"></span>':''); if(i>=text.length){ clearInterval(_typeTimer); _typeTimer=null; } },18);
   }
+  function setActions(list){ var w=$('hnadv-actions'); if(!w) return; w.innerHTML='';
+    (list||[]).forEach(function(a){ var b=document.createElement('button'); b.type='button'; b.className='hnadv-btn '+(a.style||'sec'); b.textContent=a.label; b.onclick=function(){ buzz(); a.onClick&&a.onClick(); }; w.appendChild(b); });
+  }
+  function showWait(){ var w=$('hnadv-actions'); if(!w) return; w.innerHTML='';
+    var d=document.createElement('div'); d.className='hnadv-wait'; d.innerHTML='<i></i><i></i><i></i><span>'+L('Waiting for you…','Wait कर रहा हूँ…')+'</span>'; w.appendChild(d);
+    var s=document.createElement('button'); s.type='button'; s.className='hnadv-btn sec'; s.style.marginLeft='auto'; s.textContent=L('Skip','छोड़ें'); s.onclick=function(){ buzz(); finish(true); }; w.appendChild(s);
+  }
+  function showAsk(on){ var a=$('hnadv-ask'); if(!a) return; a.classList.toggle('show',!!on);
+    if(on){ var inp=$('hnadv-input'); if(inp){ inp.placeholder=L('Type your question…','अपना सवाल type करें…'); setTimeout(function(){ inp.focus(); },80); } } }
+  function showChips(on){ var c=$('hnadv-chips'); if(!c) return; if(!on){ c.style.display='none'; c.innerHTML=''; return; }
+    c.style.display='flex'; c.innerHTML='';
+    FAQS().forEach(function(f){ var b=document.createElement('button'); b.type='button'; b.className='hnadv-chip'; b.textContent=f.label; b.onclick=function(){ buzz(); askText(f.q); }; c.appendChild(b); });
+  }
+  function setDots(total,idx){ var d=$('hnadv-dots'); if(!d) return; if(!total){ d.innerHTML=''; return; } var h=''; for(var k=0;k<total;k++) h+='<i class="'+(k===idx?'on':'')+'"></i>'; d.innerHTML=h; }
 
-  function setActions(list){
-    var wrap=$('hnadv-actions'); if(!wrap) return; wrap.innerHTML='';
-    (list||[]).forEach(function(a){
-      var btn=document.createElement('button'); btn.type='button';
-      btn.className='hnadv-btn '+(a.style||'sec'); btn.textContent=a.label;
-      btn.onclick=function(){ buzz(); a.onClick && a.onClick(); };
-      wrap.appendChild(btn);
-    });
-  }
-  function showWait(){
-    var wrap=$('hnadv-actions'); if(!wrap) return;
-    wrap.innerHTML='';
-    var w=document.createElement('div'); w.className='hnadv-wait';
-    w.innerHTML='<i></i><i></i><i></i><span>'+L('Waiting for you…','आपका इंतज़ार है…')+'</span>';
-    wrap.appendChild(w);
-    var skip=document.createElement('button'); skip.type='button'; skip.className='hnadv-btn sec';
-    skip.style.marginLeft='auto'; skip.textContent=L('Skip','छोड़ें');
-    skip.onclick=function(){ buzz(); finish(true); };
-    wrap.appendChild(skip);
-  }
-  function showAsk(on){
-    var a=$('hnadv-ask'); if(!a) return; a.classList.toggle('show', !!on);
-    if(on){ var inp=$('hnadv-input'); if(inp){ inp.placeholder=L('Type your question…','अपना सवाल टाइप करें…'); setTimeout(function(){ inp.focus(); },80); } }
-  }
-  function setDots(total, idx){
-    var d=$('hnadv-dots'); if(!d) return; if(!total){ d.innerHTML=''; return; }
-    var h=''; for(var k=0;k<total;k++){ h+='<i class="'+(k===idx?'on':'')+'"></i>'; } d.innerHTML=h;
-  }
-
-  /* ---------- dock placement: never cover the highlighted target ---------- */
-  function placeDock(rect){
-    var dock=$('hnadv-dock'); if(!dock) return;
-    var top = rect && (rect.top + rect.height/2) > (window.innerHeight * 0.45);
-    dock.classList.toggle('top', !!top);
-    dock.classList.toggle('bottom', !top);
-  }
-
-  /* ---------- spotlight ---------- */
-  function moveRing(r){
-    var ring=$('hnadv-ring'); if(!ring||!r) return; var pad=8;
-    ring.style.left=(r.left-pad)+'px'; ring.style.top=(r.top-pad)+'px';
-    ring.style.width=(r.width+pad*2)+'px'; ring.style.height=(r.height+pad*2)+'px';
-  }
-  function spotlight(el, cb){
-    var ring=$('hnadv-ring');
-    if(!el){ if(ring) ring.classList.remove('show'); placeDock(null); cb&&cb(); return; }
-    try { el.scrollIntoView({block:'center', behavior:'smooth'}); } catch(e){}
-    setTimeout(function(){
-      var r=el.getBoundingClientRect();
-      moveRing(r); ring.classList.add('show'); placeDock(r);
-      cb&&cb();
-    }, 360);
+  /* ---------- placement + ring ---------- */
+  function placeDock(rect){ var d=$('hnadv-dock'); if(!d) return; var top=rect && (rect.top+rect.height/2)>(window.innerHeight*0.45); d.classList.toggle('top',!!top); d.classList.toggle('bottom',!top); }
+  function moveRing(r){ var ring=$('hnadv-ring'); if(!ring||!r) return; var p=8; ring.style.left=(r.left-p)+'px'; ring.style.top=(r.top-p)+'px'; ring.style.width=(r.width+p*2)+'px'; ring.style.height=(r.height+p*2)+'px'; }
+  function spotlight(el,cb){ var ring=$('hnadv-ring'); if(!el){ if(ring) ring.classList.remove('show'); placeDock(null); cb&&cb(); return; }
+    try{ el.scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){}
+    setTimeout(function(){ var r=el.getBoundingClientRect(); moveRing(r); ring.classList.add('show'); placeDock(r); cb&&cb(); },360);
   }
   function clearSpotlight(){ var r=$('hnadv-ring'); if(r) r.classList.remove('show'); }
+  function elFab(){ return document.querySelector('.nav-fab') || document.querySelector('[onclick*="addsale"]'); }
+  function elPsSave(){ var b=document.getElementById('ps-save-btn'); return (b&&b.offsetParent!==null)?b:null; }
+  function elPriceStep(){ return elPsSave() || elFab(); }
+  function cartCount(){ try { return Object.keys(window.App&&App.cart||{}).length; } catch(e){ return 0; } }
+  function curPage(){ try { return window.App&&App.current; } catch(e){ return null; } }
 
-  function elNewSale(){ return document.querySelector('.nav-fab') || document.querySelector('[onclick*="addsale"]'); }
-  function elGrid(){ return document.getElementById('svc-grid'); }
-  // The product sheet's primary button keeps id #ps-save-btn across every wizard
-  // step (Activate → Continue → Save). Track it so the ring follows the action
-  // the user needs to take next while setting a price / creating a product.
-  function elPsSave(){ var b=document.getElementById('ps-save-btn'); return (b && b.offsetParent!==null) ? b : null; }
-  function elItemStep(){ return elPsSave() || document.getElementById('svc-grid'); }
-  function elCart(){ return document.getElementById('cart-summary'); }
-  function elCollect(){ return document.querySelector('.ck-collect-btn'); }
-  function cartCount(){ try { return Object.keys(window.App && App.cart || {}).length; } catch(e){ return 0; } }
-  function curPage(){ try { return window.App && App.current; } catch(e){ return null; } }
-
-  /* hook completeSale ONCE to know when a real bill is made */
-  function hookBill(){
-    try {
-      if (window.App && typeof App.completeSale==='function' && !App._hnBillHook){
-        var orig = App.completeSale.bind(App);
-        App._hnBillHook = true;
-        App.completeSale = function(){
-          var had = cartCount() > 0;
-          var r = orig.apply(App, arguments);
-          if (had) Promise.resolve(r).then(function(){ _billMade = true; }).catch(function(){});
-          return r;
-        };
-      }
-    } catch(e){}
+  /* hook real app actions ONCE for reliable milestone detection */
+  function hookOnce(name, set){ try {
+    if(window.App && typeof App[name]==='function' && !App['_hn_'+name]){
+      var orig=App[name].bind(App); App['_hn_'+name]=true;
+      App[name]=function(){ var r=orig.apply(App,arguments); try{ set(r); }catch(e){} return r; };
+    }
+  } catch(e){} }
+  function hookMilestones(){
+    hookOnce('saveProduct', function(){ _prodSaved=true; });          // price set / product activated
+    hookOnce('completeSale', function(r){ if(cartCount()>0||true) Promise.resolve(r).then(function(){ _billMade=true; }); });
   }
 
   /* ============================================================
-     KNOWLEDGE BASE (canned bilingual; pluggable via setAnswerProvider)
+     KNOWLEDGE BASE + FAQ chips (canned; pluggable via setAnswerProvider)
   ============================================================ */
-  var KB = [
-    { k:['bill','sale','invoice','बिल','सेल','बिक्री'], a:L('Tap the + button to start a New Sale, pick the items, then tap Charge.','नीचे + बटन दबाकर नया बिल शुरू करें, आइटम चुनें, फिर Charge दबाएं।'), act:{label:L('Show me','दिखाइए'),go:'newsale'} },
-    { k:['product','item','catalog','stock','price','add product','प्रोडक्ट','आइटम','स्टॉक','दाम','कैटलॉग'], a:L('I added ready-made products for your shop. Open Catalog to set prices or add your own.','मैंने आपकी दुकान के लिए प्रोडक्ट जोड़ दिए हैं। Catalog में दाम सेट करें या अपने आइटम जोड़ें।'), act:{label:L('Open Catalog','कैटलॉग खोलें'),go:'catalog'} },
-    { k:['customer','ग्राहक','कस्टमर'], a:L('Add customers to track who buys what and build a regulars list.','ग्राहक जोड़ें ताकि पता रहे कौन क्या खरीदता है।'), act:{label:L('Customers','ग्राहक'),go:'customers'} },
-    { k:['udhaar','credit','khata','उधार','खाता','क्रेडिट'], a:L('Use Udhaar to record credit given or taken. The app keeps running balances for you.','उधार में लेन-देन दर्ज करें, ऐप बैलेंस खुद रखता है।'), act:{label:L('Open Udhaar','उधार खोलें'),go:'udhaar'} },
-    { k:['munim','advisor','insight','ai','analytics','मुनीम','सलाह','एनालिटिक्स'], a:L("That's me — as you bill, I surface your best sellers, alerts and ways to earn more.",'वो मैं हूँ — जैसे-जैसे आप बिल बनाते हैं, मैं बेस्ट सेलर, अलर्ट और कमाई के तरीके बताता हूँ।'), act:{label:L('See AI Insights','AI सलाह देखें'),go:'munim'} },
-    { k:['plan','cost','subscription','free','पैसे','प्लान','सब्सक्रिप्शन','फ्री'], a:L('Free for 7 days, no card. Then Pro ₹99/month, King ₹199/month.','7 दिन फ्री, कोई कार्ड नहीं। फिर Pro ₹99/महीना, King ₹199/महीना।') },
-    { k:['voice','bol','आवाज','बोल','वॉइस'], a:L('On the New Sale screen tap the mic and say the items — I add them to the bill.','नया बिल स्क्रीन पर माइक दबाकर आइटम बोलें — मैं उन्हें बिल में जोड़ देता हूँ।'), act:{label:L('Try voice billing','वॉइस बिलिंग'),go:'newsale'} },
-    { k:['data','safe','backup','cloud','डेटा','सेफ','बैकअप'], a:L('Saved on your phone instantly and backed up to the cloud — nothing is lost.','फोन पर तुरंत सेव और क्लाउड पर बैकअप — कुछ नहीं खोता।') },
-    { k:['report','profit','रिपोर्ट','मुनाफा'], a:L('Reports show sales, profit and payments by day, week or month — built from your bills.','रिपोर्ट में दिन/हफ्ते/महीने की सेल, मुनाफा और पेमेंट दिखते हैं।'), act:{label:L('Open Reports','रिपोर्ट खोलें'),go:'reports'} }
+  function FAQS(){ return [
+    { label:L('How to bill?','Bill कैसे बनाएं?'), q:L('how to make a bill','bill kaise banaye') },
+    { label:L('Add a product','Product add करें'), q:L('add product','product add karein') },
+    { label:L('What is Udhaar?','Udhaar क्या है?'), q:L('udhaar','udhaar kya hai') },
+    { label:L('Reports','Reports'), q:L('reports','reports') },
+    { label:L('Plans & price','Plan & price'), q:L('plan price','plan price') }
+  ]; }
+  var KB=[
+    { k:['bill','sale','invoice','बिल','banaye','billing'], a:L('Tap the + button to start a bill, pick the items, then take payment. Done in seconds.','+ button दबाकर bill शुरू करें, items चुनें, फिर payment लें। कुछ ही seconds में हो जाता है।'), act:{label:L('Show me','दिखाइए'),go:'newsale'} },
+    { k:['product','item','catalog','price','दाम','add karein','प्रोडक्ट'], a:L('Tap an item on your dashboard, set its price to add it to your menu — or tap + to create your own.','Dashboard पर item दबाएं, price set करके menu में add करें — या अपना बनाने के लिए + दबाएं।'), act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['customer','ग्राहक','कस्टमर'], a:L('Add customers to track who buys what and build a regulars list.','Customers add करें ताकि पता रहे कौन क्या खरीदता है।'), act:{label:L('Customers','Customers'),go:'customers'} },
+    { k:['udhaar','credit','khata','उधार','खाता'], a:L('Use Udhaar to record credit given or taken — the app keeps running balances for you.','Udhaar में credit का हिसाब रखें — app बैलेंस खुद रखता है।'), act:{label:L('Open Udhaar','Udhaar खोलें'),go:'udhaar'} },
+    { k:['munim','advisor','insight','ai','analytics','सलाह'], a:L("That's me — as you bill, I surface best sellers, alerts and ways to earn more.",'वो मैं हूँ — जैसे-जैसे आप bill बनाते हैं, मैं best sellers, alerts और कमाई के तरीके बताता हूँ।'), act:{label:L('See AI Insights','AI Insights देखें'),go:'munim'} },
+    { k:['plan','cost','subscription','free','price','पैसे'], a:L('Free for 7 days, no card. Then Pro ₹99/month, King ₹199/month.','7 दिन free, कोई card नहीं। फिर Pro ₹99/month, King ₹199/month।') },
+    { k:['voice','bol','आवाज','वॉइस'], a:L('On the New Sale screen tap the mic and say the items — I add them to the bill.','New Sale screen पर mic दबाकर items बोलें — मैं उन्हें bill में add कर देता हूँ।'), act:{label:L('Try voice billing','Voice billing'),go:'newsale'} },
+    { k:['report','profit','रिपोर्ट','मुनाफा'], a:L('Reports show sales, profit and payments by day, week or month — built from your bills.','Reports में दिन/हफ्ते/महीने की sales, profit और payments दिखते हैं।'), act:{label:L('Open Reports','Reports खोलें'),go:'reports'} }
   ];
   function answer(q){
-    if (answerProvider) return Promise.resolve(answerProvider(q, lang()));
+    if(answerProvider) return Promise.resolve(answerProvider(q,lang()));
     var s=(q||'').toLowerCase();
     var hit=KB.find(function(e){ return e.k.some(function(w){ return s.indexOf(w.toLowerCase())>=0; }); });
-    if (hit) return { text:hit.a, act:hit.act };
-    return { text:L("Good question — try asking about billing, products, udhaar, reports or pricing.",'अच्छा सवाल — बिलिंग, प्रोडक्ट, उधार, रिपोर्ट या दाम के बारे में पूछें।') };
+    if(hit) return { text:hit.a, act:hit.act };
+    return { text:L("Good question — try asking about billing, products, udhaar, reports or pricing.",'अच्छा सवाल — billing, products, udhaar, reports या pricing के बारे में पूछें।') };
   }
-  function go(where){
-    finish(true);
-    try {
-      if (where==='munim'){ if(window.Munim&&Munim.openDrawer) Munim.openDrawer(); else App.nav('home'); }
-      else if (where==='newsale'){ App.nav('addsale'); }
-      else App.nav(where);
-    } catch(e){}
-  }
+  function go(where){ finish(true); try {
+    if(where==='munim'){ if(window.Munim&&Munim.openDrawer) Munim.openDrawer(); else App.nav('home'); }
+    else if(where==='newsale'){ App.nav('addsale'); } else App.nav(where);
+  } catch(e){} }
 
   /* ---------- voice IN ---------- */
-  function toggleListen(){
-    var SR=window.SpeechRecognition||window.webkitSpeechRecognition; var mic=$('hnadv-mic');
-    if(!SR){ say(L('Voice input needs Chrome. You can type instead.','वॉइस इनपुट के लिए Chrome चाहिए। टाइप करें।')); return; }
-    if(listening && recog){ try{recog.stop();}catch(e){} return; }
-    try {
-      recog=new SR(); recog.lang=lang()==='hi'?'hi-IN':'en-IN'; recog.interimResults=false; recog.maxAlternatives=1;
+  function toggleListen(){ var SR=window.SpeechRecognition||window.webkitSpeechRecognition; var mic=$('hnadv-mic');
+    if(!SR){ say(L('Voice input needs Chrome. You can type instead.','Voice input के लिए Chrome चाहिए। आप type कर सकते हैं।')); return; }
+    if(listening&&recog){ try{recog.stop();}catch(e){} return; }
+    try { recog=new SR(); recog.lang=lang()==='hi'?'hi-IN':'en-IN'; recog.interimResults=false; recog.maxAlternatives=1;
       listening=true; if(mic) mic.classList.add('listening');
       recog.onresult=function(ev){ var t=ev.results[0][0].transcript||''; var inp=$('hnadv-input'); if(inp) inp.value=t; submitQuestion(); };
       recog.onerror=function(){ listening=false; if(mic) mic.classList.remove('listening'); };
@@ -82510,109 +82425,91 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       recog.start();
     } catch(e){ listening=false; if(mic) mic.classList.remove('listening'); }
   }
-  function submitQuestion(){
-    var inp=$('hnadv-input'); if(!inp) return; var q=(inp.value||'').trim(); if(!q) return; inp.value='';
+  function askText(q){ var inp=$('hnadv-input'); if(inp) inp.value=q; submitQuestion(); }
+  function submitQuestion(){ var inp=$('hnadv-input'); if(!inp) return; var q=(inp.value||'').trim(); if(!q) return; inp.value='';
     stopSpeak(); say(L('Let me see…','देखता हूँ…'),{silent:true});
-    Promise.resolve(answer(q)).then(function(res){
-      var text=(typeof res==='string')?res:(res.text||''); var act=(typeof res==='object')?res.act:null;
+    Promise.resolve(answer(q)).then(function(res){ var text=(typeof res==='string')?res:(res.text||''); var act=(typeof res==='object')?res.act:null;
       say(text);
-      var actions=[];
-      if(act&&act.go) actions.push({label:act.label,style:'gold',onClick:function(){ go(act.go); }});
-      actions.push({label:L('Ask another','और पूछें'),style:'sec',onClick:function(){ showAsk(true); }});
-      actions.push({label:L('Show me the tour','टूर दिखाएं'),style:'pri',onClick:startTour});
-      setActions(actions);
+      var actions=[]; if(act&&act.go) actions.push({label:act.label,style:'gold',onClick:function(){ go(act.go); }});
+      actions.push({label:L('Done','हो गया'),style:'sec',onClick:function(){ finish(false); }});
+      setActions(actions); showChips(true);
     });
   }
 
   /* ============================================================
-     INTERACTIVE TOUR — highlight, instruct, WAIT for the action
+     TOUR — robust milestones: (1) price/activate a product, (2) bill
   ============================================================ */
-  var STEPS = [
-    { target:elNewSale,
-      line:L("Let's make your first bill together. Tap the + button below — I'll wait.",
-              "चलिए मिलकर पहला बिल बनाते हैं। नीचे + बटन दबाएं — मैं इंतज़ार करता हूँ।"),
-      until:function(){ return curPage()==='addsale'; } },
-    { target:elItemStep,
-      line:L("Tap an item to add it. If it asks for a price, type it and tap the glowing button to activate it. To make your own, tap + Add product.",
-              "कोई आइटम दबाकर जोड़ें। अगर दाम पूछे तो भरें और चमकते बटन को दबाकर चालू करें। अपना बनाने के लिए + Add product दबाएं।"),
-      until:function(){ return cartCount() > 0; } },
-    { target:elCart,
-      line:L("Great — it's on the bill! Now tap Checkout at the bottom to take payment.",
-              "बढ़िया — आइटम बिल में आ गया! अब नीचे Checkout दबाकर पेमेंट लें।"),
-      until:function(){ return curPage()==='checkout'; } },
-    { target:elCollect,
-      line:L("Last step — complete the payment to finish your first bill.",
-              "आख़िरी कदम — पेमेंट पूरा करके अपना पहला बिल फ़ाइनल करें।"),
-      until:function(){ return _billMade === true; } }
+  var STEPS=[
+    { target:elPriceStep,
+      line:L("Let's set up and bill. Tap any item and set its price to add it to your menu — or tap + to create your own product.",
+              "चलिए setup करके bill बनाते हैं। किसी item को दबाकर उसका price set करें ताकि वो menu में add हो जाए — या अपना product बनाने के लिए + दबाएं।"),
+      until:function(){ return _prodSaved===true || cartCount()>0; } },
+    { target:elFab,
+      line:L("Nice! Now tap the + button to make a bill — add your item and take the payment. I'll wait.",
+              "बढ़िया! अब bill बनाने के लिए + button दबाएं — अपना item add करें और payment लें। मैं wait करता हूँ।"),
+      until:function(){ return _billMade===true; } }
   ];
   var stepIdx=0;
-
   function clearPoll(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; } }
-  function runStep(){
-    var s=STEPS[stepIdx]; if(!s){ celebrate(); return; }
+  function runStep(){ var s=STEPS[stepIdx]; if(!s){ celebrate(); return; }
     setDots(STEPS.length, stepIdx);
     var el=null; try{ el=s.target(); }catch(e){}
-    spotlight(el, function(){
-      say(s.line);
-      showWait();
-      clearPoll();
-      _pollTimer = setInterval(function(){
-        var done=false; try{ done=s.until(); }catch(e){}
-        if(done){
-          clearPoll(); buzz(); stepIdx++;
-          setTimeout(runStep, 450);   // let the new screen render before highlighting
-        } else {
-          // keep the ring glued to the (possibly re-rendered/moved) target
-          try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } }catch(e){}
-        }
-      }, 300);
+    spotlight(el, function(){ say(s.line); showWait(); clearPoll();
+      _pollTimer=setInterval(function(){ var done=false; try{ done=s.until(); }catch(e){}
+        if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); }
+        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } }catch(e){} }
+      },300);
     });
   }
+  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; hookMilestones(); showChips(false); showAsk(false); runStep(); }
 
-  function startTour(){ stepIdx=0; _billMade=false; hookBill(); runStep(); }
-
-  function celebrate(){
-    clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
-    say(L("🎉 You just made your first bill — that's all there is to it! I'll be on your dashboard whenever you need me.",
-           "🎉 आपने अपना पहला बिल बना लिया — बस इतना ही था! जब भी ज़रूरत हो, मैं आपके डैशबोर्ड पर हूँ।"));
+  function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
+    say(L("🎉 You just made your first bill — that's all there is to it! I'm on your dashboard whenever you need me.",
+           "🎉 आपका पहला bill बन गया — बस इतना ही आसान है! ज़रूरत हो तो मैं dashboard पर हूँ।"));
     setActions([{ label:L('Done','हो गया'), style:'pri', onClick:function(){ finish(true); } }]);
+    setTimeout(function(){ finish(true); }, 5200);   // auto-dismiss after the demo
   }
 
-  /* ---------- greeting ---------- */
-  function greet(){
-    var nm=owner();
+  /* ---------- greeting (first run) ---------- */
+  function greet(){ var nm=owner();
     var hello = nm
-      ? L('Namaste '+nm+'! I\'m your AI Business Advisor. Shall I walk you through making your first bill?',
-           'नमस्ते '+nm+'! मैं आपका AI बिज़नेस सलाहकार हूँ। क्या मैं आपको पहला बिल बनाना सिखाऊँ?')
-      : L("Namaste! I'm your AI Business Advisor. Shall I walk you through making your first bill?",
-           'नमस्ते! मैं आपका AI बिज़नेस सलाहकार हूँ। क्या मैं आपको पहला बिल बनाना सिखाऊँ?');
-    placeDock(null);
+      ? L('Namaste '+nm+'! I\'m your AI Business Advisor. Shall I show you how to set up and make your first bill?',
+           'नमस्ते '+nm+'! मैं आपका AI Business Advisor हूँ। क्या मैं setup और पहला bill बनाना दिखाऊँ?')
+      : L("Namaste! I'm your AI Business Advisor. Shall I show you how to set up and make your first bill?",
+           'नमस्ते! मैं आपका AI Business Advisor हूँ। क्या मैं setup और पहला bill बनाना दिखाऊँ?');
+    placeDock(null); showChips(false); showAsk(false);
     say(hello); armSpeechFallback(hello);
     setActions([
       { label:L('Yes, guide me 👇','हाँ, सिखाइए 👇'), style:'pri', onClick:startTour },
-      { label:L('Ask first','पहले पूछूँ'), style:'sec', onClick:function(){ showAsk(true); } },
+      { label:L('Ask first','पहले पूछूँ'), style:'sec', onClick:enterChat },
       { label:L("I'll explore",'मैं खुद देखूँगा'), style:'sec', onClick:function(){ finish(true); } }
     ]);
   }
 
+  /* ---------- chat applet (More -> AI Advisor) ---------- */
+  function enterChat(){ _chatMode=true; clearSpotlight(); placeDock(null); setDots(0,0);
+    var nm=owner();
+    say(nm ? L('Hi '+nm+'! Ask me anything about your shop — billing, products, udhaar, reports.',
+                'नमस्ते '+nm+'! अपनी दुकान के बारे में कुछ भी पूछें — billing, products, udhaar, reports।')
+           : L('Ask me anything about your shop — billing, products, udhaar, reports.',
+                'अपनी दुकान के बारे में कुछ भी पूछें — billing, products, udhaar, reports।'));
+    setActions([]); showChips(true); showAsk(true);
+  }
+
   /* ---------- open / close ---------- */
-  function open(){
-    var root=$('hnadv-root'), dock=$('hnadv-dock'); if(!root||!dock) return;
-    _speechStarted=false; _billMade=false; stepIdx=0; clearPoll();
-    $('hnadv-name').textContent=L('AI Business Advisor','AI बिज़नेस सलाहकार');
+  function open(mode){ var root=$('hnadv-root'), dock=$('hnadv-dock'); if(!root||!dock) return;
+    _speechStarted=false; _billMade=false; _prodSaved=false; stepIdx=0; clearPoll();
+    $('hnadv-name').textContent=L('AI Business Advisor','AI Business Advisor');
     $('hnadv-skip').textContent=L('Skip ✕','छोड़ें ✕');
     dock.classList.remove('top'); dock.classList.add('bottom');
-    root.classList.add('on');
-    requestAnimationFrame(function(){ dock.classList.add('show'); });
-    setDots(0,0); greet();
+    root.classList.add('on'); requestAnimationFrame(function(){ dock.classList.add('show'); });
+    setDots(0,0);
+    if(mode==='chat') enterChat(); else greet();
   }
-  function finish(markDone){
-    if(markDone){ try{ localStorage.setItem(DONE_KEY,'1'); }catch(e){} }
-    stopSpeak(); clearSpotlight(); clearPoll();
-    if(listening && recog){ try{recog.stop();}catch(e){} }
-    var root=$('hnadv-root'), dock=$('hnadv-dock');
-    if(dock) dock.classList.remove('show');
-    setTimeout(function(){ if(root) root.classList.remove('on'); }, 300);
+  function finish(markDone){ if(markDone){ try{ localStorage.setItem(DONE_KEY,'1'); }catch(e){} }
+    stopSpeak(); clearSpotlight(); clearPoll(); if(listening&&recog){ try{recog.stop();}catch(e){} }
+    var root=$('hnadv-root'), dock=$('hnadv-dock'); if(dock) dock.classList.remove('show');
+    setTimeout(function(){ if(root) root.classList.remove('on'); showChips(false); showAsk(false); },300);
   }
 
   function wire(){
@@ -82622,15 +82519,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var send=$('hnadv-send'); if(send) send.onclick=submitQuestion;
     var inp=$('hnadv-input'); if(inp) inp.addEventListener('keydown',function(e){ if(e.key==='Enter') submitQuestion(); });
   }
-  if (document.readyState!=='loading') wire(); else document.addEventListener('DOMContentLoaded', wire);
+  if(document.readyState!=='loading') wire(); else document.addEventListener('DOMContentLoaded',wire);
 
-  window.HNAdvisor = {
-    prime: function(){ try { if('speechSynthesis' in window){ window.speechSynthesis.resume(); var u=new SpeechSynthesisUtterance(' '); u.volume=0; window.speechSynthesis.speak(u); loadVoices(); } } catch(e){} },
-    start: function(){ try { if (localStorage.getItem(DONE_KEY)) return; } catch(e){} setTimeout(open, 650); },
-    replay: function(){ try{ localStorage.removeItem(DONE_KEY); }catch(e){} setTimeout(open, 200); },
-    answer: function(q){ return answer(q); },
-    setAnswerProvider: function(fn){ answerProvider = (typeof fn==='function') ? fn : null; },
-    setLang: function(l){ if(l==='hi'||l==='en'||l==='auto') FORCE_LANG = l; }
+  window.HNAdvisor={
+    prime:function(){ try { if('speechSynthesis' in window){ window.speechSynthesis.resume(); var u=new SpeechSynthesisUtterance(' '); u.volume=0; window.speechSynthesis.speak(u); loadVoices(); } } catch(e){} },
+    start:function(){ try { if(localStorage.getItem(DONE_KEY)) return; } catch(e){} setTimeout(function(){ open('tour'); },650); },
+    replay:function(){ try{ localStorage.removeItem(DONE_KEY); }catch(e){} setTimeout(function(){ open('tour'); },200); },
+    openChat:function(){ setTimeout(function(){ open('chat'); },200); },
+    answer:function(q){ return answer(q); },
+    setAnswerProvider:function(fn){ answerProvider=(typeof fn==='function')?fn:null; },
+    setTTS:function(fn){ ttsProvider=(typeof fn==='function')?fn:null; },
+    setLang:function(l){ if(l==='hi'||l==='en'||l==='auto') FORCE_LANG=l; }
   };
 })();
 </script>
