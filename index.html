@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_84_tables';
+    window.HISAABNOW_BUILD = 'v33_88_menu_visible';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5244,7 +5244,14 @@ html[data-current-role="manager"] body{
     'more.aiAdvisor':          { en: 'AI Advisor',               hi: 'AI सलाहकार' },
     'more.aiAdvisorSub':       { en: 'Chat & ask anything · voice', hi: 'Chat करें, कुछ भी पूछें · voice' },
     'tables.openOrders':       { en: 'Open orders',              hi: 'खुले orders' },
-    'tables.newTable':         { en: 'New table',                hi: 'नया table' },
+    'tables.newTable':         { en: 'New order',                hi: 'नया order' },
+    'tables.namePrompt':       { en: 'Customer name (optional)', hi: 'Customer का नाम (optional)' },
+    'tables.modeOrders':       { en: 'Orders',                   hi: 'Orders' },
+    'tables.modeTables':       { en: 'Tables',                   hi: 'टेबल' },
+    'tables.tablesLbl':        { en: 'Tables',                   hi: 'टेबल' },
+    'tables.free':             { en: 'Free',                     hi: 'खाली' },
+    'tables.setCount':         { en: 'Set number of tables',     hi: 'टेबल संख्या सेट करें' },
+    'tables.howMany':          { en: 'How many tables?',         hi: 'कितने टेबल?' },
     'more.signOut':            { en: 'Sign out',                 hi: 'लॉगआउट' },
 
     /* More page · dynamic content */
@@ -11274,6 +11281,22 @@ const App = {
     this.applyVertical(profession);
   },
 
+  loadStarterMenu(){
+    var vert='';
+    try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); vert=(a&&(a.cardType||a.profession))||this.vertical||''; } catch(e){ vert=this.vertical||''; }
+    vert=String(vert||'').toLowerCase().trim();
+    if(!window.Store||typeof Store.seedCatalog!=='function'){ try{this.toast('Starter menu unavailable');}catch(e){} return; }
+    var res=Store.seedCatalog(vert);
+    if(res&&res.added>0){
+      try{ this._syncFromStore(); }catch(e){}
+      try{ this._renderedInv=false; }catch(e){}
+      try{ this.nav('catalog'); }catch(e){}
+      try{ this.toast(res.added+' items loaded \u00b7 set prices to activate'); }catch(e){}
+    } else {
+      var why=(res&&res.reason)||'';
+      try{ if(why==='catalog not empty') this.toast('Catalog already has items'); else if(/no seeds/.test(why)) this.toast('No starter menu for "'+vert+'"'); else this.toast('Could not load starter menu'); }catch(e){}
+    }
+  },
   applyVertical(v){
     this.vertical = v;
     this._verticalCommitted = true;
@@ -12269,7 +12292,7 @@ const App = {
               fg = '#1E293B';
             }
           } else if (tier === 'trial-expired' || tier === 'expired') {
-            badgeText = ''; // (v33_80) removed dead SUBSCRIBE-TO-UNLOCK badge
+            badgeText = '';
           } else if (tierCfg) {
 
             const planName = (tierCfg.name || tier).toUpperCase();
@@ -20781,6 +20804,7 @@ const App = {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add a product
             </button>
+            <button class="empty-cta" onclick="App.loadStarterMenu()" data-role-min="manager" style="margin-top:8px;background:#FFC043;color:#1a1a1a;border:0">\u2728 Load starter menu</button>
           </div>`;
       }
       this._renderedInv = true;
@@ -38923,7 +38947,6 @@ function canAddShop(){
 
   if (!window.Subs || typeof window.Subs.getCurrentTier !== 'function') return true;
   var tier = window.Subs.getCurrentTier();
-  // (v33_81) Multi-outlet opened up to 5 on every plan.
   var limits = { trial: 5, basic: 5, pro: 5, king: 5, 'trial-expired': 5, expired: 5 };
   var max = limits[tier] != null ? limits[tier] : 5;
   return state.shops.length < max;
@@ -48844,7 +48867,8 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 
     filtered: function(){
       var self = this;
-      var list = getProds().filter(function(p){ return p.active !== false; });
+      /* (v33_88) Show inactive/preloaded (seeded) items too, so the starter menu is visible & priceable on desktop. */
+      var list = getProds().slice();
       /* Vertical catalog filter — salon Product Sales shows retail only */
       list = list.filter(function(p){ return self._verticalFilter(p); });
       if (this.cat !== 'All'){
@@ -48898,7 +48922,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       var list = this.filtered();
       var tbody = $('hnd-cat-tbody');
       if (list.length === 0){
-        tbody.innerHTML = '<tr><td colspan="8"><div class="hnd-tbl-empty"><div class="ic">📦</div><b>No products yet</b><p>Click <b data-i18n="pos.addItemLbl">Add item</b> to create your first product. They\'ll appear in the New Sale screen for billing.</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8"><div class="hnd-tbl-empty"><div class="ic">📦</div><b>No products yet</b><p>Click <b data-i18n="pos.addItemLbl">Add item</b> to create your first product. They\'ll appear in the New Sale screen for billing.</p><button onclick="App.loadStarterMenu()" style="margin-top:12px;padding:9px 16px;background:#FFC043;color:#1a1a1a;border:0;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">\u2728 Load starter menu</button></div></td></tr>';
         return;
       }
       tbody.innerHTML = list.map(function(p){
@@ -82587,6 +82611,19 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 .hntab-chip .x:hover{background:#F0F0F0;color:#C0392B}
 .hntab-new{display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--hnd-muted,#C8C8C8);background:none;border-radius:9px;padding:6px 11px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--hnd-gold-rich,#B8860B)}
 .hntab-new:hover{background:#FAF0E0}
+
+.hntab-modebar{margin-left:auto;display:inline-flex;border:1px solid var(--hnd-line,#E2E2E2);border-radius:8px;overflow:hidden}
+.hntab-mbtn{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer;color:var(--hnd-muted,#8A8A8A)}
+.hntab-mbtn.on{background:#FFC043;color:#1a1a1a}
+.hntab-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.hntab-tcell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid var(--hnd-line,#E2E2E2);border-radius:9px;padding:10px 6px;cursor:pointer;font-family:inherit;background:var(--hnd-card,#fff);min-height:54px}
+.hntab-tcell .tn{font-size:14px;font-weight:700;color:var(--hnd-ink,#1a1a1a)}
+.hntab-tcell .ts{font-size:10.5px;font-weight:600}
+.hntab-tcell.free{border-style:dashed}.hntab-tcell.free .ts{color:var(--hnd-muted,#9C9C9C)}
+.hntab-tcell.occ{background:#FFF8EA;border-color:#FFE2A0}.hntab-tcell.occ .ts{color:#B8860B}
+.hntab-tcell.active{border-color:#FFC043;box-shadow:0 0 0 2px rgba(255,192,67,.35)}
+.hntab-tcell .x{position:absolute;top:2px;right:5px;font-size:11px;color:var(--hnd-muted,#9C9C9C)}
+.hntab-cfg{margin-top:8px;width:100%;border:0;background:none;font-family:inherit;font-size:11px;font-weight:600;color:var(--hnd-muted,#8A8A8A);cursor:pointer;display:inline-flex;align-items:center;gap:5px;justify-content:center}
 </style>
 
 <script>
@@ -82606,6 +82643,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function isEnabled(){ try { var f=localStorage.getItem('hn_tables_on'); if(f==='1') return true; if(f==='0') return false; } catch(e){} return FOOD.indexOf(vertical())>=0; }
   function shopId(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&a.shopId)||(A()&&A().uid)||'default'; } catch(e){ return 'default'; } }
   function pkey(){ return 'hn_tables_v1_'+shopId(); }
+  var TABLE_VERTS = ['restaurant','dhaba','bar','finedine','fine-dine','casualdine','diner'];
+  function mode(){ try { var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; } catch(e){} return TABLE_VERTS.indexOf(vertical())>=0 ? 'tables' : 'orders'; }
+  function setMode(m){ if(m!=='tables'&&m!=='orders') return; try { localStorage.setItem('hn_orders_mode',m); } catch(e){} renderStrip(); }
+  function tableCount(){ try { var n=parseInt(localStorage.getItem('hn_table_count'),10); if(n>0&&n<=60) return n; } catch(e){} return 12; }
+  function setTableCount(){ var v=null; try { v=window.prompt((A()&&A()._T?A()._T('tables.howMany','How many tables?'):'How many tables?'), String(tableCount())); } catch(e){ return; } var n=parseInt(v,10); if(n>0&&n<=60){ try{ localStorage.setItem('hn_table_count',String(n)); }catch(e){} renderStrip(); } }
+  function occupiedCount(){ return orders.filter(function(o){ return o.tableNo!=null; }).length; }
+  function openTable(n){ var ex=orders.filter(function(o){return o.tableNo===n;})[0]; if(ex){ if(ex.id!==activeId) switchTo(ex.id); return; } parkActive(); _busy=true; clearLive(); seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, tableNo:n, label:'Table '+n, total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; save(); renderStrip(); }
+  function clearTable(n){ var o=orders.filter(function(x){return x.tableNo===n;})[0]; if(o) removeTable(o.id); }
 
   function load(){ try { var raw=localStorage.getItem(pkey()); if(raw){ var d=JSON.parse(raw); orders=Array.isArray(d.orders)?d.orders:[]; seq=d.seq||orders.length; } } catch(e){ orders=[]; } activeId=null; }
   function save(){ try { localStorage.setItem(pkey(), JSON.stringify({orders:orders, seq:seq})); } catch(e){} }
@@ -82622,11 +82667,13 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function parkActive(){ syncActive(); }
 
   /* ---- ops ---- */
-  function newTable(){ parkActive(); _busy=true; clearLive(); seq++; var id='t'+Date.now()+'_'+seq; var o={ id:id, label:'Table '+seq, total:0, count:0, snap:liveSnap(), createdAt:Date.now() }; orders.push(o); activeId=id; _busy=false; save(); renderStrip(); }
-  function switchTo(id){ if(id===activeId){ return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
+  function promptName(def){ try { var t=(A()&&A()._T)?A()._T('tables.namePrompt','Customer name (optional)'):'Customer name (optional)'; var v=window.prompt(t, def||''); return (v==null)?null:String(v).trim(); } catch(e){ return ''; } }
+  function newTable(){ parkActive(); _busy=true; clearLive(); seq++; var nm=promptName(''); var id='t'+Date.now()+'_'+seq; var o={ id:id, label:(nm||('Order '+seq)), total:0, count:0, snap:liveSnap(), createdAt:Date.now() }; orders.push(o); activeId=id; _busy=false; save(); renderStrip(); }
+  function renameTable(id){ var o=find(id); if(!o) return; var nm=promptName(o.label); if(nm){ o.label=nm; save(); renderStrip(); } }
+  function switchTo(id){ if(id===activeId){ renameTable(id); return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
   function removeTable(id){ var o=find(id); if(!o) return; var hasItems=(o.count||0)>0; if(hasItems){ var msg=(A()&&A()._T)?A()._T('tables.removeConfirm','Remove '+o.label+' and discard its order?'):'Remove '+o.label+' and discard its order?'; if(!window.confirm(msg)) return; } orders=orders.filter(function(x){return x.id!==id;}); if(activeId===id){ activeId=null; _busy=true; clearLive(); _busy=false; } save(); ensureSeed(); renderStrip(); }
   function afterSale(){ if(activeId==null) return; orders=orders.filter(function(x){return x.id!==activeId;}); activeId=null; save(); ensureSeed(); renderStrip(); }
-  function ensureSeed(){ if(!isEnabled()) return; if(orders.length===0 && activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Table '+seq, snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
+  function ensureSeed(){ if(!isEnabled()||mode()!=='orders') return; if(orders.length===0 && activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Order '+seq, snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
 
   /* ---- strip UI ---- */
   function host(){ return document.querySelector('html[data-shell="desktop"] .hnd-pos-r') || document.querySelector('.hnd-pos-r'); }
@@ -82637,26 +82684,50 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     if(!strip){ strip=document.createElement('div'); strip.id='hntab-strip'; h.insertBefore(strip, h.firstChild); }
     return true;
   }
+  function T(k,f){ return (A()&&A()._T)?A()._T(k,f):f; }
+  function modeBar(){ var m=mode();
+    return '<div class="hntab-modebar">'
+      + '<button class="hntab-mbtn'+(m==='orders'?' on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button>'
+      + '<button class="hntab-mbtn'+(m==='tables'?' on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button>'
+      + '</div>'; }
   function renderStrip(){
     if(!ensureStrip()) return;
     syncActive();
     var strip=document.getElementById('hntab-strip'); if(!strip) return;
-    var chips=orders.map(function(o){
-      var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count};
-      var amtTxt=(amt.total>0)?('₹'+amt.total):(((amt.count||0)>0)?(amt.count+' item'):'empty');
-      return '<button class="hntab-chip'+(live?' active':'')+'" onclick="HNTables.switchTo(\''+o.id+'\')" type="button">'
-        + '<span class="t">'+(o.label||'Table')+'</span>'
-        + '<span class="amt'+(amt.total>0?'':' zero')+'">'+amtTxt+'</span>'
-        + '<span class="x" title="Remove" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span>'
-        + '</button>';
-    }).join('');
-    strip.innerHTML =
-      '<div class="hntab-head"><i class="ti ti-layout-grid" aria-hidden="true"></i> '
-        + ((A()&&A()._T)?A()._T('tables.openOrders','Open orders'):'Open orders')
-        + ' <span class="hntab-n">'+orders.length+'</span></div>'
-      + '<div class="hntab-chips">'+chips
-        + '<button class="hntab-new" type="button" onclick="HNTables.newTable()">+ '
-        + ((A()&&A()._T)?A()._T('tables.newTable','New table'):'New table')+'</button></div>';
+    var m=mode();
+    var head='<div class="hntab-head"><i class="ti ti-layout-grid" aria-hidden="true"></i> '
+      + (m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))
+      + ' <span class="hntab-n">'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</span>'
+      + modeBar()+'</div>';
+    var body;
+    if(m==='tables'){
+      var n=tableCount(), cells='';
+      for(var i=1;i<=n;i++){
+        var o=orders.filter(function(x){return x.tableNo===i;})[0];
+        var occ=!!o, live=(o&&o.id===activeId);
+        var amt= o ? (live?liveTotals():{total:o.total,count:o.count}) : {total:0};
+        var sub= occ ? ('₹'+amt.total) : T('tables.free','Free');
+        cells += '<button class="hntab-tcell'+(occ?' occ':' free')+(live?' active':'')+'" type="button" onclick="HNTables.openTable('+i+')">'
+          + '<span class="tn">'+i+'</span><span class="ts">'+sub+'</span>'
+          + (occ?'<span class="x" title="Clear" onclick="event.stopPropagation();HNTables.clearTable('+i+')">\u00d7</span>':'')
+          + '</button>';
+      }
+      body='<div class="hntab-grid">'+cells+'</div>'
+        + '<button class="hntab-cfg" type="button" onclick="HNTables.setTableCount()"><i class="ti ti-settings" aria-hidden="true"></i> '+T('tables.setCount','Set number of tables')+'</button>';
+    } else {
+      var chips=orders.map(function(o){
+        var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count};
+        var amtTxt=(amt.total>0)?('₹'+amt.total):(((amt.count||0)>0)?(amt.count+' item'):'empty');
+        return '<button class="hntab-chip'+(live?' active':'')+'" onclick="HNTables.switchTo(\''+o.id+'\')" type="button">'
+          + '<span class="t">'+(o.label||'Order')+'</span>'
+          + '<span class="amt'+(amt.total>0?'':' zero')+'">'+amtTxt+'</span>'
+          + '<span class="x" title="Remove" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span>'
+          + '</button>';
+      }).join('');
+      body='<div class="hntab-chips">'+chips
+        + '<button class="hntab-new" type="button" onclick="HNTables.newTable()">+ '+T('tables.newTable','New order')+'</button></div>';
+    }
+    strip.innerHTML = head + body;
   }
 
   /* ---- hooks ---- */
@@ -82674,7 +82745,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function init(){ load(); setInterval(tick, 1000); tick(); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded', init);
 
-  window.HNTables = { newTable:newTable, switchTo:switchTo, removeTable:removeTable, isEnabled:isEnabled,
+  window.HNTables = { newTable:newTable, switchTo:switchTo, renameTable:renameTable, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, isEnabled:isEnabled,
     _state:function(){ return { orders:orders, activeId:activeId }; } };
 })();
 </script>
