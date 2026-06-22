@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_76_ai_advisor';
+    window.HISAABNOW_BUILD = 'v33_77_advisor_v3';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -29246,8 +29246,6 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   async onbFinish(){
-    // Unlock speech synthesis immediately, inside the "Get started" tap gesture,
-    // so the AI advisor's greeting can speak when the dashboard loads below.
     try { if (window.HNAdvisor && HNAdvisor.prime) HNAdvisor.prime(); } catch(e){}
     const nameInp = document.getElementById('onb-shop-name');
     const ownerInp = document.getElementById('onb-owner-name');
@@ -29405,7 +29403,6 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     setTimeout(() => {
       this.nav('home');
-      // First-run AI Business Advisor voice welcome (guards against re-running).
       try { if (window.HNAdvisor && HNAdvisor.start) HNAdvisor.start(); } catch(e){}
     }, 700);
   },
@@ -82182,16 +82179,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 #hnadv-root{position:fixed;inset:0;z-index:9000;font-family:inherit;display:none;pointer-events:none}
 #hnadv-root.on{display:block}
 
-/* dim + spotlight hole (purely visual — taps pass through to the app) */
-#hnadv-ring{position:fixed;left:0;top:0;width:0;height:0;border-radius:18px;
-  box-shadow:0 0 0 9999px rgba(12,12,12,.72);pointer-events:none;
+/* glowing highlight ring — NO full-screen dim, so no CTA is ever hidden.
+   Just a bright pulsing gold ring around the current target. */
+#hnadv-ring{position:fixed;left:0;top:0;width:0;height:0;border-radius:16px;
+  pointer-events:none;background:rgba(255,192,67,.06);
   transition:left .32s cubic-bezier(.4,0,.2,1),top .32s cubic-bezier(.4,0,.2,1),width .32s cubic-bezier(.4,0,.2,1),height .32s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0}
 #hnadv-ring.show{opacity:1}
-#hnadv-ring::after{content:"";position:absolute;inset:-4px;border-radius:22px;
-  border:3px solid #FFC043;box-shadow:0 0 0 5px rgba(255,192,67,.22),0 0 22px rgba(255,192,67,.45);
-  animation:hnadvRing 1.4s ease-in-out infinite}
-@keyframes hnadvRing{0%,100%{box-shadow:0 0 0 5px rgba(255,192,67,.22),0 0 22px rgba(255,192,67,.4)}
-  50%{box-shadow:0 0 0 9px rgba(255,192,67,.10),0 0 30px rgba(255,192,67,.65)}}
+#hnadv-ring::after{content:"";position:absolute;inset:-4px;border-radius:20px;
+  border:3px solid #FFC043;box-shadow:0 0 0 4px rgba(255,192,67,.28),0 0 26px 6px rgba(255,192,67,.6);
+  animation:hnadvRing 1.3s ease-in-out infinite}
+@keyframes hnadvRing{0%,100%{box-shadow:0 0 0 4px rgba(255,192,67,.28),0 0 22px 4px rgba(255,192,67,.5)}
+  50%{box-shadow:0 0 0 8px rgba(255,192,67,.14),0 0 34px 10px rgba(255,192,67,.85)}}
 
 /* advisor coach dock (the only interactive overlay surface) */
 #hnadv-dock{position:fixed;left:50%;width:min(560px,calc(100% - 24px));
@@ -82301,7 +82299,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var _billMade = false;
 
   function $(id){ return document.getElementById(id); }
-  function lang(){ try { return (window.I18n && I18n.getLang && I18n.getLang()==='hi') ? 'hi' : 'en'; } catch(e){ return 'en'; } }
+  // Advisor speaks Hindi by default (warm female Google voice) for the SMB
+  // audience. Set to 'en' for English, or 'auto' to follow the app language.
+  var FORCE_LANG = 'hi';
+  function appLang(){ try { return (window.I18n && I18n.getLang && I18n.getLang()==='hi') ? 'hi' : 'en'; } catch(e){ return 'en'; } }
+  function lang(){ return (FORCE_LANG==='hi'||FORCE_LANG==='en') ? FORCE_LANG : appLang(); }
   function L(en, hi){ return lang()==='hi' ? hi : en; }
   function owner(){ try { return (window.S && (S.ownerName || S.store)) || ''; } catch(e){ return ''; } }
   function buzz(){ try { if (window.haptic && window.haptic.nav) window.haptic.nav(); } catch(e){} }
@@ -82438,6 +82440,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
   function elNewSale(){ return document.querySelector('.nav-fab') || document.querySelector('[onclick*="addsale"]'); }
   function elGrid(){ return document.getElementById('svc-grid'); }
+  // The product sheet's primary button keeps id #ps-save-btn across every wizard
+  // step (Activate → Continue → Save). Track it so the ring follows the action
+  // the user needs to take next while setting a price / creating a product.
+  function elPsSave(){ var b=document.getElementById('ps-save-btn'); return (b && b.offsetParent!==null) ? b : null; }
+  function elItemStep(){ return elPsSave() || document.getElementById('svc-grid'); }
   function elCart(){ return document.getElementById('cart-summary'); }
   function elCollect(){ return document.querySelector('.ck-collect-btn'); }
   function cartCount(){ try { return Object.keys(window.App && App.cart || {}).length; } catch(e){ return 0; } }
@@ -82525,9 +82532,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       line:L("Let's make your first bill together. Tap the + button below — I'll wait.",
               "चलिए मिलकर पहला बिल बनाते हैं। नीचे + बटन दबाएं — मैं इंतज़ार करता हूँ।"),
       until:function(){ return curPage()==='addsale'; } },
-    { target:elGrid,
-      line:L("Now tap any item to add it. If it asks for a price, type it — that activates the product. You can also tap + to add a new one.",
-              "अब कोई आइटम दबाकर जोड़ें। अगर दाम पूछे तो भर दें — इससे प्रोडक्ट चालू हो जाता है। नया आइटम जोड़ने के लिए + भी दबा सकते हैं।"),
+    { target:elItemStep,
+      line:L("Tap an item to add it. If it asks for a price, type it and tap the glowing button to activate it. To make your own, tap + Add product.",
+              "कोई आइटम दबाकर जोड़ें। अगर दाम पूछे तो भरें और चमकते बटन को दबाकर चालू करें। अपना बनाने के लिए + Add product दबाएं।"),
       until:function(){ return cartCount() > 0; } },
     { target:elCart,
       line:L("Great — it's on the bill! Now tap Checkout at the bottom to take payment.",
@@ -82622,7 +82629,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     start: function(){ try { if (localStorage.getItem(DONE_KEY)) return; } catch(e){} setTimeout(open, 650); },
     replay: function(){ try{ localStorage.removeItem(DONE_KEY); }catch(e){} setTimeout(open, 200); },
     answer: function(q){ return answer(q); },
-    setAnswerProvider: function(fn){ answerProvider = (typeof fn==='function') ? fn : null; }
+    setAnswerProvider: function(fn){ answerProvider = (typeof fn==='function') ? fn : null; },
+    setLang: function(l){ if(l==='hi'||l==='en'||l==='auto') FORCE_LANG = l; }
   };
 })();
 </script>
