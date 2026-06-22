@@ -62,6 +62,10 @@
   }
   .spin{display:inline-block;width:18px;height:18px;border:2.5px solid rgba(0,0,0,.25);border-top-color:#111;border-radius:50%;animation:s .7s linear infinite}
   @keyframes s{to{transform:rotate(360deg)}}
+  .finish{display:flex;gap:13px;align-items:center;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:16px;width:100%;margin-bottom:14px}
+  .finish-icon{flex:0 0 46px;width:46px;height:46px;border-radius:12px;background:var(--black);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .finish-txt{font-size:14.5px;line-height:1.5}
+  .finish-txt b{font-weight:700}
 </style>
 </head>
 <body>
@@ -77,7 +81,6 @@
     <h1>Install HisaabNow on your phone</h1>
     <p class="sub">One tap and the app icon appears on your home screen. Works offline, opens full-screen — just like a Play Store app.</p>
     <button id="installBtn" class="btn btn-primary">⬇️ Install App</button>
-    <a href="./" class="btn btn-ghost">Open without installing</a>
   </div>
 
   <!-- iOS: manual steps -->
@@ -107,8 +110,21 @@
   <div id="view-success" class="hide" style="width:100%">
     <div class="ok" style="margin:0 auto 18px">✓</div>
     <h1>Installed! 🎉</h1>
-    <p class="sub">HisaabNow is now on your home screen. Tap below to open it and make your first bill.</p>
-    <a href="./" class="btn btn-primary">Open HisaabNow</a>
+    <p class="sub">HisaabNow has been added to your home screen.</p>
+    <div class="finish">
+      <div class="finish-icon">🧾</div>
+      <div class="finish-txt"><b>Look for this black HisaabNow icon</b> on your phone and tap it to open the app full-screen.</div>
+    </div>
+
+    <div class="steps" style="margin-top:18px">
+      <h2>Can’t find the icon? Here’s how 👇</h2>
+      <div class="step"><div class="n">1</div><div class="t"><b>Go to your home screen</b> — press the home button / swipe up. The HisaabNow icon is usually added there.</div></div>
+      <div class="step"><div class="n">2</div><div class="t">Not there? <b>Swipe left</b> through your home screens — new apps often land on the last page.</div></div>
+      <div class="step"><div class="n">3</div><div class="t">Still not found? <b>Swipe up</b> from the bottom to open the <b>app drawer</b> (full app list) and look for <b>HisaabNow</b>.</div></div>
+      <div class="step"><div class="n">4</div><div class="t"><b>Quickest way:</b> pull down on your home screen and <b>search “HisaabNow”</b> — tap the result to open.</div></div>
+    </div>
+
+    <p class="note">💡 Tip: press and hold the icon to drag it to your main screen, so it’s always easy to find for daily billing.</p>
   </div>
 
   <!-- Desktop / fallback -->
