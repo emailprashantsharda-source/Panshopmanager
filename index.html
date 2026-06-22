@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_96_mobile_orders';
+    window.HISAABNOW_BUILD = 'v33_98_ui_polish';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5256,8 +5256,8 @@ html[data-current-role="manager"] body{
     'tables.kitchen':          { en: 'Kitchen',                  hi: 'Kitchen' },
     'tables.sendKitchen':      { en: 'Send to kitchen',          hi: 'Kitchen भेजें' },
     'tables.sentKitchen':      { en: 'sent to kitchen',          hi: 'kitchen भेजा गया' },
-    'tables.note':             { en: 'Note',                     hi: 'Note' },
-    'tables.rename':           { en: 'Rename',                   hi: 'Rename' },
+    'tables.note':             { en: 'Kitchen note',             hi: 'Kitchen note' },
+    'tables.rename':           { en: 'Rename order',             hi: 'Order rename करें' },
     'tables.kitchenNote':      { en: 'Kitchen note (e.g. less spicy, no onion)', hi: 'Kitchen note (जैसे कम मिर्च, बिना प्याज़)' },
     'tables.addFirst':         { en: 'Add items first',          hi: 'पहले items जोड़ें' },
     'tables.clearReady':       { en: 'Clear ready',              hi: 'Ready हटाएं' },
@@ -12134,7 +12134,13 @@ const App = {
       const chips = (typeof window.getChipsWithCounts === 'function')
         ? window.getChipsWithCounts('inventory', tracksStock)
         : (cfg.addSaleChips || ['All']);
-      ch.innerHTML = chips.map((c,i) => {
+      const visibleChips = chips.filter((c,i) => {
+        if (i === 0) return true;
+        const parts = String(c).split(' \u00b7 ');
+        const n = parts.length > 1 ? parseInt(parts[parts.length-1], 10) : NaN;
+        return isNaN(n) || n > 0;
+      });
+      ch.innerHTML = visibleChips.map((c,i) => {
         const safe = c.replace(/'/g,'&apos;');
         return `<button class="chip${i===0?' active':''}" onclick="App.addSaleChipSelect(this,'${safe}')">${c}</button>`;
       }).join('');
@@ -17145,7 +17151,7 @@ const App = {
         : '₹' + price;
       return `
         <button class="svc-tile ${qty ? 'in-cart' : ''}" onclick="App.addToCart('${id}')">
-          ${qty ? `<span class="svc-tile-qty">${qty}</span>` : ''}
+          ${qty ? `<span class="svc-tile-minus" onclick="event.stopPropagation();App.decFromCart('${id}')">−</span><span class="svc-tile-qty">${qty}</span>` : ''}
           <div class="svc-tile-emoji">${emoji}</div>
           <div class="svc-tile-name">${this.escapeHtml(s.name || '—')}</div>
           <div class="svc-tile-price">${priceLabel}</div>
@@ -17172,6 +17178,14 @@ const App = {
     this.cart[id] = (this.cart[id] || 0) + 1;
     this.renderServiceGrid();
     haptic.nav();
+  },
+
+  decFromCart(id){
+    if (!this.cart[id]) return;
+    this.cart[id] = (this.cart[id] || 0) - 1;
+    if (this.cart[id] <= 0) delete this.cart[id];
+    this.renderServiceGrid();
+    try { haptic.nav(); } catch(e){}
   },
 
   _showSizePicker(prod) {
@@ -82658,15 +82672,18 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 .hnkds-empty{grid-column:1/-1;text-align:center;color:#7C766C;padding:60px 20px;font-size:14px}
 /* ---- MOBILE (Material, thumb-friendly) ---- */
 #hntab-strip.hntab-mob{border:0;border-radius:0;padding:8px 12px 7px;margin:0;background:var(--card,#fff);border-bottom:1px solid #EFEDE8}
-.hntm-bar{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.hntm-bar{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap}
 .hntm-lbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8A8A8A}
 .hntm-lbl b{color:#B8860B}
 .hntm-right{margin-left:auto;display:flex;align-items:center;gap:8px}
 .hntm-mode{display:inline-flex;border:1px solid #E2E2E2;border-radius:8px;overflow:hidden}
-.hntm-mode button{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;padding:5px 9px;color:#8A8A8A}
+.hntm-mode button{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;padding:6px 10px;color:#8A8A8A}
 .hntm-mode button.on{background:#FFC043;color:#1a1a1a}
-.hntm-kds{position:relative;border:1px solid #E2E2E2;background:none;border-radius:8px;padding:5px 9px;font-size:14px;line-height:1}
-.hntm-kds .b{position:absolute;top:-6px;right:-6px;background:#E23744;color:#fff;border-radius:99px;font-size:9px;font-weight:800;padding:1px 5px}
+.hntm-kds{display:inline-flex;align-items:center;gap:5px;border:0;background:#1C1C1C;color:#FFC043;border-radius:999px;padding:8px 13px;font-family:inherit;font-size:12.5px;font-weight:700;line-height:1}
+.hntm-kds .ic{font-size:16px}
+.hntm-kds .b{background:#E23744;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px}
+.svc-tile-minus{position:absolute;top:6px;left:6px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:#fff;border:1.5px solid #E2483C;color:#E2483C;border-radius:50%;font-size:22px;font-weight:700;line-height:1;box-shadow:0 1px 5px rgba(0,0,0,.14);z-index:4}
+.svc-tile-minus:active{background:#FDECEA}
 .hntm-chips{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px;scrollbar-width:none}
 .hntm-chips::-webkit-scrollbar{display:none}
 .hntm-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1px solid #E2E2E2;background:#fff;border-radius:999px;padding:7px 12px;font-family:inherit;font-size:13px;font-weight:600;color:#1a1a1a;min-height:38px}
@@ -82687,18 +82704,25 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 .hntm-acts::-webkit-scrollbar{display:none}
 .hntm-acts button{flex:0 0 auto;border:1px solid #E2E2E2;background:#fff;border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 13px;color:#1a1a1a;min-height:40px;white-space:nowrap}
 .hntm-acts button.kot{background:#1C1C1C;color:#FFC043;border-color:#1C1C1C}
-#hntm-sheet{position:fixed;inset:0;z-index:9600;visibility:hidden}
-#hntm-sheet.on{visibility:visible}
+.hntm-sheetwrap{position:fixed;inset:0;z-index:9600;visibility:hidden}
+.hntm-sheetwrap.on{visibility:visible}
 .hntm-scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
-#hntm-sheet.on .hntm-scrim{opacity:1}
+.hntm-sheetwrap.on .hntm-scrim{opacity:1}
 .hntm-sheetcard{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1)}
-#hntm-sheet.on .hntm-sheetcard{transform:translateY(0)}
+.hntm-sheetwrap.on .hntm-sheetcard{transform:translateY(0)}
+.hntm-acts button.more{flex:0 0 auto;min-width:42px;padding:9px 0;font-size:18px;line-height:1;text-align:center}
 .hntm-handle{width:36px;height:4px;border-radius:99px;background:#DADADA;margin:6px auto 12px}
 .hntm-stitle{font-size:16px;font-weight:700;color:#1a1a1a;margin:0 4px 12px}
 .hntm-types{display:flex;flex-direction:column;gap:8px}
 .hntm-type{display:flex;align-items:center;gap:13px;border:1px solid #ECECEC;background:#fff;border-radius:12px;padding:14px 16px;font-family:inherit;font-size:15px;font-weight:600;color:#1a1a1a}
 .hntm-type:active{background:#FAF0E0}
 .hntm-type .e{font-size:22px}
+/* ---- UI polish (app-wide, scoped) ---- */
+#addsale-chips .chip.active{background:var(--y-tint,#FFF4D6);color:var(--y-dark,#9A6B00);border:1px solid var(--y,#FFC043);box-shadow:none}
+#addsale-mic-btn{background:linear-gradient(135deg,var(--y,#FFC043) 0%,var(--y-dark,#E0A52E) 100%) !important;color:#1a1a1a !important;box-shadow:0 2px 8px rgba(255,192,67,.4) !important;animation:none !important}
+#addsale-mic-btn svg{stroke:#1a1a1a !important}
+#addsale-mic-btn.mic-listening{background:linear-gradient(135deg,#DC2626 0%,#991B1B 100%) !important;color:#fff !important}
+#addsale-mic-btn.mic-listening svg{stroke:#fff !important}
 </style>
 <script>
 (function(){
@@ -82823,7 +82847,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     }
     strip.innerHTML=head+body; }
   function modeBarMob(){ var m=mode(); return '<span class="hntm-mode"><button class="'+(m==='orders'?'on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="'+(m==='tables'?'on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></span>'; }
-  function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()">\uD83D\uDC68\u200D\uD83C\uDF73'+(n?'<span class="b">'+n+'</span>':'')+'</button>'; }
+  function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()"><span class="ic">\uD83D\uDC68\u200D\uD83C\uDF73</span> '+T('tables.kitchen','Kitchen')+(n?' <span class="b">'+n+'</span>':'')+'</button>'; }
   function renderMob(strip){ var m=mode();
     var head='<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <b>'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</b></span><span class="hntm-right">'+modeBarMob()+kdsBtnMob()+'</span></div>';
     var body;
@@ -82836,13 +82860,18 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         return '<button class="hntm-chip'+(live?' on':'')+'" type="button" onclick="HNTables.switchTo(\''+o.id+'\')"><span class="ty">'+tm.e+'</span><span class="t">'+esc(o.label)+'</span><span class="a">'+amtTxt+'</span><span class="x" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span></button>'; }).join('');
       body='<div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet()">+ '+T('tables.newTable','New order')+'</button></div>';
     }
-    var acts=activeId!=null?('<div class="hntm-acts"><button class="kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button><button type="button" onclick="HNTables.setNote()">\uD83D\uDCDD '+T('tables.note','Note')+'</button>'+(m==='orders'?'<button type="button" onclick="HNTables.renameTable(\''+activeId+'\')">\u270F\uFE0F '+T('tables.rename','Rename')+'</button>':'')+'</div>'):'';
+    var acts=activeId!=null?('<div class="hntm-acts"><button class="kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button><button class="more" type="button" aria-label="More" onclick="HNTables.openActSheet()">\u22EE</button></div>'):'';
     strip.innerHTML=head+body+acts; }
-  function ensureSheet(){ if(document.getElementById('hntm-sheet')) return; var s=document.createElement('div'); s.id='hntm-sheet';
+  function ensureSheet(){ if(document.getElementById('hntm-sheet')) return; var s=document.createElement('div'); s.id='hntm-sheet'; s.className='hntm-sheetwrap';
     s.innerHTML='<div class="hntm-scrim" onclick="HNTables.closeSheet()"></div><div class="hntm-sheetcard"><div class="hntm-handle"></div><div class="hntm-stitle">'+T('tables.newOrderType','Start a new order')+'</div><div class="hntm-types">'+ORDER_TYPES.map(function(t){ return '<button class="hntm-type" type="button" onclick="HNTables.newOrder(\''+t.k+'\');HNTables.closeSheet()"><span class="e">'+t.e+'</span><span class="l">'+t.l+'</span></button>'; }).join('')+'</div></div>';
     document.body.appendChild(s); }
   function openTypeSheet(){ ensureSheet(); var s=document.getElementById('hntm-sheet'); requestAnimationFrame(function(){ s.classList.add('on'); }); }
   function closeSheet(){ var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); }
+  function ensureActSheet(){ if(document.getElementById('hntm-actsheet')) return; var s=document.createElement('div'); s.id='hntm-actsheet'; s.className='hntm-sheetwrap';
+    s.innerHTML='<div class="hntm-scrim" onclick="HNTables.closeActSheet()"></div><div class="hntm-sheetcard"><div class="hntm-handle"></div><div class="hntm-types"><button class="hntm-type" type="button" onclick="HNTables.setNote();HNTables.closeActSheet()"><span class="e">\uD83D\uDCDD</span><span class="l">'+T('tables.note','Kitchen note')+'</span></button><button class="hntm-type" type="button" onclick="HNTables.renameTable();HNTables.closeActSheet()"><span class="e">\u270F\uFE0F</span><span class="l">'+T('tables.rename','Rename order')+'</span></button></div></div>';
+    document.body.appendChild(s); }
+  function openActSheet(){ ensureActSheet(); var s=document.getElementById('hntm-actsheet'); requestAnimationFrame(function(){ s.classList.add('on'); }); }
+  function closeActSheet(){ var s=document.getElementById('hntm-actsheet'); if(s) s.classList.remove('on'); }
   function toggleNewMenu(){ _menuOpen=!_menuOpen; renderStrip(); }
   document.addEventListener('click',function(e){ if(_menuOpen && !e.target.closest('.hntab-new') && !e.target.closest('.hntab-menu')){ _menuOpen=false; var s=document.getElementById('hntab-strip'); if(s) renderStrip(); } }, true);
   function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return; var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(!_busy&&isEnabled()){ lazySeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
@@ -82859,7 +82888,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
   function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); setTimeout(reconcileOnLoad,500); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
-  window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, _state:function(){ return { orders:orders, activeId:activeId, kots:kots }; } };
+  window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, _state:function(){ return { orders:orders, activeId:activeId, kots:kots }; } };
 })();
 </script>
 <!-- ============== END Orders/Tables + KOT/KDS ============== -->
