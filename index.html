@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_91_kot_kds';
+    window.HISAABNOW_BUILD = 'v33_92_order_lifecycle';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -82704,9 +82704,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function switchTo(id){ if(id===activeId){ return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
   function renameTable(id){ id=id||activeId; var o=find(id); if(!o) return; var nm=null; try{ nm=window.prompt(T('tables.namePrompt','Customer name (optional)'),o.label); }catch(e){ return; } if(nm&&String(nm).trim()){ o.label=String(nm).trim(); save(); renderStrip(); } }
   function setNote(id){ id=id||activeId; var o=find(id); if(!o) return; var n=null; try{ n=window.prompt(T('tables.kitchenNote','Kitchen note (e.g. less spicy, no onion)'),o.note||''); }catch(e){ return; } if(n!=null){ o.note=String(n).trim(); save(); renderStrip(); } }
-  function removeTable(id){ var o=find(id); if(!o) return; if((o.count||0)>0){ if(!window.confirm(T('tables.removeConfirm','Remove '+o.label+' and discard its order?'))) return; } orders=orders.filter(function(x){return x.id!==id;}); if(activeId===id){ activeId=null; _busy=true; clearLive(); _busy=false; } save(); ensureSeed(); renderStrip(); }
-  function afterSale(){ if(activeId==null) return; orders=orders.filter(function(x){return x.id!==activeId;}); activeId=null; save(); ensureSeed(); renderStrip(); }
-  function ensureSeed(){ if(!isEnabled()||mode()!=='orders') return; if(orders.length===0&&activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Dine-in '+seq, type:'dinein', note:'', snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
+  function removeTable(id){ var o=find(id); if(!o) return; if((o.count||0)>0){ if(!window.confirm(T('tables.removeConfirm','Remove '+o.label+' and discard its order?'))) return; } var wasActive=(activeId===id); orders=orders.filter(function(x){return x.id!==id;}); if(wasActive){ if(orders.length>0){ var nx=orders[orders.length-1]; _busy=true; applySnap(nx.snap); activeId=nx.id; _busy=false; } else { activeId=null; _busy=true; clearLive(); _busy=false; } } if(orders.length===0) seq=0; save(); renderStrip(); }
+  function afterSale(){ if(activeId==null) return; orders=orders.filter(function(x){return x.id!==activeId;}); activeId=null; if(orders.length===0) seq=0; save(); renderStrip(); }
+  function lazySeed(){ if(!isEnabled()||mode()!=='orders') return; if(activeId!=null) return; var t=liveTotals(); if(t.count>0){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Dine-in '+seq, type:'dinein', note:'', snap:liveSnap(), total:t.total, count:t.count, createdAt:Date.now() }); activeId=id; save(); } }
+  function reconcileOnLoad(){ if(!isEnabled()||mode()!=='orders') return; if(activeId!=null) return; var t=liveTotals(); if(t.count===0 && orders.length>0){ var o=orders[orders.length-1]; _busy=true; applySnap(o.snap); activeId=o.id; _busy=false; save(); renderStrip(); } }
   function setType(id,k){ var o=find(id); if(!o) return; o.type=typeMeta(k).k; save(); renderStrip(); }
   function occupiedCount(){ return orders.filter(function(o){ return o.tableNo!=null; }).length; }
   function openTable(n){ var ex=orders.filter(function(o){return o.tableNo===n;})[0]; if(ex){ if(ex.id!==activeId) switchTo(ex.id); return; } parkActive(); _busy=true; clearLive(); seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, tableNo:n, label:'Table '+n, type:'dinein', note:'', total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; save(); renderStrip(); }
@@ -82776,10 +82777,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     strip.innerHTML=head+body; }
   function toggleNewMenu(){ _menuOpen=!_menuOpen; renderStrip(); }
   document.addEventListener('click',function(e){ if(_menuOpen && !e.target.closest('.hntab-new') && !e.target.closest('.hntab-menu')){ _menuOpen=false; var s=document.getElementById('hntab-strip'); if(s) renderStrip(); } }, true);
-  function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return; var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(!_busy&&isEnabled()){ ensureSeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
+  function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return; var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(!_busy&&isEnabled()){ lazySeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
   function wrapSale(){ if(_wrappedSale||!A()||typeof A().completeSale!=='function') return; var orig=A().completeSale.bind(A()); A().completeSale=function(){ var had=(activeId!=null); var r=orig.apply(A(),arguments); Promise.resolve(r).then(check).catch(function(){}); setTimeout(check,350); setTimeout(check,900); function check(){ try{ if(had){ var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0) afterSale(); } }catch(e){} } return r; }; _wrappedSale=true; }
-  function tick(){ try{ wrapRender(); wrapSale(); if(isEnabled()&&host()){ ensureSeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
-  function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); }
+  function tick(){ try{ wrapRender(); wrapSale(); if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
+  function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); setTimeout(reconcileOnLoad,500); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
   window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, _state:function(){ return { orders:orders, activeId:activeId, kots:kots }; } };
 })();
