@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_78_advisor_v4';
+    window.HISAABNOW_BUILD = 'v33_79_advisor_v5';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -82391,22 +82391,40 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     { label:L('Reports','Reports'), q:L('reports','reports') },
     { label:L('Plans & price','Plan & price'), q:L('plan price','plan price') }
   ]; }
+  // Covers every section of the app. For anything beyond these how-tos,
+  // wire a live model via HNAdvisor.setAnswerProvider(fn).
   var KB=[
-    { k:['bill','sale','invoice','बिल','banaye','billing'], a:L('Tap the + button to start a bill, pick the items, then take payment. Done in seconds.','+ button दबाकर bill शुरू करें, items चुनें, फिर payment लें। कुछ ही seconds में हो जाता है।'), act:{label:L('Show me','दिखाइए'),go:'newsale'} },
-    { k:['product','item','catalog','price','दाम','add karein','प्रोडक्ट'], a:L('Tap an item on your dashboard, set its price to add it to your menu — or tap + to create your own.','Dashboard पर item दबाएं, price set करके menu में add करें — या अपना बनाने के लिए + दबाएं।'), act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
-    { k:['customer','ग्राहक','कस्टमर'], a:L('Add customers to track who buys what and build a regulars list.','Customers add करें ताकि पता रहे कौन क्या खरीदता है।'), act:{label:L('Customers','Customers'),go:'customers'} },
-    { k:['udhaar','credit','khata','उधार','खाता'], a:L('Use Udhaar to record credit given or taken — the app keeps running balances for you.','Udhaar में credit का हिसाब रखें — app बैलेंस खुद रखता है।'), act:{label:L('Open Udhaar','Udhaar खोलें'),go:'udhaar'} },
-    { k:['munim','advisor','insight','ai','analytics','सलाह'], a:L("That's me — as you bill, I surface best sellers, alerts and ways to earn more.",'वो मैं हूँ — जैसे-जैसे आप bill बनाते हैं, मैं best sellers, alerts और कमाई के तरीके बताता हूँ।'), act:{label:L('See AI Insights','AI Insights देखें'),go:'munim'} },
-    { k:['plan','cost','subscription','free','price','पैसे'], a:L('Free for 7 days, no card. Then Pro ₹99/month, King ₹199/month.','7 दिन free, कोई card नहीं। फिर Pro ₹99/month, King ₹199/month।') },
-    { k:['voice','bol','आवाज','वॉइस'], a:L('On the New Sale screen tap the mic and say the items — I add them to the bill.','New Sale screen पर mic दबाकर items बोलें — मैं उन्हें bill में add कर देता हूँ।'), act:{label:L('Try voice billing','Voice billing'),go:'newsale'} },
-    { k:['report','profit','रिपोर्ट','मुनाफा'], a:L('Reports show sales, profit and payments by day, week or month — built from your bills.','Reports में दिन/हफ्ते/महीने की sales, profit और payments दिखते हैं।'), act:{label:L('Open Reports','Reports खोलें'),go:'reports'} }
+    { k:['bill','sale','invoice','बिल','banaye','billing','naya bill'], a:L('Tap the + button to start a bill, pick the items, then take payment. Done in seconds.','+ button दबाकर bill शुरू करें, items चुनें, फिर payment लें। कुछ ही seconds में हो जाता है।'), act:{label:L('Show me','दिखाइए'),go:'newsale'} },
+    { k:['product','menu item','catalog','add item','create product','add product','प्रोडक्ट','item add'], a:L('Tap an item on your dashboard and set its price to add it to your menu — or tap + to create your own product.','Dashboard पर item दबाकर उसका price set करें ताकि वो menu में add हो जाए — या अपना product बनाने के लिए + दबाएं।'), act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['customer','ग्राहक','कस्टमर','regular'], a:L('Open Customers, tap + to add a name and phone. Bills can then be linked to them to build a regulars list.','Customers खोलकर + दबाएं और नाम-phone डालें। फिर bills उनसे link करके regular list बनती है।'), act:{label:L('Customers','Customers'),go:'customers'} },
+    { k:['udhaar','udhar','credit','khata','उधार','खाता','baaki','due'], a:L('Open Udhaar, tap + and choose "given" or "taken", pick the party and amount — the app keeps the running balance.','Udhaar खोलकर + दबाएं, "diya" या "liya" चुनें, party और amount डालें — app बैलेंस खुद रखता है।'), act:{label:L('Open Udhaar','Udhaar खोलें'),go:'udhaar'} },
+    { k:['expense','expence','kharcha','खर्च','spending','rent','bill paid','cost paid','salary'], a:L('Open Expenses from More, tap + Add expense, pick a category (rent, supplies, salary…), enter the amount and save. It counts against your profit automatically.','More में Expenses खोलें, + Add expense दबाएं, category चुनें (rent, supplies, salary…), amount डालकर save करें। ये अपने-आप profit से घट जाता है।'), act:{label:L('Open Expenses','Expenses खोलें'),go:'expenses'} },
+    { k:['cashflow','cash in hand','cash flow','नकद','withdraw','deposit','cash'], a:L('Cashflow shows cash in hand. Use it to record a withdraw or a deposit so your drawer always matches reality.','Cashflow में cash in hand दिखता है। Withdraw या deposit दर्ज करें ताकि drawer का हिसाब सही रहे।'), act:{label:L('Open Cashflow','Cashflow खोलें'),go:'cashflow'} },
+    { k:['ingredient','recipe','raw material','कच्चा माल','recipe cost','beans','milk'], a:L('Ingredients let you add raw materials per item (beans, milk, packaging). The app then shows true cost and gross margin on each sale.','Ingredients में हर item के कच्चे माल जोड़ें (beans, milk, packing)। फिर हर sale पर असली cost और margin दिखता है।'), act:{label:L('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
+    { k:['coupon','offer','discount','छूट','promo','deal'], a:L('Open Offers & Coupons to create a discount code or a flat/percent offer, then apply it at checkout.','Offers & Coupons में discount code या flat/percent offer बनाएं, फिर checkout पर लगाएं।'), act:{label:L('Open Offers','Offers खोलें'),go:'coupons'} },
+    { k:['staff','team','employee','कर्मचारी','worker','cashier','permission'], a:L('Open Team to add staff and give them billing access with limited permissions — owners keep full control of reports and settings.','Team में staff जोड़ें और सीमित permission के साथ billing access दें — reports/settings पर control मालिक के पास रहता है।'), act:{label:L('Open Team','Team खोलें'),go:'staff'} },
+    { k:['reservation','appointment','booking','बुकिंग','slot','walk-in'], a:L('Open Reservations to book an appointment or log a walk-in — pick the date, time and customer.','Reservations में appointment book करें या walk-in दर्ज करें — date, time और customer चुनें।'), act:{label:L('Open Reservations','Reservations खोलें'),go:'appointments'} },
+    { k:['inventory','stock','स्टॉक','low stock','quantity'], a:L('Inventory tracks stock quantities and warns you when an item runs low so you can reorder in time.','Inventory में stock quantity दिखती है और कम होने पर alert मिलता है ताकि समय पर reorder करें।'), act:{label:L('Open Inventory','Inventory खोलें'),go:'inventory'} },
+    { k:['pack','bundle','combo','packs'], a:L('Packs let you sell bundles (e.g. a 10-piece box) as one item with its own price.','Packs में bundle (जैसे 10-piece box) को एक ही item और price के रूप में बेचें।'), act:{label:L('Open Packs','Packs खोलें'),go:'packs'} },
+    { k:['campaign','marketing','whatsapp blast','promotion','ad'], a:L('Campaigns let you message your customers (offers, reminders) over WhatsApp from inside the app.','Campaigns से अपने customers को WhatsApp पर message भेजें (offers, reminders) — app के अंदर से ही।'), act:{label:L('Open Campaigns','Campaigns खोलें'),go:'campaigns'} },
+    { k:['report','profit','रिपोर्ट','मुनाफा','sales report','daily report'], a:L('Reports show sales, profit and payment breakdowns by day, week or month — built automatically from your bills.','Reports में दिन/हफ्ते/महीने की sales, profit और payment अपने-आप बनते हैं।'), act:{label:L('Open Reports','Reports खोलें'),go:'reports'} },
+    { k:['plan','subscription','pro','king','upgrade','कीमत','membership'], a:L('Free for 7 days, no card. After that Pro is ₹99/month and King is ₹199/month. Open Subscription to upgrade.','7 दिन free, कोई card नहीं। उसके बाद Pro ₹99/month, King ₹199/month। Upgrade के लिए Subscription खोलें।'), act:{label:L('See plans','Plans देखें'),go:'subscriptions'} },
+    { k:['voice','bol','आवाज','वॉइस','mic','speak'], a:L('On the New Sale screen tap the mic and just say the items — I add them to the bill. Works best in Chrome.','New Sale screen पर mic दबाकर items बोलें — मैं उन्हें bill में add कर देता हूँ। Chrome में सबसे अच्छा चलता है।'), act:{label:L('Try voice billing','Voice billing'),go:'newsale'} },
+    { k:['munim','advisor','insight','analytics','सलाह','tips'], a:L("As you bill, I surface best sellers, slow days, low stock and ways to earn more — see them under AI Insights.",'जैसे-जैसे आप bill बनाते हैं, मैं best sellers, सुस्त दिन, कम stock और कमाई के तरीके बताता हूँ — AI Insights में देखें।'), act:{label:L('See AI Insights','AI Insights देखें'),go:'munim'} },
+    { k:['setting','settings','language','भाषा','hindi','english','shop name','profile','gst','currency'], a:L('Open Settings to change your shop name, language (Hindi/English), GST and currency.','Settings में shop name, language (Hindi/English), GST और currency बदलें।'), act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
+    { k:['backup','data','safe','सुरक्षित','cloud','lost','phone change','restore'], a:L('Your data saves on the phone instantly and backs up to the cloud, so nothing is lost even if you change phones — just sign in again.','आपका data फोन पर तुरंत save और cloud पर backup होता है — फोन बदलने पर भी कुछ नहीं खोता, बस फिर sign in करें।') },
+    { k:['whatsapp','reminder','digest','daily summary','याद'], a:L('Turn on the WhatsApp daily digest in More to auto-receive your day\'s summary, and customer reminders to win back lapsed buyers.','More में WhatsApp daily digest चालू करें — रोज़ का summary अपने-आप आएगा, और customer reminders से पुराने ग्राहक वापस लाएं।') }
   ];
   function answer(q){
     if(answerProvider) return Promise.resolve(answerProvider(q,lang()));
     var s=(q||'').toLowerCase();
-    var hit=KB.find(function(e){ return e.k.some(function(w){ return s.indexOf(w.toLowerCase())>=0; }); });
-    if(hit) return { text:hit.a, act:hit.act };
-    return { text:L("Good question — try asking about billing, products, udhaar, reports or pricing.",'अच्छा सवाल — billing, products, udhaar, reports या pricing के बारे में पूछें।') };
+    var best=null, bestScore=0;
+    KB.forEach(function(e){
+      var sc=0; e.k.forEach(function(w){ if(s.indexOf(String(w).toLowerCase())>=0) sc += String(w).length; });
+      if(sc>bestScore){ bestScore=sc; best=e; }
+    });
+    if(best) return { text:best.a, act:best.act };
+    return { text:L("I can help with billing, products, customers, udhaar, expenses, cashflow, ingredients, offers, team, reservations, inventory, reports, plans and settings — what would you like to know?",'मैं billing, products, customers, udhaar, expenses, cashflow, ingredients, offers, team, reservations, inventory, reports, plans और settings में मदद कर सकता हूँ — क्या जानना है?') };
   }
   function go(where){ finish(true); try {
     if(where==='munim'){ if(window.Munim&&Munim.openDrawer) Munim.openDrawer(); else App.nav('home'); }
