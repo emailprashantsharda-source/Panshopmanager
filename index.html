@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_81_outlets5';
+    window.HISAABNOW_BUILD = 'v33_83_pixel_value';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -29339,7 +29339,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       if (window.fbq && !localStorage.getItem('hn_ev_registered')) {
         var _ph = ((window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || '').replace(/[^0-9]/g, '');
         if (_ph) { try { fbq('init', '1670925877471743', { ph: _ph }); } catch (e) {} }
-        fbq('track', 'CompleteRegistration', { content_name: 'shop_signup', status: true });
+        fbq('track', 'CompleteRegistration', { content_name: 'shop_signup', status: true, value: 99, currency: 'INR' });
         localStorage.setItem('hn_ev_registered', '1');
         console.log('[pixel] CompleteRegistration fired (new signup)');
       }
@@ -36414,7 +36414,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         if (window.fbq) {
           var _phS = (user.phoneNumber || '').replace(/[^0-9]/g, '');
           if (_phS) { try { fbq('init', '1670925877471743', { ph: _phS }); } catch (e) {} }
-          fbq('track', 'Lead', { content_name: 'signup' });
+          fbq('track', 'Lead', { content_name: 'signup', value: 99, currency: 'INR' });
           console.log('[pixel] Lead fired (signed up)');
         }
       } catch (e) {}
