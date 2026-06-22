@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_80_advisor_v6';
+    window.HISAABNOW_BUILD = 'v33_81_outlets5';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5395,7 +5395,7 @@ html[data-current-role="manager"] body{
     'toast.setPricesFirst': { en: 'Set prices in Catalog first · tap each item', hi: 'पहले Catalog में दाम सेट करें · हर आइटम पर टैप करें' },
     'toast.cannotAddOutlet': { en: 'Cannot add more outlets · check subscription', hi: 'और दुकानें नहीं जोड़ सकते · सब्सक्रिप्शन देखें' },
     'toast.failedOutlet': { en: 'Failed to create outlet', hi: 'दुकान नहीं बन सकी' },
-    'toast.outletLimit': { en: 'Outlet limit reached · upgrade for more', hi: 'दुकान की लिमिट खत्म · और के लिए अपग्रेड करें' },
+    'toast.outletLimit': { en: 'Maximum 5 outlets reached', hi: 'ज़्यादा से ज़्यादा 5 outlets हो सकते हैं' },
     'toast.remindersOn': { en: 'Customer reminders enabled · auto-WhatsApp lapsed customers', hi: '✓ ग्राहक रिमाइंडर चालू · पुराने ग्राहकों को WhatsApp जाएगा' },
     'toast.remindersOff': { en: 'Customer reminders off', hi: '✓ ग्राहक रिमाइंडर बंद' },
     'toast.waDigestOff': { en: 'WhatsApp digest off', hi: '✓ WhatsApp डेली बंद' },
@@ -5682,7 +5682,7 @@ html[data-current-role="manager"] body{
     'sheet.noOutletsYet':      { en: 'No outlets yet. Tap below to create your first business.', hi: 'अभी कोई दुकान नहीं। नीचे टैप करके पहला बिज़नेस बनाएं।' },
     'sheet.active':            { en: 'ACTIVE',                          hi: 'चालू' },
     'sheet.shopFallback':      { en: 'Shop',                            hi: 'दुकान' },
-    'sheet.outletLimitUpgrade':{ en: 'Outlet limit reached · upgrade to add more', hi: 'दुकान की लिमिट खत्म · और जोड़ने के लिए अपग्रेड करें' },
+    'sheet.outletLimitUpgrade':{ en: 'Maximum 5 outlets reached', hi: 'ज़्यादा से ज़्यादा 5 outlets हो सकते हैं' },
     'sheet.eachBizOwnSales':   { en: 'Each business gets its own sales, staff, inventory', hi: 'हर बिज़नेस की अपनी बिक्री, स्टाफ, स्टॉक होगा' },
     'sheet.addNewBiz':         { en: 'Add new business',                hi: 'नया बिज़नेस जोड़ें' },
     'sheet.noOutletsShort':    { en: 'No outlets yet',                  hi: 'अभी कोई दुकान नहीं' },
@@ -12267,9 +12267,7 @@ const App = {
               fg = '#1E293B';
             }
           } else if (tier === 'trial-expired' || tier === 'expired') {
-            // (v33_80) Removed dead '✦ SUBSCRIBE TO UNLOCK' badge — it had no
-            // tap action. Leave badgeText empty so the badge simply hides.
-            badgeText = '';
+            badgeText = ''; // (v33_80) removed dead SUBSCRIBE-TO-UNLOCK badge (no action)
           } else if (tierCfg) {
 
             const planName = (tierCfg.name || tier).toUpperCase();
@@ -38923,8 +38921,10 @@ function canAddShop(){
 
   if (!window.Subs || typeof window.Subs.getCurrentTier !== 'function') return true;
   var tier = window.Subs.getCurrentTier();
-  var limits = { trial: 5, basic: 1, pro: 1, king: 5, 'trial-expired': 1, expired: 1 };
-  var max = limits[tier] != null ? limits[tier] : 1;
+  // (v33_81) Multi-outlet opened up: every plan can run up to 5 outlets.
+  // To re-monetise later, lower individual tiers here (e.g. basic/pro: 1).
+  var limits = { trial: 5, basic: 5, pro: 5, king: 5, 'trial-expired': 5, expired: 5 };
+  var max = limits[tier] != null ? limits[tier] : 5;
   return state.shops.length < max;
 }
 
