@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_94_stay_on_pos';
+    window.HISAABNOW_BUILD = 'v33_95_bill_hook';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -82779,13 +82779,13 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function toggleNewMenu(){ _menuOpen=!_menuOpen; renderStrip(); }
   document.addEventListener('click',function(e){ if(_menuOpen && !e.target.closest('.hntab-new') && !e.target.closest('.hntab-menu')){ _menuOpen=false; var s=document.getElementById('hntab-strip'); if(s) renderStrip(); } }, true);
   function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return; var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(!_busy&&isEnabled()){ lazySeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
-  function wrapSale(){ if(_wrappedSale||!A()||typeof A().completeSale!=='function') return; var orig=A().completeSale.bind(A());
-    A().completeSale=function(){ var had=(activeId!=null); var settling=had?find(activeId):null; var preItems=settling?itemsOf(settling):[]; var alreadySent=!!(settling&&settling.kotSent); var fired=false;
-      var onPOS=isEnabled() && document.body && document.body.classList.contains('hnd-on-pos'); var navOrig=A().nav, navKilled=false;
-      if(onPOS && had && typeof navOrig==='function'){ A().nav=function(t){ if(!navKilled && t==='home'){ navKilled=true; return; } return navOrig.apply(this,arguments); }; setTimeout(function(){ try{ A().nav=navOrig; }catch(e){} },1300); }
-      var r=orig.apply(A(),arguments); Promise.resolve(r).then(check).catch(function(){}); setTimeout(check,350); setTimeout(check,900);
-      function check(){ try{ if(had){ var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0){ if(!fired){ fired=true; if(settling && preItems.length && !alreadySent) autoKOT(settling, preItems); } afterSale(); } } }catch(e){} }
-      return r; }; _wrappedSale=true; }
+  function wrapSale(){ if(_wrappedSale||!A()||typeof A().completeSale!=='function') return; var orig=A().completeSale.bind(A()); A().completeSale=function(){ var had=(activeId!=null); var r=orig.apply(A(),arguments); Promise.resolve(r).then(check).catch(function(){}); setTimeout(check,350); setTimeout(check,900); function check(){ try{ if(had){ var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0) afterSale(); } }catch(e){} } return r; }; _wrappedSale=true; }
+  function settle(o){ if(!o) return; orders=orders.filter(function(x){return x.id!==o.id;}); if(activeId===o.id) activeId=null; if(orders.length===0) seq=0; save(); renderStrip(); }
+  function armBill(){ if(!isEnabled()||activeId==null) return; var o=find(activeId); if(!o) return; var items=itemsOf(o); var already=!!o.kotSent;
+    var navOrig=A()&&A().nav; if(document.body && document.body.classList.contains('hnd-on-pos') && typeof navOrig==='function'){ var killed=false; A().nav=function(t){ if(!killed && t==='home'){ killed=true; return; } return navOrig.apply(this,arguments); }; setTimeout(function(){ try{ if(A().nav!==navOrig) A().nav=navOrig; }catch(e){} },1600); }
+    var tries=0; (function poll(){ tries++; var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0){ if(items.length && !already && !o.__kotDone){ o.__kotDone=true; autoKOT(o, items); } settle(o); return; } if(tries<14) setTimeout(poll,140); })(); }
+  document.addEventListener('click', function(e){ try{ var b=e.target && e.target.closest && e.target.closest('#hnd-pos-complete'); if(b && !b.disabled) armBill(); }catch(_){} }, true);
+  document.addEventListener('keydown', function(e){ try{ if(e.key==='F12' && document.body && document.body.classList.contains('hnd-on-pos')){ var b=document.getElementById('hnd-pos-complete'); if(b && !b.disabled) armBill(); } }catch(_){} }, true);
   function tick(){ try{ wrapRender(); wrapSale(); if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
   function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); setTimeout(reconcileOnLoad,500); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
