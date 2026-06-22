@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_79_advisor_v5';
+    window.HISAABNOW_BUILD = 'v33_80_advisor_v6';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -12267,9 +12267,9 @@ const App = {
               fg = '#1E293B';
             }
           } else if (tier === 'trial-expired' || tier === 'expired') {
-            badgeText = '✦ SUBSCRIBE TO UNLOCK';
-            bg = 'rgba(255,107,53,.97)';
-            fg = '#fff';
+            // (v33_80) Removed dead '✦ SUBSCRIBE TO UNLOCK' badge — it had no
+            // tap action. Leave badgeText empty so the badge simply hides.
+            badgeText = '';
           } else if (tierCfg) {
 
             const planName = (tierCfg.name || tier).toUpperCase();
