@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_75_revert_longpoll';
+    window.HISAABNOW_BUILD = 'v33_76_ai_advisor';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3896,6 +3896,11 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label" data-i18n="more.helpSupport">Help & support</div><div class="menu-sub" data-i18n="more.helpSub">Tutorials, WhatsApp us</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <button class="menu-item" onclick="try{ App.nav('home'); if(window.HNAdvisor&&HNAdvisor.replay) HNAdvisor.replay(); }catch(e){}">
+        <div class="menu-icon" style="background:#FEF3C7;color:#B8860B"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></div>
+        <div class="menu-text"><div class="menu-label" data-i18n="more.aiWelcome">AI Welcome Tour</div><div class="menu-sub" data-i18n="more.aiWelcomeSub">Replay the voice introduction</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
       <button class="menu-item" onclick="App.signOut()">
         <div class="menu-icon" style="background:#FEE2E2;color:#991B1B"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
         <div class="menu-text"><div class="menu-label" style="color:#991B1B" data-i18n="more.signOut">Sign out</div></div>
@@ -5233,6 +5238,8 @@ html[data-current-role="manager"] body{
     'more.subscription':       { en: 'Subscription',             hi: 'सब्सक्रिप्शन' },
     'more.helpSupport':        { en: 'Help & support',           hi: 'मदद और सपोर्ट' },
     'more.helpSub':            { en: 'Tutorials, WhatsApp us',   hi: 'ट्यूटोरियल, WhatsApp करें' },
+    'more.aiWelcome':          { en: 'AI Welcome Tour',          hi: 'AI वेलकम टूर' },
+    'more.aiWelcomeSub':       { en: 'Replay the voice introduction', hi: 'वॉइस इंट्रो दोबारा सुनें' },
     'more.signOut':            { en: 'Sign out',                 hi: 'लॉगआउट' },
 
     /* More page · dynamic content */
@@ -29239,6 +29246,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   async onbFinish(){
+    // Unlock speech synthesis immediately, inside the "Get started" tap gesture,
+    // so the AI advisor's greeting can speak when the dashboard loads below.
+    try { if (window.HNAdvisor && HNAdvisor.prime) HNAdvisor.prime(); } catch(e){}
     const nameInp = document.getElementById('onb-shop-name');
     const ownerInp = document.getElementById('onb-owner-name');
     const shopName = (nameInp.value || '').trim();
@@ -29393,7 +29403,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       console.warn('[onb] profile sync outer error (non-fatal):', e && e.message);
     }
 
-    setTimeout(() => this.nav('home'), 700);
+    setTimeout(() => {
+      this.nav('home');
+      // First-run AI Business Advisor voice welcome (guards against re-running).
+      try { if (window.HNAdvisor && HNAdvisor.start) HNAdvisor.start(); } catch(e){}
+    }, 700);
   },
 
   // ── EXPENSE SUMMARY (responds to range chips) ──
@@ -82143,5 +82157,544 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   } catch(e){}
 })();
 </script>
+<!-- ============================================================
+     HisaabNow · AI Business Advisor — First-Run Voice Welcome
+     ─────────────────────────────────────────────────────────────
+     Fires ONCE, the first time a user lands on the dashboard right
+     after finishing onboarding (triggered from App.onbFinish()).
+
+     Flow:
+       1. Munim greets by voice  ("Namaste, I'm your Business Advisor…")
+       2. Offers a guided walkthrough (Yes / I'll explore / Ask me)
+       3. Spotlights the key spots (New Sale · AI Insights · everything else)
+       4. Answers typed OR spoken questions (canned bilingual FAQ;
+          pluggable to a live AI endpoint via setAnswerProvider)
+       5. Ends by creating a SAMPLE BILL — navigates to New Sale,
+          pre-adds one item, hands control back so they tap Charge.
+
+     Public API (window.HNAdvisor):
+       .start()              run the welcome (guards against re-running)
+       .replay()             force-run again (Help / Settings / testing)
+       .answer(q)            get an answer string for a question
+       .setAnswerProvider(fn)  plug a live AI: fn(question, lang) -> Promise<string>
+
+     Reuses existing app contract only:
+       window.I18n.getLang()   App.nav(page)   App.addToCart(id)
+       SERVICES (catalog)      window.S (shop/owner)   Munim.openDrawer()
+     No backend, no new dependencies. Web Speech API for voice (free,
+     offline). Degrades gracefully if speech is unavailable/blocked.
+============================================================ -->
+<style>
+#hnadv-root{position:fixed;inset:0;z-index:9000;font-family:inherit;display:none}
+#hnadv-root.on{display:block}
+
+/* dimming + spotlight ring */
+#hnadv-ring{position:fixed;left:0;top:0;width:0;height:0;border-radius:18px;
+  box-shadow:0 0 0 9999px rgba(16,16,16,.74);pointer-events:none;
+  transition:all .35s cubic-bezier(.4,0,.2,1);opacity:0}
+#hnadv-ring.show{opacity:1}
+#hnadv-ring::after{content:"";position:absolute;inset:-3px;border-radius:21px;
+  border:2px solid #FFC043;box-shadow:0 0 0 4px rgba(255,192,67,.25)}
+#hnadv-catch{position:fixed;inset:0;background:transparent}
+
+/* advisor dock (Munim chat) */
+#hnadv-dock{position:fixed;left:50%;transform:translateX(-50%) translateY(14px);
+  bottom:18px;width:min(560px,calc(100% - 24px));
+  background:#fff;border-radius:22px;
+  box-shadow:0 18px 50px -12px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.04);
+  padding:16px 16px 14px;opacity:0;transition:opacity .3s,transform .3s}
+#hnadv-dock.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.hnadv-skip{position:absolute;top:10px;right:12px;background:none;border:none;
+  color:#9C9C9C;font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;
+  font-family:inherit;border-radius:8px}
+.hnadv-skip:active{background:#F6F6F6}
+
+.hnadv-row{display:flex;gap:12px;align-items:flex-start}
+.hnadv-avatar{flex-shrink:0;width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(160deg,#1C1C1C 0%,#000 100%);
+  display:flex;align-items:center;justify-content:center;position:relative;
+  box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.hnadv-avatar svg{width:22px;height:22px;color:#FFC043}
+.hnadv-avatar::before{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:2px solid rgba(255,192,67,.0);transition:border-color .2s}
+.hnadv-avatar.speaking::before{animation:hnadvPulse 1.1s ease-in-out infinite}
+@keyframes hnadvPulse{0%,100%{border-color:rgba(255,192,67,0);transform:scale(1)}
+  50%{border-color:rgba(255,192,67,.6);transform:scale(1.06)}}
+
+.hnadv-name{font-size:11.5px;font-weight:800;color:#B8860B;letter-spacing:.02em;
+  text-transform:uppercase;margin-bottom:3px}
+.hnadv-bubble{font-size:14.5px;line-height:1.5;color:#000;font-weight:500;
+  min-height:22px}
+.hnadv-bubble .cur{display:inline-block;width:2px;height:15px;background:#FFC043;
+  margin-left:1px;vertical-align:-2px;animation:hnadvBlink .8s step-end infinite}
+@keyframes hnadvBlink{50%{opacity:0}}
+
+.hnadv-mute{margin-left:auto;flex-shrink:0;background:#F6F6F6;border:none;
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;color:#545454;padding:0}
+.hnadv-mute svg{width:15px;height:15px}
+
+.hnadv-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.hnadv-btn{flex:1 1 auto;min-width:120px;border:none;border-radius:12px;
+  padding:12px 14px;font-size:13.5px;font-weight:700;cursor:pointer;
+  font-family:inherit;transition:transform .1s,filter .15s}
+.hnadv-btn:active{transform:scale(.97)}
+.hnadv-btn.pri{background:linear-gradient(180deg,#000 0%,#1C1C1C 100%);color:#FFC043}
+.hnadv-btn.sec{background:#F6F6F6;color:#000;flex:0 1 auto;min-width:auto}
+.hnadv-btn.gold{background:linear-gradient(180deg,#FFC043 0%,#F0A800 100%);color:#1a1a1a}
+
+.hnadv-ask{display:none;margin-top:12px;gap:8px;align-items:center}
+.hnadv-ask.show{display:flex}
+.hnadv-ask input{flex:1;min-width:0;border:1.5px solid #E2E2E2;border-radius:12px;
+  padding:11px 14px;font-size:14px;font-family:inherit;outline:none;color:#000}
+.hnadv-ask input:focus{border-color:#FFC043}
+.hnadv-mic,.hnadv-send{flex-shrink:0;width:42px;height:42px;border-radius:12px;
+  border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  padding:0}
+.hnadv-mic{background:#F6F6F6;color:#000}
+.hnadv-mic.listening{background:#E11900;color:#fff;animation:hnadvPulse 1s infinite}
+.hnadv-mic svg,.hnadv-send svg{width:19px;height:19px}
+.hnadv-send{background:#000;color:#FFC043}
+
+.hnadv-dots{display:flex;gap:5px;justify-content:center;margin-top:13px}
+.hnadv-dots i{width:6px;height:6px;border-radius:50%;background:#E2E2E2;transition:all .25s}
+.hnadv-dots i.on{background:#FFC043;width:18px;border-radius:3px}
+
+@media(max-width:420px){
+  #hnadv-dock{bottom:12px;padding:14px 13px 12px;border-radius:20px}
+  .hnadv-bubble{font-size:14px}
+}
+</style>
+
+<div id="hnadv-root" aria-live="polite">
+  <div id="hnadv-ring"></div>
+  <div id="hnadv-catch"></div>
+  <div id="hnadv-dock" role="dialog" aria-label="AI Business Advisor">
+    <button class="hnadv-skip" id="hnadv-skip" type="button">Skip ✕</button>
+    <div class="hnadv-row">
+      <div class="hnadv-avatar" id="hnadv-avatar">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="hnadv-name" id="hnadv-name">AI Business Advisor</div>
+        <div class="hnadv-bubble" id="hnadv-bubble"></div>
+      </div>
+      <button class="hnadv-mute" id="hnadv-mute" type="button" aria-label="Mute voice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+    </div>
+    <div class="hnadv-actions" id="hnadv-actions"></div>
+    <div class="hnadv-ask" id="hnadv-ask">
+      <input id="hnadv-input" type="text" autocomplete="off" />
+      <button class="hnadv-mic" id="hnadv-mic" type="button" aria-label="Ask by voice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+      <button class="hnadv-send" id="hnadv-send" type="button" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+    <div class="hnadv-dots" id="hnadv-dots"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  if (window.HNAdvisor) return;
+
+  var DONE_KEY = 'hn_advisor_demo_done';
+  var muted = false;
+  var recog = null, listening = false;
+  var answerProvider = null;   // optional live-AI hook
+  var _speechStarted = false;  // did TTS actually begin? (autoplay detection)
+
+  /* ---------- tiny helpers ---------- */
+  function $(id){ return document.getElementById(id); }
+  function lang(){ try { return (window.I18n && I18n.getLang && I18n.getLang()==='hi') ? 'hi' : 'en'; } catch(e){ return 'en'; } }
+  function L(en, hi){ return lang()==='hi' ? hi : en; }
+  function owner(){
+    try { return (window.S && (S.ownerName || S.store)) || ''; } catch(e){ return ''; }
+  }
+  function buzz(){ try { if (window.haptic && window.haptic.nav) window.haptic.nav(); } catch(e){} }
+
+  /* ---------- voice OUT (text-to-speech) ---------- */
+  var _voices = [];
+  function loadVoices(){ try { _voices = window.speechSynthesis.getVoices() || []; } catch(e){ _voices = []; } }
+  if ('speechSynthesis' in window){
+    loadVoices();
+    try { window.speechSynthesis.onvoiceschanged = loadVoices; } catch(e){}
+  }
+  function pickVoice(lc){
+    if (!_voices.length) loadVoices();
+    var want = lc==='hi' ? 'hi' : 'en';
+    // prefer an Indian voice, then any matching-language voice
+    var byTag = _voices.filter(function(v){ return (v.lang||'').toLowerCase().indexOf(want)===0; });
+    var indian = byTag.find(function(v){ return /IN/i.test(v.lang) || /india|hindi|heera|kalpana|ravi/i.test(v.name||''); });
+    return indian || byTag[0] || null;
+  }
+  function speak(text){
+    var av = $('hnadv-avatar');
+    if (muted || !('speechSynthesis' in window) || !text){ return; }
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      var lc = lang();
+      u.lang = lc==='hi' ? 'hi-IN' : 'en-IN';
+      u.rate = lc==='hi' ? 0.94 : 0.99;
+      u.pitch = 1.0;
+      var v = pickVoice(lc); if (v) u.voice = v;
+      u.onstart = function(){ _speechStarted = true; if(av) av.classList.add('speaking'); };
+      u.onend   = function(){ if(av) av.classList.remove('speaking'); };
+      u.onerror = function(){ if(av) av.classList.remove('speaking'); };
+      window.speechSynthesis.speak(u);
+    } catch(e){}
+  }
+  function stopSpeak(){ try { window.speechSynthesis.cancel(); } catch(e){}
+    var av=$('hnadv-avatar'); if(av) av.classList.remove('speaking'); }
+
+  /* If the browser blocked autoplay speech (no onstart within ~900ms),
+     unlock it on the user's very next tap — which IS a real gesture — and
+     re-voice the line. Priming inside onbFinish handles most cases; this is
+     the safety net for stricter mobile browsers. */
+  function armSpeechFallback(text){
+    if (muted || !('speechSynthesis' in window)) return;
+    setTimeout(function(){
+      if (_speechStarted) return;            // autoplay worked — nothing to do
+      var once = function(){
+        document.removeEventListener('pointerdown', once, true);
+        speak(text);                         // now running inside a user gesture
+      };
+      document.addEventListener('pointerdown', once, true);
+    }, 900);
+  }
+
+  /* ---------- typewriter bubble (+ speak) ---------- */
+  var _typeTimer = null;
+  function say(text, opts){
+    opts = opts || {};
+    var b = $('hnadv-bubble');
+    if (!b) return;
+    if (_typeTimer){ clearInterval(_typeTimer); _typeTimer=null; }
+    if (opts.silent !== true) speak(text);
+    var i = 0;
+    b.innerHTML = '<span class="cur"></span>';
+    _typeTimer = setInterval(function(){
+      i++;
+      b.innerHTML = text.slice(0, i).replace(/</g,'&lt;') + (i<text.length ? '<span class="cur"></span>' : '');
+      if (i >= text.length){ clearInterval(_typeTimer); _typeTimer=null; }
+    }, 18);
+  }
+
+  /* ---------- action buttons ---------- */
+  function setActions(list){
+    var wrap = $('hnadv-actions'); if(!wrap) return;
+    wrap.innerHTML = '';
+    (list||[]).forEach(function(a){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hnadv-btn ' + (a.style||'sec');
+      btn.textContent = a.label;
+      btn.onclick = function(){ buzz(); a.onClick && a.onClick(); };
+      wrap.appendChild(btn);
+    });
+  }
+  function showAsk(on){
+    var a = $('hnadv-ask'); if(!a) return;
+    a.classList.toggle('show', !!on);
+    if (on){ var inp=$('hnadv-input'); if(inp){ inp.placeholder = L('Type your question…','अपना सवाल टाइप करें…'); setTimeout(function(){ inp.focus(); }, 80); } }
+  }
+
+  /* ---------- progress dots ---------- */
+  function setDots(total, idx){
+    var d = $('hnadv-dots'); if(!d) return;
+    if (!total){ d.innerHTML=''; return; }
+    var h=''; for (var k=0;k<total;k++){ h += '<i class="'+(k===idx?'on':'')+'"></i>'; }
+    d.innerHTML = h;
+  }
+
+  /* ---------- spotlight ---------- */
+  function spotlight(el, cb){
+    var ring = $('hnadv-ring');
+    if (!el){ if(ring) ring.classList.remove('show'); cb && cb(); return; }
+    try { el.scrollIntoView({block:'center', behavior:'smooth'}); } catch(e){}
+    setTimeout(function(){
+      var r = el.getBoundingClientRect();
+      var pad = 8;
+      ring.style.left   = (r.left - pad) + 'px';
+      ring.style.top    = (r.top - pad) + 'px';
+      ring.style.width  = (r.width + pad*2) + 'px';
+      ring.style.height = (r.height + pad*2) + 'px';
+      ring.classList.add('show');
+      cb && cb();
+    }, 360);
+  }
+  function clearSpotlight(){ var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); }
+
+  /* ---------- find targets in the live DOM ---------- */
+  function elNewSale(){ return document.querySelector('.nav-fab') || document.querySelector('[onclick*="addsale"]'); }
+  function elAiCard(){ return document.querySelector('#pg-home .ai-card'); }
+  function elBottomNav(){ return document.querySelector('.nav'); }
+
+  /* ============================================================
+     KNOWLEDGE BASE — canned bilingual answers (no backend).
+     Swap for a live model with HNAdvisor.setAnswerProvider(fn).
+  ============================================================ */
+  var KB = [
+    { k:['bill','sale','invoice','बिल','सेल','बिक्री'],
+      a:L('Tap the + button at the bottom to start a New Sale, pick the items, then tap Charge. Your bill is ready in seconds.',
+          'नीचे + बटन दबाकर नया बिल शुरू करें, आइटम चुनें, फिर Charge दबाएं। कुछ ही सेकंड में बिल तैयार।'),
+      act:{ label:L('Show me','दिखाइए'), go:'newsale' } },
+    { k:['product','item','catalog','stock','add product','प्रोडक्ट','आइटम','स्टॉक','कैटलॉग'],
+      a:L('I already added ready-made products for your shop type. Open Catalog to set prices or add your own items.',
+          'मैंने आपकी दुकान के हिसाब से प्रोडक्ट पहले से जोड़ दिए हैं। Catalog में दाम सेट करें या अपने आइटम जोड़ें।'),
+      act:{ label:L('Open Catalog','कैटलॉग खोलें'), go:'catalog' } },
+    { k:['customer','customers','ग्राहक','कस्टमर'],
+      a:L('Add customers to track who buys what and build a regulars list — great for follow-ups and offers.',
+          'ग्राहक जोड़ें ताकि पता रहे कौन क्या खरीदता है और रेगुलर ग्राहकों की लिस्ट बने — फॉलो-अप और ऑफर के लिए बढ़िया।'),
+      act:{ label:L('Customers','ग्राहक'), go:'customers' } },
+    { k:['udhaar','credit','khata','udhar','उधार','खाता','क्रेडिट'],
+      a:L('Use Udhaar to record credit given or taken. The app keeps running balances so you never lose track of who owes what.',
+          'उधार में लेन-देन दर्ज करें। ऐप बैलेंस खुद रखता है, किसका कितना बाकी है कभी नहीं भूलेंगे।'),
+      act:{ label:L('Open Udhaar','उधार खोलें'), go:'udhaar' } },
+    { k:['munim','advisor','insight','ai','analytics','सलाह','मुनीम','एनालिटिक्स'],
+      a:L("That's me. As you bill, I watch your numbers and surface what matters — best sellers, slow days, low stock and ways to earn more.",
+          'वो मैं हूँ। जैसे-जैसे आप बिल बनाते हैं, मैं आपके आंकड़े देखता हूँ — बेस्ट सेलर, सुस्त दिन, कम स्टॉक और कमाई बढ़ाने के तरीके बताता हूँ।'),
+      act:{ label:L('See AI Insights','AI सलाह देखें'), go:'munim' } },
+    { k:['price','plan','cost','subscription','charge','free','पैसे','प्लान','दाम','सब्सक्रिप्शन','फ्री'],
+      a:L('Start free for 7 days — no card needed. After that Pro is ₹99/month and King is ₹199/month. You can keep billing the whole trial.',
+          '7 दिन फ्री — कोई कार्ड नहीं चाहिए। उसके बाद Pro ₹99/महीना और King ₹199/महीना। पूरे ट्रायल में बिलिंग चलती रहेगी।') },
+    { k:['voice','bol','speak','vaani','वॉइस','बोल','आवाज'],
+      a:L('Yes! On the New Sale screen tap the mic and just say the items — I add them to the bill for you. Works best in Chrome.',
+          'हाँ! नया बिल स्क्रीन पर माइक दबाकर आइटम बोलें — मैं उन्हें बिल में जोड़ देता हूँ। Chrome में सबसे अच्छा चलता है।'),
+      act:{ label:L('Try voice billing','वॉइस बिलिंग'), go:'newsale' } },
+    { k:['data','safe','backup','cloud','secure','डेटा','सेफ','बैकअप','सुरक्षित'],
+      a:L('Your data is saved on your phone instantly and backed up to the cloud, so nothing is lost even if you change phones.',
+          'आपका डेटा फोन पर तुरंत सेव होता है और क्लाउड पर बैकअप रहता है — फोन बदलने पर भी कुछ नहीं खोता।') },
+    { k:['report','reports','profit','रिपोर्ट','मुनाफा','प्रॉफिट'],
+      a:L('Reports show your sales, profit and payment breakdowns by day, week or month — all built automatically from your bills.',
+          'रिपोर्ट में दिन, हफ्ते या महीने के हिसाब से सेल, मुनाफा और पेमेंट दिखते हैं — सब आपके बिलों से अपने-आप बनते हैं।'),
+      act:{ label:L('Open Reports','रिपोर्ट खोलें'), go:'reports' } },
+    { k:['expense','kharcha','खर्च','एक्सपेंस'],
+      a:L('Log expenses like rent, supplies or salaries so your profit is real, not just sales. I can even auto-categorise them.',
+          'किराया, सामान या तनख्वाह जैसे खर्च दर्ज करें ताकि असली मुनाफा दिखे। मैं इन्हें अपने-आप कैटेगरी भी कर सकता हूँ।') },
+    { k:['staff','team','employee','karmchari','स्टाफ','टीम','कर्मचारी'],
+      a:L('Add your staff and give them billing access with limited permissions — owners keep full control of reports and settings.',
+          'अपना स्टाफ जोड़ें और सीमित अनुमति के साथ बिलिंग एक्सेस दें — रिपोर्ट और सेटिंग पर पूरा कंट्रोल मालिक के पास रहता है।') }
+  ];
+  function answer(q){
+    if (answerProvider){ return Promise.resolve(answerProvider(q, lang())); }
+    var s = (q||'').toLowerCase();
+    var hit = KB.find(function(e){ return e.k.some(function(w){ return s.indexOf(w.toLowerCase())>=0; }); });
+    if (hit) return { text: hit.a, act: hit.act };
+    return { text: L("Good question — I'll get smarter as you use the app. For now, try asking about billing, products, udhaar, reports or pricing.",
+                     "अच्छा सवाल — जैसे-जैसे आप ऐप इस्तेमाल करेंगे मैं और समझदार बनूँगा। अभी बिलिंग, प्रोडक्ट, उधार, रिपोर्ट या दाम के बारे में पूछें।") };
+  }
+
+  function go(where){
+    finish(true);
+    try {
+      if (where==='munim'){ if(window.Munim&&Munim.openDrawer) Munim.openDrawer(); else App.nav('home'); }
+      else if (where==='newsale'){ App.nav('addsale'); }
+      else { App.nav(where); }
+    } catch(e){}
+  }
+
+  /* ---------- voice IN (ask by speaking) ---------- */
+  function toggleListen(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var mic = $('hnadv-mic');
+    if (!SR){ say(L('Voice input needs the Chrome browser. You can type instead.','वॉइस इनपुट के लिए Chrome चाहिए। आप टाइप कर सकते हैं।')); return; }
+    if (listening && recog){ try{recog.stop();}catch(e){} return; }
+    try {
+      recog = new SR();
+      recog.lang = lang()==='hi' ? 'hi-IN' : 'en-IN';
+      recog.interimResults = false; recog.maxAlternatives = 1;
+      listening = true; if(mic) mic.classList.add('listening');
+      recog.onresult = function(ev){
+        var t = ev.results[0][0].transcript || '';
+        var inp=$('hnadv-input'); if(inp) inp.value = t;
+        submitQuestion();
+      };
+      recog.onerror = function(){ listening=false; if(mic) mic.classList.remove('listening'); };
+      recog.onend   = function(){ listening=false; if(mic) mic.classList.remove('listening'); };
+      recog.start();
+    } catch(e){ listening=false; if(mic) mic.classList.remove('listening'); }
+  }
+
+  function submitQuestion(){
+    var inp = $('hnadv-input'); if(!inp) return;
+    var q = (inp.value||'').trim(); if(!q) return;
+    inp.value='';
+    stopSpeak();
+    say(L('Let me see…','देखता हूँ…'), {silent:true});
+    Promise.resolve(answer(q)).then(function(res){
+      var text = (typeof res === 'string') ? res : (res.text || '');
+      var act  = (typeof res === 'object') ? res.act : null;
+      say(text);
+      var actions = [];
+      if (act && act.go){ actions.push({ label:act.label, style:'gold', onClick:function(){ go(act.go); } }); }
+      actions.push({ label:L('Ask another','और पूछें'), style:'sec', onClick:function(){ showAsk(true); } });
+      actions.push({ label:L('Make a sample bill ✨','सैंपल बिल बनाएं ✨'), style:'pri', onClick:sampleBill });
+      setActions(actions);
+    });
+  }
+
+  /* ============================================================
+     WALKTHROUGH — 3 spotlight steps, then the sample-bill finale
+  ============================================================ */
+  var STEPS = [
+    { el:elNewSale,
+      line:L("This + button is where it all starts — tap it to make a bill. Add items, take payment, done.",
+              "यह + बटन सबसे ज़रूरी है — इसे दबाकर बिल बनाएं। आइटम जोड़ें, पेमेंट लें, हो गया।") },
+    { el:elAiCard,
+      line:L("This is your AI Insights card — me. Once you start billing, I'll show your best sellers, alerts and tips right here.",
+              "यह आपका AI Insights कार्ड है — यानी मैं। बिलिंग शुरू करते ही यहीं आपके बेस्ट सेलर, अलर्ट और टिप्स दिखाऊँगा।") },
+    { el:elBottomNav,
+      line:L("And from this bar you reach everything — bills, customers, and more. That's the whole tour!",
+              "और इस बार से आप हर चीज़ तक पहुँचते हैं — बिल, ग्राहक और बहुत कुछ। बस इतना ही टूर था!") }
+  ];
+  var stepIdx = 0;
+  function runStep(){
+    var s = STEPS[stepIdx];
+    setDots(STEPS.length, stepIdx);
+    var target = null; try { target = s.el(); } catch(e){}
+    spotlight(target, function(){
+      say(s.line);
+      var last = stepIdx === STEPS.length-1;
+      setActions([
+        { label:last ? L('Make a sample bill ✨','सैंपल बिल बनाएं ✨') : L('Next →','आगे →'),
+          style:'pri',
+          onClick:function(){
+            if (last){ sampleBill(); }
+            else { stepIdx++; runStep(); }
+          } },
+        { label:L('Skip tour','टूर छोड़ें'), style:'sec', onClick:function(){ clearSpotlight(); offerSample(); } }
+      ]);
+    });
+  }
+
+  /* ---------- finale: create a sample bill ---------- */
+  function sampleBill(){
+    stopSpeak(); clearSpotlight();
+    var added = false, prodName = '';
+    try {
+      App.nav('addsale');
+      // pick one simple item (no size variants) to pre-add as a demo
+      if (Array.isArray(window.SERVICES) && SERVICES.length){
+        var cand = SERVICES.find(function(p){ return p && !p.hasSizes && (p.id||p.name); });
+        if (cand){
+          var id = cand.id || cand.name;
+          App.addToCart(id);
+          added = true; prodName = cand.name || '';
+        }
+      }
+    } catch(e){}
+    var msg = added
+      ? L("I've started a sample bill"+(prodName?(' with "'+prodName+'"'):'')+". Tap Charge to complete your very first bill — you've got this! 🎉",
+          'मैंने'+(prodName?(' "'+prodName+'" के साथ'):'')+' एक सैंपल बिल शुरू कर दिया है। अपना पहला बिल पूरा करने के लिए Charge दबाएं — आप कर लेंगे! 🎉')
+      : L("Here's the New Sale screen. Tap any item, then tap Charge to make your first bill. Go for it! 🎉",
+          'यह नया बिल स्क्रीन है। कोई भी आइटम दबाएं, फिर Charge दबाकर अपना पहला बिल बनाएं। शुरू हो जाइए! 🎉');
+    // brief on-screen sign-off, speak it, then hand control fully back to the app
+    say(msg);
+    setActions([]);
+    setDots(0,0);
+    setTimeout(function(){ finish(true); try{ App.toast && App.toast(L('Tap Charge to finish your bill','बिल पूरा करने के लिए Charge दबाएं')); }catch(e){} }, added?3200:3600);
+  }
+
+  function offerSample(){
+    say(L("Whenever you're ready, want me to start a sample bill so you can see how it works?",
+           'जब तैयार हों, क्या मैं एक सैंपल बिल शुरू करूँ ताकि आप देख सकें यह कैसे काम करता है?'));
+    setActions([
+      { label:L('Yes, start it ✨','हाँ, शुरू करें ✨'), style:'pri', onClick:sampleBill },
+      { label:L('Ask a question','सवाल पूछें'), style:'sec', onClick:function(){ showAsk(true); } },
+      { label:L("I'll explore",'मैं खुद देखूँगा'), style:'sec', onClick:function(){ finish(true); } }
+    ]);
+  }
+
+  /* ---------- greeting ---------- */
+  function greet(){
+    var nm = owner();
+    var hello = nm
+      ? L('Namaste '+nm+'! I\'m your AI Business Advisor. Want me to show you how to make your first bill?',
+           'नमस्ते '+nm+'! मैं आपका AI बिज़नेस सलाहकार हूँ। क्या मैं दिखाऊँ कि पहला बिल कैसे बनाएं?')
+      : L("Namaste! I'm your AI Business Advisor. Want me to show you how to make your first bill?",
+           'नमस्ते! मैं आपका AI बिज़नेस सलाहकार हूँ। क्या मैं दिखाऊँ कि पहला बिल कैसे बनाएं?');
+    say(hello);
+    armSpeechFallback(hello);
+    setActions([
+      { label:L('Yes, show me 👇','हाँ, दिखाइए 👇'), style:'pri', onClick:function(){ stepIdx=0; runStep(); } },
+      { label:L('Ask first','पहले पूछूँ'), style:'sec', onClick:function(){ showAsk(true); } },
+      { label:L("I'll explore",'मैं खुद देखूँगा'), style:'sec', onClick:function(){ finish(true); } }
+    ]);
+  }
+
+  /* ---------- open / close ---------- */
+  function open(){
+    var root=$('hnadv-root'), dock=$('hnadv-dock');
+    if(!root||!dock) return;
+    _speechStarted = false;
+    // localise static labels
+    $('hnadv-name').textContent = L('AI Business Advisor','AI बिज़नेस सलाहकार');
+    $('hnadv-skip').textContent = L('Skip ✕','छोड़ें ✕');
+    root.classList.add('on');
+    requestAnimationFrame(function(){ dock.classList.add('show'); });
+    setDots(0,0);
+    greet();
+  }
+  function finish(markDone){
+    if (markDone){ try { localStorage.setItem(DONE_KEY,'1'); } catch(e){} }
+    stopSpeak(); clearSpotlight();
+    if (listening && recog){ try{recog.stop();}catch(e){} }
+    var root=$('hnadv-root'), dock=$('hnadv-dock');
+    if(dock) dock.classList.remove('show');
+    setTimeout(function(){ if(root) root.classList.remove('on'); }, 300);
+  }
+
+  /* ---------- wire static controls (once) ---------- */
+  function wire(){
+    var skip=$('hnadv-skip'); if(skip) skip.onclick=function(){ buzz(); finish(true); };
+    var mute=$('hnadv-mute'); if(mute) mute.onclick=function(){
+      muted=!muted; if(muted) stopSpeak();
+      mute.style.opacity = muted ? '.45' : '1';
+    };
+    var mic=$('hnadv-mic'); if(mic) mic.onclick=toggleListen;
+    var send=$('hnadv-send'); if(send) send.onclick=submitQuestion;
+    var inp=$('hnadv-input'); if(inp) inp.addEventListener('keydown',function(e){ if(e.key==='Enter') submitQuestion(); });
+  }
+  if (document.readyState!=='loading') wire();
+  else document.addEventListener('DOMContentLoaded', wire);
+
+  /* ============================================================
+     PUBLIC API
+  ============================================================ */
+  window.HNAdvisor = {
+    // Call this synchronously inside a user gesture (e.g. the onboarding
+    // "Get started" tap) to unlock speech synthesis for the session, so the
+    // greeting can speak when the dashboard loads a moment later.
+    prime: function(){
+      try {
+        if ('speechSynthesis' in window){
+          window.speechSynthesis.resume();
+          var u = new SpeechSynthesisUtterance(' ');
+          u.volume = 0;
+          window.speechSynthesis.speak(u);
+        }
+      } catch(e){}
+    },
+    start: function(){
+      try { if (localStorage.getItem(DONE_KEY)) return; } catch(e){}
+      // small delay so the dashboard has rendered + the onboarding tap
+      // counts as the user gesture that unlocks speech autoplay
+      setTimeout(open, 650);
+    },
+    replay: function(){ try{ localStorage.removeItem(DONE_KEY); }catch(e){} setTimeout(open, 200); },
+    answer: function(q){ return answer(q); },
+    setAnswerProvider: function(fn){ answerProvider = (typeof fn==='function') ? fn : null; }
+  };
+})();
+</script>
+<!-- ============== END AI Business Advisor welcome ============== -->
+
 </body>
 </html>
