@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_103_channel_stamp';
+    window.HISAABNOW_BUILD = 'v33_105_dash_channel';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2938,6 +2938,13 @@ html[data-current-role="manager"] body{
     </div>
   </section>
 
+  <section id="home-channel-strip" data-role-min="manager" style="display:none;padding:0 18px 14px">
+    <div style="background:#fff;border:1.5px solid var(--border-strong);border-radius:14px;padding:13px 15px">
+      <div style="font-size:11px;font-weight:800;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:9px" data-i18n="dash.todayByChannel">Today by channel</div>
+      <div id="home-channel-pills" style="display:flex;flex-wrap:wrap;gap:7px"></div>
+    </div>
+  </section>
+
   <div id="hn-feature-strip" style="display:none;margin:2px 16px 14px"></div>
 
   <section id="home-udhaar-tile" data-role-min="manager" style="display:none;padding:0 18px 14px">
@@ -3503,6 +3510,13 @@ html[data-current-role="manager"] body{
         <div style="font-size:24px;margin-bottom:6px;opacity:.5">📈</div>
         Loading revenue trend…
       </div>
+    </div>
+  </section>
+
+  <section id="reports-channel-section" style="padding:0 18px 14px;display:none">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title" data-i18n="rep.byChannel">Sales by channel</div></div>
+      <div id="reports-channel-list"></div>
     </div>
   </section>
 
@@ -5102,6 +5116,8 @@ html[data-current-role="manager"] body{
 
     /* ── Reports page ── */
     'rep.title':               { en: 'Reports',                  hi: 'रिपोर्ट' },
+    'rep.byChannel':           { en: 'Sales by channel',         hi: 'चैनल के हिसाब से बिक्री' },
+    'dash.todayByChannel':     { en: 'Today by channel',        hi: 'आज चैनल के हिसाब से' },
     'rep.revenue':             { en: 'Revenue',                  hi: 'बिक्री' },
     'rep.netProfit':           { en: 'Net Profit',               hi: 'नेट प्रॉफिट' },
     'rep.grossProfit':         { en: 'Gross Profit',             hi: 'ग्रॉस प्रॉफिट' },
@@ -11390,6 +11406,40 @@ const App = {
 
   },
 
+  _renderHomeChannels(){
+    const sec = document.getElementById('home-channel-strip');
+    const pills = document.getElementById('home-channel-pills');
+    if (!sec || !pills) return;
+    let sales = [];
+    try { sales = (window.Store && Store.todaySales) ? Store.todaySales() : []; } catch(e){ sales = []; }
+    const META = {
+      dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',c:'#0F766E'},
+      takeaway:{e:'\uD83E\uDD61',l:'Takeaway',c:'#92400E'},
+      delivery:{e:'\uD83D\uDEF5',l:'Delivery',c:'#3730A3'},
+      swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',c:'#C2410C'},
+      zomato:{e:'\uD83C\uDF45',l:'Zomato',c:'#B91C1C'},
+      walkin:{e:'\uD83D\uDEB6',l:'Walk-in',c:'#475569'}
+    };
+    const agg = {}; let hasChannel = false;
+    (sales||[]).forEach(s => {
+      const ch = (s && s.channel) ? s.channel : 'walkin';
+      if (ch !== 'walkin') hasChannel = true;
+      const amt = Number((s && (s.amt || s.total)) || 0);
+      if (!agg[ch]) agg[ch] = { ch, rev:0, n:0 };
+      agg[ch].rev += amt; agg[ch].n += 1;
+    });
+    if (!hasChannel) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    const rows = Object.keys(agg).map(k => agg[k]).sort((a,b)=>b.rev-a.rev);
+    pills.innerHTML = rows.map(r => {
+      const m = META[r.ch] || { e:'\uD83E\uDDFE', l:r.ch, c:'#475569' };
+      return '<div style="display:inline-flex;align-items:center;gap:6px;background:'+m.c+'14;border:1px solid '+m.c+'33;border-radius:99px;padding:6px 11px">'
+        + '<span style="font-size:13px">'+m.e+'</span>'
+        + '<span style="font-size:12px;font-weight:700;color:var(--t1)">'+this.escapeHtml(m.l)+'</span>'
+        + '<span style="font-size:12.5px;font-weight:800;color:'+m.c+';font-variant-numeric:tabular-nums">\u20B9'+Math.round(r.rev).toLocaleString('en-IN')+'</span>'
+        + '</div>';
+    }).join('');
+  }
   renderHome(){
     const cfg = VERTICAL_CONFIG[this.vertical];
     if (!cfg) return;
@@ -11408,6 +11458,7 @@ const App = {
     /* (v33_28) Cash drawer banners — morning prompt + evening reminder.
        Both self-hide based on conditions. Cheap to call on every render. */
     try { this._renderCashBanners(); } catch(e){ console.warn('[cashBanner] render:', e); }
+    try { this._renderHomeChannels(); } catch(e){}
     try { this._renderSubscribeBanner(); } catch(e){}
     try { this._renderFeatureStrip(); } catch(e){}
 
@@ -15822,6 +15873,47 @@ const App = {
     }
   },
 
+  _renderReportsChannels(salesInRange){
+    const sec = document.getElementById('reports-channel-section');
+    const list = document.getElementById('reports-channel-list');
+    if (!sec || !list) return;
+    const META = {
+      dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',c:'#0F766E'},
+      takeaway:{e:'\uD83E\uDD61',l:'Takeaway',c:'#92400E'},
+      delivery:{e:'\uD83D\uDEF5',l:'Delivery',c:'#3730A3'},
+      swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',c:'#C2410C'},
+      zomato:{e:'\uD83C\uDF45',l:'Zomato',c:'#B91C1C'},
+      walkin:{e:'\uD83D\uDEB6',l:'Walk-in',c:'#475569'}
+    };
+    const agg = {}; let total = 0, hasChannel = false;
+    (salesInRange||[]).forEach(s => {
+      const ch = (s && s.channel) ? s.channel : 'walkin';
+      if (ch !== 'walkin') hasChannel = true;
+      const amt = Number((s && (s.amt || s.total)) || 0);
+      if (!agg[ch]) agg[ch] = { ch, rev:0, n:0 };
+      agg[ch].rev += amt; agg[ch].n += 1; total += amt;
+    });
+    if (!hasChannel) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    const rows = Object.keys(agg).map(k => agg[k]).sort((a,b)=>b.rev-a.rev);
+    const maxRev = rows.length ? rows[0].rev : 1;
+    list.innerHTML = rows.map(r => {
+      const m = META[r.ch] || { e:'\uD83E\uDDFE', l:r.ch, c:'#475569' };
+      const pct = total>0 ? Math.round(r.rev/total*100) : 0;
+      const barPct = maxRev>0 ? Math.max(4, Math.round(r.rev/maxRev*100)) : 0;
+      return '<div style="padding:9px 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<span style="font-size:16px">'+m.e+'</span>'
+        + '<span style="font-size:13.5px;font-weight:700;color:var(--t1)">'+this.escapeHtml(m.l)+'</span>'
+        + '<span style="font-size:11.5px;color:var(--t3);font-weight:600">'+r.n+' '+(r.n===1?'order':'orders')+'</span>'
+        + '<span style="margin-left:auto;font-size:13.5px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">\u20B9'+Math.round(r.rev).toLocaleString('en-IN')+'</span>'
+        + '<span style="font-size:11px;color:var(--t3);font-weight:700;min-width:34px;text-align:right">'+pct+'%</span>'
+        + '</div>'
+        + '<div style="margin-top:6px;height:6px;background:var(--border);border-radius:99px;overflow:hidden">'
+        + '<div style="height:100%;width:'+barPct+'%;background:'+m.c+';border-radius:99px"></div>'
+        + '</div></div>';
+    }).join('');
+  }
   renderReportsScreen(){
 
     const range = this._reportsRange || 'weekly';
@@ -15858,6 +15950,7 @@ const App = {
     });
 
     this._renderReportsRevenueTrend(range, sales, fromIso, toIso);
+    try { this._renderReportsChannels(salesInRange); } catch(e){ console.warn('[channels] '+e); }
 
     const byProduct = {};
     let totalRev = 0;
