@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_101_otype_ask';
+    window.HISAABNOW_BUILD = 'v33_103_channel_stamp';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5243,20 +5243,12 @@ html[data-current-role="manager"] body{
     'more.helpSub':            { en: 'Tutorials, WhatsApp us',   hi: 'ट्यूटोरियल, WhatsApp करें' },
     'more.aiAdvisor':          { en: 'AI Advisor',               hi: 'AI सलाहकार' },
     'more.aiAdvisorSub':       { en: 'Chat & ask anything · voice', hi: 'Chat करें, कुछ भी पूछें · voice' },
-    'tables.openOrders':       { en: 'Open orders',              hi: 'खुले orders' },
     'tables.newTable':         { en: 'New order',                hi: 'नया order' },
-    'tables.namePrompt':       { en: 'Customer name (optional)', hi: 'Customer का नाम (optional)' },
     'tables.newOrderType':     { en: 'Order type',               hi: 'Order टाइप' },
     'tables.remember':         { en: 'Remember as default',      hi: 'Default सेट करें' },
     'tables.alwaysAsk':        { en: 'Always ask',               hi: 'हर बार पूछें' },
     'tables.willAsk':          { en: 'Will ask each time',       hi: 'अब हर बार पूछेगा' },
     'tables.defaultTag':       { en: 'default',                  hi: 'default' },
-    'tables.modeOrders':       { en: 'Orders',                   hi: 'Orders' },
-    'tables.modeTables':       { en: 'Tables',                   hi: 'टेबल' },
-    'tables.tablesLbl':        { en: 'Tables',                   hi: 'टेबल' },
-    'tables.free':             { en: 'Free',                     hi: 'खाली' },
-    'tables.setCount':         { en: 'Set number of tables',     hi: 'टेबल संख्या सेट करें' },
-    'tables.howMany':          { en: 'How many tables?',         hi: 'कितने टेबल?' },
     'tables.kitchen':          { en: 'Kitchen',                  hi: 'Kitchen' },
     'tables.sendKitchen':      { en: 'Send to kitchen',          hi: 'Kitchen भेजें' },
     'tables.sentKitchen':      { en: 'sent to kitchen',          hi: 'kitchen भेजा गया' },
@@ -5272,6 +5264,9 @@ html[data-current-role="manager"] body{
     'tables.markReady':        { en: 'Mark ready',               hi: 'Ready करें' },
     'tables.done':             { en: 'Done ✓',                   hi: 'हो गया ✓' },
     'tables.justNow':          { en: 'just now',                 hi: 'अभी' },
+    'tables.setCount':         { en: 'Set number of tables',     hi: 'टेबल संख्या सेट करें' },
+    'tables.howMany':          { en: 'How many tables?',         hi: 'कितने टेबल?' },
+    'tables.free':             { en: 'Free',                     hi: 'खाली' },
     'more.signOut':            { en: 'Sign out',                 hi: 'लॉगआउट' },
 
     /* More page · dynamic content */
@@ -16670,6 +16665,9 @@ const App = {
       const amt = Number(s.amt || s.total || 0);
       const mode = s.mode || s.pt || 'cash';
       const modeMeta = PAY_ICON[mode] || { bg:'#F1F5F9', fg:'#475569', label: mode };
+      const _chMap = { dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',bg:'#E6F4F1',fg:'#0F766E'}, takeaway:{e:'\uD83E\uDD61',l:'Takeaway',bg:'#FEF3C7',fg:'#92400E'}, delivery:{e:'\uD83D\uDEF5',l:'Delivery',bg:'#E0E7FF',fg:'#3730A3'}, swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',bg:'#FFEDD5',fg:'#C2410C'}, zomato:{e:'\uD83C\uDF45',l:'Zomato',bg:'#FEE2E2',fg:'#B91C1C'} };
+      const _ch = (s.channel && s.channel !== 'walkin') ? (_chMap[s.channel] || null) : null;
+      const chTag = _ch ? `<span class="li-tag" style="background:${_ch.bg};color:${_ch.fg};margin-left:auto">${_ch.e} ${this.escapeHtml(s.channelLabel || _ch.l)}</span>` : '';
 
       const range = this._salesRange || 'Today';
       let dateLabel = '';
@@ -16692,7 +16690,7 @@ const App = {
             <div class="li-row"><div class="li-name">${this.escapeHtml(name)}</div><div class="li-amt">₹${amt.toLocaleString('en-IN')}</div></div>
             <div class="li-sub">
               <span>${this.escapeHtml(dateLabel + time + attribLabel)}</span> · <span>${this.escapeHtml(itemsText)}</span>
-              <span class="li-tag" style="background:${modeMeta.bg};color:${modeMeta.fg};margin-left:auto">${modeMeta.label}</span>
+              ${chTag}<span class="li-tag" style="background:${modeMeta.bg};color:${modeMeta.fg};margin-left:${_ch?'6px':'auto'}">${modeMeta.label}</span>
             </div>
           </div>
         </div>`;
@@ -20465,6 +20463,13 @@ const App = {
       createdByRole: creatorMeta.createdByRole,
       createdByName: creatorMeta.createdByName
     };
+
+    /* (v33_103) Stamp the sale's channel (order type) for channel-wise reporting. */
+    try {
+      var _ch = (window.HNTables && HNTables.activeChannel) ? HNTables.activeChannel() : null;
+      if (_ch && _ch.type) { bill.channel = _ch.type; bill.channelLabel = _ch.label; }
+      else { bill.channel = 'walkin'; bill.channelLabel = 'Walk-in'; }
+    } catch(e){ bill.channel = 'walkin'; }
 
     /* (v33_29av) Assign human-readable bill number for receipts. Done HERE
        before Store.add so the number is persisted with the bill. Customer
@@ -82771,9 +82776,29 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function tableCount(){ try{ var n=parseInt(localStorage.getItem('hn_table_count'),10); if(n>0&&n<=60) return n; }catch(e){} return 12; }
   function setTableCount(){ var v=null; try{ v=window.prompt(T('tables.howMany','How many tables?'),String(tableCount())); }catch(e){ return; } var n=parseInt(v,10); if(n>0&&n<=60){ try{ localStorage.setItem('hn_table_count',String(n)); }catch(e){} renderStrip(); } }
   function load(){ try{ var raw=localStorage.getItem(pkey()); if(raw){ var d=JSON.parse(raw); orders=Array.isArray(d.orders)?d.orders:[]; seq=d.seq||orders.length; } }catch(e){ orders=[]; } activeId=null; }
-  function save(){ try{ localStorage.setItem(pkey(),JSON.stringify({orders:orders,seq:seq})); }catch(e){} }
+  function save(){ try{ localStorage.setItem(pkey(),JSON.stringify({orders:orders,seq:seq})); }catch(e){} syncPush(); }
   function loadKDS(){ try{ var raw=localStorage.getItem(kkey()); if(raw){ var d=JSON.parse(raw); kots=Array.isArray(d.kots)?d.kots:[]; kotSeq=d.kotSeq||0; } }catch(e){ kots=[]; } }
-  function saveKDS(){ try{ localStorage.setItem(kkey(),JSON.stringify({kots:kots,kotSeq:kotSeq})); }catch(e){} }
+  function saveKDS(){ try{ localStorage.setItem(kkey(),JSON.stringify({kots:kots,kotSeq:kotSeq})); }catch(e){} syncPush(); }
+  /* ---- Firestore realtime sync: shops/<shopId>/live/board (whole-board, multi-device) ---- */
+  var _sync={ on:false, sid:null, unsub:null, sdk:null, dev:null, rev:0, applied:0, pushT:null, coolUntil:0 };
+  function syncDev(){ if(_sync.dev) return _sync.dev; var d=null; try{ d=localStorage.getItem('hn_sync_dev'); }catch(e){} if(!d){ d='d'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); try{ localStorage.setItem('hn_sync_dev',d); }catch(e){} } _sync.dev=d; return d; }
+  function syncEnabled(){ try{ if(localStorage.getItem('hn_sync_on')==='0') return false; }catch(e){} return true; }
+  function syncDb(){ try{ if(window.HisaabSyncDeps&&window.HisaabSyncDeps.db) return window.HisaabSyncDeps.db; }catch(e){} try{ if(window.kfDb) return window.kfDb; }catch(e){} return null; }
+  function syncSignedIn(){ try{ return !!(window.kfAuth&&window.kfAuth.currentUser); }catch(e){ return false; } }
+  function syncSid(){ try{ var s=shopId(); if(s&&s!=='__local') return s; }catch(e){} return null; }
+  async function syncDeps(){ if(_sync.sdk) return _sync.sdk; try{ var fs=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'); _sync.sdk={doc:fs.doc,setDoc:fs.setDoc,onSnapshot:fs.onSnapshot}; }catch(e){ _sync.sdk=null; } return _sync.sdk; }
+  async function syncStart(){ if(_sync.on||!syncEnabled()||!isEnabled()) return; if(Date.now()<_sync.coolUntil) return; var db=syncDb(); var sid=syncSid(); if(!db||!sid||!syncSignedIn()) return; var sdk=await syncDeps(); if(!sdk||!sdk.onSnapshot) return; if(_sync.on) return; _sync.on=true; _sync.sid=sid;
+    try{ _sync.unsub=sdk.onSnapshot(sdk.doc(db,'shops',sid,'live','board'), function(snap){
+        try{ if(snap.metadata&&snap.metadata.hasPendingWrites) return; var d=snap.data(); if(!d) return; if(d.by===syncDev()){ if(typeof d.rev==='number') _sync.rev=Math.max(_sync.rev,d.rev); return; } if(_sync.pushT) return;
+          var keep=activeId; orders=Array.isArray(d.orders)?d.orders:[]; seq=(typeof d.seq==='number')?d.seq:orders.length; kots=Array.isArray(d.kots)?d.kots:[]; kotSeq=(typeof d.kotSeq==='number')?d.kotSeq:0; if(typeof d.rev==='number'){ _sync.applied=d.rev; _sync.rev=Math.max(_sync.rev,d.rev); }
+          try{ localStorage.setItem(pkey(),JSON.stringify({orders:orders,seq:seq})); localStorage.setItem(kkey(),JSON.stringify({kots:kots,kotSeq:kotSeq})); }catch(e){}
+          if(keep!=null&&!find(keep)) activeId=null; renderStrip(); if(_kdsOpen) renderKDS();
+        }catch(e){}
+      }, function(err){ _sync.on=false; _sync.unsub=null; _sync.coolUntil=Date.now()+30000; }); }catch(e){ _sync.on=false; _sync.coolUntil=Date.now()+30000; } }
+  function syncStop(){ try{ if(_sync.unsub) _sync.unsub(); }catch(e){} _sync.unsub=null; _sync.on=false; _sync.sid=null; }
+  function syncPush(){ if(!syncEnabled()) return; if(_sync.pushT) clearTimeout(_sync.pushT);
+    _sync.pushT=setTimeout(async function(){ _sync.pushT=null; try{ var db=syncDb(); var sid=syncSid(); if(!db||!sid||!syncSignedIn()) return; var sdk=await syncDeps(); if(!sdk) return; _sync.rev=_sync.rev+1; var rev=_sync.rev; _sync.applied=Math.max(_sync.applied,rev);
+      await sdk.setDoc(sdk.doc(db,'shops',sid,'live','board'), { orders:orders, seq:seq, kots:kots, kotSeq:kotSeq, rev:rev, by:syncDev(), at:Date.now() }, { merge:true }); }catch(e){} }, 600); }
   function find(id){ for(var i=0;i<orders.length;i++) if(orders[i].id===id) return orders[i]; return null; }
   function liveSnap(){ var a=A()||{}; return { cart:clone(a.cart), customLines:clone(a.customLines), staff:clone(a._cartStaff), staffOv:clone(a._cartStaffOverridden), pay:a.paymentMode }; }
   function liveTotals(){ try{ var t=A().cartTotal(); return { total:Math.round(t.total||0), count:t.count||0 }; }catch(e){ var c=(A()&&A().cart)||{},n=0; for(var k in c)n+=(+c[k]||0); return {total:0,count:n}; } }
@@ -82914,10 +82939,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   document.addEventListener('click', function(e){ try{ if(isDesktop()) return; var b=e.target && e.target.closest && e.target.closest('.ck-collect-btn'); if(b) armBill(); }catch(_){} }, true);
   document.addEventListener('keydown', function(e){ try{ if(e.key==='F12' && document.body && document.body.classList.contains('hnd-on-pos')){ var b=document.getElementById('hnd-pos-complete'); if(b && !b.disabled) armBill(); } }catch(_){} }, true);
   function wrapSummary(){ if(_wrappedSummary||!A()||typeof A().updateCartSummary!=='function') return; var orig=A().updateCartSummary.bind(A()); A().updateCartSummary=function(){ var r=orig.apply(A(),arguments); try{ if(!_busy&&isEnabled()){ lazySeed(); renderStrip(); } }catch(e){} return r; }; _wrappedSummary=true; }
-  function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); if(_kdsOpen){ _kdsTick=(_kdsTick||0)+1; if(_kdsTick%5===0) renderKDS(); } if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
+  function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); try{ if(syncEnabled()&&isEnabled()){ var csid=syncSid(); if(_sync.on&&_sync.sid&&csid&&_sync.sid!==csid) syncStop(); if(!_sync.on) syncStart(); } else if(_sync.on&&!isEnabled()){ syncStop(); } }catch(e){} if(_kdsOpen){ _kdsTick=(_kdsTick||0)+1; if(_kdsTick%5===0) renderKDS(); } if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
   function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); setTimeout(reconcileOnLoad,500); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
-  window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, pickType:pickType, dismissSheet:dismissSheet, chooseAlwaysAsk:chooseAlwaysAsk, setDefaultType:setDefault, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, _state:function(){ return { orders:orders, activeId:activeId, kots:kots }; } };
+  function activeChannel(){ try{ if(!isEnabled()) return null; var o=find(activeId); if(!o) return null; var tm=typeMeta(o.type); return { type:tm.k, label:tm.l, emoji:tm.e }; }catch(e){ return null; } }
+  window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, pickType:pickType, dismissSheet:dismissSheet, chooseAlwaysAsk:chooseAlwaysAsk, setDefaultType:setDefault, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, activeChannel:activeChannel, syncState:function(){ return { on:_sync.on, sid:_sync.sid, dev:syncDev(), rev:_sync.rev, applied:_sync.applied }; }, _state:function(){ return { orders:orders, activeId:activeId, kots:kots, seq:seq, kotSeq:kotSeq }; } };
 })();
 </script>
 <!-- ============== END Orders/Tables + KOT/KDS ============== -->
