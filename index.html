@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_98_ui_polish';
+    window.HISAABNOW_BUILD = 'v33_99_kds_timer';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5263,7 +5263,7 @@ html[data-current-role="manager"] body{
     'tables.clearReady':       { en: 'Clear ready',              hi: 'Ready हटाएं' },
     'tables.openTickets':      { en: 'open tickets',             hi: 'खुले tickets' },
     'tables.noTickets':        { en: 'No kitchen tickets yet. Send an order to the kitchen to see it here.', hi: 'अभी कोई kitchen ticket नहीं। Order को kitchen भेजें।' },
-    'tables.start':            { en: 'Start',                    hi: 'शुरू करें' },
+    'tables.start':            { en: 'Start cooking',            hi: 'पकाना शुरू करें' },
     'tables.markReady':        { en: 'Mark ready',               hi: 'Ready करें' },
     'tables.done':             { en: 'Done ✓',                   hi: 'हो गया ✓' },
     'tables.justNow':          { en: 'just now',                 hi: 'अभी' },
@@ -82660,7 +82660,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 .hnkds-card.s-new{border-top:4px solid #F0A800}.hnkds-card.s-prep{border-top:4px solid #378ADD}.hnkds-card.s-ready{border-top:4px solid #1D9E75}
 .hnkds-card.old{box-shadow:0 0 0 2px rgba(226,75,74,.6)}
 .hnkds-ch{display:flex;align-items:center;gap:8px;padding:10px 12px;color:#fff;border-bottom:1px solid #2A2722}
-.hnkds-ch .lbl{font-size:14px;font-weight:700}.hnkds-ch .kno{font-size:11px;color:#9A958C;margin-left:auto}
+.hnkds-ch .lbl{font-size:14px;font-weight:700}.hnkds-ch .kno{font-size:11px;color:#9A958C}
+.hnkds-timer{margin-left:auto;font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.hnkds-timer.t-green{background:rgba(29,158,117,.18);color:#41D8A0}
+.hnkds-timer.t-amber{background:rgba(240,168,0,.18);color:#FFC043}
+.hnkds-timer.t-red{background:rgba(226,75,74,.22);color:#FF8482}
 .hnkds-ty{font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.03em}
 .hnkds-items{list-style:none;margin:0;padding:8px 12px;color:#EDE9E2;font-size:13.5px;flex:1}
 .hnkds-items li{display:flex;justify-content:space-between;gap:8px;padding:3px 0}.hnkds-items li .q{color:#FFC043;font-weight:800}
@@ -82766,7 +82770,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function repaint(){ try{ if(window.HNDPOS&&HNDPOS.renderCart) HNDPOS.renderCart(); }catch(e){} try{ if(A()&&A().updateCartSummary) A().updateCartSummary(); }catch(e){} }
   function syncActive(){ if(_busy||activeId==null) return; var o=find(activeId); if(!o) return; o.snap=liveSnap(); var t=liveTotals(); o.total=t.total; o.count=t.count; }
   function parkActive(){ syncActive(); }
-  function newOrder(type){ parkActive(); _busy=true; clearLive(); seq++; var tm=typeMeta(type||'dinein'); var id='t'+Date.now()+'_'+seq; var lbl=(mode()==='tables')?('Order '+seq):(tm.l+' '+seq);
+  function newOrder(type){ parkActive(); _busy=true; clearLive(); seq++; var tm=typeMeta(type||'dinein'); var id='t'+Date.now()+'_'+seq; var lbl=tm.l+' '+seq;
     orders.push({ id:id, label:lbl, type:tm.k, note:'', total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; _menuOpen=false; save(); renderStrip(); }
   function newTable(){ newOrder('dinein'); }
   function switchTo(id){ if(id===activeId){ return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
@@ -82816,10 +82820,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var now=Date.now();
     g.innerHTML=kots.slice().sort(function(a,b){return a.ts-b.ts;}).map(function(k){ var tm=typeMeta(k.type); var mins=Math.floor((now-k.ts)/60000); var old=mins>=10;
       var items=k.items.map(function(i){ return '<li><span>'+esc(i.name)+'</span><span class="q">\u00d7'+esc(i.qty)+'</span></li>'; }).join('');
-      var btn=k.status==='new'?T('tables.start','Start'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
-      return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="kno">#'+k.no+'</span></div>'
+      var btn=k.status==='new'?T('tables.start','Start cooking'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
+      var ageCls=mins>=10?'t-red':(mins>=5?'t-amber':'t-green'); var ageTxt=mins<=0?T('tables.justNow','just now'):(mins+'m');
+      return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="hnkds-timer '+ageCls+'">\u23F1 '+ageTxt+'</span><span class="kno">#'+k.no+'</span></div>'
         +'<ul class="hnkds-items">'+items+'</ul>'+(k.note?'<div class="hnkds-note">\uD83D\uDCDD '+esc(k.note)+'</div>':'')
-        +'<div class="hnkds-age">'+(mins<=0?T('tables.justNow','just now'):(mins+'m'))+'</div>'
         +'<div class="hnkds-cf"><button class="hnkds-b gh" style="flex:0;padding:9px 11px" onclick="HNTables.printKOT('+k.no+')">\uD83D\uDDA8</button><button class="hnkds-b go" onclick="HNTables.kdsAdvance(\''+k.id+'\')">'+btn+'</button></div></div>';
     }).join(''); }
   function isDesktop(){ try{ return document.documentElement.getAttribute('data-shell')==='desktop'; }catch(e){ return false; } }
