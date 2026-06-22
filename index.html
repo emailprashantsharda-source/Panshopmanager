@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_99_kds_timer';
+    window.HISAABNOW_BUILD = 'v33_100_roundkot_timer';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5256,6 +5256,7 @@ html[data-current-role="manager"] body{
     'tables.kitchen':          { en: 'Kitchen',                  hi: 'Kitchen' },
     'tables.sendKitchen':      { en: 'Send to kitchen',          hi: 'Kitchen भेजें' },
     'tables.sentKitchen':      { en: 'sent to kitchen',          hi: 'kitchen भेजा गया' },
+    'tables.nothingNew':       { en: 'Nothing new to send',      hi: 'भेजने के लिए कुछ नया नहीं' },
     'tables.note':             { en: 'Kitchen note',             hi: 'Kitchen note' },
     'tables.rename':           { en: 'Rename order',             hi: 'Order rename करें' },
     'tables.kitchenNote':      { en: 'Kitchen note (e.g. less spicy, no onion)', hi: 'Kitchen note (जैसे कम मिर्च, बिना प्याज़)' },
@@ -82743,7 +82744,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   ];
   function typeMeta(k){ for(var i=0;i<ORDER_TYPES.length;i++) if(ORDER_TYPES[i].k===k) return ORDER_TYPES[i]; return ORDER_TYPES[0]; }
   var orders=[], activeId=null, seq=0, kots=[], kotSeq=0;
-  var _wrappedRender=false,_wrappedSale=false,_wrappedSummary=false,_busy=false,_menuOpen=false,_kdsOpen=false;
+  var _wrappedRender=false,_wrappedSale=false,_wrappedSummary=false,_busy=false,_menuOpen=false,_kdsOpen=false,_kdsTick=0;
   function clone(o){ try{ return JSON.parse(JSON.stringify(o||{})); }catch(e){ return Array.isArray(o)?[]:{}; } }
   function A(){ return window.App; }
   function T(k,f){ return (A()&&A()._T)?A()._T(k,f):f; }
@@ -82788,10 +82789,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function itemsOf(o){ var out=[]; var live=(o.id===activeId); var cart=live?((A()&&A().cart)||{}):((o.snap&&o.snap.cart)||{}); var cl=live?((A()&&A().customLines)||[]):((o.snap&&o.snap.customLines)||[]);
     Object.keys(cart).forEach(function(k){ var q=+cart[k]||0; if(q>0) out.push({name:lblOf(k),qty:q}); });
     (cl||[]).forEach(function(l){ out.push({name:l.name||'Item',qty:l.qty||1}); }); return out; }
-  function sendKOT(id){ id=id||activeId; var o=find(id); if(!o){ toast('No active order'); return; } var items=itemsOf(o); if(!items.length){ toast(T('tables.addFirst','Add items first')); return; }
-    kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:items, note:o.note||'', ts:Date.now(), status:'new' };
-    kots.push(kot); o.kotSent=true; saveKDS(); save(); toast('KOT #'+kotSeq+' '+T('tables.sentKitchen','sent to kitchen')); if(_kdsOpen) renderKDS(); renderStrip(); return kot; }
-  function autoKOT(o, items){ if(!o||!items||!items.length) return; kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:items, note:o.note||'', ts:Date.now(), status:'new' }; kots.push(kot); o.kotSent=true; saveKDS(); if(_kdsOpen) renderKDS(); }
+  function sentMap(o){ if(!o.sent) o.sent={}; return o.sent; }
+  function deltaOf(o, full){ var s=sentMap(o); var out=[]; full.forEach(function(it){ var prev=s[it.name]||0; var d=(it.qty||0)-prev; if(d>0) out.push({name:it.name, qty:d}); }); return out; }
+  function markSent(o, full){ var s=sentMap(o); full.forEach(function(it){ s[it.name]=(it.qty||0); }); }
+  function sendKOT(id){ id=id||activeId; var o=find(id); if(!o){ toast('No active order'); return; } var full=itemsOf(o); if(!full.length){ toast(T('tables.addFirst','Add items first')); return; }
+    var delta=deltaOf(o, full); if(!delta.length){ toast(T('tables.nothingNew','Nothing new to send')); return; }
+    kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:delta, note:o.note||'', ts:Date.now(), status:'new' };
+    kots.push(kot); markSent(o, full); o.kotSent=true; saveKDS(); save(); toast('KOT #'+kotSeq+' '+T('tables.sentKitchen','sent to kitchen')); if(_kdsOpen) renderKDS(); renderStrip(); return kot; }
+  function autoKOT(o, items){ if(!o||!items||!items.length) return; var delta=deltaOf(o, items); if(!delta.length) return; kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:delta, note:o.note||'', ts:Date.now(), status:'new' }; kots.push(kot); markSent(o, items); o.kotSent=true; saveKDS(); if(_kdsOpen) renderKDS(); }
   function kdsAdvance(kid){ var k=null; for(var i=0;i<kots.length;i++) if(kots[i].id===kid) k=kots[i]; if(!k) return; if(k.status==='new')k.status='prep'; else if(k.status==='prep')k.status='ready'; else { kots=kots.filter(function(x){return x.id!==kid;}); } saveKDS(); renderKDS(); renderStrip(); }
   function kdsClearReady(){ kots=kots.filter(function(k){return k.status!=='ready';}); saveKDS(); renderKDS(); renderStrip(); }
   function printKOT(kot){ try{
@@ -82889,7 +82894,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   document.addEventListener('click', function(e){ try{ if(isDesktop()) return; var b=e.target && e.target.closest && e.target.closest('.ck-collect-btn'); if(b) armBill(); }catch(_){} }, true);
   document.addEventListener('keydown', function(e){ try{ if(e.key==='F12' && document.body && document.body.classList.contains('hnd-on-pos')){ var b=document.getElementById('hnd-pos-complete'); if(b && !b.disabled) armBill(); } }catch(_){} }, true);
   function wrapSummary(){ if(_wrappedSummary||!A()||typeof A().updateCartSummary!=='function') return; var orig=A().updateCartSummary.bind(A()); A().updateCartSummary=function(){ var r=orig.apply(A(),arguments); try{ if(!_busy&&isEnabled()){ lazySeed(); renderStrip(); } }catch(e){} return r; }; _wrappedSummary=true; }
-  function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
+  function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); if(_kdsOpen){ _kdsTick=(_kdsTick||0)+1; if(_kdsTick%5===0) renderKDS(); } if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
   function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); setTimeout(reconcileOnLoad,500); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
   window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, _state:function(){ return { orders:orders, activeId:activeId, kots:kots }; } };
