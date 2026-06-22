@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_105_dash_channel';
+    window.HISAABNOW_BUILD = 'v33_107_fix_comma';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5116,8 +5116,8 @@ html[data-current-role="manager"] body{
 
     /* ── Reports page ── */
     'rep.title':               { en: 'Reports',                  hi: 'रिपोर्ट' },
-    'rep.byChannel':           { en: 'Sales by channel',         hi: 'चैनल के हिसाब से बिक्री' },
     'dash.todayByChannel':     { en: 'Today by channel',        hi: 'आज चैनल के हिसाब से' },
+    'rep.byChannel':           { en: 'Sales by channel',         hi: 'चैनल के हिसाब से बिक्री' },
     'rep.revenue':             { en: 'Revenue',                  hi: 'बिक्री' },
     'rep.netProfit':           { en: 'Net Profit',               hi: 'नेट प्रॉफिट' },
     'rep.grossProfit':         { en: 'Gross Profit',             hi: 'ग्रॉस प्रॉफिट' },
@@ -5275,7 +5275,7 @@ html[data-current-role="manager"] body{
     'tables.addFirst':         { en: 'Add items first',          hi: 'पहले items जोड़ें' },
     'tables.clearReady':       { en: 'Clear ready',              hi: 'Ready हटाएं' },
     'tables.openTickets':      { en: 'open tickets',             hi: 'खुले tickets' },
-    'tables.noTickets':        { en: 'No kitchen tickets yet. Send an order to the kitchen to see it here.', hi: 'अभी कोई kitchen ticket नहीं। Order को kitchen भेजें।' },
+    'tables.noTickets':        { en: 'No kitchen tickets yet. Send an order to the kitchen to see it here.', hi: 'अभी कोई kitchen ticket नहीं।' },
     'tables.start':            { en: 'Start cooking',            hi: 'पकाना शुरू करें' },
     'tables.markReady':        { en: 'Mark ready',               hi: 'Ready करें' },
     'tables.done':             { en: 'Done ✓',                   hi: 'हो गया ✓' },
@@ -11412,34 +11412,14 @@ const App = {
     if (!sec || !pills) return;
     let sales = [];
     try { sales = (window.Store && Store.todaySales) ? Store.todaySales() : []; } catch(e){ sales = []; }
-    const META = {
-      dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',c:'#0F766E'},
-      takeaway:{e:'\uD83E\uDD61',l:'Takeaway',c:'#92400E'},
-      delivery:{e:'\uD83D\uDEF5',l:'Delivery',c:'#3730A3'},
-      swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',c:'#C2410C'},
-      zomato:{e:'\uD83C\uDF45',l:'Zomato',c:'#B91C1C'},
-      walkin:{e:'\uD83D\uDEB6',l:'Walk-in',c:'#475569'}
-    };
+    const META = { dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',c:'#0F766E'}, takeaway:{e:'\uD83E\uDD61',l:'Takeaway',c:'#92400E'}, delivery:{e:'\uD83D\uDEF5',l:'Delivery',c:'#3730A3'}, swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',c:'#C2410C'}, zomato:{e:'\uD83C\uDF45',l:'Zomato',c:'#B91C1C'}, walkin:{e:'\uD83D\uDEB6',l:'Walk-in',c:'#475569'} };
     const agg = {}; let hasChannel = false;
-    (sales||[]).forEach(s => {
-      const ch = (s && s.channel) ? s.channel : 'walkin';
-      if (ch !== 'walkin') hasChannel = true;
-      const amt = Number((s && (s.amt || s.total)) || 0);
-      if (!agg[ch]) agg[ch] = { ch, rev:0, n:0 };
-      agg[ch].rev += amt; agg[ch].n += 1;
-    });
+    (sales||[]).forEach(s => { const ch = (s && s.channel) ? s.channel : 'walkin'; if (ch !== 'walkin') hasChannel = true; const amt = Number((s && (s.amt || s.total)) || 0); if (!agg[ch]) agg[ch] = { ch, rev:0, n:0 }; agg[ch].rev += amt; agg[ch].n += 1; });
     if (!hasChannel) { sec.style.display = 'none'; return; }
     sec.style.display = '';
     const rows = Object.keys(agg).map(k => agg[k]).sort((a,b)=>b.rev-a.rev);
-    pills.innerHTML = rows.map(r => {
-      const m = META[r.ch] || { e:'\uD83E\uDDFE', l:r.ch, c:'#475569' };
-      return '<div style="display:inline-flex;align-items:center;gap:6px;background:'+m.c+'14;border:1px solid '+m.c+'33;border-radius:99px;padding:6px 11px">'
-        + '<span style="font-size:13px">'+m.e+'</span>'
-        + '<span style="font-size:12px;font-weight:700;color:var(--t1)">'+this.escapeHtml(m.l)+'</span>'
-        + '<span style="font-size:12.5px;font-weight:800;color:'+m.c+';font-variant-numeric:tabular-nums">\u20B9'+Math.round(r.rev).toLocaleString('en-IN')+'</span>'
-        + '</div>';
-    }).join('');
-  }
+    pills.innerHTML = rows.map(r => { const m = META[r.ch] || { e:'\uD83E\uDDFE', l:r.ch, c:'#475569' }; return '<div style="display:inline-flex;align-items:center;gap:6px;background:'+m.c+'14;border:1px solid '+m.c+'33;border-radius:99px;padding:6px 11px"><span style="font-size:13px">'+m.e+'</span><span style="font-size:12px;font-weight:700;color:var(--t1)">'+this.escapeHtml(m.l)+'</span><span style="font-size:12.5px;font-weight:800;color:'+m.c+';font-variant-numeric:tabular-nums">\u20B9'+Math.round(r.rev).toLocaleString('en-IN')+'</span></div>'; }).join('');
+  },
   renderHome(){
     const cfg = VERTICAL_CONFIG[this.vertical];
     if (!cfg) return;
@@ -15877,43 +15857,15 @@ const App = {
     const sec = document.getElementById('reports-channel-section');
     const list = document.getElementById('reports-channel-list');
     if (!sec || !list) return;
-    const META = {
-      dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',c:'#0F766E'},
-      takeaway:{e:'\uD83E\uDD61',l:'Takeaway',c:'#92400E'},
-      delivery:{e:'\uD83D\uDEF5',l:'Delivery',c:'#3730A3'},
-      swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',c:'#C2410C'},
-      zomato:{e:'\uD83C\uDF45',l:'Zomato',c:'#B91C1C'},
-      walkin:{e:'\uD83D\uDEB6',l:'Walk-in',c:'#475569'}
-    };
+    const META = { dinein:{e:'\uD83C\uDF7D\uFE0F',l:'Dine-in',c:'#0F766E'}, takeaway:{e:'\uD83E\uDD61',l:'Takeaway',c:'#92400E'}, delivery:{e:'\uD83D\uDEF5',l:'Delivery',c:'#3730A3'}, swiggy:{e:'\uD83D\uDEF5',l:'Swiggy',c:'#C2410C'}, zomato:{e:'\uD83C\uDF45',l:'Zomato',c:'#B91C1C'}, walkin:{e:'\uD83D\uDEB6',l:'Walk-in',c:'#475569'} };
     const agg = {}; let total = 0, hasChannel = false;
-    (salesInRange||[]).forEach(s => {
-      const ch = (s && s.channel) ? s.channel : 'walkin';
-      if (ch !== 'walkin') hasChannel = true;
-      const amt = Number((s && (s.amt || s.total)) || 0);
-      if (!agg[ch]) agg[ch] = { ch, rev:0, n:0 };
-      agg[ch].rev += amt; agg[ch].n += 1; total += amt;
-    });
+    (salesInRange||[]).forEach(s => { const ch = (s && s.channel) ? s.channel : 'walkin'; if (ch !== 'walkin') hasChannel = true; const amt = Number((s && (s.amt || s.total)) || 0); if (!agg[ch]) agg[ch] = { ch, rev:0, n:0 }; agg[ch].rev += amt; agg[ch].n += 1; total += amt; });
     if (!hasChannel) { sec.style.display = 'none'; return; }
     sec.style.display = '';
     const rows = Object.keys(agg).map(k => agg[k]).sort((a,b)=>b.rev-a.rev);
     const maxRev = rows.length ? rows[0].rev : 1;
-    list.innerHTML = rows.map(r => {
-      const m = META[r.ch] || { e:'\uD83E\uDDFE', l:r.ch, c:'#475569' };
-      const pct = total>0 ? Math.round(r.rev/total*100) : 0;
-      const barPct = maxRev>0 ? Math.max(4, Math.round(r.rev/maxRev*100)) : 0;
-      return '<div style="padding:9px 0;border-bottom:1px solid var(--border)">'
-        + '<div style="display:flex;align-items:center;gap:8px">'
-        + '<span style="font-size:16px">'+m.e+'</span>'
-        + '<span style="font-size:13.5px;font-weight:700;color:var(--t1)">'+this.escapeHtml(m.l)+'</span>'
-        + '<span style="font-size:11.5px;color:var(--t3);font-weight:600">'+r.n+' '+(r.n===1?'order':'orders')+'</span>'
-        + '<span style="margin-left:auto;font-size:13.5px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">\u20B9'+Math.round(r.rev).toLocaleString('en-IN')+'</span>'
-        + '<span style="font-size:11px;color:var(--t3);font-weight:700;min-width:34px;text-align:right">'+pct+'%</span>'
-        + '</div>'
-        + '<div style="margin-top:6px;height:6px;background:var(--border);border-radius:99px;overflow:hidden">'
-        + '<div style="height:100%;width:'+barPct+'%;background:'+m.c+';border-radius:99px"></div>'
-        + '</div></div>';
-    }).join('');
-  }
+    list.innerHTML = rows.map(r => { const m = META[r.ch] || { e:'\uD83E\uDDFE', l:r.ch, c:'#475569' }; const pct = total>0 ? Math.round(r.rev/total*100) : 0; const barPct = maxRev>0 ? Math.max(4, Math.round(r.rev/maxRev*100)) : 0; return '<div style="padding:9px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">'+m.e+'</span><span style="font-size:13.5px;font-weight:700;color:var(--t1)">'+this.escapeHtml(m.l)+'</span><span style="font-size:11.5px;color:var(--t3);font-weight:600">'+r.n+' '+(r.n===1?'order':'orders')+'</span><span style="margin-left:auto;font-size:13.5px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums">\u20B9'+Math.round(r.rev).toLocaleString('en-IN')+'</span><span style="font-size:11px;color:var(--t3);font-weight:700;min-width:34px;text-align:right">'+pct+'%</span></div><div style="margin-top:6px;height:6px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+barPct+'%;background:'+m.c+';border-radius:99px"></div></div></div>'; }).join('');
+  },
   renderReportsScreen(){
 
     const range = this._reportsRange || 'weekly';
@@ -20557,7 +20509,6 @@ const App = {
       createdByName: creatorMeta.createdByName
     };
 
-    /* (v33_103) Stamp the sale's channel (order type) for channel-wise reporting. */
     try {
       var _ch = (window.HNTables && HNTables.activeChannel) ? HNTables.activeChannel() : null;
       if (_ch && _ch.type) { bill.channel = _ch.type; bill.channelLabel = _ch.label; }
@@ -48999,7 +48950,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 
     filtered: function(){
       var self = this;
-      /* (v33_88) Show inactive/preloaded items too. */
+      /* (v33_88) */
       var list = getProds().slice();
       /* Vertical catalog filter — salon Product Sales shows retail only */
       list = list.filter(function(p){ return self._verticalFilter(p); });
@@ -82875,7 +82826,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   /* ---- Firestore realtime sync: shops/<shopId>/live/board (whole-board, multi-device) ---- */
   var _sync={ on:false, sid:null, unsub:null, sdk:null, dev:null, rev:0, applied:0, pushT:null, coolUntil:0 };
   function syncDev(){ if(_sync.dev) return _sync.dev; var d=null; try{ d=localStorage.getItem('hn_sync_dev'); }catch(e){} if(!d){ d='d'+Math.random().toString(36).slice(2,9)+Date.now().toString(36); try{ localStorage.setItem('hn_sync_dev',d); }catch(e){} } _sync.dev=d; return d; }
-  function syncEnabled(){ try{ if(localStorage.getItem('hn_sync_on')==='0') return false; }catch(e){} return true; }
+  function syncEnabled(){ try{ return localStorage.getItem('hn_sync_on')==='1'; }catch(e){} return false; }
   function syncDb(){ try{ if(window.HisaabSyncDeps&&window.HisaabSyncDeps.db) return window.HisaabSyncDeps.db; }catch(e){} try{ if(window.kfDb) return window.kfDb; }catch(e){} return null; }
   function syncSignedIn(){ try{ return !!(window.kfAuth&&window.kfAuth.currentUser); }catch(e){ return false; } }
   function syncSid(){ try{ var s=shopId(); if(s&&s!=='__local') return s; }catch(e){} return null; }
