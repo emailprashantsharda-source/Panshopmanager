@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_83_pixel_value';
+    window.HISAABNOW_BUILD = 'v33_84_tables';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5243,6 +5243,8 @@ html[data-current-role="manager"] body{
     'more.helpSub':            { en: 'Tutorials, WhatsApp us',   hi: 'ट्यूटोरियल, WhatsApp करें' },
     'more.aiAdvisor':          { en: 'AI Advisor',               hi: 'AI सलाहकार' },
     'more.aiAdvisorSub':       { en: 'Chat & ask anything · voice', hi: 'Chat करें, कुछ भी पूछें · voice' },
+    'tables.openOrders':       { en: 'Open orders',              hi: 'खुले orders' },
+    'tables.newTable':         { en: 'New table',                hi: 'नया table' },
     'more.signOut':            { en: 'Sign out',                 hi: 'लॉगआउट' },
 
     /* More page · dynamic content */
@@ -5395,7 +5397,7 @@ html[data-current-role="manager"] body{
     'toast.setPricesFirst': { en: 'Set prices in Catalog first · tap each item', hi: 'पहले Catalog में दाम सेट करें · हर आइटम पर टैप करें' },
     'toast.cannotAddOutlet': { en: 'Cannot add more outlets · check subscription', hi: 'और दुकानें नहीं जोड़ सकते · सब्सक्रिप्शन देखें' },
     'toast.failedOutlet': { en: 'Failed to create outlet', hi: 'दुकान नहीं बन सकी' },
-    'toast.outletLimit': { en: 'Maximum 5 outlets reached', hi: 'ज़्यादा से ज़्यादा 5 outlets हो सकते हैं' },
+    'toast.outletLimit': { en: 'Maximum 5 outlets reached', hi: 'ज़्यादा से ज़्यादा 5 outlets हो सकते हैं' },
     'toast.remindersOn': { en: 'Customer reminders enabled · auto-WhatsApp lapsed customers', hi: '✓ ग्राहक रिमाइंडर चालू · पुराने ग्राहकों को WhatsApp जाएगा' },
     'toast.remindersOff': { en: 'Customer reminders off', hi: '✓ ग्राहक रिमाइंडर बंद' },
     'toast.waDigestOff': { en: 'WhatsApp digest off', hi: '✓ WhatsApp डेली बंद' },
@@ -5682,7 +5684,7 @@ html[data-current-role="manager"] body{
     'sheet.noOutletsYet':      { en: 'No outlets yet. Tap below to create your first business.', hi: 'अभी कोई दुकान नहीं। नीचे टैप करके पहला बिज़नेस बनाएं।' },
     'sheet.active':            { en: 'ACTIVE',                          hi: 'चालू' },
     'sheet.shopFallback':      { en: 'Shop',                            hi: 'दुकान' },
-    'sheet.outletLimitUpgrade':{ en: 'Maximum 5 outlets reached', hi: 'ज़्यादा से ज़्यादा 5 outlets हो सकते हैं' },
+    'sheet.outletLimitUpgrade':{ en: 'Maximum 5 outlets reached', hi: 'ज़्यादा से ज़्यादा 5 outlets हो सकते हैं' },
     'sheet.eachBizOwnSales':   { en: 'Each business gets its own sales, staff, inventory', hi: 'हर बिज़नेस की अपनी बिक्री, स्टाफ, स्टॉक होगा' },
     'sheet.addNewBiz':         { en: 'Add new business',                hi: 'नया बिज़नेस जोड़ें' },
     'sheet.noOutletsShort':    { en: 'No outlets yet',                  hi: 'अभी कोई दुकान नहीं' },
@@ -12267,7 +12269,7 @@ const App = {
               fg = '#1E293B';
             }
           } else if (tier === 'trial-expired' || tier === 'expired') {
-            badgeText = ''; // (v33_80) removed dead SUBSCRIBE-TO-UNLOCK badge (no action)
+            badgeText = ''; // (v33_80) removed dead SUBSCRIBE-TO-UNLOCK badge
           } else if (tierCfg) {
 
             const planName = (tierCfg.name || tier).toUpperCase();
@@ -38921,8 +38923,7 @@ function canAddShop(){
 
   if (!window.Subs || typeof window.Subs.getCurrentTier !== 'function') return true;
   var tier = window.Subs.getCurrentTier();
-  // (v33_81) Multi-outlet opened up: every plan can run up to 5 outlets.
-  // To re-monetise later, lower individual tiers here (e.g. basic/pro: 1).
+  // (v33_81) Multi-outlet opened up to 5 on every plan.
   var limits = { trial: 5, basic: 5, pro: 5, king: 5, 'trial-expired': 5, expired: 5 };
   var max = limits[tier] != null ? limits[tier] : 5;
   return state.shops.length < max;
@@ -82552,6 +82553,132 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 })();
 </script>
 <!-- ============== END AI Business Advisor welcome ============== -->
+
+<!-- ============================================================
+     HisaabNow Desktop · Tables / Open Orders — v1
+     ─────────────────────────────────────────────────────────────
+     Lets the desktop POS hold several orders in parallel (Table 1,
+     Table 2 …). A "table" is just a saved snapshot of the live cart
+     state that clearCart resets: cart, customLines, _cartStaff,
+     _cartStaffOverridden (+ paymentMode). Switching parks the active
+     order and recalls another; settling bills the active order via the
+     existing App.completeSale() and removes it.
+
+     Integrates with: window.HNDPOS.renderCart(), App.cart,
+     App.customLines, App._cartStaff, App.cartTotal(), App.completeSale(),
+     App.updateCartSummary().  Renders ONLY on the desktop POS panel
+     (.hnd-pos-r), so mobile is untouched.  Gated to food verticals
+     (override: localStorage hn_tables_on = '1' / '0').
+
+     API: HNTables.newTable() .switchTo(id) .removeTable(id) .isEnabled()
+============================================================ -->
+<style>
+#hntab-strip{border-bottom:1px solid var(--hnd-line,#ECECEC);padding:10px 12px;background:var(--hnd-card,#fff);position:sticky;top:0;z-index:3}
+.hntab-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--hnd-muted,#8A8A8A);margin-bottom:8px}
+.hntab-head .hntab-n{background:#FAF0E0;color:#B8860B;border-radius:99px;padding:1px 7px;font-size:10px}
+.hntab-chips{display:flex;flex-wrap:wrap;gap:7px}
+.hntab-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--hnd-line,#E2E2E2);background:var(--hnd-card,#fff);border-radius:9px;padding:6px 9px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--hnd-ink,#1a1a1a);transition:border-color .12s,background .12s}
+.hntab-chip:hover{border-color:#FFC043}
+.hntab-chip.active{border-color:#FFC043;background:#FFF8EA}
+.hntab-chip .t{font-weight:700}
+.hntab-chip .amt{font-size:11px;font-weight:700;color:#B8860B;font-variant-numeric:tabular-nums}
+.hntab-chip .amt.zero{color:var(--hnd-muted,#9C9C9C)}
+.hntab-chip .x{display:inline-flex;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;color:var(--hnd-muted,#9C9C9C);font-size:12px;line-height:1}
+.hntab-chip .x:hover{background:#F0F0F0;color:#C0392B}
+.hntab-new{display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--hnd-muted,#C8C8C8);background:none;border-radius:9px;padding:6px 11px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--hnd-gold-rich,#B8860B)}
+.hntab-new:hover{background:#FAF0E0}
+</style>
+
+<script>
+(function(){
+  'use strict';
+  if (window.HNTables) return;
+
+  var FOOD = ['cafe','restaurant','sweets','bakery','cloudkitchen','cloud_kitchen','cloud-kitchen','dhaba','tiffin','food','mithai'];
+  var orders = [];          // [{id,label,total,count,snap,createdAt}]
+  var activeId = null;      // id of the order mirrored by the live cart
+  var seq = 0;
+  var _wrappedRender = false, _wrappedSale = false, _busy = false;
+
+  function clone(o){ try { return JSON.parse(JSON.stringify(o||{})); } catch(e){ return Array.isArray(o)?[]:{}; } }
+  function A(){ return window.App; }
+  function vertical(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return ((a&&(a.cardType||a.profession))||(A()&&A().vertical)||(window.S&&window.S.prof)||'').toLowerCase(); } catch(e){ return ''; } }
+  function isEnabled(){ try { var f=localStorage.getItem('hn_tables_on'); if(f==='1') return true; if(f==='0') return false; } catch(e){} return FOOD.indexOf(vertical())>=0; }
+  function shopId(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&a.shopId)||(A()&&A().uid)||'default'; } catch(e){ return 'default'; } }
+  function pkey(){ return 'hn_tables_v1_'+shopId(); }
+
+  function load(){ try { var raw=localStorage.getItem(pkey()); if(raw){ var d=JSON.parse(raw); orders=Array.isArray(d.orders)?d.orders:[]; seq=d.seq||orders.length; } } catch(e){ orders=[]; } activeId=null; }
+  function save(){ try { localStorage.setItem(pkey(), JSON.stringify({orders:orders, seq:seq})); } catch(e){} }
+  function find(id){ for(var i=0;i<orders.length;i++) if(orders[i].id===id) return orders[i]; return null; }
+
+  /* ---- live cart <-> snapshot ---- */
+  function liveSnap(){ var a=A()||{}; return { cart:clone(a.cart), customLines:clone(a.customLines), staff:clone(a._cartStaff), staffOv:clone(a._cartStaffOverridden), pay:a.paymentMode }; }
+  function liveTotals(){ try { var t=A().cartTotal(); return { total:Math.round(t.total||0), count:t.count||0 }; } catch(e){ var c=(A()&&A().cart)||{}; var n=0; for(var k in c) n+=(+c[k]||0); return { total:0, count:n }; } }
+  function applySnap(s){ var a=A(); if(!a||!s) return; a.cart=clone(s.cart); a.customLines=clone(s.customLines)||[]; a._cartStaff=clone(s.staff); a._cartStaffOverridden=clone(s.staffOv); if(s.pay) a.paymentMode=s.pay; repaint(); }
+  function clearLive(){ var a=A(); if(!a) return; a.cart={}; a.customLines=[]; a._cartStaff={}; a._cartStaffOverridden={}; repaint(); }
+  function repaint(){ try { if(window.HNDPOS&&HNDPOS.renderCart) HNDPOS.renderCart(); } catch(e){} try { if(A()&&A().updateCartSummary) A().updateCartSummary(); } catch(e){} }
+
+  function syncActive(){ if(_busy||activeId==null) return; var o=find(activeId); if(!o) return; o.snap=liveSnap(); var t=liveTotals(); o.total=t.total; o.count=t.count; }
+  function parkActive(){ syncActive(); }
+
+  /* ---- ops ---- */
+  function newTable(){ parkActive(); _busy=true; clearLive(); seq++; var id='t'+Date.now()+'_'+seq; var o={ id:id, label:'Table '+seq, total:0, count:0, snap:liveSnap(), createdAt:Date.now() }; orders.push(o); activeId=id; _busy=false; save(); renderStrip(); }
+  function switchTo(id){ if(id===activeId){ return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
+  function removeTable(id){ var o=find(id); if(!o) return; var hasItems=(o.count||0)>0; if(hasItems){ var msg=(A()&&A()._T)?A()._T('tables.removeConfirm','Remove '+o.label+' and discard its order?'):'Remove '+o.label+' and discard its order?'; if(!window.confirm(msg)) return; } orders=orders.filter(function(x){return x.id!==id;}); if(activeId===id){ activeId=null; _busy=true; clearLive(); _busy=false; } save(); ensureSeed(); renderStrip(); }
+  function afterSale(){ if(activeId==null) return; orders=orders.filter(function(x){return x.id!==activeId;}); activeId=null; save(); ensureSeed(); renderStrip(); }
+  function ensureSeed(){ if(!isEnabled()) return; if(orders.length===0 && activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Table '+seq, snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
+
+  /* ---- strip UI ---- */
+  function host(){ return document.querySelector('html[data-shell="desktop"] .hnd-pos-r') || document.querySelector('.hnd-pos-r'); }
+  function ensureStrip(){
+    if(!isEnabled()){ var ex=document.getElementById('hntab-strip'); if(ex) ex.remove(); return false; }
+    var h=host(); if(!h) return false;
+    var strip=document.getElementById('hntab-strip');
+    if(!strip){ strip=document.createElement('div'); strip.id='hntab-strip'; h.insertBefore(strip, h.firstChild); }
+    return true;
+  }
+  function renderStrip(){
+    if(!ensureStrip()) return;
+    syncActive();
+    var strip=document.getElementById('hntab-strip'); if(!strip) return;
+    var chips=orders.map(function(o){
+      var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count};
+      var amtTxt=(amt.total>0)?('₹'+amt.total):(((amt.count||0)>0)?(amt.count+' item'):'empty');
+      return '<button class="hntab-chip'+(live?' active':'')+'" onclick="HNTables.switchTo(\''+o.id+'\')" type="button">'
+        + '<span class="t">'+(o.label||'Table')+'</span>'
+        + '<span class="amt'+(amt.total>0?'':' zero')+'">'+amtTxt+'</span>'
+        + '<span class="x" title="Remove" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span>'
+        + '</button>';
+    }).join('');
+    strip.innerHTML =
+      '<div class="hntab-head"><i class="ti ti-layout-grid" aria-hidden="true"></i> '
+        + ((A()&&A()._T)?A()._T('tables.openOrders','Open orders'):'Open orders')
+        + ' <span class="hntab-n">'+orders.length+'</span></div>'
+      + '<div class="hntab-chips">'+chips
+        + '<button class="hntab-new" type="button" onclick="HNTables.newTable()">+ '
+        + ((A()&&A()._T)?A()._T('tables.newTable','New table'):'New table')+'</button></div>';
+  }
+
+  /* ---- hooks ---- */
+  function wrapRender(){ if(_wrappedRender||!window.HNDPOS||typeof HNDPOS.renderCart!=='function') return;
+    var orig=HNDPOS.renderCart.bind(HNDPOS); HNDPOS.renderCart=function(){ var r=orig.apply(null,arguments); try{ if(isEnabled()){ ensureSeed(); renderStrip(); } }catch(e){} return r; }; _wrappedRender=true; }
+  function wrapSale(){ if(_wrappedSale||!A()||typeof A().completeSale!=='function') return;
+    var orig=A().completeSale.bind(A()); A().completeSale=function(){ var hadActive=(activeId!=null); var r=orig.apply(A(),arguments);
+      Promise.resolve(r).then(function(){ check(); }).catch(function(){});
+      setTimeout(check,350); setTimeout(check,900);
+      function check(){ try{ if(hadActive){ var c=(A()&&A().cart)||{}; if(Object.keys(c).length===0){ afterSale(); } } }catch(e){} }
+      return r; }; _wrappedSale=true; }
+
+  function tick(){ try { wrapRender(); wrapSale(); if(isEnabled() && host()){ ensureSeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex && !isEnabled()) ex.remove(); } } catch(e){} }
+
+  function init(){ load(); setInterval(tick, 1000); tick(); }
+  if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded', init);
+
+  window.HNTables = { newTable:newTable, switchTo:switchTo, removeTable:removeTable, isEnabled:isEnabled,
+    _state:function(){ return { orders:orders, activeId:activeId }; } };
+})();
+</script>
+<!-- ============== END Tables / Open Orders (desktop) ============== -->
 
 </body>
 </html>
