@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_88_menu_visible';
+    window.HISAABNOW_BUILD = 'v33_89_strip_left';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -48867,7 +48867,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
 
     filtered: function(){
       var self = this;
-      /* (v33_88) Show inactive/preloaded (seeded) items too, so the starter menu is visible & priceable on desktop. */
+      /* (v33_88) Show inactive/preloaded (seeded) items too. */
       var list = getProds().slice();
       /* Vertical catalog filter — salon Product Sales shows retail only */
       list = list.filter(function(p){ return self._verticalFilter(p); });
@@ -82597,7 +82597,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
      API: HNTables.newTable() .switchTo(id) .removeTable(id) .isEnabled()
 ============================================================ -->
 <style>
-#hntab-strip{border-bottom:1px solid var(--hnd-line,#ECECEC);padding:10px 12px;background:var(--hnd-card,#fff);position:sticky;top:0;z-index:3}
+#hntab-strip{border:1px solid var(--hnd-line,#E2E2E2);border-radius:10px;padding:10px 12px;background:var(--hnd-card,#fff);margin-bottom:2px}
 .hntab-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--hnd-muted,#8A8A8A);margin-bottom:8px}
 .hntab-head .hntab-n{background:#FAF0E0;color:#B8860B;border-radius:99px;padding:1px 7px;font-size:10px}
 .hntab-chips{display:flex;flex-wrap:wrap;gap:7px}
@@ -82676,7 +82676,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function ensureSeed(){ if(!isEnabled()||mode()!=='orders') return; if(orders.length===0 && activeId==null){ seq++; var id='t'+Date.now()+'_'+seq; orders.push({ id:id, label:'Order '+seq, snap:liveSnap(), total:0, count:0, createdAt:Date.now() }); activeId=id; save(); } }
 
   /* ---- strip UI ---- */
-  function host(){ return document.querySelector('html[data-shell="desktop"] .hnd-pos-r') || document.querySelector('.hnd-pos-r'); }
+  function host(){ return document.querySelector('html[data-shell="desktop"] .hnd-pos-l') || document.querySelector('.hnd-pos-l'); }
   function ensureStrip(){
     if(!isEnabled()){ var ex=document.getElementById('hntab-strip'); if(ex) ex.remove(); return false; }
     var h=host(); if(!h) return false;
