@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_107_fix_comma';
+    window.HISAABNOW_BUILD = 'v33_108_capi_match';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -5271,7 +5271,7 @@ html[data-current-role="manager"] body{
     'tables.nothingNew':       { en: 'Nothing new to send',      hi: 'भेजने के लिए कुछ नया नहीं' },
     'tables.note':             { en: 'Kitchen note',             hi: 'Kitchen note' },
     'tables.rename':           { en: 'Rename order',             hi: 'Order rename करें' },
-    'tables.kitchenNote':      { en: 'Kitchen note (e.g. less spicy, no onion)', hi: 'Kitchen note (जैसे कम मिर्च, बिना प्याज़)' },
+    'tables.kitchenNote':      { en: 'Kitchen note (e.g. less spicy, no onion)', hi: 'Kitchen note' },
     'tables.addFirst':         { en: 'Add items first',          hi: 'पहले items जोड़ें' },
     'tables.clearReady':       { en: 'Clear ready',              hi: 'Ready हटाएं' },
     'tables.openTickets':      { en: 'open tickets',             hi: 'खुले tickets' },
@@ -29446,11 +29446,24 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     // logins and multi-shop adds don't re-fire it.
     try {
       if (window.fbq && !localStorage.getItem('hn_ev_registered')) {
-        var _ph = ((window.kfAuth && window.kfAuth.currentUser && window.kfAuth.currentUser.phoneNumber) || '').replace(/[^0-9]/g, '');
-        if (_ph) { try { fbq('init', '1670925877471743', { ph: _ph }); } catch (e) {} }
-        fbq('track', 'CompleteRegistration', { content_name: 'shop_signup', status: true, value: 99, currency: 'INR' });
+        var _cu = (window.kfAuth && window.kfAuth.currentUser) || {};
+        var _ph = (_cu.phoneNumber || '').replace(/[^0-9]/g, '');
+        var _uid = _cu.uid || '';
+        var _am = {};
+        if (_ph) _am.ph = _ph;
+        if (_uid) _am.external_id = _uid;
+        try { fbq('init', '1670925877471743', _am); } catch (e) {}
+        var _eid = 'reg_' + (_uid || Math.random().toString(36).slice(2)) + '_' + Date.now();
+        fbq('track', 'CompleteRegistration', { content_name: 'shop_signup', status: true, value: 99, currency: 'INR' }, { eventID: _eid });
         localStorage.setItem('hn_ev_registered', '1');
-        console.log('[pixel] CompleteRegistration fired (new signup)');
+        console.log('[pixel] CompleteRegistration fired (new signup), eid=' + _eid);
+        try {
+          var _ck = function(n){ return (document.cookie.match(new RegExp('(?:^|; *)' + n + '=([^;]+)')) || [])[1] || ''; };
+          fetch('https://us-central1-panshopmanager.cloudfunctions.net/metaCapiRegister', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_id: _eid, event_source_url: location.href, phone: _ph || null, external_id: _uid || null, fbp: _ck('_fbp') || null, fbc: _ck('_fbc') || null })
+          }).catch(function(){});
+        } catch (e) {}
       }
     } catch (e) { console.warn('[pixel] CompleteRegistration failed (non-fatal):', e); }
 
@@ -36522,7 +36535,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       try {
         if (window.fbq) {
           var _phS = (user.phoneNumber || '').replace(/[^0-9]/g, '');
-          if (_phS) { try { fbq('init', '1670925877471743', { ph: _phS }); } catch (e) {} }
+          var _amS = {}; if (_phS) _amS.ph = _phS; if (user.uid) _amS.external_id = user.uid;
+          try { fbq('init', '1670925877471743', _amS); } catch (e) {}
           fbq('track', 'Lead', { content_name: 'signup', value: 99, currency: 'INR' });
           console.log('[pixel] Lead fired (signed up)');
         }
