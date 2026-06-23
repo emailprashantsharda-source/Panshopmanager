@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_108_capi_match';
+    window.HISAABNOW_BUILD = 'v33_109_pay_link';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83006,5 +83006,51 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 </script>
 <!-- ============== END Orders/Tables + KOT/KDS ============== -->
 
+<!-- =================== Subscription deep-link (?pay=) =================== -->
+<script>
+(function(){
+  function parseIntent(raw){
+    var parts = String(raw||'').toLowerCase().split('_');
+    var tier = parts[0];
+    var cyc = parts[1] || 'monthly';
+    cyc = (cyc === 'yearly' || cyc === 'annual' || cyc === 'year' || cyc === 'yr') ? 'annual' : 'monthly';
+    return { tier: tier, cycle: cyc };
+  }
+  try {
+    var sp = new URLSearchParams(location.search);
+    var pay = sp.get('pay');
+    if (pay) {
+      try { localStorage.setItem('hn_pay_intent', JSON.stringify({ v: pay, t: Date.now() })); } catch(e){}
+      try { history.replaceState(null, '', location.pathname); } catch(e){}
+    }
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem('hn_pay_intent') || 'null'); } catch(e){}
+    if (!stored || !stored.v) return;
+    if (Date.now() - (stored.t || 0) > 3600000) { try { localStorage.removeItem('hn_pay_intent'); } catch(e){} return; }
+    var tries = 0;
+    var timer = setInterval(function(){
+      tries++;
+      var authed = window.App && window.kfAuth && window.kfAuth.currentUser;
+      var ready = authed && (window.App.reviewAndPay || window.App.openSubscription);
+      if (ready) {
+        clearInterval(timer);
+        try { localStorage.removeItem('hn_pay_intent'); } catch(e){}
+        var it = parseIntent(stored.v);
+        setTimeout(function(){
+          try {
+            if ((it.tier === 'pro' || it.tier === 'king') && window.App.reviewAndPay) {
+              window.App.reviewAndPay(it.tier, it.cycle);
+            } else if (window.App.openSubscription) {
+              window.App.openSubscription();
+            }
+          } catch(e){ console.warn('[pay-link] trigger failed', e); }
+        }, 700);
+      } else if (tries > 600) {
+        clearInterval(timer);
+      }
+    }, 500);
+  } catch(e){}
+})();
+</script>
 </body>
 </html>
