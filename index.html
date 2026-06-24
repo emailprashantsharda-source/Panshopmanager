@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_118_promo_frontend';
+    window.HISAABNOW_BUILD = 'v33_126_desktopFab';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -1063,6 +1063,40 @@ select.ps-input{appearance:none;-webkit-appearance:none;background-image:url("da
 .ps-chip{padding:8px 14px;border-radius:99px;background:#F1F5F9;border:1.5px solid var(--bd);font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;font-family:inherit;letter-spacing:-.005em;transition:background .15s,border-color .15s,color .15s}
 .ps-chip:active{transform:scale(.96)}
 .ps-chip.sel{background:var(--p);border-color:var(--p);color:#fff}
+/* ── Add-item sheet refreshed theme (pan/grocery retail) — scoped .aip-* ── */
+.aip-ctx{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.aip-pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:99px;letter-spacing:-.01em}
+.aip-pill.cat{background:var(--p-100,#FFE8DA);color:var(--p-deep,#9A3412)}
+.aip-pill.brand{background:#EEF1FF;color:#3A3CA8}
+.aip-hint{display:flex;gap:9px;align-items:flex-start;background:var(--p-50,#FFF4EC);border:1px solid #FBE3D3;border-radius:13px;padding:11px 13px;margin-bottom:18px}
+.aip-hint .tx{font-size:12.5px;color:var(--p-deep,#9A3412);font-weight:600;line-height:1.45}
+.aip-pcard{background:linear-gradient(180deg,#FFFDFA,#FFF7EF);border:1.5px solid #F3E5D6;border-radius:18px;padding:15px 15px 8px;margin-bottom:18px;box-shadow:0 1px 2px #0000000a}
+.aip-prow{display:flex;gap:12px}
+.aip-pcol{flex:1;min-width:0}
+.aip-pcl{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.02em}
+.aip-money{position:relative}
+.aip-money .cur{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:17px;font-weight:800;color:var(--t3);pointer-events:none}
+.aip-money input{width:100%;padding:13px 13px 13px 30px;border:1.6px solid var(--bd);border-radius:12px;font-size:21px;font-weight:900;color:var(--t1);background:#fff;font-family:inherit;letter-spacing:-.02em;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none}
+.aip-money input::placeholder{color:#CDBBA6;font-weight:700}
+.aip-money.sell input:focus{border-color:var(--p);box-shadow:0 0 0 4px var(--p-50,#FFF4EC);color:var(--p-deep)}
+.aip-money.cost input:focus{border-color:#94A3B8;box-shadow:0 0 0 4px #F1F5F9}
+.aip-req{background:var(--p);color:#fff;font-size:8.5px;font-weight:900;padding:2px 7px;border-radius:99px;letter-spacing:.05em}
+.aip-opt{color:var(--t4);font-size:10.5px;font-weight:700;text-transform:none;letter-spacing:0}
+.aip-chips{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 4px}
+.aip-chips::-webkit-scrollbar{display:none}
+.aip-chip{flex:0 0 auto;white-space:nowrap;padding:9px 15px;border-radius:99px;background:#F4F1EC;border:1.5px solid var(--bd);font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;font-family:inherit;letter-spacing:-.01em;transition:background .14s,border-color .14s,color .14s,transform .14s;display:flex;align-items:center;gap:6px}
+.aip-chip.sel{background:var(--p);border-color:var(--p);color:#fff;font-weight:800;box-shadow:0 4px 12px rgba(255,107,53,.32)}
+.aip-chip:active{transform:scale(.96)}
+.aip-cta{width:100%;padding:16px;border:none;border-radius:15px;font-size:16px;font-weight:800;font-family:inherit;letter-spacing:-.01em;cursor:pointer;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;box-shadow:0 8px 22px rgba(234,88,12,.36);transition:transform .12s}
+.aip-cta:active{transform:translateY(1px) scale(.995)}
+.aip-remove{display:block;width:100%;text-align:center;background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;font-weight:700;font-family:inherit;padding:11px 0 2px;letter-spacing:-.01em}
+/* Floating add button on the Ingredients page (replaces top-right +) */
+.ig-fab{position:fixed;right:16px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:38;display:flex;align-items:center;gap:8px;padding:13px 18px 13px 16px;border:none;border-radius:99px;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;font-family:inherit;font-size:14.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 8px 22px rgba(234,88,12,.4);transition:transform .12s,box-shadow .2s}
+.ig-fab:active{transform:scale(.96)}
+.ig-fab-label{white-space:nowrap}
+/* Desktop has its own prominent "Add a supply" CTA (.ig-desktop-top-cta),
+   so suppress the mobile floating button there to avoid a duplicate. */
+html[data-shell="desktop"] .ig-fab{display:none}
 .ps-summary{margin:6px 0 18px;padding:12px 14px;background:#EEEEEE;border:1px solid #E2E2E2;border-radius:12px;display:flex;flex-direction:column;gap:7px}
 .ps-summary-row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:600;color:var(--t2)}
 .ps-summary-row b{color:var(--t1);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;font-size:14.5px}
@@ -3848,27 +3882,22 @@ html[data-current-role="manager"] body{
         <span class="menu-badge" id="more-udhaar-badge" style="background:#FEF3C7;color:#92400E;display:none"></span>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="menu-item" id="more-stockin-entry" onclick="window.Purchase && Purchase.open()" data-role-min="manager">
-        <div class="menu-icon" style="background:#FFEDD5;color:#9A3412"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-        <div class="menu-text"><div class="menu-label menu-name">Stock In / Purchase</div><div class="menu-sub">Add stock · updates cost price & dues</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-      <button class="menu-item" id="more-stocktake-entry" onclick="window.StockTake && StockTake.open()" data-role-min="manager">
-        <div class="menu-icon" style="background:#DCFCE7;color:#166534"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-        <div class="menu-text"><div class="menu-label menu-name">Stock Take</div><div class="menu-sub">Count stock · fix quantities</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
       <button class="menu-item" id="more-suppliers-entry" onclick="window.Suppliers && Suppliers.open()" data-role-min="manager">
         <div class="menu-icon" style="background:#E0E7FF;color:#3730A3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
         <div class="menu-text"><div class="menu-label menu-name">Suppliers</div><div class="menu-sub" id="more-suppliers-sub">Vendors, dues &amp; purchase history</div></div>
         <span class="menu-badge" id="more-suppliers-badge" style="background:#FEF3C7;color:#92400E;display:none"></span>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <button class="menu-item" id="more-stocktake-entry" onclick="window.StockTake && StockTake.open()" data-role-min="manager">
+        <div class="menu-icon" style="background:#FFE8DA;color:#C2410C"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <div class="menu-text"><div class="menu-label menu-name">Stock Take</div><div class="menu-sub">Count physical stock &amp; fix counts</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
     </div>
   </div>
 
   <div class="menu-group">
-    <div class="menu-group-title" data-i18n="more.insightsSharing">Insights & sharing</div>
+    <div class="menu-group-title" data-i18n="more.insightsSharing">Insights &amp; sharing</div>
     <div class="menu-card">
       <button class="menu-item" onclick="App.nav('reports')" data-role-min="manager">
         <div class="menu-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
@@ -4607,7 +4636,7 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" id="ig-page-title" data-i18n="inv.ingredientsLbl">Ingredients</div>
-    <button class="icon-btn" onclick="App.openIngredientSheet()" aria-label="Add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <div class="icon-btn" style="visibility:hidden" aria-hidden="true"></div>
   </header>
 
   <!-- Desktop-only prominent Add CTA at the top of Supplies page (May 2026) -->
@@ -4641,6 +4670,12 @@ html[data-current-role="manager"] body{
          in the header already adds supplies. Keeping Import CSV as a useful
          standalone bulk action. -->
   </div>
+
+  <!-- Floating add button (replaces the confusing top-right +) -->
+  <button class="ig-fab" id="ig-fab" onclick="App.openIngredientSheet()" aria-label="Add ingredient" data-role-min="manager">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span class="ig-fab-label" id="ig-fab-label">Add ingredient</span>
+  </button>
 </div>
 
 <div class="page" id="pg-supply-detail">
@@ -21206,6 +21241,8 @@ const App = {
     if (actionBar) actionBar.style.display = (isRecipeShop && list.length > 0) ? 'flex' : 'none';
     const addLabelEl = document.getElementById('ig-add-cta-label');
     if (addLabelEl) addLabelEl.textContent = _L.addBtn;
+    const fabLabelEl = document.getElementById('ig-fab-label');
+    if (fabLabelEl) fabLabelEl.textContent = _L.addBtn;
 
     const target = document.getElementById('ig-list');
     if (!target) return;
@@ -22281,6 +22318,85 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
   },
 
+  /* ── Retail margin card (cost-price based, not recipe based) ──────────
+     Used by the Add/Edit-item sheet for retail verticals (pan, grocery,
+     stationery, etc.) where cost is a direct cost price, not ingredients.
+     Mirrors the visual language of _renderProfitCardHTML. */
+  _renderRetailMarginHTML(sp, cp, suffix){
+    suffix = suffix || 'ce';
+    sp = Number(sp) || 0;
+    const hasCp = (cp !== '' && cp !== null && cp !== undefined && !isNaN(Number(cp)));
+    cp = hasCp ? Number(cp) : null;
+
+    // No price yet → gentle prompt
+    if (sp <= 0){
+      return `
+        <div id="retail-margin-${suffix}" data-role-min="manager" style="margin:13px 0 4px;padding:14px 15px;background:#FFFBF5;border:1.5px dashed #FED7AA;border-radius:14px;text-align:center">
+          <div style="font-size:11px;font-weight:800;color:#9A3412;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">💰 Profit</div>
+          <div style="font-size:14px;font-weight:700;color:#7C2D12;letter-spacing:-.01em">Enter a sell price to see your margin</div>
+        </div>`;
+    }
+    // Price but no cost → show what margin unlocks
+    if (cp === null || cp <= 0){
+      return `
+        <div id="retail-margin-${suffix}" data-role-min="manager" style="margin:13px 0 4px;padding:14px 15px;background:#FEF3C7;border:1.5px solid #FDE68A;border-radius:14px;text-align:center">
+          <div style="font-size:11px;font-weight:800;color:#92400E;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">💰 Profit per item</div>
+          <div style="font-size:15px;font-weight:800;color:#78350F;letter-spacing:-.01em;margin-bottom:2px">Add cost price to see your real margin</div>
+          <div style="font-size:12px;color:#92400E;font-weight:600">Sells ₹${sp.toLocaleString('en-IN')} · cost unknown</div>
+        </div>`;
+    }
+
+    const profit = sp - cp;
+    const margin = sp > 0 ? (profit / sp) * 100 : 0;
+    const loss = profit < 0;
+    const tier = loss ? 'loss' : (margin >= 40 ? 'good' : (margin >= 20 ? 'ok' : 'low'));
+    const C = {
+      good: { bg:'linear-gradient(135deg,#ECFDF5,#D1FAE5)', border:'#A7F3D0', text:'#065F46', accent:'#10B981', barBg:'#D1FAE5' },
+      ok:   { bg:'linear-gradient(135deg,#FFFBEB,#FEF3C7)', border:'#FDE68A', text:'#78350F', accent:'#F59E0B', barBg:'#FEF3C7' },
+      low:  { bg:'linear-gradient(135deg,#FFF7ED,#FFEDD5)', border:'#FED7AA', text:'#7C2D12', accent:'#EA580C', barBg:'#FFEDD5' },
+      loss: { bg:'linear-gradient(135deg,#FEF2F2,#FEE2E2)', border:'#FECACA', text:'#7F1D1D', accent:'#DC2626', barBg:'#FEE2E2' }
+    }[tier];
+    const barW = Math.min(100, Math.max(3, Math.abs(margin)));
+    const profitStr = (profit < 0 ? '−₹' : '₹') + Math.abs(Math.round(profit)).toLocaleString('en-IN');
+
+    return `
+      <div id="retail-margin-${suffix}" data-role-min="manager" style="margin:13px 0 4px;padding:15px 16px;background:${C.bg};border:1.5px solid ${C.border};border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+          <div style="font-size:11px;font-weight:800;color:${C.text};letter-spacing:.06em;text-transform:uppercase;opacity:.85">💰 Profit per item</div>
+          ${loss ? '<div style="font-size:11px;font-weight:800;color:#DC2626;letter-spacing:.02em">⚠ Selling below cost</div>' : ''}
+        </div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:11px">
+          <div style="font-size:31px;font-weight:900;color:${C.text};letter-spacing:-.025em;line-height:1">${profitStr}</div>
+          <div style="font-size:17px;font-weight:800;color:${C.accent};letter-spacing:-.015em">${Math.round(margin)}%</div>
+        </div>
+        <div style="height:6px;background:${C.barBg};border-radius:99px;overflow:hidden;margin-bottom:10px">
+          <div style="height:100%;width:${barW}%;background:${C.accent};border-radius:99px;transition:width .25s ease"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:${C.text};opacity:.88">
+          <span>Sells ₹${sp.toLocaleString('en-IN')}</span>
+          <span style="opacity:.5">−</span>
+          <span>Costs ₹${cp.toLocaleString('en-IN')}</span>
+        </div>
+      </div>`;
+  },
+
+  _recomputeRetailMargin(suffix){
+    suffix = suffix || 'ce';
+    const target = document.getElementById('retail-margin-' + suffix);
+    if (!target) return;
+    const wasHidden = target.style.display === 'none' || target.hasAttribute('data-role-hidden');
+    const ids = (suffix === 'ps') ? { sp:'ps-sp', cp:'ps-cp' } : { sp:'ce-price', cp:'ce-cost' };
+    const sp = (document.getElementById(ids.sp) || {}).value || 0;
+    const cp = (document.getElementById(ids.cp) || {}).value;
+    const holder = document.createElement('div');
+    holder.innerHTML = this._renderRetailMarginHTML(sp, cp, suffix);
+    const el = holder.firstElementChild;
+    if (el) {
+      if (wasHidden) { el.style.display = 'none'; el.setAttribute('data-role-hidden',''); }
+      target.replaceWith(el);
+    }
+  },
+
   _renderSuppliesSummaryHTML(product){
     const isSalon = this._supplyVerticalKey() === 'salon';
     const _L = this._supplyLabels();
@@ -22333,6 +22449,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   renderCostAnalysisSection(){
     const target = document.getElementById('ig-cost-analysis');
     if (!target) return;
+    /* Food recipe verticals (restaurant, cafe, bakery, sweets): the
+       "Cost per dish/item" margins block is hidden on the Ingredients page
+       (owner preference — keeps the page focused on the ingredient list and
+       avoids the floating add button overlapping it). Salon keeps its block. */
+    var _caVk = this._supplyVerticalKey();
+    if (_caVk === 'restaurant' || _caVk === 'cafe' || _caVk === 'bakery' || _caVk === 'sweets') {
+      target.style.display = 'none';
+      target.innerHTML = '';
+      return;
+    }
     const _L = this._supplyLabels();
     const ingredients = Store.list('ingredients') || [];
     const products = (Store.list('prods') || []).filter(p => p && !p._deleted);
@@ -22606,8 +22732,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     this._supV2PickedEmoji = v.emoji || null;
     this._supV2PickedCat = v.cat || null;
+    this._supV2CatTouched = !!v.cat;   // respect existing category; allow auto-fill for new
 
-    let displayUnit = v.baseUnit || 'ml';
+    // Default unit: kg for food shops (chicken/paneer/rice/atta sold by weight),
+    // ml for cafe/salon (liquids). Only applies when no unit is set yet.
+    let displayUnit = v.baseUnit || ((_isRestaurant || _isBakery || _isSweets) ? 'kg' : 'ml');
     let displayQty = '';
     if (v.packQtyInBase) {
       if (v.baseUnit === 'ml' && v.packQtyInBase >= 1000 && (v.packQtyInBase % 100 === 0)) {
@@ -22644,14 +22773,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
         <div class="sv2-field">
           <label class="sv2-label">${_capitalSection.replace(/s$/,'')} name</label>
-          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value)" autofocus>
+          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value)" autofocus>
         </div>
 
         <div class="sv2-row">
           <div class="sv2-field">
             <label class="sv2-label" data-i18n="exp.category">Category</label>
             <div class="sv2-select-wrap">
-              <select id="sv2-cat" class="sv2-input sv2-select">
+              <select id="sv2-cat" class="sv2-input sv2-select" onchange="App._supV2CatTouched=true">
                 <option value="">— Pick one —</option>
                 ${cats.map(c => `<option value="${c.id}"${(v.cat || '') === c.id ? ' selected' : ''}>${c.label}</option>`).join('')}
               </select>
@@ -22896,6 +23025,56 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       if (lower.includes(keyword)) {
         this.igPickEmoji(emoji);
         return;
+      }
+    }
+  },
+
+  /* Smart category for ingredients/supplies — guesses the category from the
+     name (Chicken → Meat & seafood, Paneer → Dairy, Atta → Grains…). Reads
+     the live options so it only picks a category the shop actually has, and
+     stops once the owner picks one manually. */
+  igAutoCat(name){
+    if (this._supV2CatTouched) return;
+    var n = (name || '').toLowerCase();
+    if (n.replace(/[^a-z]/g, '').length < 3) return;
+    var rules = [
+      [/(coffee|\btea\b|espresso|arabica|robusta|cappuccino|matcha|cocoa|chicory|decaf)/, ['coffee & tea','coffee','tea']],
+      [/(syrup|\bsugar\b|honey|sweetener|vanilla|caramel|jaggery|stevia|brown sugar)/, ['syrup','sweetener']],
+      [/(croissant|\bbun\b|bagel|\bbread\b|loaf|\bpuff\b|tortilla|pita|baguette)/, ['bakery','bread']],
+      [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood|crab|murgh|gosht|bacon|sausage)/, ['meat','seafood']],
+      [/(paneer|milk|curd|dahi|cream|cheese|butter|ghee|khoya|mawa|malai|dairy|yogurt)/, ['dairy','paneer']],
+      [/(atta|maida|flour|\brice\b|basmati|sooji|rava|besan|grain|wheat|poha|vermicelli)/, ['grain','flour']],
+      [/(\bdal\b|\bdaal\b|chana|rajma|moong|masoor|toor|urad|lentil|legume|chickpea|kabuli|lobia)/, ['dal','legume','lentil']],
+      [/(masala|spice|haldi|turmeric|jeera|cumin|garam|coriander|dhania|elaichi|cardamom|clove|laung|pepper|saunf|hing|methi)/, ['spice','masala']],
+      [/(\boil\b|refined|mustard oil|sunflower|olive oil|vanaspati|\bghee\b)/, ['oil','ghee','fat']],
+      [/(sauce|ketchup|vinegar|\bsoy\b|mayo|mayonnaise|condiment|paste|chutney|pickle|achaar)/, ['sauce','condiment']],
+      [/(cashew|almond|kaju|badam|pista|raisin|kishmish|\bnut\b|dry fruit|walnut|akhrot)/, ['dry fruit','nut']],
+      [/(tomato|onion|potato|aloo|pyaz|carrot|capsicum|shimla|ginger|garlic|adrak|lehsun|spinach|palak|lemon|nimbu|cabbage|cauliflower|gobi|\bpeas\b|matar|chilli|mirchi|beans|brinjal|baingan|cucumber|mushroom|\bveg\b)/, ['vegetable']],
+      [/(water|cola|juice|soda|beverage|\bdrink\b|syrup|squash|\btea\b|coffee|cocoa)/, ['beverage']],
+      [/(box|packaging|disposable|foil|napkin|plate|\bcup\b|\bbag\b|container|carry|tissue|straw|wrap)/, ['packaging','disposable']],
+      [/(cleaning|\bsoap\b|detergent|sanitizer|phenyl|wiper|scrub|dish wash|misc)/, ['cleaning','misc']]
+    ];
+    var cands = null;
+    for (var i = 0; i < rules.length; i++){ if (rules[i][0].test(n)){ cands = rules[i][1]; break; } }
+    if (!cands) return;
+    // sv2 sheet (the current ingredient sheet)
+    var sel = document.getElementById('sv2-cat');
+    if (sel){
+      var opts = [].slice.call(sel.options).filter(function(o){ return o.value; });
+      for (var j = 0; j < cands.length; j++){
+        var cl = cands[j];
+        var hit = opts.find(function(o){ return (o.text || '').toLowerCase().indexOf(cl) !== -1; });
+        if (hit){ sel.value = hit.value; this._supV2PickedCat = hit.value; return; }
+      }
+      return;
+    }
+    // legacy ig-cat-picker (button chips)
+    var btns = document.querySelectorAll('#ig-cat-picker .sup-cat-pick-btn');
+    if (btns && btns.length){
+      for (var k = 0; k < cands.length; k++){
+        var cl2 = cands[k];
+        var b = [].slice.call(btns).find(function(x){ return (x.textContent || '').toLowerCase().indexOf(cl2) !== -1; });
+        if (b){ this.igPickCat(b.getAttribute('data-cat')); return; }
       }
     }
   },
@@ -23906,6 +24085,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
        Product Sales page. */
     var forceRetail = !!(opts && opts.forceRetail);
     const isEdit = id != null;
+    this._psRetailMode = false;   // (reset) set true only when the retail compact layout renders
     const item = isEdit ? Store.get('prods', id) : null;
     if (isEdit && !item) { this.toast(this._T('toast.itemNotFound', 'Item not found')); return; }
     const isInactive = isEdit && item && item.active === false;
@@ -23945,7 +24125,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._editingId = isEdit ? id : null;
 
     this._userPickedEmoji = isEdit;
-    this._pickedEmoji = null;
+    this._pickedEmoji = (isEdit && item && item.emoji) ? item.emoji : null;
     const cfg = VERTICAL_CONFIG[this.vertical];
 
     var rawChips = (typeof window.getCurrentCardChips === 'function')
@@ -24117,6 +24297,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var _vertKey = (typeof this._supplyVerticalKey === 'function')
       ? this._supplyVerticalKey() : this.vertical;
     var isSalonService = (_vertKey === 'salon') && (v.cat !== 'Retail') && !useWizard;
+    /* Compact retail layout (pan / grocery) — Zomato-style: essentials first,
+       stock + pack + icon tucked behind a "Stock & details" collapsible.
+       Recipe verticals (salon/cafe/etc.) keep their existing layout. */
+    var isRetailCompact = (_vertKey === 'pan' || _vertKey === 'grocery') && !isSalonService && !useWizard;
 
     var moreExpanded = !isEdit || isInactive;
 
@@ -24194,6 +24378,69 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           </div>
         </div>
       `;
+    } else if (isRetailCompact) {
+
+      this._psRetailMode = true;
+      // Compact, progressive-disclosure layout for pan / grocery.
+      var _retailDetailsSummary = (tracksStock ? 'Stock tracking on' : 'No stock tracking') + ' · qty, unit, pack, alert, icon';
+      sheet.innerHTML = `
+        ${nameField}
+
+        <div class="aip-pcard">
+          <div class="aip-prow">
+            <div class="aip-pcol">
+              <div class="aip-pcl">Sell price <span class="aip-req" data-i18n="common.required">REQUIRED</span></div>
+              <div class="aip-money sell">
+                <span class="cur">₹</span>
+                <input id="ps-sp" type="number" inputmode="numeric" value="${v.sp||''}" placeholder="120"
+                  oninput="App.recalcValue(); App.hideFieldError('ps-sp'); App.updateLivePreview(); App.refreshSaveButtonState(); App._recomputeRetailMargin('ps');">
+              </div>
+              <div class="ps-error" id="ps-sp-error"></div>
+            </div>
+            <div class="aip-pcol" data-role-min="manager">
+              <div class="aip-pcl">Cost price <span class="aip-opt">margin</span></div>
+              <div class="aip-money cost">
+                <span class="cur">₹</span>
+                <input id="ps-cp" type="number" inputmode="numeric" value="${v.cp||''}" placeholder="0"
+                  oninput="App.recalcValue(); App._recomputeRetailMargin('ps');">
+              </div>
+            </div>
+          </div>
+          ${this._renderRetailMarginHTML(v.sp||'', v.cp||'', 'ps')}
+        </div>
+
+        <div class="ps-section">
+          <label class="ps-label" data-i18n="exp.category">Category</label>
+          <div class="aip-chips" id="ps-cat-chips">
+            ${cats.map(c => `<button type="button" class="aip-chip ${c===v.cat?'sel':''}" onclick="App.pickCat(this,'${c.replace(/'/g,'&apos;')}')">${this.escapeHtml(c)}</button>`).join('')}
+            <button type="button" class="aip-chip" style="border:1.5px dashed var(--p);color:var(--p-deep);background:#fff" onclick="App.addCustomCat()">+ New</button>
+          </div>
+        </div>
+
+        <button type="button" class="ps-more-toggle" aria-expanded="false"
+          onclick="App._toggleMoreOptions(this)"
+          style="width:100%;background:var(--bg);border:1px solid var(--bd-soft);border-radius:11px;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit;margin:6px 0 4px">
+          <span style="font-size:13.5px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:8px">
+            <span style="color:var(--t3);font-size:14px">⚙</span> Stock & details
+          </span>
+          <span style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--t3);font-weight:600">qty · pack · icon</span>
+            <svg class="ps-more-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3);transition:transform .2s"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </button>
+        <div class="ps-more-content" style="display:none;padding:10px 0 4px">
+          ${trackStockSlim}
+          ${stockFields}
+          ${packSizeField}
+          ${emojiField}
+          ${summaryField}
+        </div>
+
+        <div style="margin-top:14px">
+          <button type="button" class="aip-cta" id="ps-save-btn" onclick="App.saveProduct()" ${isEdit ? '' : 'disabled style="opacity:.5;cursor:not-allowed"'}>${isInactive ? 'Activate item' : (isEdit?'Save changes':'+ Add to inventory')}</button>
+          ${isEdit ? `<button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteProduct()" style="width:100%;margin-top:10px" data-i18n="btn.delete">Delete</button>` : ''}
+        </div>
+      `;
     } else {
 
       sheet.innerHTML = `
@@ -24234,6 +24481,21 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
     document.getElementById('ps-mask').classList.add('open');
     document.getElementById('ps-drawer').classList.add('open');
+
+    /* Header tile: show the product emoji for the compact retail sheet,
+       restore the default cube icon for every other sheet. */
+    try {
+      var _hdrIcon = document.querySelector('#ps-drawer .ps-hdr-icon');
+      if (_hdrIcon) {
+        if (isRetailCompact) {
+          if (!_hdrIcon.dataset.origIcon) _hdrIcon.dataset.origIcon = _hdrIcon.innerHTML;
+          var _curEmoji = this._pickedEmoji || (item && item.emoji) || '📦';
+          _hdrIcon.innerHTML = '<span style="font-size:22px;line-height:1">' + _curEmoji + '</span>';
+        } else if (_hdrIcon.dataset.origIcon) {
+          _hdrIcon.innerHTML = _hdrIcon.dataset.origIcon;
+        }
+      }
+    } catch(e){}
 
     if (isSalonService) {
       var recipeBody = document.getElementById('ps-recipe-body');
@@ -24323,7 +24585,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._pickedEmoji = e;
 
     this._userPickedEmoji = true;
+    this._syncPsHeaderEmoji(e);
     if (typeof this.updateLivePreview === 'function') this.updateLivePreview();
+  },
+
+  // Mirror the chosen/auto-picked emoji into the sheet header tile (retail sheet only)
+  _syncPsHeaderEmoji(emoji){
+    try {
+      if (!this._psRetailMode) return;
+      var e = emoji || this._pickedEmoji || '📦';
+      var wrap = document.querySelector('#ps-drawer .ps-hdr-icon');
+      if (wrap) wrap.innerHTML = '<span style="font-size:22px;line-height:1">' + e + '</span>';
+    } catch(err){}
   },
 
   _extractPackQty(name){
@@ -24419,11 +24692,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         picker.insertBefore(newBtn, picker.firstChild);
       }
       this._pickedEmoji = matchedEmoji;
+      this._syncPsHeaderEmoji(matchedEmoji);
     }
   },
 
   pickCat(el, cat){
-    el.parentElement.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('sel'));
+    el.parentElement.querySelectorAll('.aip-chip, .ps-chip').forEach(c => c.classList.remove('sel'));
     el.classList.add('sel');
     this._pickedCat = cat;
   },
@@ -24434,26 +24708,27 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (name.length > 24) { this.toast(this._T('toast.tooLong24', 'Too long — max 24 chars')); return; }
     const chips = document.getElementById('ps-cat-chips');
     if (!chips) return;
+    const chipClass = chips.classList.contains('aip-chips') ? 'aip-chip' : 'ps-chip';
 
-    const existing = [...chips.querySelectorAll('.ps-chip')].find(b =>
+    const existing = [...chips.querySelectorAll('.aip-chip, .ps-chip')].find(b =>
       (b.textContent || '').trim().toLowerCase() === name.toLowerCase());
     if (existing) {
 
-      chips.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('sel'));
+      chips.querySelectorAll('.aip-chip, .ps-chip').forEach(c => c.classList.remove('sel'));
       existing.classList.add('sel');
       this._pickedCat = existing.textContent.trim();
       return;
     }
 
-    const plusBtn = [...chips.querySelectorAll('.ps-chip')].find(b => (b.textContent || '').trim() === '+ New');
+    const plusBtn = [...chips.querySelectorAll('.aip-chip, .ps-chip')].find(b => (b.textContent || '').trim() === '+ New');
     const newChip = document.createElement('button');
     newChip.type = 'button';
-    newChip.className = 'ps-chip sel';
+    newChip.className = chipClass + ' sel';
     newChip.textContent = name;
     const safeName = name.replace(/'/g, "\\'");
     newChip.setAttribute('onclick', `App.pickCat(this,'${safeName}')`);
     // Deselect others
-    chips.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('sel'));
+    chips.querySelectorAll('.aip-chip, .ps-chip').forEach(c => c.classList.remove('sel'));
     if (plusBtn) chips.insertBefore(newChip, plusBtn);
     else chips.appendChild(newChip);
     this._pickedCat = name;
@@ -26467,6 +26742,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const isSuggested = s.active === false;
     const currentPrice = (s.price > 0 || s.sp > 0) ? (s.price || s.sp) : '';
+    const currentCost  = (s.cp != null && Number(s.cp) > 0) ? Number(s.cp) : '';
 
     var rawChips = (typeof window.getCurrentCardChips === 'function')
       ? window.getCurrentCardChips()
@@ -26474,68 +26750,91 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const cats = rawChips.filter(c => c !== 'All' && c !== 'Low stock' && c !== 'Out' && c !== 'Loose' && !c.startsWith('🏷️'));
     const currentCat = s.cat || (cats[0] || '');
     const catChipsHTML = cats.map(c =>
-      `<button type="button" class="ps-chip ${c===currentCat?'sel':''}" onclick="App._ceCatPick(this,'${c.replace(/'/g,'&apos;')}')">${this.escapeHtml(c)}</button>`
+      `<button type="button" class="aip-chip ${c===currentCat?'sel':''}" onclick="App._ceCatPick(this,'${c.replace(/'/g,'&apos;')}')">${this.escapeHtml(c)}</button>`
     ).join('');
 
+    // Brand context — match item name against this vertical's brand keywords
+    let brandLabel = '';
+    try {
+      const _ct = (typeof this._supplyVerticalKey === 'function') ? this._supplyVerticalKey() : this.vertical;
+      const _bm = (window.CARD_TYPE_BRANDS && window.CARD_TYPE_BRANDS[_ct]) || {};
+      const _nl = (s.name || '').toLowerCase();
+      for (const b in _bm) {
+        const arr = Array.isArray(_bm[b]) ? _bm[b] : [_bm[b]];
+        if (arr.some(k => _nl.indexOf(String(k).toLowerCase()) !== -1)) { brandLabel = b; break; }
+      }
+    } catch(e){}
+    // Hide brand pill for generic / "Local" — only show real brands
+    if (brandLabel && brandLabel.toLowerCase() === 'local') brandLabel = '';
+
+    const hasRecipe = Array.isArray(s.recipe) && s.recipe.length > 0;
+
+    // Context pills: category always; brand only when it's a real brand
+    const ctxPills = [
+      currentCat ? `<span class="aip-pill cat">${this.escapeHtml(currentCat)}</span>` : '',
+      brandLabel ? `<span class="aip-pill brand">🏷️ ${this.escapeHtml(brandLabel)}</span>` : ''
+    ].filter(Boolean).join('');
+
     const body = `
+      ${ctxPills ? `<div class="aip-ctx">${ctxPills}</div>` : ''}
+
       ${isSuggested ? `
-        <div style="background:linear-gradient(135deg,#FEF3C7,#FFF7E0);border:1px solid #FDE68A;border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:13px;color:#78350F;font-weight:600;line-height:1.5">
-          💡 Set the price you'll charge. ${this.escapeHtml(s.name)} will then appear in Add Sale.
-        </div>` : ''}
+        <div class="aip-hint"><span style="font-size:15px;line-height:1.3">💡</span><span class="tx">Set your sell price to add this to the menu. Add cost price too and your margin shows instantly.</span></div>` : ''}
 
       <div class="ps-section">
         <label class="ps-label">Name</label>
         <input id="ce-name" class="ps-input" type="text" value="${this.escapeHtml(s.name)}" autocomplete="off">
       </div>
 
-      <div class="ps-section">
-        <label class="ps-label" style="display:flex;align-items:center;gap:6px">
-          <span>Price (₹)</span>
-          ${isSuggested ? '<span style="background:var(--p);color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.04em" data-i18n="common.required">REQUIRED</span>' : ''}
-        </label>
-        <input id="ce-price" class="ps-input" type="number" inputmode="numeric" value="${currentPrice}" placeholder="${isSuggested ? 'e.g. 120' : '0'}"${isSuggested ? ' autofocus' : ''} style="font-size:20px;font-weight:800;padding:14px;letter-spacing:-.01em">
+      <div class="aip-pcard">
+        <div class="aip-prow">
+          <div class="aip-pcol">
+            <div class="aip-pcl">Sell price ${isSuggested ? '<span class="aip-req" data-i18n="common.required">REQUIRED</span>' : ''}</div>
+            <div class="aip-money sell">
+              <span class="cur">₹</span>
+              <input id="ce-price" type="number" inputmode="numeric" value="${currentPrice}" placeholder="${isSuggested ? '120' : '0'}" oninput="App._recomputeRetailMargin()">
+            </div>
+          </div>
+          <div class="aip-pcol" data-role-min="manager">
+            <div class="aip-pcl">Cost price <span class="aip-opt">margin</span></div>
+            <div class="aip-money cost">
+              <span class="cur">₹</span>
+              <input id="ce-cost" type="number" inputmode="numeric" value="${currentCost}" placeholder="0" oninput="App._recomputeRetailMargin()">
+            </div>
+          </div>
+        </div>
+        ${this._renderRetailMarginHTML(currentPrice, currentCost)}
       </div>
 
       <div class="ps-section">
         <label class="ps-label" data-i18n="exp.category">Category</label>
-        <div class="ps-chips" id="ce-cat-chips" style="overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;scrollbar-width:none">
+        <div class="aip-chips" id="ce-cat-chips">
           ${catChipsHTML || `<span style="font-size:13px;color:var(--t2)">${this.escapeHtml(currentCat) || '—'}</span>`}
         </div>
         <input type="hidden" id="ce-cat" value="${this.escapeHtml(currentCat)}">
       </div>
 
-      ${!isSuggested ? this._renderProfitCardHTML(s, 'ce') : ''}
-
-      ${!isSuggested ? this._renderSuppliesSummaryHTML(s) : ''}
-      ${!isSuggested ? `
+      ${hasRecipe ? this._renderSuppliesSummaryHTML(s) : ''}
+      ${hasRecipe ? `
         <button type="button" onclick="App._jumpToFullEditorForRecipe('${s.id}')" style="width:100%;background:#fff;color:var(--p-deep);border:1.5px dashed var(--p-200);padding:12px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:-.005em;font-family:inherit;margin-bottom:14px">
-          ${(Array.isArray(s.recipe) && s.recipe.length > 0) ? '✏️ Edit ' + (this._supplyVerticalKey() === 'salon' ? 'supplies' : 'ingredients') + ' →' : '+ Add ' + (this._supplyVerticalKey() === 'salon' ? 'supplies' : 'ingredients') + ' to track real cost →'}
+          ✏️ Edit ${this._supplyVerticalKey() === 'salon' ? 'supplies' : 'ingredients'} →
         </button>` : ''}
 
-      <div class="ps-actions" style="flex-direction:column;gap:8px">
-        <button type="button" class="ps-btn ps-btn-primary" onclick="App.saveCatalogEdit(${idx})" style="width:100%;flex:0 0 auto">
+      <div style="margin-top:2px">
+        <button type="button" class="aip-cta" onclick="App.saveCatalogEdit(${idx})">
           ${isSuggested ? '+ Add to menu' : 'Save changes'}
         </button>
         ${isSuggested
-          ? `<button type="button" onclick="App.dismissSuggested(${idx})" style="background:transparent;border:none;color:var(--t2);font-size:13px;font-weight:700;padding:8px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Not needed — remove from suggestions</button>`
-          : `<button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteCatalogItem(${idx})" style="width:100%;flex:0 0 auto">Delete item</button>`}
+          ? `<button type="button" class="aip-remove" onclick="App.dismissSuggested(${idx})">Not needed — remove from suggestions</button>`
+          : `<button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteCatalogItem(${idx})" style="width:100%;margin-top:10px">Delete item</button>`}
       </div>
     `;
     const title = isSuggested ? 'Add ' + s.name : 'Edit ' + s.name;
     const sub = isSuggested ? 'Set price to activate' : (s.cat || 'Catalog item');
-    this.openInfoSheet({ title, sub, bodyHTML: body });
+    // Show the item's own emoji in the sheet header tile (replaces the generic cube)
+    const iconSvg = '<span style="font-size:22px;line-height:1">' + (s.emoji || '🛍️') + '</span>';
+    this.openInfoSheet({ title, sub, bodyHTML: body, iconSvg });
 
-    // v31_31b37: wire live profit card update on price change
-    if (!isSuggested) {
-      setTimeout(() => {
-        const priceInp = document.getElementById('ce-price');
-        if (priceInp) {
-          priceInp.addEventListener('input', () => {
-            try { this._recomputeProfitCard(s, 'ce'); } catch(e){}
-          });
-        }
-      }, 50);
-    }
     // Autofocus the price field on next tick (autofocus attr is unreliable in drawers)
     if (isSuggested) {
       setTimeout(() => {
@@ -26548,7 +26847,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   // Helper for catalog-edit category chip selection
   _ceCatPick(el, cat){
     if (!el || !el.parentElement) return;
-    el.parentElement.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('sel'));
+    el.parentElement.querySelectorAll('.aip-chip, .ps-chip').forEach(c => c.classList.remove('sel'));
     el.classList.add('sel');
     const hidden = document.getElementById('ce-cat');
     if (hidden) hidden.value = cat;
@@ -26574,6 +26873,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       sp:    newPrice || s.price || 0,  // keep both aliases in sync
       cat:   (document.getElementById('ce-cat')||{}).value || s.cat
     };
+
+    // Cost price → enables real margin tracking. Blank leaves cp untouched.
+    const _costRaw = (document.getElementById('ce-cost')||{}).value;
+    if (_costRaw !== '' && _costRaw != null && !isNaN(Number(_costRaw))) {
+      fields.cp = Math.max(0, Number(_costRaw));
+    }
+    const _cpForValue = (fields.cp != null) ? fields.cp : (s.cp != null ? Number(s.cp) : null);
+
     // Activation logic: positive price → active=true. Status follows from
     // active + vertical's stock-tracking policy. Service businesses (cafe/salon)
 
@@ -26589,6 +26896,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       } else {
         fields.status = stock <= 0 ? 'out' : (min > 0 && stock <= min ? 'low' : 'ok');
       }
+      // Keep stock value in sync with cost (falls back to sell price)
+      fields.value = Math.round(stock * (_cpForValue != null ? _cpForValue : newPrice));
     }
 
     Store.update('prods', s.id, fields);
@@ -27096,8 +27405,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
       if (!d) {                         /* no prefetch, or it failed -> create now */
         const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
-        const _promoCode = (this._reviewPromo && this._reviewPromo.code) || undefined;
-        const res = await fn({ tier: tier, cycle: cycle, promoCode: _promoCode });
+        const res = await fn({ tier: tier, cycle: cycle });
         d = res && res.data;
       }
       this._reviewOrder = null;
@@ -27158,8 +27466,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     };
     const info = INFO[tier+'|'+cycle];
     if (!info) { this.toast(this._T('toast.invalidPlanT','Invalid plan')); return; }
-    this._reviewSel = { tier:tier, cycle:cycle, basePrice: info.price };
-    this._reviewPromo = null;
+    this._reviewSel = { tier:tier, cycle:cycle };
     try { localStorage.setItem('hn_pending_amt', String(info.price)); } catch (e) {}
     this.closeProductSheet();
 
@@ -27214,14 +27521,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
             + '<div class="hnrp-row"><span class="hnrp-mut">GST (18%)</span><span class="hnrp-free">Included</span></div>'
             + '<div class="hnrp-row"><span class="hnrp-mut">Auto-renewal</span><span class="hnrp-mut">None \u00b7 one-time</span></div>'
             + '<div class="hnrp-hr"></div>'
-            + '<div class="hnrp-topay"><div class="hnrp-topay-l">To pay</div><div class="hnrp-topay-r" id="hnrp-topay-r">' + toPayBlock + '</div></div>'
-          + '</div>'
-          + '<div class="hnrp-promo" style="margin-top:12px">'
-            + '<div style="display:flex;gap:8px;align-items:center">'
-              + '<input id="hnrp-promo-code" placeholder="Promo code" autocomplete="off" onkeydown="if(event.key===\'Enter\'){App._applyPromo();}" style="flex:1;padding:12px 13px;border:1.5px dashed #C2410C;border-radius:12px;font-size:14px;font-family:inherit;text-transform:uppercase;letter-spacing:.04em;outline:none;background:#fff;box-sizing:border-box">'
-              + '<button type="button" onclick="App._applyPromo()" style="padding:12px 18px;border:none;border-radius:12px;background:#111827;color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">Apply</button>'
-            + '</div>'
-            + '<div id="hnrp-promo-msg" style="font-size:12.5px;margin-top:8px;line-height:1.5;display:none"></div>'
+            + '<div class="hnrp-topay"><div class="hnrp-topay-l">To pay</div><div class="hnrp-topay-r">' + toPayBlock + '</div></div>'
           + '</div>'
           + '<div class="hnrp-trust">'
             + '<span class="hnrp-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Secured by PayU</span>'
@@ -27229,7 +27529,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           + '</div>'
         + '</div>'
         + '<div class="hnrp-paybar">'
-          + '<button type="button" class="hnrp-paybtn" onclick="App._reviewPayNow()"><span id="hnrp-paybtn-lbl">Pay <b>' + inr(info.price) + '</b></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>'
+          + '<button type="button" class="hnrp-paybtn" onclick="App._reviewPayNow()"><span>Pay <b>' + inr(info.price) + '</b></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>'
           + '<button type="button" class="hnrp-monthly" onclick="' + secAction + '">' + secondary + '</button>'
         + '</div>'
       + '</div>';
@@ -27276,62 +27576,6 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var ov = document.getElementById('hn-review-overlay');
     if (ov){ ov.classList.remove('hnrp-open'); }
     document.body.style.overflow = '';
-  },
-
-  _promoMsg(html, ok){
-    var el = document.getElementById('hnrp-promo-msg');
-    if (!el) return;
-    el.style.display = 'block';
-    el.style.color = (ok === true) ? '#15803D' : (ok === false ? '#B91C1C' : '#6B7280');
-    el.innerHTML = html;
-  },
-  _clearReviewWarmup(){ this._reviewOrderPromise = null; this._reviewOrder = null; },
-  _reviewInr(n){ return '\u20b9' + Number(n||0).toLocaleString('en-IN'); },
-
-  async _applyPromo(){
-    var inp = document.getElementById('hnrp-promo-code');
-    var code = ((inp && inp.value) || '').trim().toUpperCase();
-    if (!code){ this._promoMsg('Enter a promo code', false); return; }
-    var sel = this._reviewSel || {};
-    if (!window.kfCallable || !window.kfFunctions){ this._promoMsg('Still loading — try again in a moment', false); return; }
-    this._promoMsg('Checking\u2026', null);
-    try {
-      var fn = window.kfCallable(window.kfFunctions, 'validatePromo');
-      var res = await fn({ tier: sel.tier, cycle: sel.cycle, code: code });
-      var d = res && res.data;
-      if (d && d.valid && typeof d.finalPrice === 'number'){
-        this._reviewPromo = { code: code, finalPrice: d.finalPrice, label: d.label || code };
-        this._clearReviewWarmup();              /* stale full-price prefetch */
-        var topay = document.getElementById('hnrp-topay-r');
-        var paybtn = document.getElementById('hnrp-paybtn-lbl');
-        if (topay) topay.innerHTML = '<b>' + this._reviewInr(d.finalPrice) + '</b>';
-        if (paybtn) paybtn.innerHTML = 'Pay <b>' + this._reviewInr(d.finalPrice) + '</b>';
-        var saved = Math.max(0, (sel.basePrice || 0) - d.finalPrice);
-        this._promoMsg('\u2713 <b>' + (d.label || code) + '</b> applied \u2014 you save ' + this._reviewInr(saved) + '. <a href="#" onclick="App._clearPromo();return false" style="color:#B91C1C;font-weight:700;text-decoration:underline">Remove</a>', true);
-        if (inp){ inp.setAttribute('disabled','disabled'); }
-      } else {
-        this._reviewPromo = null;
-        this._promoMsg((d && d.reason) || 'Invalid or expired code', false);
-      }
-    } catch(e){
-      console.warn('[promo] validate failed', e);
-      this._reviewPromo = null;
-      this._promoMsg('Could not check that code \u2014 try again', false);
-    }
-  },
-
-  _clearPromo(){
-    this._reviewPromo = null;
-    this._clearReviewWarmup();
-    var sel = this._reviewSel || {};
-    var base = sel.basePrice || 0;
-    var topay = document.getElementById('hnrp-topay-r');
-    var paybtn = document.getElementById('hnrp-paybtn-lbl');
-    if (topay) topay.innerHTML = '<b>' + this._reviewInr(base) + '</b>';
-    if (paybtn) paybtn.innerHTML = 'Pay <b>' + this._reviewInr(base) + '</b>';
-    var inp = document.getElementById('hnrp-promo-code');
-    if (inp){ inp.value=''; inp.removeAttribute('disabled'); }
-    var msg = document.getElementById('hnrp-promo-msg'); if (msg) msg.style.display='none';
   },
 
   _ensureReviewStyle(){
@@ -32045,19 +32289,67 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         return '<span class="inv-stock stock-ok" style="margin-left:auto;opacity:.75">' + stock + '</span>';
       }
 
-      html += active.map(s => {
+      /* (margin) Compact cost/margin chip — surfaces real profit per item in
+         the listing. Colour-coded by margin tier; when no cost is set, shows
+         a gentle tap-to-add hint (the whole row already opens the editor). */
+      function _marginChip(s){
+        const sp = Number(s.price || s.sp || 0);
+        const cp = (s.cp != null && !isNaN(Number(s.cp))) ? Number(s.cp) : null;
+        if (sp <= 0) return '';
+        if (cp == null || cp <= 0){
+          return '<span style="display:inline-flex;align-items:center;gap:3px;background:#FFF7ED;color:#9A3412;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px dashed #FED7AA">+ cost</span>';
+        }
+        const profit = sp - cp;
+        const margin = sp > 0 ? Math.round((profit / sp) * 100) : 0;
+        const loss = profit < 0;
+        const col = loss ? {b:'#FEE2E2',f:'#991B1B'} : (margin >= 40 ? {b:'#D1FAE5',f:'#065F46'} : (margin >= 20 ? {b:'#FEF3C7',f:'#78350F'} : {b:'#FFEDD5',f:'#9A3412'}));
+        const pStr = (profit < 0 ? '−₹' : '₹') + Math.abs(Math.round(profit)).toLocaleString('en-IN');
+        return '<span style="display:inline-flex;align-items:center;gap:4px;background:'+col.b+';color:'+col.f+';font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums">'+margin+'% · '+pStr+'</span>';
+      }
+
+      const _self = this;
+      const rowHTML = function(s){
         const idx = SERVICES.indexOf(s);
         const _sBadge = _stockBadge(s);
+        const _mChip = _marginChip(s);
         return `
           <div class="li" onclick="App.openCatalogEdit(${idx})">
             <div class="li-avatar" style="background:var(--p-100);color:var(--p);font-size:20px">${s.emoji || '🛒'}</div>
             <div class="li-meta">
-              <div class="li-row"><div class="li-name">${this.escapeHtml(s.name || '—')}</div><div class="li-amt">₹${Number(s.price || s.sp || 0).toLocaleString('en-IN')}</div></div>
-              <div class="li-sub"><span>${this.escapeHtml(s.cat || '')}</span>${_sBadge}</div>
+              <div class="li-row"><div class="li-name">${_self.escapeHtml(s.name || '—')}</div><div class="li-amt">₹${Number(s.price || s.sp || 0).toLocaleString('en-IN')}</div></div>
+              <div class="li-sub" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">${_mChip}<span>${_self.escapeHtml(s.cat || '')}</span>${_sBadge}</div>
             </div>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3)"><polyline points="9 18 15 12 9 6"/></svg>
           </div>`;
-      }).join('');
+      };
+
+      // Category-wise grouping (only on the unfiltered "All" view; when a
+      // specific category/brand chip is active the list is already scoped).
+      if (chip === 'All' && !brandName) {
+        let _order = [];
+        try {
+          _order = (window.getCurrentCardChips() || []).filter(c =>
+            c !== 'All' && c !== 'Low stock' && c !== 'Out' && c !== 'Loose' && c !== 'Inactive' && !c.startsWith('🏷️'));
+        } catch(e){}
+        const groups = {};
+        active.forEach(s => { const k = s.cat || 'Other'; (groups[k] = groups[k] || []).push(s); });
+        const seen = {};
+        const ordered = [];
+        _order.forEach(c => { if (groups[c]) { ordered.push(c); seen[c] = 1; } });
+        Object.keys(groups).forEach(c => { if (!seen[c]) ordered.push(c); });
+
+        html += ordered.map(cat => {
+          const rows = groups[cat].map(rowHTML).join('');
+          return `
+            <div style="padding:13px 18px 5px;display:flex;align-items:center;gap:9px">
+              <div style="font-size:11.5px;font-weight:800;color:var(--p-deep,#9A3412);text-transform:uppercase;letter-spacing:.05em">${this.escapeHtml(cat)}</div>
+              <div style="flex:1;height:1px;background:var(--border,#EEE)"></div>
+              <div style="font-size:11px;color:var(--t3);font-weight:700;font-variant-numeric:tabular-nums">${groups[cat].length}</div>
+            </div>${rows}`;
+        }).join('');
+      } else {
+        html += active.map(rowHTML).join('');
+      }
     } else if (suggested.length > 0) {
 
       html += `
@@ -45053,6 +45345,7 @@ button:not(:disabled){ user-select:none }
     state.wasInactive = (item.active === false);
     state.name        = item.name || '';
     state.cat         = item.cat || '';
+    state._catTouched = !!item.cat;   // respect saved category — don't auto-override
     state.gender      = item.gender || 'Unisex';
     state.price       = +item.sp || +item.price || 0;
     state.gstRate     = (item.gstRate != null) ? +item.gstRate : 18;
@@ -45086,6 +45379,7 @@ button:not(:disabled){ user-select:none }
       state.editingId = null;
       state.wasInactive = false;
       state.name = ''; state.cat = ''; state.gender = 'Unisex';
+      state._catTouched = false;   // allow smart auto-category from the name
       state.price = 0; state.gstRate = 18; state.gstInclusive = true;
       state.duration = 45;
       state.supplies = [];
@@ -45123,6 +45417,15 @@ button:not(:disabled){ user-select:none }
         var inc = $('ns-gst-inc'); if (inc) inc.classList.toggle('on', state.gstInclusive);
         var sd = $('ns-search-dd'); if (sd){ sd.style.display = 'none'; sd.innerHTML = ''; }
         var si = $('ns-search-inp'); if (si) si.value = '';
+        /* Preloaded/suggested products fill the name programmatically (no input
+           event fires), so infer the category from the name whenever the
+           dropdown ended up with nothing selected — either the seed had no
+           category, or its category doesn't match this shop's option list. */
+        var _catSel = $('ns-cat');
+        if (_catSel && !_catSel.value && state.name){
+          var _ac = _autoCatFromName(state.name);
+          if (_ac){ _catSel.value = _ac; state.cat = _ac; }
+        }
       } catch(e){}
 
       var pe = $('ns-price'); if (pe) pe.value = state.price > 0 ? state.price : '';
@@ -45579,9 +45882,78 @@ button:not(:disabled){ user-select:none }
   };
   window.NSW = api;
 
+  /* Smart category — guess the category from the dish name so the owner
+     doesn't have to pick it every time. Reads the live <select> options so
+     it adapts to whatever categories the shop actually has, and only acts
+     when a confident keyword match maps onto an existing option. */
+  function _autoCatFromName(name){
+    var sel = $('ns-cat'); if (!sel) return null;
+    var n = (name || '').toLowerCase();
+    if (n.replace(/[^a-z]/g,'').length < 3) return null;
+    var opts = [].slice.call(sel.options)
+      .map(function(o){ return o.text; })
+      .filter(function(t){ return t && t.toLowerCase() !== 'select…'; });
+    if (!opts.length) return null;
+
+    var hasMeat = /(chicken|mutton|fish|prawn|prawns|egg|lamb|keema|meat|seafood|crab|tikka chicken|murgh)/.test(n);
+    var hasVeg  = /(paneer|aloo|gobi|mushroom|bhindi|chana|chole|rajma|kofta|matar|mutter|palak|baingan|soya|tofu|veg\b|dal|daal)/.test(n);
+    var isVeg   = hasVeg && !hasMeat;
+
+    var vKey = (window.App && window.App._supplyVerticalKey) ? window.App._supplyVerticalKey() : '';
+    var baseRules = [
+      [/(lassi|chaas|chai|coffee|\btea\b|juice|cola|coke|pepsi|soda|water|mojito|shake|smoothie|thums|sprite|mocktail|nimbu|buttermilk|drink)/, ['Beverage','Cold Drink','Drink']],
+      [/(gulab|rasmalai|ras malai|kheer|halwa|ice cream|kulfi|brownie|gajar|jalebi|dessert|falooda|phirni|rabri|sundae|cake)/, ['Dessert','Sweet']],
+      [/(naan|roti|paratha|kulcha|bhatura|chapati|lachha|rumali|missi|\bbread\b)/, ['Bread','Roti']],
+      [/(biryani|biriyani|pulao|pulav|fried rice|jeera rice|\brice\b)/, ['Rice','Biryani']],
+      [/(\bdal\b|\bdaal\b|dhal|kadhi|sambar)/, ['Dal','Lentil']],
+      [/(soup|shorba|rasam)/, ['Soup']],
+      [/(manchurian|hakka|schezwan|noodle|chowmein|chow mein|momo|spring roll|chinese)/, ['Indo-Chinese','Chinese','Noodle']],
+      [/(dosa|idli|vada|uttapam|medu|upma)/, ['South Indian','Dosa']],
+      [/(tikka|tandoori|kebab|kabab|seekh|malai|hariyali)/, isVeg ? ['Veg Starter','Starter','Tandoor'] : ['Non-Veg Starter','Tandoor','Starter']],
+      [/(starter|pakora|pakoda|\b65\b|crispy|chilli|fry\b|fritter|cutlet|roll)/, isVeg ? ['Veg Starter','Starter'] : ['Non-Veg Starter','Starter']],
+      [/(curry|masala|butter|korma|kadai|kadhai|handi|rogan|makhani|gravy|kofta|bhuna|saag|lababdar|do pyaza)/, isVeg ? ['Veg Main','Main'] : ['Non-Veg Main','Main']],
+      [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood)/, ['Non-Veg Main','Main','Non-Veg Starter']],
+      [/(paneer|aloo|gobi|mushroom|bhindi|chana|chole|rajma|matar|mutter|baingan|soya|tofu|\bveg\b)/, ['Veg Main','Main','Veg Starter']]
+    ];
+    /* Cafe drink/food categories (Coffee, Tea, Cold Drinks, Sandwich,
+       Breakfast, Dessert, Bakery, Snacks, Mains). Cold/iced is checked before
+       hot coffee so "Iced Latte" → Cold Drinks while "Cappuccino" → Coffee. */
+    var cafeRules = [
+      [/(iced|cold coffee|cold brew|frappe|frappuccino|shake|smoothie|cooler|lemonade|mojito|iced tea|cold drink|soda|fizz|nimbu|lassi|juice)/, ['Cold Drink','Cold Drinks','Beverage']],
+      [/(cappuccino|latte|espresso|americano|mocha|macchiato|flat white|cortado|affogato|filter coffee|piccolo|doppio|\bcoffee\b)/, ['Coffee']],
+      [/(\bchai\b|\btea\b|green tea|masala tea|matcha|oolong|earl grey|kadak|herbal)/, ['Tea']],
+      [/(croissant|\bbun\b|bagel|\bpuff\b|muffin|\bbread\b|focaccia|danish|bakery|loaf)/, ['Bakery','Bread']],
+      [/(sandwich|panini|\bsub\b|toastie|grilled cheese)/, ['Sandwich']],
+      [/(omelette|pancake|waffle|poha|upma|cereal|granola|breakfast|paratha)/, ['Breakfast']],
+      [/(brownie|cupcake|cheesecake|tiramisu|donut|doughnut|\bcake\b|pastry|dessert|ice cream|gelato|cookie)/, ['Dessert']],
+      [/(maggi|fries|nachos|wedges|pakora|samosa|\bsnack\b|nuggets|popcorn|momos)/, ['Snacks']],
+      [/(pasta|pizza|burger|\bwrap\b|\bbowl\b|risotto|\bmains?\b)/, ['Mains','Main']]
+    ];
+    var rules = (vKey === 'cafe') ? cafeRules.concat(baseRules) : baseRules;
+
+    for (var i = 0; i < rules.length; i++){
+      if (rules[i][0].test(n)){
+        var cands = rules[i][1];
+        for (var j = 0; j < cands.length; j++){
+          var cl = cands[j].toLowerCase();
+          var hit = opts.find(function(o){ return o.toLowerCase().indexOf(cl) !== -1; });
+          if (hit) return hit;
+        }
+      }
+    }
+    return null;
+  }
+
   function bind(){
-    var n = $('ns-name'); if (n) n.addEventListener('input', function(e){ state.name = e.target.value; render(); });
-    var c = $('ns-cat');  if (c) c.addEventListener('change', function(e){ state.cat = e.target.value; render(); });
+    var n = $('ns-name'); if (n) n.addEventListener('input', function(e){
+      state.name = e.target.value;
+      if (!state._catTouched){
+        var ac = _autoCatFromName(state.name);
+        if (ac){ var cc = $('ns-cat'); if (cc){ cc.value = ac; state.cat = ac; } }
+      }
+      render();
+    });
+    var c = $('ns-cat');  if (c) c.addEventListener('change', function(e){ state.cat = e.target.value; state._catTouched = true; render(); });
     var g = $('ns-gen');  if (g) g.addEventListener('change', function(e){ state.gender = e.target.value; });
 
     document.addEventListener('click', function(e){
@@ -83612,6 +83984,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
     var cf = document.createElement('div');
     cf.id = 'st-confirm';
+    cf.className = 'st-confirm';   // (fix) CSS targets .st-confirm (class), not #st-confirm
     cf.innerHTML =
       '<div class="st-confirm-card">'
       + '<div class="st-confirm-hd" id="st-confirm-hd">Confirm changes</div>'
@@ -83883,6 +84256,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
     var m = document.createElement('div');
     m.id = 'sup-modal';
+    m.className = 'sup-modal';   // (fix) CSS targets .sup-modal (class), not #sup-modal
     m.innerHTML =
       '<div class="sup-modal-card">'
       + '<h4>Add supplier</h4>'
@@ -83962,11 +84336,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       var name = (($('sup-add-name')||{}).value||'').trim();
       var phone = (($('sup-add-phone')||{}).value||'').trim();
       if (!name){ try{ App.toast('Enter supplier name'); }catch(e){} return; }
-      if (!window.Store || !Store.add){ try{ App.toast('Cannot save right now — please retry'); }catch(e){} return; }
-      var saved = null;
-      try { saved = Store.add('suppliers', { name: name, phone: phone, createdAt: Date.now() }); }
-      catch(e){ console.warn('[suppliers] add failed', e); }
-      if (!saved){ try{ App.toast('Could not save supplier — please retry'); }catch(e){} return; }
+      try { if (window.Store) Store.add('suppliers', { name: name, phone: phone, createdAt: Date.now() }); } catch(e){}
       this._closeAdd();
       this._refresh();
       try{ App.toast('✓ Supplier added'); }catch(e){}
