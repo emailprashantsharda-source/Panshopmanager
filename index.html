@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_122_ingredientSmart';
+    window.HISAABNOW_BUILD = 'v33_124_cafeParity';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -22446,10 +22446,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   renderCostAnalysisSection(){
     const target = document.getElementById('ig-cost-analysis');
     if (!target) return;
-    /* Restaurant: the "Cost per dish" margins block is hidden on the
-       Ingredients page (per owner preference — keeps the page focused on
+    /* Restaurant & cafe: the "Cost per dish/item" margins block is hidden on
+       the Ingredients page (per owner preference — keeps the page focused on
        the ingredient list). Other recipe verticals keep it. */
-    if (this._supplyVerticalKey() === 'restaurant') {
+    var _caVk = this._supplyVerticalKey();
+    if (_caVk === 'restaurant' || _caVk === 'cafe') {
       target.style.display = 'none';
       target.innerHTML = '';
       return;
@@ -23033,6 +23034,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var n = (name || '').toLowerCase();
     if (n.replace(/[^a-z]/g, '').length < 3) return;
     var rules = [
+      [/(coffee|\btea\b|espresso|arabica|robusta|cappuccino|matcha|cocoa|chicory|decaf)/, ['coffee & tea','coffee','tea']],
+      [/(syrup|\bsugar\b|honey|sweetener|vanilla|caramel|jaggery|stevia|brown sugar)/, ['syrup','sweetener']],
+      [/(croissant|\bbun\b|bagel|\bbread\b|loaf|\bpuff\b|tortilla|pita|baguette)/, ['bakery','bread']],
       [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood|crab|murgh|gosht|bacon|sausage)/, ['meat','seafood']],
       [/(paneer|milk|curd|dahi|cream|cheese|butter|ghee|khoya|mawa|malai|dairy|yogurt)/, ['dairy','paneer']],
       [/(atta|maida|flour|\brice\b|basmati|sooji|rava|besan|grain|wheat|poha|vermicelli)/, ['grain','flour']],
@@ -45409,6 +45413,15 @@ button:not(:disabled){ user-select:none }
         var inc = $('ns-gst-inc'); if (inc) inc.classList.toggle('on', state.gstInclusive);
         var sd = $('ns-search-dd'); if (sd){ sd.style.display = 'none'; sd.innerHTML = ''; }
         var si = $('ns-search-inp'); if (si) si.value = '';
+        /* Preloaded/suggested products fill the name programmatically (no input
+           event fires), so infer the category from the name whenever the
+           dropdown ended up with nothing selected — either the seed had no
+           category, or its category doesn't match this shop's option list. */
+        var _catSel = $('ns-cat');
+        if (_catSel && !_catSel.value && state.name){
+          var _ac = _autoCatFromName(state.name);
+          if (_ac){ _catSel.value = _ac; state.cat = _ac; }
+        }
       } catch(e){}
 
       var pe = $('ns-price'); if (pe) pe.value = state.price > 0 ? state.price : '';
@@ -45882,7 +45895,8 @@ button:not(:disabled){ user-select:none }
     var hasVeg  = /(paneer|aloo|gobi|mushroom|bhindi|chana|chole|rajma|kofta|matar|mutter|palak|baingan|soya|tofu|veg\b|dal|daal)/.test(n);
     var isVeg   = hasVeg && !hasMeat;
 
-    var rules = [
+    var vKey = (window.App && window.App._supplyVerticalKey) ? window.App._supplyVerticalKey() : '';
+    var baseRules = [
       [/(lassi|chaas|chai|coffee|\btea\b|juice|cola|coke|pepsi|soda|water|mojito|shake|smoothie|thums|sprite|mocktail|nimbu|buttermilk|drink)/, ['Beverage','Cold Drink','Drink']],
       [/(gulab|rasmalai|ras malai|kheer|halwa|ice cream|kulfi|brownie|gajar|jalebi|dessert|falooda|phirni|rabri|sundae|cake)/, ['Dessert','Sweet']],
       [/(naan|roti|paratha|kulcha|bhatura|chapati|lachha|rumali|missi|\bbread\b)/, ['Bread','Roti']],
@@ -45897,6 +45911,21 @@ button:not(:disabled){ user-select:none }
       [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood)/, ['Non-Veg Main','Main','Non-Veg Starter']],
       [/(paneer|aloo|gobi|mushroom|bhindi|chana|chole|rajma|matar|mutter|baingan|soya|tofu|\bveg\b)/, ['Veg Main','Main','Veg Starter']]
     ];
+    /* Cafe drink/food categories (Coffee, Tea, Cold Drinks, Sandwich,
+       Breakfast, Dessert, Bakery, Snacks, Mains). Cold/iced is checked before
+       hot coffee so "Iced Latte" → Cold Drinks while "Cappuccino" → Coffee. */
+    var cafeRules = [
+      [/(iced|cold coffee|cold brew|frappe|frappuccino|shake|smoothie|cooler|lemonade|mojito|iced tea|cold drink|soda|fizz|nimbu|lassi|juice)/, ['Cold Drink','Cold Drinks','Beverage']],
+      [/(cappuccino|latte|espresso|americano|mocha|macchiato|flat white|cortado|affogato|filter coffee|piccolo|doppio|\bcoffee\b)/, ['Coffee']],
+      [/(\bchai\b|\btea\b|green tea|masala tea|matcha|oolong|earl grey|kadak|herbal)/, ['Tea']],
+      [/(croissant|\bbun\b|bagel|\bpuff\b|muffin|\bbread\b|focaccia|danish|bakery|loaf)/, ['Bakery','Bread']],
+      [/(sandwich|panini|\bsub\b|toastie|grilled cheese)/, ['Sandwich']],
+      [/(omelette|pancake|waffle|poha|upma|cereal|granola|breakfast|paratha)/, ['Breakfast']],
+      [/(brownie|cupcake|cheesecake|tiramisu|donut|doughnut|\bcake\b|pastry|dessert|ice cream|gelato|cookie)/, ['Dessert']],
+      [/(maggi|fries|nachos|wedges|pakora|samosa|\bsnack\b|nuggets|popcorn|momos)/, ['Snacks']],
+      [/(pasta|pizza|burger|\bwrap\b|\bbowl\b|risotto|\bmains?\b)/, ['Mains','Main']]
+    ];
+    var rules = (vKey === 'cafe') ? cafeRules.concat(baseRules) : baseRules;
 
     for (var i = 0; i < rules.length; i++){
       if (rules[i][0].test(n)){
