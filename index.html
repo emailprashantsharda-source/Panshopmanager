@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_121_restaurantUX';
+    window.HISAABNOW_BUILD = 'v33_122_ingredientSmart';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -22727,8 +22727,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     this._supV2PickedEmoji = v.emoji || null;
     this._supV2PickedCat = v.cat || null;
+    this._supV2CatTouched = !!v.cat;   // respect existing category; allow auto-fill for new
 
-    let displayUnit = v.baseUnit || 'ml';
+    // Default unit: kg for food shops (chicken/paneer/rice/atta sold by weight),
+    // ml for cafe/salon (liquids). Only applies when no unit is set yet.
+    let displayUnit = v.baseUnit || ((_isRestaurant || _isBakery || _isSweets) ? 'kg' : 'ml');
     let displayQty = '';
     if (v.packQtyInBase) {
       if (v.baseUnit === 'ml' && v.packQtyInBase >= 1000 && (v.packQtyInBase % 100 === 0)) {
@@ -22765,14 +22768,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
         <div class="sv2-field">
           <label class="sv2-label">${_capitalSection.replace(/s$/,'')} name</label>
-          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value)" autofocus>
+          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value)" autofocus>
         </div>
 
         <div class="sv2-row">
           <div class="sv2-field">
             <label class="sv2-label" data-i18n="exp.category">Category</label>
             <div class="sv2-select-wrap">
-              <select id="sv2-cat" class="sv2-input sv2-select">
+              <select id="sv2-cat" class="sv2-input sv2-select" onchange="App._supV2CatTouched=true">
                 <option value="">— Pick one —</option>
                 ${cats.map(c => `<option value="${c.id}"${(v.cat || '') === c.id ? ' selected' : ''}>${c.label}</option>`).join('')}
               </select>
@@ -23017,6 +23020,53 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       if (lower.includes(keyword)) {
         this.igPickEmoji(emoji);
         return;
+      }
+    }
+  },
+
+  /* Smart category for ingredients/supplies — guesses the category from the
+     name (Chicken → Meat & seafood, Paneer → Dairy, Atta → Grains…). Reads
+     the live options so it only picks a category the shop actually has, and
+     stops once the owner picks one manually. */
+  igAutoCat(name){
+    if (this._supV2CatTouched) return;
+    var n = (name || '').toLowerCase();
+    if (n.replace(/[^a-z]/g, '').length < 3) return;
+    var rules = [
+      [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood|crab|murgh|gosht|bacon|sausage)/, ['meat','seafood']],
+      [/(paneer|milk|curd|dahi|cream|cheese|butter|ghee|khoya|mawa|malai|dairy|yogurt)/, ['dairy','paneer']],
+      [/(atta|maida|flour|\brice\b|basmati|sooji|rava|besan|grain|wheat|poha|vermicelli)/, ['grain','flour']],
+      [/(\bdal\b|\bdaal\b|chana|rajma|moong|masoor|toor|urad|lentil|legume|chickpea|kabuli|lobia)/, ['dal','legume','lentil']],
+      [/(masala|spice|haldi|turmeric|jeera|cumin|garam|coriander|dhania|elaichi|cardamom|clove|laung|pepper|saunf|hing|methi)/, ['spice','masala']],
+      [/(\boil\b|refined|mustard oil|sunflower|olive oil|vanaspati|\bghee\b)/, ['oil','ghee','fat']],
+      [/(sauce|ketchup|vinegar|\bsoy\b|mayo|mayonnaise|condiment|paste|chutney|pickle|achaar)/, ['sauce','condiment']],
+      [/(cashew|almond|kaju|badam|pista|raisin|kishmish|\bnut\b|dry fruit|walnut|akhrot)/, ['dry fruit','nut']],
+      [/(tomato|onion|potato|aloo|pyaz|carrot|capsicum|shimla|ginger|garlic|adrak|lehsun|spinach|palak|lemon|nimbu|cabbage|cauliflower|gobi|\bpeas\b|matar|chilli|mirchi|beans|brinjal|baingan|cucumber|mushroom|\bveg\b)/, ['vegetable']],
+      [/(water|cola|juice|soda|beverage|\bdrink\b|syrup|squash|\btea\b|coffee|cocoa)/, ['beverage']],
+      [/(box|packaging|disposable|foil|napkin|plate|\bcup\b|\bbag\b|container|carry|tissue|straw|wrap)/, ['packaging','disposable']],
+      [/(cleaning|\bsoap\b|detergent|sanitizer|phenyl|wiper|scrub|dish wash|misc)/, ['cleaning','misc']]
+    ];
+    var cands = null;
+    for (var i = 0; i < rules.length; i++){ if (rules[i][0].test(n)){ cands = rules[i][1]; break; } }
+    if (!cands) return;
+    // sv2 sheet (the current ingredient sheet)
+    var sel = document.getElementById('sv2-cat');
+    if (sel){
+      var opts = [].slice.call(sel.options).filter(function(o){ return o.value; });
+      for (var j = 0; j < cands.length; j++){
+        var cl = cands[j];
+        var hit = opts.find(function(o){ return (o.text || '').toLowerCase().indexOf(cl) !== -1; });
+        if (hit){ sel.value = hit.value; this._supV2PickedCat = hit.value; return; }
+      }
+      return;
+    }
+    // legacy ig-cat-picker (button chips)
+    var btns = document.querySelectorAll('#ig-cat-picker .sup-cat-pick-btn');
+    if (btns && btns.length){
+      for (var k = 0; k < cands.length; k++){
+        var cl2 = cands[k];
+        var b = [].slice.call(btns).find(function(x){ return (x.textContent || '').toLowerCase().indexOf(cl2) !== -1; });
+        if (b){ this.igPickCat(b.getAttribute('data-cat')); return; }
       }
     }
   },
