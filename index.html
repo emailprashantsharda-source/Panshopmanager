@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_124_cafeParity';
+    window.HISAABNOW_BUILD = 'v33_125_bakeryCost';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -22446,11 +22446,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   renderCostAnalysisSection(){
     const target = document.getElementById('ig-cost-analysis');
     if (!target) return;
-    /* Restaurant & cafe: the "Cost per dish/item" margins block is hidden on
-       the Ingredients page (per owner preference — keeps the page focused on
-       the ingredient list). Other recipe verticals keep it. */
+    /* Food recipe verticals (restaurant, cafe, bakery, sweets): the
+       "Cost per dish/item" margins block is hidden on the Ingredients page
+       (owner preference — keeps the page focused on the ingredient list and
+       avoids the floating add button overlapping it). Salon keeps its block. */
     var _caVk = this._supplyVerticalKey();
-    if (_caVk === 'restaurant' || _caVk === 'cafe') {
+    if (_caVk === 'restaurant' || _caVk === 'cafe' || _caVk === 'bakery' || _caVk === 'sweets') {
       target.style.display = 'none';
       target.innerHTML = '';
       return;
