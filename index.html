@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_120_stocktakeMenu';
+    window.HISAABNOW_BUILD = 'v33_121_restaurantUX';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -1090,6 +1090,10 @@ select.ps-input{appearance:none;-webkit-appearance:none;background-image:url("da
 .aip-cta{width:100%;padding:16px;border:none;border-radius:15px;font-size:16px;font-weight:800;font-family:inherit;letter-spacing:-.01em;cursor:pointer;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;box-shadow:0 8px 22px rgba(234,88,12,.36);transition:transform .12s}
 .aip-cta:active{transform:translateY(1px) scale(.995)}
 .aip-remove{display:block;width:100%;text-align:center;background:none;border:none;cursor:pointer;color:var(--t3);font-size:13px;font-weight:700;font-family:inherit;padding:11px 0 2px;letter-spacing:-.01em}
+/* Floating add button on the Ingredients page (replaces top-right +) */
+.ig-fab{position:fixed;right:16px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:38;display:flex;align-items:center;gap:8px;padding:13px 18px 13px 16px;border:none;border-radius:99px;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;font-family:inherit;font-size:14.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 8px 22px rgba(234,88,12,.4);transition:transform .12s,box-shadow .2s}
+.ig-fab:active{transform:scale(.96)}
+.ig-fab-label{white-space:nowrap}
 .ps-summary{margin:6px 0 18px;padding:12px 14px;background:#EEEEEE;border:1px solid #E2E2E2;border-radius:12px;display:flex;flex-direction:column;gap:7px}
 .ps-summary-row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:600;color:var(--t2)}
 .ps-summary-row b{color:var(--t1);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;font-size:14.5px}
@@ -4629,7 +4633,7 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" id="ig-page-title" data-i18n="inv.ingredientsLbl">Ingredients</div>
-    <button class="icon-btn" onclick="App.openIngredientSheet()" aria-label="Add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <div class="icon-btn" style="visibility:hidden" aria-hidden="true"></div>
   </header>
 
   <!-- Desktop-only prominent Add CTA at the top of Supplies page (May 2026) -->
@@ -4663,6 +4667,12 @@ html[data-current-role="manager"] body{
          in the header already adds supplies. Keeping Import CSV as a useful
          standalone bulk action. -->
   </div>
+
+  <!-- Floating add button (replaces the confusing top-right +) -->
+  <button class="ig-fab" id="ig-fab" onclick="App.openIngredientSheet()" aria-label="Add ingredient" data-role-min="manager">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span class="ig-fab-label" id="ig-fab-label">Add ingredient</span>
+  </button>
 </div>
 
 <div class="page" id="pg-supply-detail">
@@ -21228,6 +21238,8 @@ const App = {
     if (actionBar) actionBar.style.display = (isRecipeShop && list.length > 0) ? 'flex' : 'none';
     const addLabelEl = document.getElementById('ig-add-cta-label');
     if (addLabelEl) addLabelEl.textContent = _L.addBtn;
+    const fabLabelEl = document.getElementById('ig-fab-label');
+    if (fabLabelEl) fabLabelEl.textContent = _L.addBtn;
 
     const target = document.getElementById('ig-list');
     if (!target) return;
@@ -22434,6 +22446,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   renderCostAnalysisSection(){
     const target = document.getElementById('ig-cost-analysis');
     if (!target) return;
+    /* Restaurant: the "Cost per dish" margins block is hidden on the
+       Ingredients page (per owner preference — keeps the page focused on
+       the ingredient list). Other recipe verticals keep it. */
+    if (this._supplyVerticalKey() === 'restaurant') {
+      target.style.display = 'none';
+      target.innerHTML = '';
+      return;
+    }
     const _L = this._supplyLabels();
     const ingredients = Store.list('ingredients') || [];
     const products = (Store.list('prods') || []).filter(p => p && !p._deleted);
@@ -45267,6 +45287,7 @@ button:not(:disabled){ user-select:none }
     state.wasInactive = (item.active === false);
     state.name        = item.name || '';
     state.cat         = item.cat || '';
+    state._catTouched = !!item.cat;   // respect saved category — don't auto-override
     state.gender      = item.gender || 'Unisex';
     state.price       = +item.sp || +item.price || 0;
     state.gstRate     = (item.gstRate != null) ? +item.gstRate : 18;
@@ -45300,6 +45321,7 @@ button:not(:disabled){ user-select:none }
       state.editingId = null;
       state.wasInactive = false;
       state.name = ''; state.cat = ''; state.gender = 'Unisex';
+      state._catTouched = false;   // allow smart auto-category from the name
       state.price = 0; state.gstRate = 18; state.gstInclusive = true;
       state.duration = 45;
       state.supplies = [];
@@ -45793,9 +45815,62 @@ button:not(:disabled){ user-select:none }
   };
   window.NSW = api;
 
+  /* Smart category — guess the category from the dish name so the owner
+     doesn't have to pick it every time. Reads the live <select> options so
+     it adapts to whatever categories the shop actually has, and only acts
+     when a confident keyword match maps onto an existing option. */
+  function _autoCatFromName(name){
+    var sel = $('ns-cat'); if (!sel) return null;
+    var n = (name || '').toLowerCase();
+    if (n.replace(/[^a-z]/g,'').length < 3) return null;
+    var opts = [].slice.call(sel.options)
+      .map(function(o){ return o.text; })
+      .filter(function(t){ return t && t.toLowerCase() !== 'select…'; });
+    if (!opts.length) return null;
+
+    var hasMeat = /(chicken|mutton|fish|prawn|prawns|egg|lamb|keema|meat|seafood|crab|tikka chicken|murgh)/.test(n);
+    var hasVeg  = /(paneer|aloo|gobi|mushroom|bhindi|chana|chole|rajma|kofta|matar|mutter|palak|baingan|soya|tofu|veg\b|dal|daal)/.test(n);
+    var isVeg   = hasVeg && !hasMeat;
+
+    var rules = [
+      [/(lassi|chaas|chai|coffee|\btea\b|juice|cola|coke|pepsi|soda|water|mojito|shake|smoothie|thums|sprite|mocktail|nimbu|buttermilk|drink)/, ['Beverage','Cold Drink','Drink']],
+      [/(gulab|rasmalai|ras malai|kheer|halwa|ice cream|kulfi|brownie|gajar|jalebi|dessert|falooda|phirni|rabri|sundae|cake)/, ['Dessert','Sweet']],
+      [/(naan|roti|paratha|kulcha|bhatura|chapati|lachha|rumali|missi|\bbread\b)/, ['Bread','Roti']],
+      [/(biryani|biriyani|pulao|pulav|fried rice|jeera rice|\brice\b)/, ['Rice','Biryani']],
+      [/(\bdal\b|\bdaal\b|dhal|kadhi|sambar)/, ['Dal','Lentil']],
+      [/(soup|shorba|rasam)/, ['Soup']],
+      [/(manchurian|hakka|schezwan|noodle|chowmein|chow mein|momo|spring roll|chinese)/, ['Indo-Chinese','Chinese','Noodle']],
+      [/(dosa|idli|vada|uttapam|medu|upma)/, ['South Indian','Dosa']],
+      [/(tikka|tandoori|kebab|kabab|seekh|malai|hariyali)/, isVeg ? ['Veg Starter','Starter','Tandoor'] : ['Non-Veg Starter','Tandoor','Starter']],
+      [/(starter|pakora|pakoda|\b65\b|crispy|chilli|fry\b|fritter|cutlet|roll)/, isVeg ? ['Veg Starter','Starter'] : ['Non-Veg Starter','Starter']],
+      [/(curry|masala|butter|korma|kadai|kadhai|handi|rogan|makhani|gravy|kofta|bhuna|saag|lababdar|do pyaza)/, isVeg ? ['Veg Main','Main'] : ['Non-Veg Main','Main']],
+      [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood)/, ['Non-Veg Main','Main','Non-Veg Starter']],
+      [/(paneer|aloo|gobi|mushroom|bhindi|chana|chole|rajma|matar|mutter|baingan|soya|tofu|\bveg\b)/, ['Veg Main','Main','Veg Starter']]
+    ];
+
+    for (var i = 0; i < rules.length; i++){
+      if (rules[i][0].test(n)){
+        var cands = rules[i][1];
+        for (var j = 0; j < cands.length; j++){
+          var cl = cands[j].toLowerCase();
+          var hit = opts.find(function(o){ return o.toLowerCase().indexOf(cl) !== -1; });
+          if (hit) return hit;
+        }
+      }
+    }
+    return null;
+  }
+
   function bind(){
-    var n = $('ns-name'); if (n) n.addEventListener('input', function(e){ state.name = e.target.value; render(); });
-    var c = $('ns-cat');  if (c) c.addEventListener('change', function(e){ state.cat = e.target.value; render(); });
+    var n = $('ns-name'); if (n) n.addEventListener('input', function(e){
+      state.name = e.target.value;
+      if (!state._catTouched){
+        var ac = _autoCatFromName(state.name);
+        if (ac){ var cc = $('ns-cat'); if (cc){ cc.value = ac; state.cat = ac; } }
+      }
+      render();
+    });
+    var c = $('ns-cat');  if (c) c.addEventListener('change', function(e){ state.cat = e.target.value; state._catTouched = true; render(); });
     var g = $('ns-gen');  if (g) g.addEventListener('change', function(e){ state.gender = e.target.value; });
 
     document.addEventListener('click', function(e){
