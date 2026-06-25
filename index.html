@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_128_settingsLabels';
+    window.HISAABNOW_BUILD = 'v33_130_promo_waiters';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -3363,6 +3363,7 @@ html[data-current-role="manager"] body{
   </div>
 
   <div class="ck-sticky">
+    <div id="ck-waiter-chip" data-role-min="manager" style="display:none;margin-bottom:10px"></div>
     <div id="checkout-udhaar-warn" style="display:none;margin-bottom:10px;padding:9px 12px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;font-size:12px;color:#92400E;font-weight:600;line-height:1.4">
       ⚠ Tag a customer name to track this udhaar. Add phone for WhatsApp reminders.
     </div>
@@ -3900,6 +3901,16 @@ html[data-current-role="manager"] body{
         <div class="menu-icon yellow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
         <div class="menu-text"><div class="menu-label menu-name" data-i18n="more.udhaarCredit">Udhaar / Credit</div><div class="menu-sub" id="more-udhaar-sub" data-i18n="more.trackCredSupplier">Track customer credit & supplier dues</div></div>
         <span class="menu-badge" id="more-udhaar-badge" style="background:#FEF3C7;color:#92400E;display:none"></span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" id="more-waiters-entry" onclick="window.Waiters && Waiters.openTally()" data-role-min="manager">
+        <div class="menu-icon" style="background:#FFF1EB;color:#C2410C"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="menu-text"><div class="menu-label menu-name">Waiter Collection</div><div class="menu-sub">Orders by waiter · collect at day end</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="menu-item" id="more-stockin-entry" onclick="window.Purchase && Purchase.open()" data-role-min="manager">
+        <div class="menu-icon" style="background:#FFEDD5;color:#9A3412"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div class="menu-text"><div class="menu-label menu-name">Stock In / Purchase</div><div class="menu-sub">Add stock · updates cost price &amp; dues</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <button class="menu-item" id="more-suppliers-entry" onclick="window.Suppliers && Suppliers.open()" data-role-min="manager">
@@ -20663,6 +20674,11 @@ const App = {
       else { bill.channel = 'walkin'; bill.channelLabel = 'Walk-in'; }
     } catch(e){ bill.channel = 'walkin'; }
 
+    try {
+      var _w = (window.Waiters && Waiters.billWaiter) ? Waiters.billWaiter() : null;
+      if (_w && _w.id) { bill.waiterId = _w.id; bill.waiterName = _w.name; }
+    } catch(e){}
+
     /* (v33_29av) Assign human-readable bill number for receipts. Done HERE
        before Store.add so the number is persisted with the bill. Customer
        sees "B-0234" on WhatsApp; if they later refer back to it, this is
@@ -20670,6 +20686,7 @@ const App = {
     bill.billNumber = this._nextBillNumber();
 
     const savedBill = Store.add('sales', bill);
+    try { if (window.Waiters && Waiters._afterSale) Waiters._afterSale(); } catch(e){}
     try { this._freeBillNudgeAfterSale(); } catch(e){}
 
     try {
@@ -27491,7 +27508,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
       if (!d) {                         /* no prefetch, or it failed -> create now */
         const fn = window.kfCallable(window.kfFunctions, 'payuCreateOrder');
-        const res = await fn({ tier: tier, cycle: cycle });
+        const _promoCode = (this._reviewPromo && this._reviewPromo.code) || undefined;
+        const res = await fn({ tier: tier, cycle: cycle, promoCode: _promoCode });
         d = res && res.data;
       }
       this._reviewOrder = null;
@@ -27552,7 +27570,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     };
     const info = INFO[tier+'|'+cycle];
     if (!info) { this.toast(this._T('toast.invalidPlanT','Invalid plan')); return; }
-    this._reviewSel = { tier:tier, cycle:cycle };
+    this._reviewSel = { tier:tier, cycle:cycle, basePrice: info.price };
+    this._reviewPromo = null;
     try { localStorage.setItem('hn_pending_amt', String(info.price)); } catch (e) {}
     this.closeProductSheet();
 
@@ -27607,7 +27626,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
             + '<div class="hnrp-row"><span class="hnrp-mut">GST (18%)</span><span class="hnrp-free">Included</span></div>'
             + '<div class="hnrp-row"><span class="hnrp-mut">Auto-renewal</span><span class="hnrp-mut">None \u00b7 one-time</span></div>'
             + '<div class="hnrp-hr"></div>'
-            + '<div class="hnrp-topay"><div class="hnrp-topay-l">To pay</div><div class="hnrp-topay-r">' + toPayBlock + '</div></div>'
+            + '<div class="hnrp-topay"><div class="hnrp-topay-l">To pay</div><div class="hnrp-topay-r" id="hnrp-topay-r">' + toPayBlock + '</div></div>'
+          + '</div>'
+          + '<div class="hnrp-promo" style="margin-top:12px">'
+            + '<div style="display:flex;gap:8px;align-items:center">'
+              + '<input id="hnrp-promo-code" placeholder="Promo code" autocomplete="off" onkeydown="if(event.key===\'Enter\'){App._applyPromo();}" style="flex:1;padding:12px 13px;border:1.5px dashed var(--p,#FF6B35);border-radius:12px;font-size:14px;font-family:inherit;text-transform:uppercase;letter-spacing:.04em;outline:none;background:#fff;box-sizing:border-box">'
+              + '<button type="button" onclick="App._applyPromo()" style="padding:12px 18px;border:none;border-radius:12px;background:#111827;color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">Apply</button>'
+            + '</div>'
+            + '<div id="hnrp-promo-msg" style="font-size:12.5px;margin-top:8px;line-height:1.5;display:none"></div>'
           + '</div>'
           + '<div class="hnrp-trust">'
             + '<span class="hnrp-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Secured by PayU</span>'
@@ -27615,7 +27641,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           + '</div>'
         + '</div>'
         + '<div class="hnrp-paybar">'
-          + '<button type="button" class="hnrp-paybtn" onclick="App._reviewPayNow()"><span>Pay <b>' + inr(info.price) + '</b></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>'
+          + '<button type="button" class="hnrp-paybtn" onclick="App._reviewPayNow()"><span id="hnrp-paybtn-lbl">Pay <b>' + inr(info.price) + '</b></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>'
           + '<button type="button" class="hnrp-monthly" onclick="' + secAction + '">' + secondary + '</button>'
         + '</div>'
       + '</div>';
@@ -27662,6 +27688,62 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var ov = document.getElementById('hn-review-overlay');
     if (ov){ ov.classList.remove('hnrp-open'); }
     document.body.style.overflow = '';
+  },
+
+  _promoMsg(html, ok){
+    var el = document.getElementById('hnrp-promo-msg');
+    if (!el) return;
+    el.style.display = 'block';
+    el.style.color = (ok === true) ? '#15803D' : (ok === false ? '#B91C1C' : '#6B7280');
+    el.innerHTML = html;
+  },
+  _clearReviewWarmup(){ this._reviewOrderPromise = null; this._reviewOrder = null; },
+  _reviewInr(n){ return '\u20b9' + Number(n||0).toLocaleString('en-IN'); },
+
+  async _applyPromo(){
+    var inp = document.getElementById('hnrp-promo-code');
+    var code = ((inp && inp.value) || '').trim().toUpperCase();
+    if (!code){ this._promoMsg('Enter a promo code', false); return; }
+    var sel = this._reviewSel || {};
+    if (!window.kfCallable || !window.kfFunctions){ this._promoMsg('Still loading \u2014 try again in a moment', false); return; }
+    this._promoMsg('Checking\u2026', null);
+    try {
+      var fn = window.kfCallable(window.kfFunctions, 'validatePromo');
+      var res = await fn({ tier: sel.tier, cycle: sel.cycle, code: code });
+      var d = res && res.data;
+      if (d && d.valid && typeof d.finalPrice === 'number'){
+        this._reviewPromo = { code: code, finalPrice: d.finalPrice, label: d.label || code };
+        this._clearReviewWarmup();
+        var topay = document.getElementById('hnrp-topay-r');
+        var paybtn = document.getElementById('hnrp-paybtn-lbl');
+        if (topay) topay.innerHTML = '<b>' + this._reviewInr(d.finalPrice) + '</b>';
+        if (paybtn) paybtn.innerHTML = 'Pay <b>' + this._reviewInr(d.finalPrice) + '</b>';
+        var saved = Math.max(0, (sel.basePrice || 0) - d.finalPrice);
+        this._promoMsg('\u2713 <b>' + (d.label || code) + '</b> applied \u2014 you save ' + this._reviewInr(saved) + '. <a href="#" onclick="App._clearPromo();return false" style="color:#B91C1C;font-weight:700;text-decoration:underline">Remove</a>', true);
+        if (inp){ inp.setAttribute('disabled','disabled'); }
+      } else {
+        this._reviewPromo = null;
+        this._promoMsg((d && d.reason) || 'Invalid or expired code', false);
+      }
+    } catch(e){
+      console.warn('[promo] validate failed', e);
+      this._reviewPromo = null;
+      this._promoMsg('Could not check that code \u2014 try again', false);
+    }
+  },
+
+  _clearPromo(){
+    this._reviewPromo = null;
+    this._clearReviewWarmup();
+    var sel = this._reviewSel || {};
+    var base = sel.basePrice || 0;
+    var topay = document.getElementById('hnrp-topay-r');
+    var paybtn = document.getElementById('hnrp-paybtn-lbl');
+    if (topay) topay.innerHTML = '<b>' + this._reviewInr(base) + '</b>';
+    if (paybtn) paybtn.innerHTML = 'Pay <b>' + this._reviewInr(base) + '</b>';
+    var inp = document.getElementById('hnrp-promo-code');
+    if (inp){ inp.value=''; inp.removeAttribute('disabled'); }
+    var msg = document.getElementById('hnrp-promo-msg'); if (msg) msg.style.display='none';
   },
 
   _ensureReviewStyle(){
@@ -39325,7 +39407,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 if (window.MShop) return;
 
 var MAX_NAME_LEN = 30;
-var COLLS = ['sales','prods','custs','udh','exps','staff','sups','appts','coupons','ingredients','recurring','khata','khataSettle','cashOpening','cashAdjust','purchases','suppliers'];
+var COLLS = ['sales','prods','custs','udh','exps','staff','sups','appts','coupons','ingredients','recurring','khata','khataSettle','cashOpening','cashAdjust','purchases','suppliers','waiters'];
 var LS_KEYS = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke',
                staff:'kstaff', sups:'ksu', appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec',
 
@@ -39333,7 +39415,7 @@ var LS_KEYS = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke',
                /* (v33_29g) cash drawer module — needs to be in this map so
                   shop-scoped localStorage keys are created/restored correctly
                   during multi-shop switching. */
-               cashOpening:'kcashopen', cashAdjust:'kcashadj', purchases:'kpurch', suppliers:'ksupp'};
+               cashOpening:'kcashopen', cashAdjust:'kcashadj', purchases:'kpurch', suppliers:'ksupp', waiters:'kwait'};
 
 var state = {
   uid: null,
@@ -84468,6 +84550,215 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
   window.Suppliers = Suppliers;
   try { if (window.App) window.App.openSuppliers = function(){ Suppliers.open(); }; } catch(e){}
+})();
+</script>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     WAITERS MODULE (v1) — server/waiter attribution + daily collection tally
+     For cloud kitchens / bars where waiters take food and pay at end of day.
+       • Set an "active waiter" — every bill is stamped with them (editable per bill)
+       • Bills stamped via completeSale (mirrors channel stamping): bill.waiterId/Name
+       • Waiter Tally: per-waiter order count + total since last collection
+       • Collect → records the collection and resets that waiter's running tally
+     Data: Store('waiters') {id,name,lastCollectedAt,totalCollected} — synced.
+     Exposes window.Waiters.
+═════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  "use strict";
+  function S(){ return window.Store; }
+  function toast(m){ try{ if(window.App && App.toast) App.toast(m); }catch(e){} }
+  function inr(n){ return '\u20b9' + Math.round(Number(n)||0).toLocaleString('en-IN'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  var ORANGE='#FF6B35', ORANGE_D='#C2410C', INK='#111827', MUT='#6B7280', LINE='#E5E7EB', BG='#F9FAFB';
+  var ACTIVE_KEY = 'hn_active_waiter';
+  var _billOverride = null;      // {id,name} just for the current bill
+  var _justThisBill = false;     // picker toggle state
+
+  function list(){ try{ return (S()&&S().list&&S().list('waiters'))||[]; }catch(e){ return []; } }
+  function getActiveId(){ try{ return localStorage.getItem(ACTIVE_KEY)||''; }catch(e){ return ''; } }
+  function activeWaiter(){ var id=getActiveId(); if(!id) return null; return list().find(function(w){ return w.id===id; })||null; }
+  function saleAmt(s){ return Number((s && (s.total!=null?s.total:s.amt)) || 0); }
+  function saleTime(s){ return Number((s && (s.t!=null?s.t:s.createdAt)) || 0); }
+
+  var Waiters = {
+    list: list,
+    active: activeWaiter,
+    setActive: function(id){ try{ localStorage.setItem(ACTIVE_KEY, id||''); }catch(e){} _billOverride=null; this.renderChip(); },
+    billWaiter: function(){ return _billOverride || activeWaiter(); },
+    setBillWaiter: function(id){ var w=list().find(function(x){ return x.id===id; }); _billOverride = w?{id:w.id,name:w.name}:null; this.renderChip(); },
+    _afterSale: function(){ _billOverride=null; this.renderChip(); },
+    add: function(name){ name=String(name||'').trim(); if(!name) return null; if(!S()||!S().add) return null; return S().add('waiters',{ name:name, lastCollectedAt:0, totalCollected:0 }); },
+    remove: function(id){ if(S()&&S().delete) S().delete('waiters', id); if(getActiveId()===id) this.setActive(''); },
+
+    /* ── host / bottom sheet ── */
+    _host: function(){
+      var h=document.getElementById('wai-host'); if(h) return h;
+      h=document.createElement('div'); h.id='wai-host';
+      h.innerHTML='<div id="wai-mask" style="position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:4200;display:none" onclick="Waiters.close()"></div>'
+        +'<div id="wai-sheet" role="dialog" aria-modal="true" style="position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:#fff;border-radius:20px 20px 0 0;z-index:4201;transform:translateY(100%);transition:transform .26s cubic-bezier(.4,0,.2,1);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.18)"></div>';
+      document.body.appendChild(h); return h;
+    },
+    _open: function(html){
+      this._host();
+      var sh=document.getElementById('wai-sheet'), mk=document.getElementById('wai-mask');
+      sh.innerHTML=html; mk.style.display='block'; sh.scrollTop=0;
+      requestAnimationFrame(function(){ sh.style.transform='translateY(0)'; });
+    },
+    close: function(){
+      var sh=document.getElementById('wai-sheet'), mk=document.getElementById('wai-mask');
+      if(sh) sh.style.transform='translateY(100%)';
+      if(mk) setTimeout(function(){ mk.style.display='none'; }, 240);
+    },
+    _header: function(title, sub){
+      return '<div style="padding:18px 18px 12px;border-bottom:1px solid '+LINE+';flex:0 0 auto;display:flex;align-items:center;justify-content:space-between">'
+        +'<div><div style="font-size:18px;font-weight:800;color:'+INK+'">'+esc(title)+'</div>'
+        +(sub?'<div style="font-size:12.5px;color:'+MUT+';margin-top:2px">'+esc(sub)+'</div>':'')+'</div>'
+        +'<button onclick="Waiters.close()" aria-label="Close" style="border:none;background:'+BG+';width:34px;height:34px;border-radius:50%;font-size:18px;color:'+MUT+';cursor:pointer">\u2715</button></div>';
+    },
+
+    /* ── checkout chip ── */
+    renderChip: function(){
+      var el=document.getElementById('ck-waiter-chip'); if(!el) return;
+      var ws=list();
+      if(ws.length===0){ el.style.display='none'; el.innerHTML=''; return; }
+      var bw=this.billWaiter();
+      var lbl = bw ? esc(bw.name) : 'Select waiter';
+      var bg = bw ? '#FFF7ED' : '#fff';
+      el.style.display='block';
+      el.innerHTML='<button type="button" onclick="Waiters.openPicker()" style="display:flex;align-items:center;gap:8px;width:100%;justify-content:space-between;padding:11px 14px;border:1.5px solid '+(bw?ORANGE:LINE)+';background:'+bg+';border-radius:12px;font-size:14px;font-weight:700;color:'+INK+';cursor:pointer;font-family:inherit">'
+        +'<span style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">\ud83d\udc64</span> Waiter: <b style="color:'+ORANGE_D+'">'+lbl+'</b></span>'
+        +'<span style="color:'+MUT+'">change \u25be</span></button>';
+    },
+
+    /* ── pick waiter for this bill (or set active) ── */
+    openPicker: function(){
+      var ws=list();
+      var bw=this.billWaiter();
+      var rows = ws.map(function(w){
+        var on = bw && bw.id===w.id;
+        return '<button onclick="Waiters._pick(\''+w.id+'\')" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 18px;background:'+(on?'#FFF7ED':'#fff')+';border:none;border-bottom:1px solid '+LINE+';cursor:pointer">'
+          +'<div style="flex:0 0 38px;width:38px;height:38px;border-radius:50%;background:#FFF1EB;color:'+ORANGE_D+';display:flex;align-items:center;justify-content:center;font-weight:800">'+esc((w.name||'?').charAt(0).toUpperCase())+'</div>'
+          +'<div style="flex:1;font-weight:700;color:'+INK+';font-size:15px">'+esc(w.name)+'</div>'
+          +(on?'<span style="color:'+ORANGE_D+';font-weight:800">\u2713</span>':'')+'</button>';
+      }).join('');
+      this._open(
+        this._header('Waiter for this bill', 'Pre-fills every bill until you switch')
+        +'<div style="padding:12px 18px;border-bottom:1px solid '+LINE+';display:flex;align-items:center;justify-content:space-between;background:'+BG+'">'
+          +'<span style="font-size:13px;color:'+MUT+';font-weight:600">Just this one bill (don\u2019t change default)</span>'
+          +'<button onclick="Waiters._toggleJust(this)" style="border:none;width:46px;height:26px;border-radius:99px;background:'+(_justThisBill?ORANGE:'#D1D5DB')+';position:relative;cursor:pointer;transition:background .15s"><span style="position:absolute;top:3px;left:'+(_justThisBill?'23px':'3px')+';width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s"></span></button>'
+        +'</div>'
+        +'<div style="flex:1;overflow-y:auto">'+(rows||'<div style="padding:30px;text-align:center;color:'+MUT+'">No waiters yet</div>')+'</div>'
+        +'<div style="flex:0 0 auto;padding:14px 18px;border-top:1px solid '+LINE+';background:#fff">'
+          +'<button onclick="Waiters.openManage()" style="width:100%;padding:13px;border-radius:12px;border:1.5px solid '+LINE+';background:#fff;color:'+INK+';font-weight:700;cursor:pointer">\u2699\ufe0f Manage waiters</button>'
+        +'</div>'
+      );
+    },
+    _toggleJust: function(btn){ _justThisBill=!_justThisBill; this.openPicker(); },
+    _pick: function(id){
+      if(_justThisBill){ this.setBillWaiter(id); _justThisBill=false; }
+      else { this.setActive(id); }
+      this.close();
+    },
+
+    /* ── manage roster ── */
+    openManage: function(){
+      var ws=list(); var actId=getActiveId();
+      var rows = ws.length ? ws.map(function(w){
+        var on = w.id===actId;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid '+LINE+'">'
+          +'<div style="flex:1;font-weight:700;color:'+INK+'">'+esc(w.name)+(on?' <span style="font-size:10px;font-weight:800;color:'+ORANGE_D+';background:#FFF1EB;padding:2px 7px;border-radius:99px;margin-left:6px">DEFAULT</span>':'')+'</div>'
+          +(on?'':'<button onclick="Waiters.setActive(\''+w.id+'\');Waiters.openManage()" style="border:1px solid '+LINE+';background:#fff;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:'+ORANGE_D+';cursor:pointer">Set default</button>')
+          +'<button onclick="Waiters._del(\''+w.id+'\')" style="border:1px solid #FECACA;background:#fff;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:#B91C1C;cursor:pointer">Remove</button>'
+          +'</div>';
+      }).join('') : '<div style="padding:20px 0;color:'+MUT+';font-size:13px">No waiters yet. Add your first one below.</div>';
+      this._open(
+        this._header('Manage waiters', 'Add the people who take orders')
+        +'<div style="flex:1;overflow-y:auto;padding:18px">'
+          +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+            +'<input id="wai-add-name" placeholder="Waiter name" onkeydown="if(event.key===\'Enter\')Waiters._add()" style="flex:1;padding:12px;border:1px solid '+LINE+';border-radius:11px;font-size:15px;font-family:inherit;outline:none">'
+            +'<button onclick="Waiters._add()" style="padding:12px 18px;border:none;border-radius:11px;background:'+ORANGE+';color:#fff;font-weight:800;cursor:pointer">Add</button>'
+          +'</div>'
+          +rows
+        +'</div>'
+      );
+      setTimeout(function(){ var el=document.getElementById('wai-add-name'); if(el) el.focus(); }, 120);
+    },
+    _add: function(){
+      var inp=document.getElementById('wai-add-name'); var name=inp?inp.value:'';
+      var w=this.add(name);
+      if(!w){ toast('Enter a name'); return; }
+      if(!getActiveId()) this.setActive(w.id);   /* first waiter becomes default */
+      this.renderChip(); this.openManage();
+    },
+    _del: function(id){
+      if(!confirm('Remove this waiter? Their past bills stay in reports.')) return;
+      this.remove(id); this.renderChip(); this.openManage();
+    },
+
+    /* ── daily collection tally ── */
+    openTally: function(){
+      var ws=list();
+      if(ws.length===0){
+        this._open(
+          this._header('Waiter collection')
+          +'<div style="padding:40px 24px;text-align:center;color:'+MUT+'">'
+            +'<div style="font-size:36px;margin-bottom:10px">\ud83e\uddfe</div>'
+            +'<div style="font-weight:700;color:'+INK+';margin-bottom:4px">No waiters yet</div>'
+            +'<div style="font-size:13px;line-height:1.5;margin-bottom:18px">Add the waiters who take orders, then tag each bill to them. At day end, collect from each here.</div>'
+            +'<button onclick="Waiters.openManage()" style="padding:13px 22px;border:none;border-radius:12px;background:'+ORANGE+';color:#fff;font-weight:800;cursor:pointer">+ Add waiters</button>'
+          +'</div>'
+        );
+        return;
+      }
+      var sales=[]; try{ sales=(S().list('sales'))||[]; }catch(e){}
+      var grand=0;
+      var rows = ws.map(function(w){
+        var since = Number(w.lastCollectedAt||0);
+        var n=0, sum=0;
+        sales.forEach(function(s){
+          if(s && s.waiterId===w.id && saleTime(s) > since){ n++; sum+=saleAmt(s); }
+        });
+        grand += sum;
+        var has = n>0;
+        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid '+LINE+'">'
+          +'<div style="flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#FFF1EB;color:'+ORANGE_D+';display:flex;align-items:center;justify-content:center;font-weight:800">'+esc((w.name||'?').charAt(0).toUpperCase())+'</div>'
+          +'<div style="flex:1;min-width:0"><div style="font-weight:700;color:'+INK+';font-size:15px">'+esc(w.name)+'</div>'
+            +'<div style="font-size:12.5px;color:'+MUT+'">'+n+' order'+(n!==1?'s':'')+' pending</div></div>'
+          +'<div style="text-align:right;margin-right:6px"><div style="font-weight:800;color:'+INK+';font-size:16px">'+inr(sum)+'</div></div>'
+          +(has?'<button onclick="Waiters.collect(\''+w.id+'\')" style="border:none;background:'+ORANGE+';color:#fff;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:800;cursor:pointer">Collect</button>'
+               :'<span style="color:#9CA3AF;font-size:12px;font-weight:600;padding:9px 6px">\u2014</span>')
+          +'</div>';
+      }).join('');
+      this._open(
+        this._header('Waiter collection', 'Pending orders since last collection')
+        +'<div style="flex:1;overflow-y:auto;padding:8px 18px 0">'+rows+'</div>'
+        +'<div style="flex:0 0 auto;padding:14px 18px;border-top:1px solid '+LINE+';background:#fff;display:flex;align-items:center;justify-content:space-between">'
+          +'<div><div style="font-size:11px;color:'+MUT+';text-transform:uppercase;letter-spacing:.04em;font-weight:700">Total to collect</div>'
+            +'<div style="font-size:22px;font-weight:800;color:'+INK+'">'+inr(grand)+'</div></div>'
+          +'<button onclick="Waiters.openManage()" style="border:1px solid '+LINE+';background:#fff;border-radius:11px;padding:11px 15px;font-weight:700;color:'+INK+';cursor:pointer">\u2699\ufe0f Manage</button>'
+        +'</div>'
+      );
+    },
+    collect: function(id){
+      var w=(S().get?S().get('waiters',id):null); if(!w) return;
+      var sales=[]; try{ sales=(S().list('sales'))||[]; }catch(e){}
+      var since=Number(w.lastCollectedAt||0), n=0, sum=0;
+      sales.forEach(function(s){ if(s && s.waiterId===id && saleTime(s)>since){ n++; sum+=saleAmt(s); } });
+      if(n===0){ toast('Nothing pending for '+w.name); return; }
+      if(!confirm('Collect '+inr(sum)+' from '+w.name+' for '+n+' order'+(n!==1?'s':'')+'?\nThis resets their pending tally.')) return;
+      S().update('waiters', id, { lastCollectedAt: Date.now(), totalCollected: Number(w.totalCollected||0)+sum });
+      toast('\u2713 Collected '+inr(sum)+' from '+w.name);
+      this.openTally();
+    }
+  };
+
+  window.Waiters = Waiters;
+  function init(){ try{ Waiters.renderChip(); }catch(e){} }
+  if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 
