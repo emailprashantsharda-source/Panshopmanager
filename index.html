@@ -34816,6 +34816,16 @@ window.addEventListener('DOMContentLoaded', () => {
     cashOpening: loadColl('kcashopen', 'kcashopen'),
     cashAdjust:  loadColl('kcashadj',  'kcashadj'),
 
+    /* (audit fix Jun 2026) These collections were written via Store.add but
+       never persisted/hydrated — they vanished on every reload. Wired here
+       (+ in _emit lsKeys + HisaabSync map) so they survive reloads and sync. */
+    waiters:       loadColl('kwait',   'kwait'),
+    purchases:     loadColl('kpurch',  'kpurch'),
+    subscriptions: loadColl('ksubsc',  'ksubsc'),
+    packs:         loadColl('kpacks',  'kpacks'),
+    campaigns:     loadColl('kcamp',   'kcamp'),
+    notes:         loadColl('knotes',  'knotes'),
+
     starred:     lg('kstar', []),
     catMargins:  lg('kcm', {}),
     monthTarget: Number(lg('kmtg', 0)) || 0,
@@ -37479,7 +37489,18 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     coupons:      'coupons',
     recurring:    'recurring',
     cashOpening:  'cashOpening',  /* (v33_26) cash drawer module — opening balances + adjustments */
-    cashAdjust:   'cashAdjust'    /* (v33_26) withdrawals, deposits, corrections */
+    cashAdjust:   'cashAdjust',   /* (v33_26) withdrawals, deposits, corrections */
+
+    /* (audit fix Jun 2026) Previously unsynced — now pushed to Firebase.
+       NOTE: each path needs a matching Firestore security rule, else pushes
+       return permission-denied (local data is unaffected). */
+    purchases:    'purchases',
+    khataSettle:  'khataSettle',
+    waiters:      'waiters',
+    subscriptions:'subscriptions',
+    packs:        'packs',
+    campaigns:    'campaigns',
+    notes:        'notes'
   };
 
   const NO_PUSH_COLLECTIONS = { staff: true };
@@ -40748,7 +40769,7 @@ function _emit(coll){
   try {
     if (typeof window.ls === 'function') {
 
-      var lsKeys = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke', staff:'kstaff', sups:'ksu', appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec', cashOpening:'kcashopen', cashAdjust:'kcashadj'};
+      var lsKeys = {sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke', staff:'kstaff', sups:'ksu', appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec', cashOpening:'kcashopen', cashAdjust:'kcashadj', waiters:'kwait', purchases:'kpurch', subscriptions:'ksubsc', packs:'kpacks', campaigns:'kcamp', notes:'knotes'};
       var lk = lsKeys[coll];
       if (lk) {
         var data = _arr(coll);
@@ -84890,7 +84911,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       return map[k];
     }
     try {
-      (window.Store && Store.list('suppliers') || []).forEach(function(s){
+      (window.Store && Store.list('sups') || []).forEach(function(s){
         if (!s || s._deleted || !s.name) return;
         var g = ensure(s.name); g.masterId = s.id; if (s.phone && !g.phone) g.phone = s.phone;
       });
@@ -85017,7 +85038,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       var name = (($('sup-add-name')||{}).value||'').trim();
       var phone = (($('sup-add-phone')||{}).value||'').trim();
       if (!name){ try{ App.toast('Enter supplier name'); }catch(e){} return; }
-      try { if (window.Store) Store.add('suppliers', { name: name, phone: phone, createdAt: Date.now() }); } catch(e){}
+      try { if (window.Store) Store.add('sups', { name: name, phone: phone, createdAt: Date.now() }); } catch(e){}
       this._closeAdd();
       this._refresh();
       try{ App.toast('✓ Supplier added'); }catch(e){}
