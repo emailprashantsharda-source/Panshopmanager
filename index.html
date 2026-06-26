@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133i_devanagari_unit_setqty';
+    window.HISAABNOW_BUILD = 'v33_134_tour_fixes';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83114,9 +83114,25 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     if(!_voices.length){ loadVoices(); if(!_voices.length){ setTimeout(function(){ loadVoices(); doSpeak(); },250); return; } }
     doSpeak();
   }
+  // v33_134: spoken-form normalizer. TTS engines (cloud + device) read "+" and
+  // the math-minus "−" inconsistently — often silently. We convert symbols to
+  // spoken words ONLY for the audio stream; the on-screen bubble keeps the "+".
+  // Covers the many tour lines that say "tap the + button" / "+ Add ingredient".
+  function forSpeech(t){
+    if(!t) return t;
+    var hi=(lang()==='hi');
+    return String(t)
+      .replace(/\+/g, hi ? ' प्लस ' : ' plus ')        // "+"  → plus
+      .replace(/\u2212/g, hi ? ' माइनस ' : ' minus ')   // "−" (U+2212) → minus
+      .replace(/✓/g, ' ')                               // checkmark: don't read aloud
+      .replace(/🎉|👇|☁|⚡/g, ' ')                       // strip decorative emoji from speech
+      .replace(/\s{2,}/g,' ')
+      .trim();
+  }
   function speak(text){
     var av=$('hnadv-avatar');
     if(muted || !text) return;
+    var spoken=forSpeech(text);   // v33_134: audio uses spoken-form, bubble keeps symbols
     // v33_133f: cancel any in-progress speech (device synthesis OR cloud audio)
     // before starting a new one. Fixes the double-voice bug where greet's
     // device-TTS keeps playing while tour-step cloud-TTS also starts.
@@ -83125,23 +83141,23 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     // Cloud TTS (natural voice) if wired; otherwise device Web-Speech voice.
     if(ttsProvider){
       try {
-        Promise.resolve(ttsProvider(text, lang())).then(function(src){
-          if(!src){ deviceSpeak(text); return; }
+        Promise.resolve(ttsProvider(spoken, lang())).then(function(src){
+          if(!src){ deviceSpeak(spoken); return; }
           try {
             if(_audio){ _audio.pause(); _audio=null; }
             var url = (typeof src==='string') ? src : URL.createObjectURL(src);
             _audio=new Audio(url); _speechStarted=true;
             if(av) av.classList.add('speaking');
             _audio.onended=function(){ if(av) av.classList.remove('speaking'); };
-            _audio.onerror=function(){ if(av) av.classList.remove('speaking'); deviceSpeak(text); };
-            _audio.play().catch(function(){ deviceSpeak(text); });
-          } catch(e){ deviceSpeak(text); }
-        }).catch(function(){ deviceSpeak(text); });
-      } catch(e){ deviceSpeak(text); }
+            _audio.onerror=function(){ if(av) av.classList.remove('speaking'); deviceSpeak(spoken); };
+            _audio.play().catch(function(){ deviceSpeak(spoken); });
+          } catch(e){ deviceSpeak(spoken); }
+        }).catch(function(){ deviceSpeak(spoken); });
+      } catch(e){ deviceSpeak(spoken); }
       return;
     }
     if(!('speechSynthesis' in window)) return;
-    deviceSpeak(text);
+    deviceSpeak(spoken);
   }
   function stopSpeak(){ try { window.speechSynthesis.cancel(); } catch(e){} try{ if(_audio){_audio.pause();_audio=null;} }catch(e){} var av=$('hnadv-avatar'); if(av) av.classList.remove('speaking'); }
   function armSpeechFallback(text){
@@ -83198,8 +83214,36 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     }
   } catch(e){} }
   function hookMilestones(){
-    hookOnce('saveProduct', function(){ _prodSaved=true; });          // price set / product activated
+    hookOnce('saveProduct', function(){ _prodSaved=true; });          // price set / product activated (inline path)
     hookOnce('completeSale', function(r){ if(cartCount()>0||true) Promise.resolve(r).then(function(){ _billMade=true; }); });
+    hookNsw();                                                         // v33_134: wizard-activation path
+  }
+  // v33_134: The activation wizard (NSW) saves via an INTERNAL save() that writes
+  // straight to Store and never calls App.saveProduct — so the old saveProduct hook
+  // never fired for wizard activations, leaving the advisor stuck on "open the
+  // wizard again". NSW.next() is the public entry point: it either advances a panel
+  // (wizard stays open) or, on the final panel, calls save() which closes the wizard
+  // via api.close(). So "wizard was open before next(), closed after" === a real save.
+  function hookNsw(){
+    try {
+      if (window.NSW && typeof window.NSW.next === 'function' && !window.NSW._hn_next){
+        var origNext = window.NSW.next.bind(window.NSW);
+        window.NSW._hn_next = true;
+        window.NSW.next = function(){
+          var wasOpen = isWizardOpen();
+          var nm = '';
+          try { var n=document.getElementById('ns-name'); nm = n ? (n.value||'').trim() : ''; } catch(e){}
+          var r = origNext.apply(window.NSW, arguments);
+          try {
+            if (wasOpen && !isWizardOpen()) {   // wizard closed => save() ran
+              _prodSaved = true;
+              if (nm) _activatedName = nm;
+            }
+          } catch(e){}
+          return r;
+        };
+      }
+    } catch(e){}
   }
 
   /* ============================================================
@@ -83394,6 +83438,30 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var r=document.getElementById('kpi-row');
     return (r && r.offsetParent !== null) ? r : null;
   }
+  // v33_134: count ONLY genuinely-added supply rows in the wizard. Added rows carry
+  // data-i and lack .ns-sup-pick; the "pick from pantry" suggestions reuse .ns-sup-row
+  // WITH .ns-sup-pick, so we must exclude them. This is a live DOM signal that
+  // survives the wizard close/reopen cycle of the +Add ingredient detour — unlike
+  // the old _ingredientSheetWasOpen flag, which got wiped on reopen (Bug 1).
+  function wizardSupplyCount(){
+    try { return document.querySelectorAll('#ns-sup-list .ns-sup-row:not(.ns-sup-pick)').length; }
+    catch(e){ return 0; }
+  }
+  // v33_134: find the just-activated product's row on the catalog so STEP 5 can
+  // spotlight it. Matches by the captured name; falls back to the first item.
+  function elActivatedCatalogItem(){
+    var list=document.getElementById('catalog-list');
+    if(!list) return null;
+    if(_activatedName){
+      var want=_activatedName.toLowerCase();
+      var kids=list.children;
+      for(var i=0;i<kids.length;i++){
+        var c=kids[i];
+        if(c.offsetParent!==null && (c.textContent||'').toLowerCase().indexOf(want)>=0) return c;
+      }
+    }
+    return elFirstCatalogItem();
+  }
 
   var _wizardEverOpened = false;  // tracks if user opened wizard during this tour
   // v33_133i: track ingredient sheet open/close state so panel-2 advice can
@@ -83401,6 +83469,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   // the user comes back from the +Add ingredient popup.
   var _ingredientSheetWasOpen = false;
   var _wizardWasOpenLast = false;
+  var _activatedName = '';        // v33_134: name of the product just activated via wizard
+  var _finalStepStart = 0;        // v33_134: timestamp for the final KPI auto-dismiss
 
   var STEPS=[
     // ─── STEP 1: From Home → tap More
@@ -83444,13 +83514,15 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
             "Ingredient का name भरें (जैसे मैदा, तेल, चीनी), category चुनें. फिर purchase price और pack quantity डालें. Unit बदलने के लिए kg / L / g / ml / pc वाला button दबाएं — मैदा या चीनी जैसे solid के लिए kg, तेल या दूध जैसे liquid के लिए L. फिर Save दबाएं."
           );
         }
-        // v33_133i: handle wizard-closed AFTER product saved (avoids brief fallback flash)
+        // v33_134: handle wizard-closed AFTER product saved (avoids brief fallback flash).
+        // Treat a captured _activatedName as a save signal too, so we never wrongly
+        // loop back to "open the wizard" if the primary hook fired a tick late.
         if (!isWizardOpen()) {
-          if (_prodSaved === true) {
-            return L("Saving your item...", "आपका item save हो रहा है...");
+          if (_prodSaved === true || _activatedName) {
+            return L("Saving your item…", "आपका item save हो रहा है…");
           }
-          return L("Open the activation wizard from the suggested item.",
-                   "Suggested item पर tap करके wizard खोलें।");
+          return L("Tap a suggested item to open the setup wizard.",
+                   "किसी suggested item पर tap करके setup wizard खोलें।");
         }
         var panel = getActiveWizardPanel();
         if (panel === 1) {
@@ -83458,12 +83530,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
                    "Step 1 of 3: Item का नाम confirm करें और selling price set करें। फिर नीचे Continue दबाएं।");
         }
         if (panel === 2) {
-          // v33_133i: if user just added an ingredient via the popup, shift advice
-          // to "set quantity used per item" instead of repeating "add ingredient".
-          if (_ingredientSheetWasOpen && !isResaleBiz()) {
+          // v33_134 (Bug 1 fix): decide from the LIVE wizard state — does this
+          // product already have at least one ingredient/supply attached? The old
+          // code keyed off _ingredientSheetWasOpen, but the +Add ingredient detour
+          // closes and reopens the wizard, and the reopen wiped that flag → the
+          // advisor reverted to "add ingredient or continue". Reading the actual
+          // added rows is immune to that cycle.
+          if (wizardSupplyCount() > 0 && !isResaleBiz()) {
+            var addedWord = isSalonBiz() ? 'supply' : 'ingredient';
             return L(
-              "Great! Now set how much of this ingredient is used per item — tap the + and − buttons next to its quantity (e.g., for chai use 100ml milk, for a roti use 30g maida). Tap + Add ingredient for more, or Continue when done.",
-              "बहुत बढ़िया! अब इस product में इस ingredient की कितनी quantity लगती है वो set करें — quantity के साथ + और − से adjust करें (जैसे चाय में 100ml दूध, रोटी में 30g मैदा). और ingredient चाहिए तो + Add ingredient दबाएं, या हो जाए तो Continue दबाएं."
+              "Nicely done — that " + addedWord + " is attached and its cost is now baked into this item's margin (see the live Gross margin below). Set how much is used per item with the + and − beside the quantity (e.g., 100ml milk for a chai, 30g maida for a roti). Add another with + Add " + addedWord + ", or tap Continue to review.",
+              "बढ़िया — वो " + (isSalonBiz()?'supply':'ingredient') + " जुड़ गया और उसकी cost अब इस item के margin में आ गई (नीचे live Gross margin देखें). हर item में कितनी quantity लगती है वो quantity के पास + और − से set करें (जैसे चाय में 100ml दूध, रोटी में 30g मैदा). और जोड़ने के लिए + Add " + (isSalonBiz()?'supply':'ingredient') + " दबाएं, या review के लिए Continue दबाएं."
             );
           }
           // v33_133g: category-aware ingredients/supplies guidance (first-time)
@@ -83502,43 +83579,60 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         // (the next step will guide them back, or they'll re-enter)
         return false;
       } },
-    // ─── STEP 5: After activation → nav to Home (where + FAB is), then tap +
-    // v33_133h: auto-nav to home so the user doesn't see "Activate next" suggestions
-    // on the catalog screen, which confused them about whether to keep activating.
+    // ─── STEP 5 (v33_134): Celebrate the just-activated product on the catalog.
+    // Bug 2 fix: previously the advisor jumped straight to "tap +" (or, when the
+    // save signal was missed, looped back to "open the wizard"). Now we spotlight
+    // the actual product the user just activated and confirm its cost & margin are
+    // captured. Brief beat, then we point to the + FAB in the next step.
+    { target: elActivatedCatalogItem,
+      line: function(){
+        var nm = _activatedName ? ('"' + _activatedName + '"') : (isSalonBiz() ? 'your service' : 'your item');
+        return L(
+          "✓ Activated! " + nm + " is now live — its price, cost and profit margin are all set. Here it is in your list.",
+          "✓ Activate हो गया! " + (_activatedName ? ('"'+_activatedName+'"') : 'आपका item') + " अब live है — price, cost और profit margin सब set हैं. ये रहा आपकी list में."
+        );
+      },
+      // Brief celebration beat (~4s), but skip instantly if the user races ahead.
+      until: function(){
+        if (!STEPS[4]._startedAt) STEPS[4]._startedAt = Date.now();
+        var p=curPage();
+        return p==='addsale'||cartCount()>0||_billMade===true || (Date.now()-STEPS[4]._startedAt)>4000;
+      } },
+    // ─── STEP 6 (v33_134): Point to the + FAB to start the first bill.
     { target: elFab,
-      requirePage: 'home',  // pre-step nav: ensure user is on home before this step starts
       line: function(){ return L(
-        "✓ Activated! Your item is saved. Now tap the + button at the bottom-right to make your first bill.",
-        "✓ Activate हो गया! Item save हो गया है। अब नीचे + button दबाकर पहला bill बनाएं।"
+        "Now let's turn it into money — tap the + button at the bottom to start your first bill.",
+        "अब इसे sale में बदलें — नीचे + button दबाकर पहला bill शुरू करें."
       ); },
       until: function(){
         var p=curPage(); return p==='addsale'||cartCount()>0||_billMade===true;
       } },
-    // ─── STEP 6: On Add-Sale → tap a product tile to add to cart
+    // ─── STEP 7: On Add-Sale → tap a product tile to add to cart
     { target: elFirstAddSaleTile,
       line: function(){ return L(
-        "Tap your item to add it to this bill.",
-        "अपना item दबाएं — bill में add करें।"
+        "Here's your menu. Tap " + (_activatedName ? ('"'+_activatedName+'"') : 'your item') + " to drop it into this bill.",
+        (_activatedName ? ('"'+_activatedName+'"') : 'अपना item') + " दबाएं — इसे इस bill में add करें।"
       ); },
       until: function(){ return cartCount()>0||_billMade===true; } },
-    // ─── STEP 7: Cart has items → tap Checkout
+    // ─── STEP 8: Cart has items → tap Checkout
     { target: elCheckoutBar,
       line: function(){ return L(
-        "Item added! Now tap Checkout to take payment.",
-        "Item add हो गया! अब payment के लिए Checkout दबाएं।"
+        "Added to the bill! Now tap Checkout to take payment — cash, UPI or udhaar.",
+        "Bill में add हो गया! अब payment लेने के लिए Checkout दबाएं — cash, UPI या उधार।"
       ); },
       until: function(){ return _billMade===true; } },
-    // ─── STEP 8 (NEW): Final — spotlight the dashboard KPIs
+    // ─── STEP 9 (v33_134): Final — land on the dashboard and spotlight Profit & Margin.
     { target: elKpiRow,
+      requirePage: 'home',   // ensure we're on the dashboard so the KPI row exists
       forceTop: false,
       line: function(){ return L(
-        "🎉 First bill done! See your stats — Bills, Profit, Margin all update here live.",
-        "🎉 पहला bill हो गया! यहाँ देखें — Bills, Profit, Margin सब live update होते हैं।"
+        "🎉 First bill done! And here's the magic — because you set the cost, your Profit and Margin update live, right here. That's your whole loop: add a product, add its ingredients to know the true cost, then bill in seconds.",
+        "🎉 पहला bill हो गया! और यही कमाल है — आपने cost set की थी, इसलिए आपका Profit और Margin यहीं live update होता है. यही है पूरा तरीका: product add करें, ingredients डालकर असली cost जानें, फिर seconds में bill बनाएं."
       ); },
-      // Auto-advance after 7 seconds so celebrate() fires and dismisses
+      // Auto-advance after 8 seconds so celebrate() fires and dismisses.
       until: function(){
-        if (!STEPS[7]._startedAt) STEPS[7]._startedAt = Date.now();
-        return (Date.now() - STEPS[7]._startedAt) > 7000;
+        if (!_finalStepStart) _finalStepStart = Date.now();
+        return (Date.now() - _finalStepStart) > 8000;
       } }
   ];
   var stepIdx=0;
@@ -83572,6 +83666,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         if (dock) { dock.classList.remove('bottom'); dock.classList.add('top'); }
       }
       _pollTimer=setInterval(function(){
+        hookNsw();  // v33_134: ensure activation hook is attached (NSW may init late)
         // v33_133i: Check until() FIRST so completed steps advance immediately
         // without re-rendering text. Fixes the "Open the wizard" flash that
         // appeared after activation because the wizard had closed before
@@ -83626,7 +83721,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       },300);
     });
   }
-  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; _ingredientSheetWasOpen=false; _wizardWasOpenLast=false; hookMilestones(); showChips(false); showAsk(false); runStep(); }
+  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; _ingredientSheetWasOpen=false; _wizardWasOpenLast=false; _activatedName=''; _finalStepStart=0; hookMilestones(); showChips(false); showAsk(false); runStep(); }
 
   function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
     // v33_133e: brief final message after the dashboard spotlight step
