@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_131_invite_install';
+    window.HISAABNOW_BUILD = 'v33_133_tour_voice_fix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -82953,8 +82953,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 #hnadv-dock.bottom{bottom:18px;transform:translateX(-50%) translateY(14px)}
 #hnadv-dock.top{top:18px;transform:translateX(-50%) translateY(-14px)}
 #hnadv-dock.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.hnadv-skip{position:absolute;top:10px;right:12px;background:none;border:none;color:#9C9C9C;font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;font-family:inherit;border-radius:8px}
-.hnadv-skip:active{background:#F6F6F6}
+.hnadv-skip{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.06);border:none;color:#1a1a1a;font-size:0;font-weight:700;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:inherit;padding:0;line-height:1;z-index:2}
+.hnadv-skip::before{content:"✕";font-size:18px;font-weight:600;color:#1a1a1a}
+.hnadv-skip:active{background:rgba(0,0,0,.14);transform:scale(.94)}
 .hnadv-row{display:flex;gap:12px;align-items:flex-start}
 .hnadv-avatar{flex-shrink:0;width:44px;height:44px;border-radius:50%;background:linear-gradient(160deg,#1C1C1C 0%,#000 100%);display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 .hnadv-avatar svg{width:22px;height:22px;color:#FFC043}
@@ -83034,17 +83035,25 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var _voices=[];
   function loadVoices(){ try { _voices = window.speechSynthesis.getVoices() || []; } catch(e){ _voices=[]; } }
   if ('speechSynthesis' in window){ loadVoices(); try { window.speechSynthesis.onvoiceschanged=loadVoices; } catch(e){} }
-  var FEMALE_HINT=/female|woman|kalpana|heera|swara|lekha|veena|raveena|aditi|समीरा/i;
-  var MALE_HINT=/\bmale\b|\bman\b|ravi|hemant/i;
+  // v33_133: expanded female voice detection for Hindi/English on Android/iOS/Windows
+  var FEMALE_HINT=/female|woman|girl|kalpana|heera|swara|lekha|veena|raveena|aditi|samira|shreya|priya|deepa|asha|tara|neerja|samantha|kavita|समीरा|नीरजा|श्रद्धा|प्रिया|swaraneural|aditineural|standard-a|standard-c|wavenet-a|wavenet-c|neural2-a|neural2-c/i;
+  var MALE_HINT=/\bmale\b|\bman\b|boy|ravi|hemant|madhur|prabhat|arjun|nikhil|prakash|amit|rohan|aakash|madhurneural|prabhatneural|standard-b|standard-d|wavenet-b|wavenet-d|neural2-b|neural2-d/i;
+  var QUALITY_HINT=/natural|neural|wavenet|enhanced|premium|online/i;
   function pickVoice(lc){
     if(!_voices.length) loadVoices();
     var want = lc==='hi'?'hi':'en';
     var pool=_voices.filter(function(v){ return (v.lang||'').toLowerCase().indexOf(want)===0; });
     if(!pool.length) pool=_voices.slice();
-    var score=function(v){ var n=(v.name||''),s=0;
-      if(/google/i.test(n)) s+=6; if(FEMALE_HINT.test(n)) s+=5; if(MALE_HINT.test(n)) s-=5;
-      if(/IN$/i.test(v.lang)) s+=4;                 // strongly prefer Indian accent (hi-IN / en-IN)
-      if(lc==='hi' && /^hi/i.test(v.lang)) s+=2; return s; };
+    var score=function(v){ var n=(v.name||''), l=(v.lang||''), s=0;
+      if(FEMALE_HINT.test(n)) s+=10;
+      if(MALE_HINT.test(n)) s-=10;
+      if(QUALITY_HINT.test(n)) s+=6;
+      if(/google/i.test(n)) s+=3;
+      if(/microsoft/i.test(n)) s+=4;
+      if(/IN$/i.test(l)) s+=4;
+      if(lc==='hi' && /^hi/i.test(l)) s+=2;
+      return s;
+    };
     pool.sort(function(a,b){ return score(b)-score(a); });
     return pool[0]||null;
   }
@@ -83054,7 +83063,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var doSpeak=function(){ try {
       window.speechSynthesis.cancel();
       var u=new SpeechSynthesisUtterance(text); var lc=lang();
-      u.lang=lc==='hi'?'hi-IN':'en-IN'; u.rate=0.94; u.pitch=1.08;
+      u.lang=lc==='hi'?'hi-IN':'en-IN';
+      // v33_133: pitch=1.0 to avoid chipmunk effect on male-picked voices
+      u.rate=0.92; u.pitch=1.0;
       var v=pickVoice(lc); if(v){ u.voice=v; u.lang=v.lang; }
       u.onstart=function(){ _speechStarted=true; if(av) av.classList.add('speaking'); };
       u.onend=function(){ if(av) av.classList.remove('speaking'); };
@@ -83219,27 +83230,125 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   }
 
   /* ============================================================
-     TOUR — robust milestones: (1) price/activate a product, (2) bill
+     TOUR — v33_133: 6 steps, category-aware, screen-aware
+     Salon → "Services"  ·  Restaurant/Café/Bakery → "Menu"
+     Retail/Kirana/Sweets → "Products"
+     Each step has a clear screen target + advance condition.
   ============================================================ */
+
+  // Category detection (uses S.bizType set during onboarding)
+  function isSalonBiz(){
+    try { return /salon|spa|barber/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
+  }
+  function isRestaurantBiz(){
+    try { return /caf[eé]|restaurant|bakery|sweet|mithai|food/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
+  }
+  function menuWord(){
+    if (isSalonBiz()) return L('services','services');
+    if (isRestaurantBiz()) return L('menu','menu');
+    return L('products','products');
+  }
+  function menuLabelInMore(){
+    // Read the actual displayed label in More to match what user sees on-screen
+    var el = document.getElementById('more-menu-label');
+    if (el && el.textContent && el.textContent.trim()) return el.textContent.trim();
+    if (isSalonBiz()) return L('Services','Services');
+    if (isRestaurantBiz()) return L('Menu','Menu');
+    return L('Products','Products');
+  }
+
+  // Element finders for each step's target
+  function elNavMore(){ return document.querySelector('[data-tab="more"]'); }
+  function elMoreMenuEntry(){ var e=document.getElementById('more-menu-entry'); return (e&&e.offsetParent!==null)?e:null; }
+  function elFirstCatalogItem(){
+    var list=document.getElementById('catalog-list');
+    if(!list) return null;
+    // Find first interactive child (skip empty states / dividers)
+    var children=list.children;
+    for(var i=0;i<children.length;i++){
+      var c=children[i];
+      if(c.offsetParent!==null && c.offsetHeight>20) return c;
+    }
+    return list.firstElementChild;
+  }
+  function elFirstAddSaleTile(){
+    var grid=document.getElementById('svc-grid');
+    if(!grid) return null;
+    var children=grid.children;
+    for(var i=0;i<children.length;i++){
+      var c=children[i];
+      if(c.offsetParent!==null && c.offsetHeight>20) return c;
+    }
+    return grid.firstElementChild;
+  }
+  function elCheckoutBar(){
+    var c=document.getElementById('cart-summary');
+    return (c && c.classList.contains('show'))?c:null;
+  }
+
   var STEPS=[
-    { target:elPriceStep,
-      line:L("Let's set up and bill. Tap any item and set its price to add it to your menu — or tap + to create your own product.",
-              "चलिए setup करके bill बनाते हैं। किसी item को दबाकर उसका price set करें ताकि वो menu में add हो जाए — या अपना product बनाने के लिए + दबाएं।"),
-      until:function(){ return _prodSaved===true || cartCount()>0; } },
-    { target:elFab,
-      line:L("Nice! Now tap the + button to make a bill — add your item and take the payment. I'll wait.",
-              "बढ़िया! अब bill बनाने के लिए + button दबाएं — अपना item add करें और payment लें। मैं wait करता हूँ।"),
-      until:function(){ return _billMade===true; } }
+    // ─── STEP 1: From Home → tap More
+    { target: elNavMore,
+      line: function(){ return L(
+        "First, let's set up your "+menuWord()+". Tap More below.",
+        "पहले अपना "+menuWord()+" set करें। नीचे More दबाएं।"
+      ); },
+      until: function(){
+        var p=curPage(); return p==='more'||p==='catalog'||_prodSaved===true||cartCount()>0||_billMade===true;
+      } },
+    // ─── STEP 2: On More → tap Menu Items / Products / Services
+    { target: elMoreMenuEntry,
+      line: function(){ return L(
+        "Now tap "+menuLabelInMore()+" to see suggestions for your shop.",
+        "अब "+menuLabelInMore()+" पर tap करें — आपके shop के लिए suggestions देखें।"
+      ); },
+      until: function(){
+        var p=curPage(); return p==='catalog'||_prodSaved===true||cartCount()>0||_billMade===true;
+      } },
+    // ─── STEP 3: On Catalog → tap a suggested item to set price
+    { target: elFirstCatalogItem,
+      line: function(){ return L(
+        "Tap any item below to set its price and add it to your "+menuWord()+".",
+        "नीचे किसी item पर tap करें — price set करके अपने "+menuWord()+" में जोड़ें।"
+      ); },
+      until: function(){ return _prodSaved===true||cartCount()>0||_billMade===true; } },
+    // ─── STEP 4: Back to Home (or anywhere) → tap +
+    { target: elFab,
+      line: function(){ return L(
+        "Great! Your item is in your "+menuWord()+". Now tap + to start a bill.",
+        "बढ़िया! आपका item "+menuWord()+" में है। अब bill शुरू करने के लिए + दबाएं।"
+      ); },
+      until: function(){
+        var p=curPage(); return p==='addsale'||cartCount()>0||_billMade===true;
+      } },
+    // ─── STEP 5: On Add-Sale → tap a product tile to add to cart
+    { target: elFirstAddSaleTile,
+      line: function(){ return L(
+        "Tap your item to add it to this bill.",
+        "अपना item दबाएं — bill में add करें।"
+      ); },
+      until: function(){ return cartCount()>0||_billMade===true; } },
+    // ─── STEP 6: Cart has items → tap Checkout
+    { target: elCheckoutBar,
+      line: function(){ return L(
+        "Item added! Now tap Checkout to take payment.",
+        "Item add हो गया! अब payment के लिए Checkout दबाएं।"
+      ); },
+      until: function(){ return _billMade===true; } }
   ];
   var stepIdx=0;
   function clearPoll(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; } }
   function runStep(){ var s=STEPS[stepIdx]; if(!s){ celebrate(); return; }
+    // Skip steps that are already complete (user might be ahead of tour)
+    try { if(s.until && s.until()){ stepIdx++; setTimeout(runStep,80); return; } } catch(e){}
     setDots(STEPS.length, stepIdx);
     var el=null; try{ el=s.target(); }catch(e){}
-    spotlight(el, function(){ say(s.line); showWait(); clearPoll();
+    spotlight(el, function(){
+      var lineText = (typeof s.line === 'function') ? s.line() : s.line;
+      say(lineText); showWait(); clearPoll();
       _pollTimer=setInterval(function(){ var done=false; try{ done=s.until(); }catch(e){}
         if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); }
-        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } }catch(e){} }
+        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } else { /* target gone — hide ring, keep advisor visible */ var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){} }
       },300);
     });
   }
@@ -83282,7 +83391,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function open(mode){ var root=$('hnadv-root'), dock=$('hnadv-dock'); if(!root||!dock) return;
     _speechStarted=false; _billMade=false; _prodSaved=false; stepIdx=0; clearPoll();
     $('hnadv-name').textContent=L('AI Business Advisor','AI Business Advisor');
-    $('hnadv-skip').textContent=L('Skip ✕','छोड़ें ✕');
+    var _sk=$('hnadv-skip'); if(_sk){ _sk.textContent=''; _sk.setAttribute('aria-label', L('Close','बंद करें')); _sk.title=L('Close','बंद करें'); }
     dock.classList.remove('top'); dock.classList.add('bottom');
     root.classList.add('on'); requestAnimationFrame(function(){ dock.classList.add('show'); });
     setDots(0,0);
