@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_140_tour_vkey_fix';
+    window.HISAABNOW_BUILD = 'v33_141_tour_compact';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -82999,7 +82999,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 .hnadv-avatar.speaking::before{animation:hnadvPulse 1.1s ease-in-out infinite}
 @keyframes hnadvPulse{0%,100%{border-color:rgba(255,192,67,0);transform:scale(1)}50%{border-color:rgba(255,192,67,.6);transform:scale(1.06)}}
 .hnadv-name{font-size:11.5px;font-weight:800;color:#B8860B;letter-spacing:.02em;text-transform:uppercase;margin-bottom:3px}
-.hnadv-bubble{font-size:14.5px;line-height:1.5;color:#000;font-weight:500;min-height:22px;max-height:38vh;overflow-y:auto}
+.hnadv-bubble{font-size:14.5px;line-height:1.5;color:#000;font-weight:500;min-height:22px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hnadv-bubble.expanded{display:block;-webkit-line-clamp:unset;max-height:40vh;overflow-y:auto}
+.hnadv-more{display:none;margin-top:3px;font-size:13px;font-weight:800;color:#C2410C;background:none;border:none;padding:2px 0;cursor:pointer;letter-spacing:.01em}
+.hnadv-more.show{display:inline-block}
 .hnadv-bubble .cur{display:inline-block;width:2px;height:15px;background:#FFC043;margin-left:1px;vertical-align:-2px;animation:hnadvBlink .8s step-end infinite}
 @keyframes hnadvBlink{50%{opacity:0}}
 .hnadv-wait{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:700;color:#B8860B}
@@ -83034,7 +83037,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     <button class="hnadv-skip" id="hnadv-skip" type="button">Skip ✕</button>
     <div class="hnadv-row">
       <div class="hnadv-avatar" id="hnadv-avatar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg></div>
-      <div style="flex:1;min-width:0"><div class="hnadv-name" id="hnadv-name">AI Business Advisor</div><div class="hnadv-bubble" id="hnadv-bubble"></div></div>
+      <div style="flex:1;min-width:0"><div class="hnadv-name" id="hnadv-name">AI Business Advisor</div><div class="hnadv-bubble" id="hnadv-bubble"></div><button type="button" class="hnadv-more" id="hnadv-more"></button></div>
       <button class="hnadv-mute" id="hnadv-mute" type="button" aria-label="Mute voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>
     </div>
     <div class="hnadv-chips" id="hnadv-chips" style="display:none"></div>
@@ -83186,9 +83189,26 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function say(text,opts){ opts=opts||{}; var b=$('hnadv-bubble'); if(!b) return;
     if(_typeTimer){ clearInterval(_typeTimer); _typeTimer=null; }
     if(opts.silent!==true) speak(text);
+    // v33_141: every new line starts collapsed to 2 lines; the full text is still
+    // spoken in full. A "Read more" link appears only when it overflows.
+    b.classList.remove('expanded');
+    var m=$('hnadv-more'); if(m) m.classList.remove('show');
     var i=0; b.innerHTML='<span class="cur"></span>';
-    _typeTimer=setInterval(function(){ i++; b.innerHTML=text.slice(0,i).replace(/</g,'&lt;')+(i<text.length?'<span class="cur"></span>':''); if(i>=text.length){ clearInterval(_typeTimer); _typeTimer=null; } },18);
+    _typeTimer=setInterval(function(){ i++; b.innerHTML=text.slice(0,i).replace(/</g,'&lt;')+(i<text.length?'<span class="cur"></span>':''); if(i>=text.length){ clearInterval(_typeTimer); _typeTimer=null; updateMoreLink(); } },18);
   }
+  function updateMoreLink(){
+    var b=$('hnadv-bubble'), m=$('hnadv-more'); if(!b||!m) return;
+    var expanded=b.classList.contains('expanded');
+    // When collapsed, the 2-line clamp hides overflow → scrollHeight beats clientHeight.
+    var overflowing = !expanded && (b.scrollHeight > b.clientHeight + 2);
+    if(expanded || overflowing){
+      m.classList.add('show');
+      m.textContent = expanded ? L('Show less','कम दिखाएं') : L('Read more','और पढ़ें');
+    } else {
+      m.classList.remove('show');
+    }
+  }
+  function toggleMore(){ var b=$('hnadv-bubble'); if(!b) return; buzz(); b.classList.toggle('expanded'); updateMoreLink(); }
   function setActions(list){ var w=$('hnadv-actions'); if(!w) return; w.innerHTML='';
     (list||[]).forEach(function(a){ var b=document.createElement('button'); b.type='button'; b.className='hnadv-btn '+(a.style||'sec'); b.textContent=a.label; b.onclick=function(){ buzz(); a.onClick&&a.onClick(); }; w.appendChild(b); });
   }
@@ -83660,12 +83680,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
           // added rows is immune to that cycle.
           if (wizardSupplyCount() > 0 && !isResaleBiz()) {
             var addedWord = isSalonBiz() ? 'supply' : 'ingredient';
-            // v33_137: keep this SHORT so the top-docked advisor stays compact and
-            // the highlighted ingredient row below it is never covered. (The longer
-            // "what are ingredients" explainer is shown before the first one is added.)
+            // v33_141: minimal — just ask to set the quantity on the highlighted row.
             return L(
-              "Set how much of this " + addedWord + " goes into one item — tap its + and −. Add another with + Add " + addedWord + ", or tap Continue.",
-              "इस " + (isSalonBiz()?'supply':'ingredient') + " की कितनी मात्रा एक item में लगती है — उसके + और − दबाकर set करें. और जोड़ें + Add " + (isSalonBiz()?'supply':'ingredient') + " से, या Continue दबाएं."
+              "Now set how much of this " + addedWord + " goes into one item — tap the + and − on its quantity.",
+              "अब set करें कि इस " + (isSalonBiz()?'supply':'ingredient') + " की कितनी मात्रा एक item में लगती है — उसके + और − दबाएं."
             );
           }
           // v33_133g: category-aware ingredients/supplies guidance (first-time)
@@ -83949,6 +83967,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var mute=$('hnadv-mute'); if(mute) mute.onclick=function(){ muted=!muted; if(muted) stopSpeak(); mute.style.opacity=muted?'.45':'1'; };
     var mic=$('hnadv-mic'); if(mic) mic.onclick=toggleListen;
     var send=$('hnadv-send'); if(send) send.onclick=submitQuestion;
+    var more=$('hnadv-more'); if(more) more.onclick=toggleMore;  // v33_141: expand/collapse long lines
     var inp=$('hnadv-input'); if(inp) inp.addEventListener('keydown',function(e){ if(e.key==='Enter') submitQuestion(); });
   }
   if(document.readyState!=='loading') wire(); else document.addEventListener('DOMContentLoaded',wire);
