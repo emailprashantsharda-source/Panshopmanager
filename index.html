@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133g_category_aware';
+    window.HISAABNOW_BUILD = 'v33_133h_ingredient_popup_autonav';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83328,6 +83328,16 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var nsw=document.getElementById('ns-overlay');
     return !!(nsw && nsw.classList && nsw.classList.contains('open'));
   }
+  // v33_133h: detect when the +Add ingredient/supply popup is open INSIDE the wizard.
+  // The popup uses #ps-drawer.open and contains an #sv2-name input field.
+  function isIngredientSheetOpen(){
+    try {
+      var drawer=document.getElementById('ps-drawer');
+      if(!drawer || !drawer.classList || !drawer.classList.contains('open')) return false;
+      // Must specifically be the supply/ingredient sheet (not some other info sheet)
+      return !!document.getElementById('sv2-name');
+    } catch(e) { return false; }
+  }
   function getActiveWizardPanel(){
     for (var i=1;i<=3;i++){
       var p=document.getElementById('ns-panel'+i);
@@ -83385,6 +83395,15 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     { target: elNsContinueBtn,
       forceTop: true,   // v33_133e: position advisor at top during wizard
       line: function(){
+        // v33_133h: ingredient/supply popup detection — highest priority check
+        if (isIngredientSheetOpen()) {
+          var word = isSalonBiz() ? 'supply' : 'ingredient';
+          var wordHi = isSalonBiz() ? 'supply' : 'ingredient';
+          return L(
+            "Fill in the " + word + " name (e.g., Maida, Oil, Sugar), pick a category, then enter purchase price + pack quantity (e.g., ₹250 for 5kg). Tap Save when done.",
+            wordHi + " का name भरें (जैसे Maida, Oil, Sugar), category चुनें, फिर purchase price + pack quantity डालें (जैसे 5kg के लिए ₹250). हो जाए तो Save दबाएं।"
+          );
+        }
         if (!isWizardOpen()) {
           // User closed wizard without saving — fall back to generic hint
           return L("Open the activation wizard from the suggested item.",
@@ -83403,16 +83422,18 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
                      "Step 2 of 3: आप ready-made products बेचते हैं — ingredients की ज़रूरत नहीं। बस Continue दबाकर इस step को skip करें।");
           }
           if (isSalonBiz()) {
-            return L("Step 2 of 3: Supplies are the products you USE per service — e.g., shampoo, hair colour, oil for a haircut. Add them now so HisaabNow can show real profit per service. Tap + to add, or Continue to skip and add later.",
-                     "Step 2 of 3: Supplies वो products हैं जो हर service में लगते हैं — जैसे haircut में shampoo, hair colour, तेल। अभी add करेंगे तो HisaabNow हर service का असली profit दिखाएगा। + दबाकर हर supply add करें, या Continue दबाकर बाद में add करें।");
+            return L("Step 2 of 3: Supplies are the products you USE per service — e.g., shampoo, hair colour, oil, conditioner. Adding them now means HisaabNow can show real profit per service. Tap + Add supply to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Supplies वो products हैं जो हर service में लगते हैं — जैसे shampoo, hair colour, तेल, conditioner. अभी add करेंगे तो HisaabNow हर service का असली profit दिखाएगा। + Add supply दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           if (isBakerySweetBiz()) {
-            return L("Step 2 of 3: Ingredients are what goes INTO each piece — e.g., for gulab jamun: khoya, sugar, ghee. Add them now and HisaabNow will show real profit per piece. Tap + to add each ingredient, or Continue to skip.",
-                     "Step 2 of 3: Ingredients वो raw items हैं जो हर piece में जाते हैं — जैसे gulab jamun में khoya, चीनी, घी। अभी add करेंगे तो हर piece का असली profit दिखेगा। + दबाकर हर ingredient add करें, या Continue दबाकर बाद में add करें।");
+            // v33_133h: maida/oil/sugar/ghee — universal bakery ingredients
+            return L("Step 2 of 3: Ingredients are what goes INTO each piece — like maida, sugar, ghee, butter, eggs, milk. Adding them now means HisaabNow will show real profit per piece. Tap + Add ingredient to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर piece में जाते हैं — जैसे maida, चीनी, घी, butter, अंडे, दूध. अभी add करेंगे तो HisaabNow हर piece का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           if (isRestaurantBiz()) {
-            return L("Step 2 of 3: Ingredients are the raw items that go INTO each dish — e.g., for chai: milk, sugar, tea leaves. Add them now and HisaabNow will show the real profit margin per plate. Tap + to add each ingredient, or Continue to skip.",
-                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे चाय में दूध, चीनी, चायपत्ती। अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + दबाकर हर ingredient add करें, या Continue दबाकर बाद में add करें।");
+            // v33_133h: broader examples covering both café (chai) and restaurant (paneer)
+            return L("Step 2 of 3: Ingredients are the raw items that go INTO each dish — e.g., for chai: milk, sugar, tea leaves; for paneer butter masala: paneer, butter, tomato. Adding them now means HisaabNow shows your real profit margin per plate. Tap + Add ingredient to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे चाय में दूध, चीनी, चायपत्ती; paneer butter masala में paneer, butter, टमाटर. अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           // Default fallback (Business / unknown category)
           return L("Step 2 of 3: Add supplies or ingredients used per item — or tap Continue to skip if none.",
@@ -83431,11 +83452,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         // (the next step will guide them back, or they'll re-enter)
         return false;
       } },
-    // ─── STEP 5: Back to Home (or anywhere) → tap +
+    // ─── STEP 5: After activation → nav to Home (where + FAB is), then tap +
+    // v33_133h: auto-nav to home so the user doesn't see "Activate next" suggestions
+    // on the catalog screen, which confused them about whether to keep activating.
     { target: elFab,
+      requirePage: 'home',  // pre-step nav: ensure user is on home before this step starts
       line: function(){ return L(
-        "Great! Your item is in your "+menuWord()+". Now tap + to start a bill.",
-        "बढ़िया! आपका item "+menuWord()+" में है। अब bill शुरू करने के लिए + दबाएं।"
+        "✓ Activated! Your item is saved. Now tap the + button at the bottom-right to make your first bill.",
+        "✓ Activate हो गया! Item save हो गया है। अब नीचे + button दबाकर पहला bill बनाएं।"
       ); },
       until: function(){
         var p=curPage(); return p==='addsale'||cartCount()>0||_billMade===true;
@@ -83472,6 +83496,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function runStep(){ var s=STEPS[stepIdx]; if(!s){ celebrate(); return; }
     // Skip steps that are already complete (user might be ahead of tour)
     try { if(s.until && s.until()){ stepIdx++; setTimeout(runStep,80); return; } } catch(e){}
+    // v33_133h: if step requires a specific page and user is elsewhere, nav there first
+    if (s.requirePage) {
+      try {
+        if (window.App && App.current !== s.requirePage && typeof App.nav === 'function') {
+          App.nav(s.requirePage);
+          // Wait for nav animation, then re-enter runStep (will skip this branch since we're on the right page)
+          setTimeout(runStep, 600);
+          return;
+        }
+      } catch(e){}
+    }
     setDots(STEPS.length, stepIdx);
     var el=null; try{ el=s.target(); }catch(e){}
     spotlight(el, function(){
