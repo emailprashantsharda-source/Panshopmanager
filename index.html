@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_143_tour_modaladvance';
+    window.HISAABNOW_BUILD = 'v33_144_tour_boxhide';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83547,7 +83547,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function applyTopClearance(){
     try {
       var dock=$('hnadv-dock'); var c=_stepScrollContainer();
-      if(!dock || !c || !dock.classList.contains('top') || !dock.classList.contains('show')){ clearTopClearance(); return; }
+      // v33_144: no clearance needed when the dock is hidden (retail editor case).
+      if(!dock || !c || dock.style.visibility==='hidden' || !dock.classList.contains('top') || !dock.classList.contains('show')){ clearTopClearance(); return; }
       if(c._hnOrigPadTop==null) c._hnOrigPadTop = c.style.paddingTop || '';
       var dr=dock.getBoundingClientRect(), cr=c.getBoundingClientRect();
       // border-box top (cr.top) is stable regardless of padding; reserve down to the
@@ -83808,6 +83809,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function clearPoll(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; } }
   function runStep(){ var s=STEPS[stepIdx]; if(!s){ celebrate(); return; }
     clearTopClearance();  // v33_139: reset any reserved padding before (re)entering a step
+    var _db0=$('hnadv-dock'); if(_db0){ _db0.style.visibility=''; _db0._hidByRetail=false; }  // v33_144: ensure box visible on step entry
     // Skip steps that are already complete (user might be ahead of tour)
     try { if(s.until && s.until()){ stepIdx++; setTimeout(runStep,80); return; } } catch(e){}
     // v33_133h: if step requires a specific page and user is elsewhere, nav there first
@@ -83866,6 +83868,19 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
         // Un-pause any stale visibility state from earlier builds
         if(root && root._hnPaused){ root._hnPaused=false; if(!root._hidByIngSheet) root.style.visibility=''; }
+
+        // v33_144: during the resale retail editor (grocery/pan/stationery/other),
+        // HIDE the dock box and let the spotlight ring + voice do the guiding — the
+        // box was covering the "+ Add to menu" CTA and could look stuck. We hide only
+        // the dock (#hnadv-dock), NOT the root, so the ring (#hnadv-ring) stays on the
+        // Sell-price field and the voice keeps playing the cost+sell guidance.
+        var _retailEditorNow = isRetailEditorOpen();
+        var _dockBox=$('hnadv-dock');
+        if (_retailEditorNow) {
+          if (_dockBox && _dockBox.style.visibility!=='hidden'){ _dockBox.style.visibility='hidden'; _dockBox._hidByRetail=true; }
+        } else if (_dockBox && _dockBox._hidByRetail){
+          _dockBox.style.visibility=''; _dockBox._hidByRetail=false;
+        }
 
         var dock=$('hnadv-dock');
         if (dock && (s.forceTop || isWizardOpen())) {
@@ -83977,6 +83992,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   }
   function finish(markDone){ if(markDone){ try{ localStorage.setItem(DONE_KEY,'1'); }catch(e){} }
     stopSpeak(); clearSpotlight(); clearPoll(); clearTopClearance(); if(listening&&recog){ try{recog.stop();}catch(e){} }
+    var _dbf=$('hnadv-dock'); if(_dbf){ _dbf.style.visibility=''; _dbf._hidByRetail=false; }  // v33_144: never leave the box hidden
     var root=$('hnadv-root'), dock=$('hnadv-dock'); if(dock) dock.classList.remove('show');
     setTimeout(function(){ if(root) root.classList.remove('on'); showChips(false); showAsk(false); },300);
   }
