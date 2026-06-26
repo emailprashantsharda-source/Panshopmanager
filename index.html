@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_137_tour_ordertype';
+    window.HISAABNOW_BUILD = 'v33_139_tour_clearance';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83226,7 +83226,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     }
   } catch(e){} }
   function hookMilestones(){
-    hookOnce('saveProduct', function(){ _prodSaved=true; });          // price set / product activated (inline path)
+    hookOnce('saveProduct', function(){
+      _prodSaved=true;   // price set / product activated (retail/resale path)
+      // v33_138: capture the name so STEP 5 can celebrate the activated item by name.
+      try { var n=document.getElementById('ps-name'); if(n && (n.value||'').trim()) _activatedName=(n.value||'').trim(); } catch(e){}
+    });
     hookOnce('completeSale', function(r){ if(cartCount()>0||true) Promise.resolve(r).then(function(){ _billMade=true; }); });
     hookNsw();                                                         // v33_134: wizard-activation path
   }
@@ -83470,8 +83474,27 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     try { return document.querySelector('#ns-sup-list .ns-sup-row:not(.ns-sup-pick)'); }
     catch(e){ return null; }
   }
+  // v33_138: which verticals open the 3-step ingredient/supply wizard. Mirrors the
+  // app's own _wizardVerts = { salon, cafe, restaurant, bakery, sweets }. Everything
+  // else (grocery, pan, stationery, other) uses the retail editor with Sell + Cost
+  // price — NO ingredients — so the tour must guide that instead of the wizard.
+  function usesWizard(){ return isSalonBiz() || isRestaurantBiz() || isBakerySweetBiz(); }
+  // The retail product editor is the #ps-drawer sheet carrying the Sell-price field
+  // (#ps-sp). The ingredient sheet also uses #ps-drawer but carries #sv2-name, so
+  // checking #ps-sp distinguishes the two.
+  function isRetailEditorOpen(){
+    try {
+      var d=document.getElementById('ps-drawer');
+      return !!(d && d.classList && d.classList.contains('open') && document.getElementById('ps-sp'));
+    } catch(e){ return false; }
+  }
   function elWizardTarget(){
     try {
+      // Resale/other: highlight the Sell-price field in the retail editor.
+      if (isRetailEditorOpen()) {
+        var sp=document.getElementById('ps-sp');
+        if (sp && sp.offsetParent !== null) return sp;
+      }
       if (isWizardOpen() && !isIngredientSheetOpen() &&
           getActiveWizardPanel()===2 && wizardSupplyCount()>0) {
         var row=elFirstAddedSupplyRow();
@@ -83479,6 +83502,37 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       }
     } catch(e){}
     return elNsContinueBtn();
+  }
+  // v33_139: DETERMINISTIC fix for "ingredient hidden under the advisor". When the
+  // dock is pinned to the top during the wizard / retail editor, reserve top padding
+  // on the scroll container equal to the dock's height. This pushes ALL content
+  // (the ingredient row, the sell-price field) below the dock AND adds scroll room
+  // so the spotlight target can always be scrolled fully clear of it — no longer
+  // dependent on there happening to be enough content above the row to scroll.
+  function _stepScrollContainer(){
+    if (isRetailEditorOpen()) return document.getElementById('prod-sheet-body');
+    if (isWizardOpen())       return document.getElementById('ns-screen');
+    return null;
+  }
+  function applyTopClearance(){
+    try {
+      var dock=$('hnadv-dock'); var c=_stepScrollContainer();
+      if(!dock || !c || !dock.classList.contains('top') || !dock.classList.contains('show')){ clearTopClearance(); return; }
+      if(c._hnOrigPadTop==null) c._hnOrigPadTop = c.style.paddingTop || '';
+      var dr=dock.getBoundingClientRect(), cr=c.getBoundingClientRect();
+      // border-box top (cr.top) is stable regardless of padding; reserve down to the
+      // dock's bottom edge plus a comfortable gap.
+      var need=Math.max(0, Math.round(dr.bottom - cr.top + 18));
+      var cur=parseInt(c.style.paddingTop,10)||0;
+      if(Math.abs(cur-need) > 2) c.style.paddingTop = need+'px';
+      c._hnClearanceOn=true;
+    } catch(e){}
+  }
+  function clearTopClearance(){
+    ['ns-screen','prod-sheet-body'].forEach(function(id){
+      var c=document.getElementById(id);
+      if(c && c._hnClearanceOn){ c.style.paddingTop=(c._hnOrigPadTop||''); c._hnClearanceOn=false; }
+    });
   }
   function elKpiRow(){
     var r=document.getElementById('kpi-row');
@@ -83545,6 +83599,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       ); },
       until: function(){
         if (isWizardOpen()) { _wizardEverOpened = true; return true; }
+        if (isRetailEditorOpen()) return true;  // v33_138: resale → retail editor opened
         return _prodSaved===true||cartCount()>0||_billMade===true;
       } },
     // ─── STEP 4 (NEW): Inside the activation wizard — dynamic guidance per panel
@@ -83552,6 +83607,22 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     { target: elWizardTarget,
       forceTop: true,   // v33_133e: position advisor at top during wizard
       line: function(){
+        // v33_138: RESALE / OTHER verticals (grocery, pan, stationery, other) have
+        // no ingredients — they use the retail editor with Sell price + Cost price.
+        // Guide that instead of the wizard.
+        if (!usesWizard()) {
+          if (isRetailEditorOpen()) {
+            return L(
+              "No recipe needed here — just two prices. Enter the Sell price (what the customer pays), then the Cost price (what you buy it for). That's how HisaabNow shows your profit on every sale. Then tap Add to activate it.",
+              "यहाँ कोई recipe नहीं — बस दो दाम. Sell price भरें (जो ग्राहक देता है), फिर Cost price (जो आप खरीदते हैं). इसी से HisaabNow हर sale पर आपका profit दिखाता है. फिर Add दबाकर activate करें."
+            );
+          }
+          if (_prodSaved===true || _activatedName) {
+            return L("Saving your item…", "item save हो रहा है…");
+          }
+          return L("Tap any item to set its Sell price and Cost price.",
+                   "किसी item पर tap करके उसका Sell price और Cost price भरें.");
+        }
         // v33_133h: ingredient/supply popup detection — highest priority check
         if (isIngredientSheetOpen()) {
           var word = isSalonBiz() ? 'supply' : 'ingredient';
@@ -83700,6 +83771,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var stepIdx=0;
   function clearPoll(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; } }
   function runStep(){ var s=STEPS[stepIdx]; if(!s){ celebrate(); return; }
+    clearTopClearance();  // v33_139: reset any reserved padding before (re)entering a step
     // Skip steps that are already complete (user might be ahead of tour)
     try { if(s.until && s.until()){ stepIdx++; setTimeout(runStep,80); return; } } catch(e){}
     // v33_133h: if step requires a specific page and user is elsewhere, nav there first
@@ -83763,6 +83835,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         if (dock && (s.forceTop || isWizardOpen())) {
           dock.classList.remove('bottom'); dock.classList.add('top');
         }
+        // v33_139: keep wizard/editor content clear of the top-pinned dock.
+        applyTopClearance();
         // If the line is dynamic (function), re-render text on each tick — wizard
         // panels can change without the step advancing. Skip once the step is done
         // so we don't restart the voice on the very line we're waiting to finish.
@@ -83860,7 +83934,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     if(mode==='chat') enterChat(); else greet();
   }
   function finish(markDone){ if(markDone){ try{ localStorage.setItem(DONE_KEY,'1'); }catch(e){} }
-    stopSpeak(); clearSpotlight(); clearPoll(); if(listening&&recog){ try{recog.stop();}catch(e){} }
+    stopSpeak(); clearSpotlight(); clearPoll(); clearTopClearance(); if(listening&&recog){ try{recog.stop();}catch(e){} }
     var root=$('hnadv-root'), dock=$('hnadv-dock'); if(dock) dock.classList.remove('show');
     setTimeout(function(){ if(root) root.classList.remove('on'); showChips(false); showAsk(false); },300);
   }
