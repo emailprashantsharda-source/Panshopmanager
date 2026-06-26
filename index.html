@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133_tour_voice_fix';
+    window.HISAABNOW_BUILD = 'v33_133c_cloud_tts';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83285,6 +83285,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var c=document.getElementById('cart-summary');
     return (c && c.classList.contains('show'))?c:null;
   }
+  // v33_133b: detect a fullscreen modal/wizard that would be blocked by the advisor dock
+  function isModalOpenBlocking(){
+    try {
+      var nsw=document.getElementById('ns-overlay');
+      if(nsw && nsw.offsetParent!==null && nsw.style.display!=='none') return true;
+    } catch(e){}
+    return false;
+  }
 
   var STEPS=[
     // ─── STEP 1: From Home → tap More
@@ -83346,9 +83354,20 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     spotlight(el, function(){
       var lineText = (typeof s.line === 'function') ? s.line() : s.line;
       say(lineText); showWait(); clearPoll();
-      _pollTimer=setInterval(function(){ var done=false; try{ done=s.until(); }catch(e){}
+      _pollTimer=setInterval(function(){
+        // v33_133b: hide the advisor while a modal/wizard is blocking the screen
+        // (e.g., product activation wizard ns-overlay covers the Continue button if dock stays visible).
+        var root=$('hnadv-root');
+        if(root){
+          if(isModalOpenBlocking()){
+            if(!root._hnPaused){ root._hnPaused=true; root.style.visibility='hidden'; stopSpeak(); }
+          } else if(root._hnPaused){
+            root._hnPaused=false; root.style.visibility='';
+          }
+        }
+        var done=false; try{ done=s.until(); }catch(e){}
         if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); }
-        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } else { /* target gone — hide ring, keep advisor visible */ var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){} }
+        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){} }
       },300);
     });
   }
@@ -83425,6 +83444,116 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 })();
 </script>
 <!-- ============== END AI Business Advisor welcome ============== -->
+
+<!-- ============================================================
+     v33_133c · Wire Google Cloud TTS Neural2 to HNAdvisor
+     ─────────────────────────────────────────────────────────────
+     Replaces the device's robotic speechSynthesis voice with
+     hi-IN-Neural2-A (Hindi female Neural2) via the
+     hnAdvisorTTS Cloud Function.
+
+     Cost control:
+       - localStorage cache of audio per text hash (saves 80%+ repeats)
+       - Falls back to deviceSpeak on any cloud failure
+       - Cache trims to 50 most recent entries to control storage
+
+     The voice speaks BOTH English and Hindi text in the same
+     hi-IN-Neural2-A voice (per product decision — Indian accent
+     for both UI languages).
+============================================================ -->
+<script>
+(function wireHNAdvisorCloudTTS() {
+  'use strict';
+
+  var CACHE_KEY = 'hnAdvTTSCacheV1';
+  var _cache = {};
+  try { _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e) { _cache = {}; }
+
+  function hashKey(text) {
+    var h = 0;
+    for (var i = 0; i < text.length; i++) h = ((h << 5) - h) + text.charCodeAt(i) | 0;
+    return 'k' + (h >>> 0).toString(36) + '_' + text.length;
+  }
+
+  function trimCache() {
+    var keys = Object.keys(_cache);
+    if (keys.length <= 50) return;
+    var sorted = keys.sort(function(a, b) {
+      var ta = (_cache[a] && _cache[a].lastUsed) || 0;
+      var tb = (_cache[b] && _cache[b].lastUsed) || 0;
+      return tb - ta;
+    });
+    var fresh = {};
+    sorted.slice(0, 50).forEach(function(k) { fresh[k] = _cache[k]; });
+    _cache = fresh;
+  }
+
+  function persistCache() {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(_cache)); }
+    catch(e) {
+      // QuotaExceeded — wipe cache and recover
+      _cache = {};
+      try { localStorage.setItem(CACHE_KEY, '{}'); } catch(e2) {}
+    }
+  }
+
+  var _wired = false;
+  var _attempts = 0;
+  function attemptWire() {
+    if (_wired) return;
+    _attempts++;
+    if (_attempts > 60) {
+      console.warn('[HNAdvisor TTS] gave up after 30s waiting for HNAdvisor + Firebase Functions');
+      return;
+    }
+    if (!window.HNAdvisor || typeof window.HNAdvisor.setTTS !== 'function') {
+      setTimeout(attemptWire, 500);
+      return;
+    }
+    if (!window.kfFunctions || !window.kfCallable) {
+      setTimeout(attemptWire, 500);
+      return;
+    }
+
+    _wired = true;
+    var _ttsFn;
+    try { _ttsFn = window.kfCallable(window.kfFunctions, 'hnAdvisorTTS'); }
+    catch(e) { console.warn('[HNAdvisor TTS] kfCallable wrap failed', e); return; }
+
+    window.HNAdvisor.setTTS(async function(text, lang) {
+      if (!text) return null;
+      var key = hashKey(text);
+      if (_cache[key] && _cache[key].audio) {
+        _cache[key].lastUsed = Date.now();
+        return _cache[key].audio;
+      }
+      try {
+        var result = await _ttsFn({ text: text, lang: lang || 'hi' });
+        var audio = result && result.data && result.data.audio;
+        if (audio) {
+          _cache[key] = { audio: audio, lastUsed: Date.now() };
+          trimCache();
+          persistCache();
+        }
+        return audio;
+      } catch (err) {
+        console.warn('[HNAdvisor TTS] cloud TTS failed, falling back to device voice:',
+                     err && err.message);
+        return null;  // null triggers deviceSpeak fallback
+      }
+    });
+
+    console.log('[HNAdvisor TTS] Wired Google Cloud TTS (hi-IN-Neural2-A), cache size:', Object.keys(_cache).length);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attemptWire);
+  } else {
+    attemptWire();
+  }
+})();
+</script>
+<!-- ============== END Cloud TTS wiring ============== -->
 
 <!-- ============================================================
      HisaabNow Desktop · Orders / Tables + KOT/KDS — v2
