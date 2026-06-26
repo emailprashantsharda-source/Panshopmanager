@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133d_modal_fix';
+    window.HISAABNOW_BUILD = 'v33_133e_voice_wizard_dash';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83306,6 +83306,34 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     return false;
   }
 
+  // v33_133e: helpers for wizard sub-step detection
+  function isWizardOpen(){
+    var nsw=document.getElementById('ns-overlay');
+    return !!(nsw && nsw.classList && nsw.classList.contains('open'));
+  }
+  function getActiveWizardPanel(){
+    for (var i=1;i<=3;i++){
+      var p=document.getElementById('ns-panel'+i);
+      if (p && p.classList && p.classList.contains('is-active')) return i;
+    }
+    return 0;
+  }
+  function elNsContinueBtn(){
+    // Within wizard, the Continue/Save button is at the bottom of each panel
+    var b=document.getElementById('ns-next-btn');
+    if(b && b.offsetParent !== null) return b;
+    // On Review panel, the save button has a different id
+    var s=document.getElementById('ps-save-btn');
+    if(s && s.offsetParent !== null) return s;
+    return null;
+  }
+  function elKpiRow(){
+    var r=document.getElementById('kpi-row');
+    return (r && r.offsetParent !== null) ? r : null;
+  }
+
+  var _wizardEverOpened = false;  // tracks if user opened wizard during this tour
+
   var STEPS=[
     // ─── STEP 1: From Home → tap More
     { target: elNavMore,
@@ -83331,8 +83359,43 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         "Tap any item below to set its price and add it to your "+menuWord()+".",
         "नीचे किसी item पर tap करें — price set करके अपने "+menuWord()+" में जोड़ें।"
       ); },
-      until: function(){ return _prodSaved===true||cartCount()>0||_billMade===true; } },
-    // ─── STEP 4: Back to Home (or anywhere) → tap +
+      until: function(){
+        if (isWizardOpen()) { _wizardEverOpened = true; return true; }
+        return _prodSaved===true||cartCount()>0||_billMade===true;
+      } },
+    // ─── STEP 4 (NEW): Inside the activation wizard — dynamic guidance per panel
+    // Advisor stays visible at the top so Continue button is never blocked.
+    { target: elNsContinueBtn,
+      forceTop: true,   // v33_133e: position advisor at top during wizard
+      line: function(){
+        if (!isWizardOpen()) {
+          // User closed wizard without saving — fall back to generic hint
+          return L("Open the activation wizard from the suggested item.",
+                   "Suggested item से activation wizard खोलें।");
+        }
+        var panel = getActiveWizardPanel();
+        if (panel === 1) {
+          return L("Step 1: Confirm the name and set the price. Then tap Continue at the bottom.",
+                   "Step 1: नाम confirm करें और price set करें। नीचे Continue दबाएं।");
+        }
+        if (panel === 2) {
+          return L("Step 2: Add ingredients/supplies — or skip if none. Then tap Continue.",
+                   "Step 2: Ingredients/supplies add करें — या skip करें। फिर Continue दबाएं।");
+        }
+        if (panel === 3) {
+          return L("Step 3: Review the details, then tap Activate to save this item.",
+                   "Step 3: Details review करें, फिर Activate दबाकर save करें।");
+        }
+        return L("Follow the wizard to add this item.", "Wizard follow करके item add करें।");
+      },
+      until: function(){
+        // Advance when product is saved (or user is past it via cart/bill)
+        if (_prodSaved===true || cartCount()>0 || _billMade===true) return true;
+        // If user backed out of the wizard without saving, leave this step
+        // (the next step will guide them back, or they'll re-enter)
+        return false;
+      } },
+    // ─── STEP 5: Back to Home (or anywhere) → tap +
     { target: elFab,
       line: function(){ return L(
         "Great! Your item is in your "+menuWord()+". Now tap + to start a bill.",
@@ -83341,20 +83404,32 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       until: function(){
         var p=curPage(); return p==='addsale'||cartCount()>0||_billMade===true;
       } },
-    // ─── STEP 5: On Add-Sale → tap a product tile to add to cart
+    // ─── STEP 6: On Add-Sale → tap a product tile to add to cart
     { target: elFirstAddSaleTile,
       line: function(){ return L(
         "Tap your item to add it to this bill.",
         "अपना item दबाएं — bill में add करें।"
       ); },
       until: function(){ return cartCount()>0||_billMade===true; } },
-    // ─── STEP 6: Cart has items → tap Checkout
+    // ─── STEP 7: Cart has items → tap Checkout
     { target: elCheckoutBar,
       line: function(){ return L(
         "Item added! Now tap Checkout to take payment.",
         "Item add हो गया! अब payment के लिए Checkout दबाएं।"
       ); },
-      until: function(){ return _billMade===true; } }
+      until: function(){ return _billMade===true; } },
+    // ─── STEP 8 (NEW): Final — spotlight the dashboard KPIs
+    { target: elKpiRow,
+      forceTop: false,
+      line: function(){ return L(
+        "🎉 First bill done! See your stats — Bills, Profit, Margin all update here live.",
+        "🎉 पहला bill हो गया! यहाँ देखें — Bills, Profit, Margin सब live update होते हैं।"
+      ); },
+      // Auto-advance after 7 seconds so celebrate() fires and dismisses
+      until: function(){
+        if (!STEPS[7]._startedAt) STEPS[7]._startedAt = Date.now();
+        return (Date.now() - STEPS[7]._startedAt) > 7000;
+      } }
   ];
   var stepIdx=0;
   function clearPoll(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; } }
@@ -83366,38 +83441,54 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     spotlight(el, function(){
       var lineText = (typeof s.line === 'function') ? s.line() : s.line;
       say(lineText); showWait(); clearPoll();
+      // v33_133e: if step forces top placement (wizard steps), apply now
+      if (s.forceTop) {
+        var dock=$('hnadv-dock');
+        if (dock) { dock.classList.remove('bottom'); dock.classList.add('top'); }
+      }
       _pollTimer=setInterval(function(){
-        // v33_133b: hide the advisor while a modal/wizard is blocking the screen
-        // (e.g., product activation wizard ns-overlay covers the Continue button if dock stays visible).
+        // v33_133e: instead of hiding advisor during wizard, position at top
+        // so Continue button isn't blocked but advisor stays present and guides.
         var root=$('hnadv-root');
         if(root){
-          if(isModalOpenBlocking()){
-            if(!root._hnPaused){ root._hnPaused=true; root.style.visibility='hidden'; stopSpeak(); }
-          } else if(root._hnPaused){
-            root._hnPaused=false; root.style.visibility='';
-          }
+          if(root._hnPaused){ root._hnPaused=false; root.style.visibility=''; }  // un-pause any stale state
+        }
+        var dock=$('hnadv-dock');
+        if (dock && (s.forceTop || isWizardOpen())) {
+          dock.classList.remove('bottom'); dock.classList.add('top');
+        }
+        // If the line is dynamic (function), re-render text on each tick — wizard
+        // panels can change without the step advancing.
+        if (typeof s.line === 'function') {
+          try {
+            var bubble = $('hnadv-bubble');
+            var newText = s.line();
+            if (bubble && bubble._lastText !== newText) {
+              bubble._lastText = newText;
+              say(newText);
+            }
+          } catch(e){}
         }
         var done=false; try{ done=s.until(); }catch(e){}
         if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); }
-        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){} }
+        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); if(!s.forceTop) placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){} }
       },300);
     });
   }
-  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; hookMilestones(); showChips(false); showAsk(false); runStep(); }
+  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; hookMilestones(); showChips(false); showAsk(false); runStep(); }
 
   function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
-    say(L("🎉 You just made your first bill — that's all there is to it! I'm on your dashboard whenever you need me.",
-           "🎉 आपका पहला bill बन गया — बस इतना ही आसान है! ज़रूरत हो तो मैं dashboard पर हूँ।"));
+    // v33_133e: brief final message after the dashboard spotlight step
+    say(L("All set — I'm here on More → AI Advisor if you need anything.",
+           "सब set! ज़रूरत हो तो More → AI Advisor पर मैं हूँ।"));
     setActions([{ label:L('Done','हो गया'), style:'pri', onClick:function(){ finish(true); } }]);
-    setTimeout(function(){ finish(true); }, 5200);   // auto-dismiss after the demo
+    setTimeout(function(){ finish(true); }, 3500);
   }
 
   /* ---------- greeting (first run) ---------- */
-  function greet(){ var nm=owner();
-    var hello = nm
-      ? L('Namaste '+nm+'! I\'m your AI Business Advisor. Shall I show you how to set up and make your first bill?',
-           'नमस्ते '+nm+'! मैं आपका AI Business Advisor हूँ। क्या मैं setup और पहला bill बनाना दिखाऊँ?')
-      : L("Namaste! I'm your AI Business Advisor. Shall I show you how to set up and make your first bill?",
+  function greet(){
+    // v33_133e: removed owner/shop name from greeting per UX decision
+    var hello = L("Namaste! I'm your AI Business Advisor. Shall I show you how to set up and make your first bill?",
            'नमस्ते! मैं आपका AI Business Advisor हूँ। क्या मैं setup और पहला bill बनाना दिखाऊँ?');
     placeDock(null); showChips(false); showAsk(false);
     say(hello); armSpeechFallback(hello);
@@ -83478,8 +83569,21 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   'use strict';
 
   var CACHE_KEY = 'hnAdvTTSCacheV1';
+  var BUILD_KEY = 'hnAdvTTSBuild';
   var _cache = {};
-  try { _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e) { _cache = {}; }
+
+  // v33_133e: clear cache when build version changes so users always
+  // get the latest voice/config. Cheap — re-fetches a few seconds of audio.
+  try {
+    var lastBuild = localStorage.getItem(BUILD_KEY);
+    if (lastBuild !== window.HISAABNOW_BUILD) {
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.setItem(BUILD_KEY, window.HISAABNOW_BUILD || 'unknown');
+      console.log('[HNAdvisor TTS] Cache cleared (build changed: '+lastBuild+' → '+window.HISAABNOW_BUILD+')');
+    } else {
+      _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    }
+  } catch(e) { _cache = {}; }
 
   function hashKey(text) {
     var h = 0;
@@ -83511,51 +83615,95 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
   var _wired = false;
   var _attempts = 0;
+  console.log('[HNAdvisor TTS] Init — waiting for HNAdvisor + Firebase Functions...');
+
   function attemptWire() {
     if (_wired) return;
     _attempts++;
     if (_attempts > 60) {
-      console.warn('[HNAdvisor TTS] gave up after 30s waiting for HNAdvisor + Firebase Functions');
+      console.error('[HNAdvisor TTS] ✗ Gave up after 30s. HNAdvisor:',
+        !!window.HNAdvisor, 'kfFunctions:', !!window.kfFunctions,
+        'kfCallable:', !!window.kfCallable);
       return;
     }
     if (!window.HNAdvisor || typeof window.HNAdvisor.setTTS !== 'function') {
+      if (_attempts === 1 || _attempts % 10 === 0) {
+        console.log('[HNAdvisor TTS] Waiting for HNAdvisor module... attempt', _attempts);
+      }
       setTimeout(attemptWire, 500);
       return;
     }
     if (!window.kfFunctions || !window.kfCallable) {
+      if (_attempts === 1 || _attempts % 10 === 0) {
+        console.log('[HNAdvisor TTS] Waiting for Firebase Functions SDK... attempt', _attempts);
+      }
       setTimeout(attemptWire, 500);
       return;
     }
 
     _wired = true;
+    console.log('[HNAdvisor TTS] ✓ Both dependencies ready, wiring cloud TTS provider');
+
     var _ttsFn;
     try { _ttsFn = window.kfCallable(window.kfFunctions, 'hnAdvisorTTS'); }
-    catch(e) { console.warn('[HNAdvisor TTS] kfCallable wrap failed', e); return; }
+    catch(e) {
+      console.error('[HNAdvisor TTS] ✗ kfCallable wrap failed:', e && e.message);
+      return;
+    }
 
     window.HNAdvisor.setTTS(async function(text, lang) {
       if (!text) return null;
       var key = hashKey(text);
+      var preview = text.length > 40 ? text.slice(0, 40) + '...' : text;
+
       if (_cache[key] && _cache[key].audio) {
+        console.log('[HNAdvisor TTS] ⚡ cache HIT for: "'+preview+'"');
         _cache[key].lastUsed = Date.now();
         return _cache[key].audio;
       }
+
+      console.log('[HNAdvisor TTS] ☁ calling cloud TTS for: "'+preview+'" (lang='+(lang||'hi')+')');
+      var t0 = performance.now();
       try {
         var result = await _ttsFn({ text: text, lang: lang || 'hi' });
+        var dt = (performance.now() - t0).toFixed(0);
         var audio = result && result.data && result.data.audio;
+        var voice = result && result.data && result.data.voice;
         if (audio) {
+          console.log('[HNAdvisor TTS] ✓ cloud OK in '+dt+'ms — voice: '+voice+', bytes: '+audio.length);
           _cache[key] = { audio: audio, lastUsed: Date.now() };
           trimCache();
           persistCache();
+          return audio;
+        } else {
+          console.warn('[HNAdvisor TTS] ✗ cloud returned no audio. result:', result);
+          return null;
         }
-        return audio;
       } catch (err) {
-        console.warn('[HNAdvisor TTS] cloud TTS failed, falling back to device voice:',
-                     err && err.message);
+        var dt2 = (performance.now() - t0).toFixed(0);
+        console.error('[HNAdvisor TTS] ✗ cloud TTS FAILED in '+dt2+'ms — falling back to device voice. Error:',
+                     err && err.code, '—', err && err.message);
         return null;  // null triggers deviceSpeak fallback
       }
     });
 
-    console.log('[HNAdvisor TTS] Wired Google Cloud TTS (hi-IN-Neural2-A), cache size:', Object.keys(_cache).length);
+    console.log('[HNAdvisor TTS] ✅ Wired Google Cloud TTS (hi-IN-Neural2-A). Cache entries: '+Object.keys(_cache).length);
+
+    // v33_133e: expose a manual test command on window for easy debugging
+    window.testHNAdvisorTTS = async function(text) {
+      text = text || 'Namaste, main HisaabNow advisor hoon';
+      console.log('[testHNAdvisorTTS] Testing with: "'+text+'"');
+      try {
+        var r = await _ttsFn({ text: text, lang: 'hi' });
+        console.log('[testHNAdvisorTTS] ✓ Got audio bytes:', r.data.audio.length, 'voice:', r.data.voice);
+        var audio = new Audio(r.data.audio);
+        audio.play();
+        return r.data;
+      } catch(e) {
+        console.error('[testHNAdvisorTTS] ✗ Failed:', e);
+        throw e;
+      }
+    };
   }
 
   if (document.readyState === 'loading') {
