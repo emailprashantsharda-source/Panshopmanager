@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_151_no_preload';
+    window.HISAABNOW_BUILD = 'v33_152_smart_form';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -22841,6 +22841,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._supV2PickedEmoji = v.emoji || null;
     this._supV2PickedCat = v.cat || null;
     this._supV2CatTouched = !!v.cat;   // respect existing category; allow auto-fill for new
+    this._supV2UnitTouched = isEdit;   // v33_152: new ingredient → allow smart unit; edit → keep saved unit
 
     // Default unit: kg for food shops (chicken/paneer/rice/atta sold by weight),
     // ml for cafe/salon (liquids). Only applies when no unit is set yet.
@@ -22881,7 +22882,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
         <div class="sv2-field">
           <label class="sv2-label">${_capitalSection.replace(/s$/,'')} name</label>
-          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value)" autofocus>
+          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value); App.igAutoUnit(this.value)" autofocus>
         </div>
 
         <div class="sv2-row">
@@ -22922,7 +22923,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           <div class="sv2-field">
             <label class="sv2-label">Unit</label>
             <div class="sv2-select-wrap">
-              <select id="sv2-unit" class="sv2-input sv2-select" onchange="App._supV2OnUnitChange()">
+              <select id="sv2-unit" class="sv2-input sv2-select" onchange="App._supV2UnitTouched=true; App._supV2OnUnitChange()">
                 ${unitOpts.map(u => `<option value="${u}"${displayUnit === u ? ' selected' : ''}>${u}</option>`).join('')}
               </select>
               <svg class="sv2-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -23165,20 +23166,31 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var n = (name || '').toLowerCase();
     if (n.replace(/[^a-z]/g, '').length < 3) return;
     var rules = [
-      [/(coffee|\btea\b|espresso|arabica|robusta|cappuccino|matcha|cocoa|chicory|decaf)/, ['coffee & tea','coffee','tea']],
-      [/(syrup|\bsugar\b|honey|sweetener|vanilla|caramel|jaggery|stevia|brown sugar)/, ['syrup','sweetener']],
-      [/(croissant|\bbun\b|bagel|\bbread\b|loaf|\bpuff\b|tortilla|pita|baguette)/, ['bakery','bread']],
-      [/(chicken|mutton|fish|prawn|egg|lamb|keema|meat|seafood|crab|murgh|gosht|bacon|sausage)/, ['meat','seafood']],
-      [/(paneer|milk|curd|dahi|cream|cheese|butter|ghee|khoya|mawa|malai|dairy|yogurt)/, ['dairy','paneer']],
-      [/(atta|maida|flour|\brice\b|basmati|sooji|rava|besan|grain|wheat|poha|vermicelli)/, ['grain','flour']],
-      [/(\bdal\b|\bdaal\b|chana|rajma|moong|masoor|toor|urad|lentil|legume|chickpea|kabuli|lobia)/, ['dal','legume','lentil']],
-      [/(masala|spice|haldi|turmeric|jeera|cumin|garam|coriander|dhania|elaichi|cardamom|clove|laung|pepper|saunf|hing|methi)/, ['spice','masala']],
-      [/(\boil\b|refined|mustard oil|sunflower|olive oil|vanaspati|\bghee\b)/, ['oil','ghee','fat']],
-      [/(sauce|ketchup|vinegar|\bsoy\b|mayo|mayonnaise|condiment|paste|chutney|pickle|achaar)/, ['sauce','condiment']],
-      [/(cashew|almond|kaju|badam|pista|raisin|kishmish|\bnut\b|dry fruit|walnut|akhrot)/, ['dry fruit','nut']],
-      [/(tomato|onion|potato|aloo|pyaz|carrot|capsicum|shimla|ginger|garlic|adrak|lehsun|spinach|palak|lemon|nimbu|cabbage|cauliflower|gobi|\bpeas\b|matar|chilli|mirchi|beans|brinjal|baingan|cucumber|mushroom|\bveg\b)/, ['vegetable']],
-      [/(water|cola|juice|soda|beverage|\bdrink\b|syrup|squash|\btea\b|coffee|cocoa)/, ['beverage']],
-      [/(box|packaging|disposable|foil|napkin|plate|\bcup\b|\bbag\b|container|carry|tissue|straw|wrap)/, ['packaging','disposable']],
+      // order matters — most specific first. Candidates are matched against the
+      // shop's actual category LABELS, so each list spans the wording used across
+      // café / restaurant / bakery / sweets (e.g. flour → "Bakery & bread" in a café,
+      // "Grains & flour" in a restaurant, "Flour & grains" in a bakery).
+      [/(\begg\b|eggs|anda)/, ['egg','meat','dairy']],
+      [/(chocolate|cocoa|choco|compound|ganache|couverture)/, ['chocolate','cocoa','sweetener','syrup','flavor']],
+      [/(coffee|\btea\b|espresso|arabica|robusta|cappuccino|matcha|chicory|decaf|kahwa)/, ['coffee','tea','beverage']],
+      [/(yeast|baking powder|baking soda|leavening|improver|cake gel|gelatin|custard powder)/, ['yeast','leavening','bakery','flour']],
+      [/(atta|maida|flour|besan|gram flour|sooji|suji|rava|cornflour|corn flour|semolina)/, ['flour','grain','besan','bakery','food prep']],
+      [/(\brice\b|basmati|poha|vermicelli|makhana|oats)/, ['grain','flour','pantry','food prep']],
+      [/(\bsugar\b|powdered sugar|syrup|honey|sweetener|jaggery|gud|stevia|caramel)/, ['sweetener','sugar','syrup','flavor']],
+      [/(croissant|\bbun\b|buns|bagel|\bbread\b|loaf|\bpuff\b|tortilla|pita|baguette|pizza base|patty|patties)/, ['bakery','bread','food prep']],
+      [/(chicken|mutton|fish|prawn|lamb|keema|\bmeat\b|seafood|crab|murgh|gosht|bacon|sausage|filling)/, ['meat','seafood','food prep']],
+      [/(paneer|chhena|chenna|\bmilk\b|curd|dahi|\bcream\b|cheese|mozzarella|\bbutter\b|khoya|mawa|malai|dairy|yogurt|condensed)/, ['milk','dairy','paneer']],
+      [/(\boil\b|refined|mustard oil|sunflower|olive oil|vanaspati|cooking oil|\bghee\b|margarine|\bfat\b)/, ['ghee','oil','fat']],
+      [/(\bdal\b|\bdaal\b|chana|rajma|moong|masoor|toor|urad|lentil|legume|chickpea|kabuli|lobia|\bseed\b|\btil\b|sesame|khus)/, ['dal','legume','lentil','seed']],
+      [/(masala|spice|haldi|turmeric|jeera|cumin|garam|coriander|dhania|elaichi|cardamom|clove|laung|pepper|saunf|hing|methi|kesar|saffron|essence|vanilla)/, ['spice','masala','flavor','seasoning','flavour']],
+      [/(colour|color|\bvark\b|silver|decoration|edible colour|gel colour|fondant)/, ['colour','color','decoration','flavor','garnish']],
+      [/(sauce|ketchup|vinegar|\bsoy\b|mayo|mayonnaise|condiment|paste|chutney|pickle|achaar|coagulant|citric|alum)/, ['sauce','condiment','acid','coagulant']],
+      [/(cashew|almond|kaju|badam|pista|raisin|kishmish|\bnut\b|dry fruit|walnut|akhrot|anjeer|coconut|peanut)/, ['dry fruit','nut']],
+      [/(bhujia|namkeen|\bsev\b|mixture|dalmoth|chivda)/, ['bhujia','namkeen','food prep']],
+      [/(\bjam\b|pulp|crush|cherry|tutti|fruit|mango|pineapple|strawberry|filling)/, ['fruit','filling','flavor']],
+      [/(tomato|onion|potato|aloo|pyaz|carrot|capsicum|shimla|ginger|garlic|adrak|lehsun|spinach|palak|lemon|nimbu|cabbage|cauliflower|gobi|\bpeas\b|matar|chilli|mirchi|beans|brinjal|baingan|cucumber|mushroom|lettuce|lauki|gourd|\bveg\b)/, ['vegetable','food prep']],
+      [/(water|cola|\bsoda\b|juice|beverage|\bdrink\b|squash|lassi)/, ['beverage','drink']],
+      [/(box|packaging|disposable|foil|napkin|plate|\bcup\b|\bbag\b|container|carry|tissue|straw|wrap)/, ['packaging','box','cup','disposable']],
       [/(cleaning|\bsoap\b|detergent|sanitizer|phenyl|wiper|scrub|dish wash|misc)/, ['cleaning','misc']]
     ];
     var cands = null;
@@ -23202,6 +23214,30 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         var cl2 = cands[k];
         var b = [].slice.call(btns).find(function(x){ return (x.textContent || '').toLowerCase().indexOf(cl2) !== -1; });
         if (b){ this.igPickCat(b.getAttribute('data-cat')); return; }
+      }
+    }
+  },
+
+  // v33_152: smart UNIT from the ingredient name — liquids → L, countable → pcs,
+  // everything else → kg. Stops once the owner changes the unit manually.
+  igAutoUnit(name){
+    if (this._supV2UnitTouched) return;
+    var n = (name || '').toLowerCase();
+    if (n.replace(/[^a-z]/g, '').length < 3) return;
+    var unit;
+    if (/(\begg\b|eggs|anda|\bbun\b|buns|\bbread\b|loaf|bagel|\bbase\b|tortilla|wrap|momo|patty|patties|croissant|\bvark\b|cookie|biscuit|\bpuff\b|cake|pastry|\bpcs\b|piece)/.test(n)) {
+      unit = 'pc';
+    } else if (/(milk|\boil\b|water|syrup|juice|vinegar|\bcream\b|essence|lassi|\bsoda\b|\bsoy\b|sauce|rose water|kewra|squash|coconut milk|condensed)/.test(n)) {
+      unit = 'L';
+    } else {
+      unit = 'kg';
+    }
+    var us = document.getElementById('sv2-unit');
+    if (us){
+      var has = [].slice.call(us.options).some(function(o){ return o.value === unit; });
+      if (has && us.value !== unit){
+        us.value = unit;
+        if (this._supV2OnUnitChange) this._supV2OnUnitChange();   // refresh qty/min suffix labels
       }
     }
   },
@@ -42310,14 +42346,15 @@ log('module loaded — call AppRole.refresh() after MShop.bootstrap and on every
 }
 .ns-sup-row .del:hover{ background:#FEF2F2;color:#DC2626 }
 
-.ns-create-cta{ margin-top:12px;text-align:center }
+.ns-create-cta{ margin-top:14px;text-align:center }
 .ns-create-cta button{
-  background:transparent;border:none;
-  font-size:12.5px;font-weight:700;color:var(--p, #000);
+  background:#FFF7ED;border:1.6px solid #FDBA74;
+  font-size:14.5px;font-weight:800;color:#9A3412;letter-spacing:-.01em;
   cursor:pointer;font-family:inherit;
-  display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:8px;
+  display:flex;width:100%;align-items:center;justify-content:center;gap:8px;padding:14px 18px;border-radius:13px;
+  box-shadow:0 2px 6px -2px rgba(154,52,18,.18);transition:transform .12s ease,background .15s ease;
 }
-.ns-create-cta button:hover{ background:var(--ns-tint) }
+.ns-create-cta button:active{ background:#FFEDD5;transform:scale(.985) }
 
 /* (v33_29k) Missing-supplies quick-add chips */
 .ns-missing-chip{
