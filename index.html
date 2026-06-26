@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_144_tour_boxhide';
+    window.HISAABNOW_BUILD = 'v33_145_tour_ceprice';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83249,7 +83249,26 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     hookOnce('saveProduct', function(){
       _prodSaved=true;   // price set / product activated (retail/resale path)
       // v33_138: capture the name so STEP 5 can celebrate the activated item by name.
-      try { var n=document.getElementById('ps-name'); if(n && (n.value||'').trim()) _activatedName=(n.value||'').trim(); } catch(e){}
+      try { var n=document.getElementById('ps-name'); var nm=(n && (n.value||'').trim()) ? (n.value||'').trim() : _retailNameStaged; if(nm) _activatedName=nm; } catch(e){}
+    });
+    // v33_145: the SUGGESTED-item "Set price to activate" sheet (grocery/pan preloaded
+    // items) commits via saveCatalogEdit — NOT saveProduct — so without this hook the
+    // tour never registered the activation and stalled. Only treat it as a save when a
+    // positive price was actually entered (matches the app's own activation rule), so a
+    // validation bounce ("enter a price") doesn't falsely advance the tour.
+    hookOnce('saveCatalogEdit', function(){
+      try {
+        var pe=document.getElementById('ce-price');
+        var priceOk = pe ? (Number(pe.value||0) > 0) : true;
+        // After a successful save the sheet closes; if the editor is already gone, the
+        // save went through. Either signal (price>0 or sheet closed) confirms it.
+        if (priceOk || !isRetailEditorOpen()) {
+          _prodSaved = true;
+          var ne=document.getElementById('ce-name');
+          var nm=(ne && (ne.value||'').trim()) ? (ne.value||'').trim() : _retailNameStaged;
+          if (nm) _activatedName=nm;
+        }
+      } catch(e){ _prodSaved = true; }
     });
     hookOnce('completeSale', function(r){ if(cartCount()>0||true) Promise.resolve(r).then(function(){ _billMade=true; }); });
     hookNsw();                                                         // v33_134: wizard-activation path
@@ -83512,17 +83531,26 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   // The retail product editor is the #ps-drawer sheet carrying the Sell-price field
   // (#ps-sp). The ingredient sheet also uses #ps-drawer but carries #sv2-name, so
   // checking #ps-sp distinguishes the two.
+  // v33_145: the resale price editor has TWO field variants depending on entry point:
+  //   • #ps-sp / #ps-cp  — the standard/compact product editor
+  //   • #ce-price / #ce-cost — the "Set price to activate" sheet for SUGGESTED items
+  //     (grocery/pan preloaded items, opened via openInfoSheet → still #ps-drawer.open)
+  // isRetailEditorOpen must recognise BOTH, or the tour silently fails to advance and
+  // the box never hides for the suggested-item flow (the grocery "stuck" bug).
+  function retailSellField(){
+    return document.getElementById('ps-sp') || document.getElementById('ce-price');
+  }
   function isRetailEditorOpen(){
     try {
       var d=document.getElementById('ps-drawer');
-      return !!(d && d.classList && d.classList.contains('open') && document.getElementById('ps-sp'));
+      return !!(d && d.classList && d.classList.contains('open') && retailSellField());
     } catch(e){ return false; }
   }
   function elWizardTarget(){
     try {
       // Resale/other: highlight the Sell-price field in the retail editor.
       if (isRetailEditorOpen()) {
-        var sp=document.getElementById('ps-sp');
+        var sp=retailSellField();
         if (sp && sp.offsetParent !== null) return sp;
       }
       if (isWizardOpen() && !isIngredientSheetOpen() &&
@@ -83601,6 +83629,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var _ingredientSheetWasOpen = false;
   var _wizardWasOpenLast = false;
   var _activatedName = '';        // v33_134: name of the product just activated via wizard
+  var _retailNameStaged = '';     // v33_145: name read live from the open retail/activation editor
   var _finalStepStart = 0;        // v33_134: timestamp for the final KPI auto-dismiss
 
   var STEPS=[
@@ -83878,6 +83907,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         var _dockBox=$('hnadv-dock');
         if (_retailEditorNow) {
           if (_dockBox && _dockBox.style.visibility!=='hidden'){ _dockBox.style.visibility='hidden'; _dockBox._hidByRetail=true; }
+          // v33_145: stage the item name live so the save hook can name it in STEP 5
+          // even after the editor closes (the activation sheet removes #ce-name on save).
+          try { var _rn=document.getElementById('ce-name')||document.getElementById('ps-name'); if(_rn && (_rn.value||'').trim()) _retailNameStaged=(_rn.value||'').trim(); } catch(e){}
         } else if (_dockBox && _dockBox._hidByRetail){
           _dockBox.style.visibility=''; _dockBox._hidByRetail=false;
         }
