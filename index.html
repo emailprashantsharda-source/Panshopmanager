@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_139_tour_clearance';
+    window.HISAABNOW_BUILD = 'v33_140_tour_vkey_fix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83342,20 +83342,30 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
      Each step has a clear screen target + advance condition.
   ============================================================ */
 
-  // Category detection (uses S.bizType set during onboarding)
-  function isSalonBiz(){
-    try { return /salon|spa|barber/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
+  // v33_140: Category detection now reads the REAL vertical key the app actually
+  // sets — App._supplyVerticalKey() / App.vertical / S.profession — NOT S.bizType,
+  // which is never assigned at runtime (it lived only on the config object as
+  // cfg.bizType). The old regex-on-S.bizType always returned false for every
+  // vertical, which made usesWizard() false everywhere and pushed food verticals
+  // (restaurant!) into the resale "cost price" branch. Keys mirror VERTICAL_CONFIG:
+  //   salon · cafe · restaurant · bakery · sweets · grocery · stationery · pan · other
+  function vkey(){
+    try {
+      if (window.App && typeof App._supplyVerticalKey === 'function'){ var k=App._supplyVerticalKey(); if(k) return String(k).toLowerCase(); }
+      if (window.App && App.vertical) return String(App.vertical).toLowerCase();
+      if (window.S && (S.profession || S.prof)) return String(S.profession || S.prof).toLowerCase();
+      if (window.S && S.bizType) return String(S.bizType).toLowerCase(); // legacy fallback
+    } catch(e){}
+    return '';
   }
-  function isRestaurantBiz(){
-    try { return /caf[eé]|restaurant|food/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
-  }
-  function isBakerySweetBiz(){
-    try { return /bakery|sweet|mithai/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
-  }
-  // v33_133g: resale categories (no ingredients needed — just bought-and-sold)
-  function isResaleBiz(){
-    try { return /grocery|kirana|pan\s*shop|panshop|stationery|tobacco|retail|electronics|pharmacy/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
-  }
+  function isSalonBiz(){ return vkey()==='salon'; }
+  function isRestaurantBiz(){ var k=vkey(); return k==='cafe' || k==='restaurant'; }
+  function isBakerySweetBiz(){ var k=vkey(); return k==='bakery' || k==='sweets'; }
+  // Resale = bought-and-sold, no ingredients (cost price + sell price).
+  function isResaleBiz(){ var k=vkey(); return k==='grocery'||k==='kirana'||k==='pan'||k==='stationery'||k==='tobacco'||k==='retail'||k==='other'; }
+  // Verticals that open the 3-step ingredient/supply wizard. EXACT mirror of the
+  // app's own _wizardVerts = { salon, cafe, restaurant, bakery, sweets }.
+  function usesWizard(){ var k=vkey(); return k==='salon'||k==='cafe'||k==='restaurant'||k==='bakery'||k==='sweets'; }
   function menuWord(){
     if (isSalonBiz()) return L('services','services');
     if (isRestaurantBiz()) return L('menu','menu');
@@ -83474,11 +83484,6 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     try { return document.querySelector('#ns-sup-list .ns-sup-row:not(.ns-sup-pick)'); }
     catch(e){ return null; }
   }
-  // v33_138: which verticals open the 3-step ingredient/supply wizard. Mirrors the
-  // app's own _wizardVerts = { salon, cafe, restaurant, bakery, sweets }. Everything
-  // else (grocery, pan, stationery, other) uses the retail editor with Sell + Cost
-  // price — NO ingredients — so the tour must guide that instead of the wizard.
-  function usesWizard(){ return isSalonBiz() || isRestaurantBiz() || isBakerySweetBiz(); }
   // The retail product editor is the #ps-drawer sheet carrying the Sell-price field
   // (#ps-sp). The ingredient sheet also uses #ps-drawer but carries #sv2-name, so
   // checking #ps-sp distinguishes the two.
