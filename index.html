@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_135_tour_speech';
+    window.HISAABNOW_BUILD = 'v33_136_tour_ingredient_focus';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83131,6 +83131,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     return String(t)
       .replace(/\+/g, hi ? ' प्लस ' : ' plus ')        // "+"  → plus
       .replace(/\u2212/g, hi ? ' माइनस ' : ' minus ')   // "−" (U+2212) → minus
+      // v33_135: the advisor speaks with a Hindi voice, which mispronounces a few
+      // bare Latin words. Transliterate the worst offenders for the audio only.
+      .replace(/\blive\b/gi, hi ? 'लाइव' : 'live')
       .replace(/✓/g, ' ')                               // checkmark: don't read aloud
       .replace(/🎉|👇|☁|⚡/g, ' ')                       // strip decorative emoji from speech
       .replace(/\s{2,}/g,' ')
@@ -83443,6 +83446,25 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     if(s && s.offsetParent !== null) return s;
     return null;
   }
+  // v33_135: dynamic spotlight target for the wizard step. When the user is on
+  // panel 2 and has just attached an ingredient (add-sheet closed), point the ring
+  // at that ingredient row so they can see it and set its quantity — instead of
+  // the Continue button. This (combined with the re-scroll in the poll) lifts the
+  // row out from under the top-docked advisor. Otherwise, target Continue.
+  function elFirstAddedSupplyRow(){
+    try { return document.querySelector('#ns-sup-list .ns-sup-row:not(.ns-sup-pick)'); }
+    catch(e){ return null; }
+  }
+  function elWizardTarget(){
+    try {
+      if (isWizardOpen() && !isIngredientSheetOpen() &&
+          getActiveWizardPanel()===2 && wizardSupplyCount()>0) {
+        var row=elFirstAddedSupplyRow();
+        if (row && row.offsetParent !== null) return row;
+      }
+    } catch(e){}
+    return elNsContinueBtn();
+  }
   function elKpiRow(){
     var r=document.getElementById('kpi-row');
     return (r && r.offsetParent !== null) ? r : null;
@@ -83512,7 +83534,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       } },
     // ─── STEP 4 (NEW): Inside the activation wizard — dynamic guidance per panel
     // Advisor stays visible at the top so Continue button is never blocked.
-    { target: elNsContinueBtn,
+    { target: elWizardTarget,
       forceTop: true,   // v33_133e: position advisor at top during wizard
       line: function(){
         // v33_133h: ingredient/supply popup detection — highest priority check
@@ -83548,8 +83570,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
           if (wizardSupplyCount() > 0 && !isResaleBiz()) {
             var addedWord = isSalonBiz() ? 'supply' : 'ingredient';
             return L(
-              "Nicely done — that " + addedWord + " is attached and its cost is now baked into this item's margin (see the live Gross margin below). Set how much is used per item with the + and − beside the quantity (e.g., 100ml milk for a chai, 30g maida for a roti). Add another with + Add " + addedWord + ", or tap Continue to review.",
-              "बढ़िया — वो " + (isSalonBiz()?'supply':'ingredient') + " जुड़ गया और उसकी cost अब इस item के margin में आ गई (नीचे live Gross margin देखें). हर item में कितनी quantity लगती है वो quantity के पास + और − से set करें (जैसे चाय में 100ml दूध, रोटी में 30g मैदा). और जोड़ने के लिए + Add " + (isSalonBiz()?'supply':'ingredient') + " दबाएं, या review के लिए Continue दबाएं."
+              "Nice — that " + addedWord + " is attached and its cost now flows into this item's margin (see Gross margin below). Now set how much is used per item: tap the + and − on its quantity (e.g., 100ml milk for a chai, 30g maida for a roti). Add another with + Add " + addedWord + ", or tap Continue to review.",
+              "बढ़िया — ये " + (isSalonBiz()?'supply':'ingredient') + " जुड़ गया और इसकी cost अब इस item के margin में आ गई (नीचे Gross margin देखें). अब set करें कि हर item में कितना लगता है — quantity के + और − दबाएं (जैसे चाय में 100ml दूध, रोटी में 30g मैदा). और जोड़ें + Add " + (isSalonBiz()?'supply':'ingredient') + " से, या Continue दबाकर review करें."
             );
           }
           // v33_133g: category-aware ingredients/supplies guidance (first-time)
@@ -83635,8 +83657,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       requirePage: 'home',   // ensure we're on the dashboard so the KPI row exists
       forceTop: false,
       line: function(){ return L(
-        "🎉 First bill done! And here's the magic — because you set the cost, your Profit and Margin update live, right here. That's your whole loop: add a product, add its ingredients to know the true cost, then bill in seconds.",
-        "🎉 पहला bill हो गया! और यही कमाल है — आपने cost set की थी, इसलिए आपका Profit और Margin यहीं live update होता है. यही है पूरा तरीका: product add करें, ingredients डालकर असली cost जानें, फिर seconds में bill बनाएं."
+        "🎉 First bill done! And here's the magic — because you set the cost, your Profit and Margin update instantly, right here. That's your whole loop: add a product, add its ingredients to know the true cost, then bill in seconds.",
+        "🎉 पहला bill हो गया! और यही कमाल है — आपने cost set की थी, इसलिए आपका Profit और Margin यहीं तुरंत update होता है. यही है पूरा तरीका: product add करें, ingredients डालकर असली cost जानें, फिर seconds में bill बनाएं."
       ); },
       // Min display is short; the speech-completion gate keeps the dock up until
       // this (long) closing line has been read out in full before celebrate().
@@ -83676,6 +83698,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         if (dock) { dock.classList.remove('bottom'); dock.classList.add('top'); }
       }
       var _doneAt=0;  // v33_135: when the advance condition first became true
+      var _lastTargetEl=null;  // v33_135: re-scroll when the spotlight target changes
       _pollTimer=setInterval(function(){
         hookNsw();  // v33_134: ensure activation hook is attached (NSW may init late)
         var done=false; try{ done=s.until(); }catch(e){}
@@ -83723,8 +83746,23 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
             }
           } catch(e){}
         }
-        // Update spotlight ring (kept fresh even while holding for speech)
-        try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); if(!s.forceTop) placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){}
+        // Update spotlight ring (kept fresh even while holding for speech). When the
+        // target ELEMENT changes (e.g., Continue → the freshly-added ingredient row),
+        // scroll it to centre so it sits clear of the top-docked advisor.
+        try{
+          var e2=s.target();
+          if(e2){
+            if(e2!==_lastTargetEl){
+              _lastTargetEl=e2;
+              try{ e2.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_e){}
+            }
+            var r=e2.getBoundingClientRect();
+            if(r.width){ moveRing(r); if(!s.forceTop) placeDock(r); }
+          } else {
+            _lastTargetEl=null;
+            var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show');
+          }
+        }catch(e){}
 
         // v33_135 (advance gate): the step is complete — but let the advisor FINISH
         // reading the current line before moving on, so steps no longer get chopped
