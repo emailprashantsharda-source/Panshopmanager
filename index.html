@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133h_ingredient_popup_autonav';
+    window.HISAABNOW_BUILD = 'v33_133i_devanagari_unit_setqty';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83360,6 +83360,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   }
 
   var _wizardEverOpened = false;  // tracks if user opened wizard during this tour
+  // v33_133i: track ingredient sheet open/close state so panel-2 advice can
+  // shift from "add ingredient" to "set qty for ingredient you added" after
+  // the user comes back from the +Add ingredient popup.
+  var _ingredientSheetWasOpen = false;
+  var _wizardWasOpenLast = false;
 
   var STEPS=[
     // ─── STEP 1: From Home → tap More
@@ -83383,8 +83388,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     // ─── STEP 3: On Catalog → tap a suggested item to set price
     { target: elFirstCatalogItem,
       line: function(){ return L(
-        "Tap any item below to set its price and add it to your "+menuWord()+".",
-        "नीचे किसी item पर tap करें — price set करके अपने "+menuWord()+" में जोड़ें।"
+        "Here are some preloaded items for your shop — scroll to see all of them. Tap any one to set its price and activate it. Or you can tap the + button at the top-right corner to add a custom item.",
+        "यहाँ आपकी shop के लिए कुछ preloaded items हैं — scroll करके सब देखें। किसी एक पर tap करके price set करें और activate करें। या ऊपर right में + दबाकर अपना custom item add करें।"
       ); },
       until: function(){
         if (isWizardOpen()) { _wizardEverOpened = true; return true; }
@@ -83398,14 +83403,16 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         // v33_133h: ingredient/supply popup detection — highest priority check
         if (isIngredientSheetOpen()) {
           var word = isSalonBiz() ? 'supply' : 'ingredient';
-          var wordHi = isSalonBiz() ? 'supply' : 'ingredient';
           return L(
-            "Fill in the " + word + " name (e.g., Maida, Oil, Sugar), pick a category, then enter purchase price + pack quantity (e.g., ₹250 for 5kg). Tap Save when done.",
-            wordHi + " का name भरें (जैसे Maida, Oil, Sugar), category चुनें, फिर purchase price + pack quantity डालें (जैसे 5kg के लिए ₹250). हो जाए तो Save दबाएं।"
+            "Fill the " + word + " name (e.g., Maida, Oil, Sugar), pick a category, then enter purchase price and pack quantity. Tap the unit button to switch between kg / L / g / ml / pc — use 'kg' for solids like maida or sugar, 'L' for liquids like oil or milk. Then tap Save.",
+            "Ingredient का name भरें (जैसे मैदा, तेल, चीनी), category चुनें. फिर purchase price और pack quantity डालें. Unit बदलने के लिए kg / L / g / ml / pc वाला button दबाएं — मैदा या चीनी जैसे solid के लिए kg, तेल या दूध जैसे liquid के लिए L. फिर Save दबाएं."
           );
         }
+        // v33_133i: handle wizard-closed AFTER product saved (avoids brief fallback flash)
         if (!isWizardOpen()) {
-          // User closed wizard without saving — fall back to generic hint
+          if (_prodSaved === true) {
+            return L("Saving your item...", "आपका item save हो रहा है...");
+          }
           return L("Open the activation wizard from the suggested item.",
                    "Suggested item पर tap करके wizard खोलें।");
         }
@@ -83415,7 +83422,15 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
                    "Step 1 of 3: Item का नाम confirm करें और selling price set करें। फिर नीचे Continue दबाएं।");
         }
         if (panel === 2) {
-          // v33_133g: category-aware ingredients/supplies guidance
+          // v33_133i: if user just added an ingredient via the popup, shift advice
+          // to "set quantity used per item" instead of repeating "add ingredient".
+          if (_ingredientSheetWasOpen && !isResaleBiz()) {
+            return L(
+              "Great! Now set how much of this ingredient is used per item — tap the + and − buttons next to its quantity (e.g., for chai use 100ml milk, for a roti use 30g maida). Tap + Add ingredient for more, or Continue when done.",
+              "बहुत बढ़िया! अब इस product में इस ingredient की कितनी quantity लगती है वो set करें — quantity के साथ + और − से adjust करें (जैसे चाय में 100ml दूध, रोटी में 30g मैदा). और ingredient चाहिए तो + Add ingredient दबाएं, या हो जाए तो Continue दबाएं."
+            );
+          }
+          // v33_133g: category-aware ingredients/supplies guidance (first-time)
           if (isResaleBiz()) {
             // Grocery, Kirana, Pan Shop, Stationery, etc. — no ingredients needed
             return L("Step 2 of 3: You sell ready-made products — no ingredients needed. Just tap Continue to skip this step.",
@@ -83423,17 +83438,16 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
           }
           if (isSalonBiz()) {
             return L("Step 2 of 3: Supplies are the products you USE per service — e.g., shampoo, hair colour, oil, conditioner. Adding them now means HisaabNow can show real profit per service. Tap + Add supply to add each one, or tap Continue to skip.",
-                     "Step 2 of 3: Supplies वो products हैं जो हर service में लगते हैं — जैसे shampoo, hair colour, तेल, conditioner. अभी add करेंगे तो HisaabNow हर service का असली profit दिखाएगा। + Add supply दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+                     "Step 2 of 3: Supplies वो products हैं जो हर service में लगते हैं — जैसे शैम्पू, हेयर कलर, तेल, कंडीशनर. अभी add करेंगे तो HisaabNow हर service का असली profit दिखाएगा। + Add supply दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           if (isBakerySweetBiz()) {
-            // v33_133h: maida/oil/sugar/ghee — universal bakery ingredients
+            // v33_133i: Devanagari shopkeeper words for correct TTS pronunciation
             return L("Step 2 of 3: Ingredients are what goes INTO each piece — like maida, sugar, ghee, butter, eggs, milk. Adding them now means HisaabNow will show real profit per piece. Tap + Add ingredient to add each one, or tap Continue to skip.",
-                     "Step 2 of 3: Ingredients वो raw items हैं जो हर piece में जाते हैं — जैसे maida, चीनी, घी, butter, अंडे, दूध. अभी add करेंगे तो HisaabNow हर piece का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर piece में जाते हैं — जैसे मैदा, चीनी, घी, बटर, अंडे, दूध. अभी add करेंगे तो HisaabNow हर piece का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           if (isRestaurantBiz()) {
-            // v33_133h: broader examples covering both café (chai) and restaurant (paneer)
             return L("Step 2 of 3: Ingredients are the raw items that go INTO each dish — e.g., for chai: milk, sugar, tea leaves; for paneer butter masala: paneer, butter, tomato. Adding them now means HisaabNow shows your real profit margin per plate. Tap + Add ingredient to add each one, or tap Continue to skip.",
-                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे चाय में दूध, चीनी, चायपत्ती; paneer butter masala में paneer, butter, टमाटर. अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे चाय में दूध, चीनी, चायपत्ती; पनीर बटर मसाला में पनीर, बटर, टमाटर. अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           // Default fallback (Business / unknown category)
           return L("Step 2 of 3: Add supplies or ingredients used per item — or tap Continue to skip if none.",
@@ -83522,12 +83536,39 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         if (dock) { dock.classList.remove('bottom'); dock.classList.add('top'); }
       }
       _pollTimer=setInterval(function(){
-        // v33_133e: instead of hiding advisor during wizard, position at top
-        // so Continue button isn't blocked but advisor stays present and guides.
+        // v33_133i: Check until() FIRST so completed steps advance immediately
+        // without re-rendering text. Fixes the "Open the wizard" flash that
+        // appeared after activation because the wizard had closed before
+        // the until check ran.
+        var done=false; try{ done=s.until(); }catch(e){}
+        if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); return; }
+
         var root=$('hnadv-root');
-        if(root){
-          if(root._hnPaused){ root._hnPaused=false; root.style.visibility=''; }  // un-pause any stale state
+
+        // v33_133i: track wizard open transitions — reset ingredient flag for fresh product
+        var wizOpenNow = isWizardOpen();
+        if (wizOpenNow && !_wizardWasOpenLast) {
+          // Wizard just opened — fresh product, clear ingredient state
+          _ingredientSheetWasOpen = false;
         }
+        _wizardWasOpenLast = wizOpenNow;
+
+        // v33_133i: track ingredient sheet open/close and hide advisor while open
+        var sheetOpen = isIngredientSheetOpen();
+        if (sheetOpen) {
+          _ingredientSheetWasOpen = true;
+          if (root && !root._hidByIngSheet) {
+            root.style.visibility = 'hidden';
+            root._hidByIngSheet = true;
+          }
+        } else if (root && root._hidByIngSheet) {
+          root.style.visibility = '';
+          root._hidByIngSheet = false;
+        }
+
+        // Un-pause any stale visibility state from earlier builds
+        if(root && root._hnPaused){ root._hnPaused=false; if(!root._hidByIngSheet) root.style.visibility=''; }
+
         var dock=$('hnadv-dock');
         if (dock && (s.forceTop || isWizardOpen())) {
           dock.classList.remove('bottom'); dock.classList.add('top');
@@ -83544,13 +83585,12 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
             }
           } catch(e){}
         }
-        var done=false; try{ done=s.until(); }catch(e){}
-        if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); }
-        else { try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); if(!s.forceTop) placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){} }
+        // Update spotlight ring
+        try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); if(!s.forceTop) placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){}
       },300);
     });
   }
-  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; hookMilestones(); showChips(false); showAsk(false); runStep(); }
+  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; _ingredientSheetWasOpen=false; _wizardWasOpenLast=false; hookMilestones(); showChips(false); showAsk(false); runStep(); }
 
   function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
     // v33_133e: brief final message after the dashboard spotlight step
