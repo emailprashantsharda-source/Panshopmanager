@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_146_tour_copy';
+    window.HISAABNOW_BUILD = 'v33_147_orders_default';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83809,8 +83809,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       line: function(){
         if (isOrderTypeSheetOpen()) {
           return L(
-            "First, how's this order happening? Pick Dine-in, Takeaway, Delivery, Swiggy or Zomato — tap one to continue.",
-            "पहले बताएं ये order कैसा है — Dine-in, Takeaway, Delivery, Swiggy या Zomato में से एक दबाएं."
+            "This is the Order type — tag every bill as Dine-in, Takeaway, Delivery, Swiggy or Zomato. One tap now, and your reports then show exactly how much each channel earns you. Pick one to continue.",
+            "ये है Order type — हर bill को Dine-in, Takeaway, Delivery, Swiggy या Zomato के रूप में tag करें. अभी एक tap, और फिर आपकी report दिखाती है कि हर channel से कितनी कमाई होती है. एक चुनें."
           );
         }
         return L(
@@ -84382,7 +84382,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function shopId(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&a.shopId)||(A()&&A().uid)||'default'; }catch(e){ return 'default'; } }
   function pkey(){ return 'hn_tables_v1_'+shopId(); }
   function kkey(){ return 'hn_kds_v1_'+shopId(); }
-  function mode(){ try{ var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; }catch(e){} return TABLE_VERTS.indexOf(vertical())>=0?'tables':'orders'; }
+  function mode(){ try{ var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; }catch(e){} return 'orders'; }  /* v33_147: default to Orders for every vertical (incl. restaurant) — Tables is still one tap away in the mode bar and the choice persists once set. */
   function setMode(m){ if(m!=='tables'&&m!=='orders') return; try{ localStorage.setItem('hn_orders_mode',m); }catch(e){} _menuOpen=false; renderStrip(); }
   function tableCount(){ try{ var n=parseInt(localStorage.getItem('hn_table_count'),10); if(n>0&&n<=60) return n; }catch(e){} return 12; }
   function setTableCount(){ var v=null; try{ v=window.prompt(T('tables.howMany','How many tables?'),String(tableCount())); }catch(e){ return; } var n=parseInt(v,10); if(n>0&&n<=60){ try{ localStorage.setItem('hn_table_count',String(n)); }catch(e){} renderStrip(); } }
