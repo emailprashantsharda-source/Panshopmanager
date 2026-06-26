@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_153_pay_voice';
+    window.HISAABNOW_BUILD = 'v33_155_qty_chips';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -42319,25 +42319,34 @@ log('module loaded — call AppRole.refresh() after MShop.bootstrap and on every
   font-size:14px;font-weight:800;color:var(--t1, #0A0A0A);
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;font-family:inherit;
 }
-.ns-qstep{
-  display:flex;align-items:center;background:var(--ns-tint);border-radius:8px;padding:2px;
+/* v33_155: quantity = unit-aware quick chips + tap-to-type field (replaces the
+   old ±1 stepper, which stepped too slowly, deleted the row at 0, and re-rendered
+   on every keystroke). Added rows now stack: details on top, quantity below. */
+.ns-sup-added{ flex-direction:column; align-items:stretch; gap:12px }
+.ns-sup-top{ display:flex; align-items:center; gap:11px }
+.ns-sup-top .meta{ flex:1; min-width:0 }
+.ns-qty{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:12px; border-top:1px dashed var(--ns-bd) }
+.ns-qchips{ display:flex; gap:6px; flex-wrap:wrap; flex:1; min-width:0 }
+.ns-qchip{
+  border:1.4px solid var(--ns-bd); background:#fff; border-radius:9px;
+  padding:8px 12px; font-size:13.5px; font-weight:800; color:var(--t1, #0A0A0A);
+  cursor:pointer; font-family:inherit; font-variant-numeric:tabular-nums; transition:transform .1s, background .12s, border-color .12s;
 }
-.ns-qstep button{
-  width:22px;height:22px;border-radius:6px;border:none;
-  background:transparent;color:var(--t1, #0A0A0A);cursor:pointer;
-  font-size:13px;font-weight:700;font-family:inherit;
-  display:flex;align-items:center;justify-content:center;
+.ns-qchip:active{ transform:scale(.93) }
+.ns-qchip.on{ background:#FF6B35; border-color:#FF6B35; color:#fff; box-shadow:0 3px 9px -3px rgba(255,107,53,.55) }
+.ns-qtype{
+  display:flex; align-items:baseline; gap:5px; background:var(--ns-tint);
+  border:1.5px solid #FDBA74; border-radius:10px; padding:8px 13px; flex-shrink:0; cursor:text;
+  transition:border-color .12s, background .12s;
 }
-.ns-qstep button:hover{ background:#fff }
-.ns-qstep button:active{ transform:scale(.92) }
-.ns-qstep input{
-  width:34px;border:none;background:transparent;
-  text-align:center;font-size:12px;font-weight:700;
-  color:var(--t1, #0A0A0A);font-family:inherit;outline:none;font-variant-numeric:tabular-nums;
+.ns-qtype:focus-within{ border-color:#FF6B35; background:#fff }
+.ns-qtype input{
+  width:48px; border:none; background:transparent; text-align:right;
+  font-size:16px; font-weight:800; color:#C2410C; font-family:inherit; outline:none;
+  font-variant-numeric:tabular-nums; -moz-appearance:textfield; padding:0;
 }
-.ns-qstep .unit{
-  font-size:9.5px;color:var(--t3, #6B6B6B);font-weight:600;padding:0 5px 0 1px;font-family:inherit;
-}
+.ns-qtype input::-webkit-outer-spin-button,.ns-qtype input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
+.ns-qtype .unit{ font-size:12.5px; font-weight:700; color:var(--t2, #545454) }
 .ns-sup-row .del{
   width:24px;height:24px;border-radius:6px;border:none;
   background:transparent;color:var(--t4, #9C9C9C);cursor:pointer;
@@ -45034,11 +45043,57 @@ button:not(:disabled){ user-select:none }
     };
   }
 
+  // v33_155: unit-aware quick-amounts for the recipe quantity chips.
+  function qtyPresets(unit){
+    var u = String(unit||'').toLowerCase();
+    if (u === 'g')   return [5, 10, 25, 50, 100];
+    if (u === 'ml')  return [10, 30, 50, 100, 200];
+    if (u === 'kg')  return [0.25, 0.5, 1, 2, 5];
+    if (u === 'l' || u === 'ltr' || u === 'litre' || u === 'litres') return [0.25, 0.5, 1, 2, 5];
+    if (u === 'pc' || u === 'pcs' || u === 'piece' || u === 'pieces') return [1, 2, 3, 4, 6];
+    return [1, 2, 5, 10, 20];
+  }
+
+  // v33_155: update the line cost, chip highlight and the recap totals WITHOUT
+  // rebuilding the list — so typing in the quantity field never loses focus.
+  function liveQtyUpdate(i){
+    try {
+      var c = compute();
+      var recap = $('ns-recap');
+      if (recap && state.supplies.length > 0 && state.price > 0){
+        $('ns-recap-total').textContent  = fmt(c.supplyCost);
+        $('ns-recap-pct').textContent    = Math.round(c.margin);
+        $('ns-recap-profit').textContent = fmt(c.profit);
+        $('ns-recap-cust').textContent   = fmt(c.customerPays);
+        var pctEl = recap.querySelector('.ns-margin-pill .pct');
+        if (pctEl) pctEl.classList.toggle('warn', c.margin < 30);
+      }
+      var s = state.supplies[i]; if (!s) return;
+      var ing = getIngredients().find(function(x){ return x.id === s.ingredientId; });
+      if (!ing) return;
+      var lc = ingCostPerUnit(ing) * Number(s.qty || 0);
+      var row = document.querySelector('#ns-sup-list .ns-sup-row[data-i="'+i+'"]');
+      if (row){
+        var costEl = row.querySelector('.cost'); if (costEl) costEl.textContent = '₹'+fmt(lc);
+        row.querySelectorAll('.ns-qchip').forEach(function(ch){
+          ch.classList.toggle('on', Number(ch.getAttribute('data-v')) === Number(s.qty));
+        });
+      }
+    } catch(e){}
+  }
+
   function renderSupplyList(){
     var list = $('ns-sup-list');
     var empty = $('ns-sup-empty');
     var ings = getIngredients();
     if (!list || !empty) return;
+    // v33_154: once at least one ingredient is attached, hide the big "Create new"
+    // CTA — its "+" was competing with the per-row quantity "+" and the advisor's
+    // "use +" guidance. More can still be added via search / the pantry list below.
+    try {
+      var _cta = document.querySelector('.ns-create-cta');
+      if (_cta) _cta.style.display = (state.supplies.length > 0) ? 'none' : '';
+    } catch(e){}
     if (state.supplies.length === 0){
       /* (v33_29aa) If the product has no supplies attached yet AND the
          user has ingredients in their pantry, show those ingredients as
@@ -45107,25 +45162,31 @@ button:not(:disabled){ user-select:none }
       var brand = ing.brand ? escHtml(ing.brand) : 'Generic';
       var emoji = ing.emoji || '📦';
       var catTag = ingCategoryTag(ing);
+      var presets = qtyPresets(unit);
+      var chipsHtml = presets.map(function(v){
+        var on = (Number(v) === Number(s.qty)) ? ' on' : '';
+        return '<button type="button" class="ns-qchip'+on+'" data-v="'+v+'" onclick="NSW.qtyChip('+i+','+v+')">'+v+'</button>';
+      }).join('');
       return ''+
-      '<div class="ns-sup-row" data-i="'+i+'">'+
-        '<div class="em">'+emoji+'</div>'+
-        '<div class="meta">'+
-          '<div class="nm">'+escHtml(ing.name||'Supply') + (catTag ? ' <span class="tag">'+escHtml(catTag)+'</span>' : '') +'</div>'+
-          '<div class="sub"><span class="brand">'+brand+'</span> <span class="dot">·</span> <span>₹'+cpu.toFixed(2)+'/'+unit+'</span></div>'+
-        '</div>'+
-        '<div class="aside">'+
-          '<div class="cost">₹'+fmt(lc)+'</div>'+
-          '<div class="ns-qstep">'+
-            '<button type="button" onclick="NSW.qty('+i+',-1)" aria-label="Decrease">−</button>'+
-            '<input value="'+s.qty+'" inputmode="decimal" oninput="NSW.qtySet('+i+', this.value)" onblur="NSW.qtySet('+i+', this.value, true)">'+
-            '<span class="unit">'+unit+'</span>'+
-            '<button type="button" onclick="NSW.qty('+i+',1)" aria-label="Increase">+</button>'+
+      '<div class="ns-sup-row ns-sup-added" data-i="'+i+'">'+
+        '<div class="ns-sup-top">'+
+          '<div class="em">'+emoji+'</div>'+
+          '<div class="meta">'+
+            '<div class="nm">'+escHtml(ing.name||'Supply') + (catTag ? ' <span class="tag">'+escHtml(catTag)+'</span>' : '') +'</div>'+
+            '<div class="sub"><span class="brand">'+brand+'</span> <span class="dot">·</span> <span>₹'+cpu.toFixed(2)+'/'+unit+'</span></div>'+
           '</div>'+
+          '<div class="cost">₹'+fmt(lc)+'</div>'+
+          '<button class="del" type="button" onclick="NSW.removeSupply('+i+')" aria-label="Remove">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>'+
+          '</button>'+
         '</div>'+
-        '<button class="del" type="button" onclick="NSW.removeSupply('+i+')" aria-label="Remove">'+
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>'+
-        '</button>'+
+        '<div class="ns-qty">'+
+          '<div class="ns-qchips">'+chipsHtml+'</div>'+
+          '<label class="ns-qtype">'+
+            '<input value="'+s.qty+'" inputmode="decimal" onfocus="this.select()" oninput="NSW.qtyType('+i+', this.value)" onblur="NSW.qtyCommit('+i+', this.value)">'+
+            '<span class="unit">'+unit+'</span>'+
+          '</label>'+
+        '</div>'+
       '</div>';
     }).join('');
 
@@ -45906,19 +45967,27 @@ button:not(:disabled){ user-select:none }
 
     removeSupply: function(i){ state.supplies.splice(i, 1); render(); },
 
-    qty: function(i, delta){
+    // v33_155: quantity is now chips + tap-to-type (no ±1 stepper).
+    // qtyChip — discrete pick, safe to re-render. qtyType — live update while
+    // typing (no re-render, keeps focus). qtyCommit — on blur, floor & normalise.
+    qtyChip: function(i, v){
       if (!state.supplies[i]) return;
-      state.supplies[i].qty = Math.max(0, (Number(state.supplies[i].qty)||0) + delta);
-      if (state.supplies[i].qty === 0) state.supplies.splice(i, 1);
+      state.supplies[i].qty = Math.max(0, Number(v) || 0);
       render();
     },
 
-    qtySet: function(i, val, force){
+    qtyType: function(i, val){
       if (!state.supplies[i]) return;
       var n = parseFloat(val);
-      if (isNaN(n)) return;
-      state.supplies[i].qty = Math.max(0, n);
-      if (force && state.supplies[i].qty === 0) state.supplies.splice(i, 1);
+      state.supplies[i].qty = isNaN(n) ? 0 : Math.max(0, n);
+      liveQtyUpdate(i);
+    },
+
+    qtyCommit: function(i, val){
+      if (!state.supplies[i]) return;
+      var n = parseFloat(val);
+      if (isNaN(n) || n <= 0) n = 1;   // floor — never blank/0; the trash icon removes
+      state.supplies[i].qty = n;
       render();
     },
 
@@ -83853,8 +83922,8 @@ var KB=[
             var addedWord = isSalonBiz() ? 'supply' : 'ingredient';
             // v33_141: minimal — just ask to set the quantity on the highlighted row.
             return L(
-              "Now set how much of this " + addedWord + " goes into one item — tap the + and − on its quantity.",
-              "अब set करें कि इस " + (isSalonBiz()?'supply':'ingredient') + " की कितनी मात्रा एक item में लगती है — उसके + और − दबाएं."
+              "Now set how much of this " + addedWord + " goes into one item — tap a quick amount, or type the exact quantity.",
+              "अब set करें कि इस " + (isSalonBiz()?'supply':'ingredient') + " की कितनी मात्रा एक item में लगती है — कोई quick amount दबाएं, या सही quantity type करें."
             );
           }
           // v33_133g: category-aware ingredients/supplies guidance (first-time)
