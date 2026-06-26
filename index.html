@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133e_voice_wizard_dash';
+    window.HISAABNOW_BUILD = 'v33_133g_category_aware';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83024,7 +83024,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
   function $(id){ return document.getElementById(id); }
   // Language follows the app. 'auto' = follow app; or force 'en' / 'hi'.
-  var FORCE_LANG='auto';
+  // v33_133f: advisor locked to Hindi per user request (cloud TTS uses
+  // hi-IN-Neural2-A voice; Hindi text now matches the voice). UI language
+  // toggle is unaffected — this only forces the advisor's own text.
+  var FORCE_LANG='hi';
   function appLang(){ try { return (window.I18n && I18n.getLang && I18n.getLang()==='hi') ? 'hi' : 'en'; } catch(e){ return 'en'; } }
   function lang(){ return (FORCE_LANG==='hi'||FORCE_LANG==='en') ? FORCE_LANG : appLang(); }
   function L(en, hi){ return lang()==='hi' ? hi : en; }   // hi strings are written as casual Hinglish
@@ -83078,6 +83081,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function speak(text){
     var av=$('hnadv-avatar');
     if(muted || !text) return;
+    // v33_133f: cancel any in-progress speech (device synthesis OR cloud audio)
+    // before starting a new one. Fixes the double-voice bug where greet's
+    // device-TTS keeps playing while tour-step cloud-TTS also starts.
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    try { if(_audio){ _audio.pause(); _audio=null; if(av) av.classList.remove('speaking'); } } catch(e){}
     // Cloud TTS (natural voice) if wired; otherwise device Web-Speech voice.
     if(ttsProvider){
       try {
@@ -83103,7 +83111,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function armSpeechFallback(text){
     if(muted) return;
     setTimeout(function(){ if(_speechStarted) return;
-      var once=function(){ document.removeEventListener('pointerdown',once,true); speak(text); };
+      // v33_133f: when user taps, double-check that speech still hasn't started
+      // (cloud TTS may have resolved between the 900ms timer and the tap).
+      var once=function(){ document.removeEventListener('pointerdown',once,true); if(!_speechStarted) speak(text); };
       document.addEventListener('pointerdown',once,true); },900);
   }
 
@@ -83241,7 +83251,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     try { return /salon|spa|barber/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
   }
   function isRestaurantBiz(){
-    try { return /caf[eé]|restaurant|bakery|sweet|mithai|food/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
+    try { return /caf[eé]|restaurant|food/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
+  }
+  function isBakerySweetBiz(){
+    try { return /bakery|sweet|mithai/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
+  }
+  // v33_133g: resale categories (no ingredients needed — just bought-and-sold)
+  function isResaleBiz(){
+    try { return /grocery|kirana|pan\s*shop|panshop|stationery|tobacco|retail|electronics|pharmacy/i.test((window.S && S.bizType) || ''); } catch(e) { return false; }
   }
   function menuWord(){
     if (isSalonBiz()) return L('services','services');
@@ -83371,22 +83388,41 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         if (!isWizardOpen()) {
           // User closed wizard without saving — fall back to generic hint
           return L("Open the activation wizard from the suggested item.",
-                   "Suggested item से activation wizard खोलें।");
+                   "Suggested item पर tap करके wizard खोलें।");
         }
         var panel = getActiveWizardPanel();
         if (panel === 1) {
-          return L("Step 1: Confirm the name and set the price. Then tap Continue at the bottom.",
-                   "Step 1: नाम confirm करें और price set करें। नीचे Continue दबाएं।");
+          return L("Step 1 of 3: Confirm the item name and set the selling price. Then tap Continue at the bottom.",
+                   "Step 1 of 3: Item का नाम confirm करें और selling price set करें। फिर नीचे Continue दबाएं।");
         }
         if (panel === 2) {
-          return L("Step 2: Add ingredients/supplies — or skip if none. Then tap Continue.",
-                   "Step 2: Ingredients/supplies add करें — या skip करें। फिर Continue दबाएं।");
+          // v33_133g: category-aware ingredients/supplies guidance
+          if (isResaleBiz()) {
+            // Grocery, Kirana, Pan Shop, Stationery, etc. — no ingredients needed
+            return L("Step 2 of 3: You sell ready-made products — no ingredients needed. Just tap Continue to skip this step.",
+                     "Step 2 of 3: आप ready-made products बेचते हैं — ingredients की ज़रूरत नहीं। बस Continue दबाकर इस step को skip करें।");
+          }
+          if (isSalonBiz()) {
+            return L("Step 2 of 3: Supplies are the products you USE per service — e.g., shampoo, hair colour, oil for a haircut. Add them now so HisaabNow can show real profit per service. Tap + to add, or Continue to skip and add later.",
+                     "Step 2 of 3: Supplies वो products हैं जो हर service में लगते हैं — जैसे haircut में shampoo, hair colour, तेल। अभी add करेंगे तो HisaabNow हर service का असली profit दिखाएगा। + दबाकर हर supply add करें, या Continue दबाकर बाद में add करें।");
+          }
+          if (isBakerySweetBiz()) {
+            return L("Step 2 of 3: Ingredients are what goes INTO each piece — e.g., for gulab jamun: khoya, sugar, ghee. Add them now and HisaabNow will show real profit per piece. Tap + to add each ingredient, or Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर piece में जाते हैं — जैसे gulab jamun में khoya, चीनी, घी। अभी add करेंगे तो हर piece का असली profit दिखेगा। + दबाकर हर ingredient add करें, या Continue दबाकर बाद में add करें।");
+          }
+          if (isRestaurantBiz()) {
+            return L("Step 2 of 3: Ingredients are the raw items that go INTO each dish — e.g., for chai: milk, sugar, tea leaves. Add them now and HisaabNow will show the real profit margin per plate. Tap + to add each ingredient, or Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे चाय में दूध, चीनी, चायपत्ती। अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + दबाकर हर ingredient add करें, या Continue दबाकर बाद में add करें।");
+          }
+          // Default fallback (Business / unknown category)
+          return L("Step 2 of 3: Add supplies or ingredients used per item — or tap Continue to skip if none.",
+                   "Step 2 of 3: हर item में लगने वाले supplies या ingredients add करें — या कुछ नहीं है तो Continue दबाकर skip करें।");
         }
         if (panel === 3) {
-          return L("Step 3: Review the details, then tap Activate to save this item.",
-                   "Step 3: Details review करें, फिर Activate दबाकर save करें।");
+          return L("Step 3 of 3: Check the details one last time. Then tap Activate to save this item to your menu.",
+                   "Step 3 of 3: Details आखिरी बार check कर लें। फिर Activate दबाकर item को menu में save करें।");
         }
-        return L("Follow the wizard to add this item.", "Wizard follow करके item add करें।");
+        return L("Follow the wizard to add this item.", "Wizard को follow करके item add करें।");
       },
       until: function(){
         // Advance when product is saved (or user is past it via cart/bill)
@@ -83440,6 +83476,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var el=null; try{ el=s.target(); }catch(e){}
     spotlight(el, function(){
       var lineText = (typeof s.line === 'function') ? s.line() : s.line;
+      // v33_133f: track last-said text BEFORE the first say() so the poll's
+      // re-render check doesn't trigger a duplicate say() 300ms later.
+      var bubble0 = $('hnadv-bubble');
+      if (bubble0) bubble0._lastText = lineText;
       say(lineText); showWait(); clearPoll();
       // v33_133e: if step forces top placement (wizard steps), apply now
       if (s.forceTop) {
