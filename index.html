@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_152_smart_form';
+    window.HISAABNOW_BUILD = 'v33_153_pay_voice';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83202,6 +83202,13 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       // v33_135: the advisor speaks with a Hindi voice, which mispronounces a few
       // bare Latin words. Transliterate the worst offenders for the audio only.
       .replace(/\blive\b/gi, hi ? 'लाइव' : 'live')
+      // v33_153: payment terms — the Hindi voice mangles "UPI" (reads it as a word) and
+      // the Latin "cash/card/udhaar". Spell UPI out and transliterate the rest so the
+      // checkout step is read clearly. (Latin → Devanagari only when speaking Hindi.)
+      .replace(/\bUPI\b/gi, hi ? 'यू पी आई' : 'U P I')
+      .replace(/\budhaar\b|\budhar\b/gi, hi ? 'उधार' : 'udhaar')
+      .replace(/\bcash\b/gi, hi ? 'कैश' : 'cash')
+      .replace(/\bcard\b/gi, hi ? 'कार्ड' : 'card')
       .replace(/✓/g, ' ')                               // checkmark: don't read aloud
       .replace(/🎉|👇|☁|⚡/g, ' ')                       // strip decorative emoji from speech
       .replace(/\s{2,}/g,' ')
@@ -83591,6 +83598,10 @@ var KB=[
   // Spotlight target for the checkout step: the order-type sheet if it's open,
   // otherwise the checkout bar.
   function elCheckoutOrType(){ return elOrderTypeCard() || elCheckoutBar(); }
+  // v33_153: payment screen (page 'checkout') — the row of Cash/UPI/Card/Udhaar pills.
+  function elPayTabs(){ try { return document.querySelector('#pg-checkout .ck-pay-tabs') || document.querySelector('.ck-pay-tabs'); } catch(e){ return null; } }
+  function isPayScreenOpen(){ return curPage()==='checkout'; }
+  function elCheckoutTarget(){ return isPayScreenOpen() ? (elPayTabs() || elCheckoutOrType()) : elCheckoutOrType(); }
   // v33_133d: detect a fullscreen modal/wizard that would be blocked by the advisor dock.
   // The .ns-overlay CSS uses display:none → display:flex via .open class (not inline style),
   // and position:fixed elements have offsetParent===null in some browsers (Safari/Samsung Internet).
@@ -83929,9 +83940,17 @@ var KB=[
     // v33_137: if the café/restaurant "Order type" sheet pops up after adding the
     // item, the advisor now explains it and points at it, then switches to Checkout
     // once a type is picked. forceTop keeps the dock clear of the bottom sheet.
-    { target: elCheckoutOrType,
+    { target: elCheckoutTarget,
       forceTop: true,
       line: function(){
+        // On the payment screen: explain every option, including Card. forSpeech
+        // spells "UPI" out and fixes the cash/card/udhaar pronunciation.
+        if (isPayScreenOpen()) {
+          return L(
+            "Now pick how the customer paid — Cash, UPI, Card or Udhaar (credit). Tap one, then confirm to finish the bill.",
+            "अब चुनें customer ने कैसे pay किया — Cash, UPI, Card या उधार। एक दबाएं, फिर bill पूरा करने के लिए confirm करें।"
+          );
+        }
         if (isOrderTypeSheetOpen()) {
           return L(
             "This is the Order type — tag every bill as Dine-in, Takeaway, Delivery, Swiggy or Zomato. One tap now, and your reports then show exactly how much each channel earns you. Pick one to continue.",
@@ -83939,8 +83958,8 @@ var KB=[
           );
         }
         return L(
-          "Added to the bill! Now tap Checkout to take payment — cash, UPI or udhaar.",
-          "Bill में add हो गया! अब payment लेने के लिए Checkout दबाएं — cash, UPI या उधार।"
+          "Added to the bill! Now tap Checkout to take the payment.",
+          "Bill में add हो गया! अब payment लेने के लिए Checkout दबाएं।"
         );
       },
       until: function(){ return _billMade===true; } },
