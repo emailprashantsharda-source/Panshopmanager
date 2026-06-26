@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_133c_cloud_tts';
+    window.HISAABNOW_BUILD = 'v33_133d_modal_fix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83285,11 +83285,23 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var c=document.getElementById('cart-summary');
     return (c && c.classList.contains('show'))?c:null;
   }
-  // v33_133b: detect a fullscreen modal/wizard that would be blocked by the advisor dock
+  // v33_133d: detect a fullscreen modal/wizard that would be blocked by the advisor dock.
+  // The .ns-overlay CSS uses display:none → display:flex via .open class (not inline style),
+  // and position:fixed elements have offsetParent===null in some browsers (Safari/Samsung Internet).
+  // So we check classList.contains('open') as the primary signal — that's exactly how the app
+  // toggles visibility. getComputedStyle is the fallback for any other future modals.
   function isModalOpenBlocking(){
     try {
       var nsw=document.getElementById('ns-overlay');
-      if(nsw && nsw.offsetParent!==null && nsw.style.display!=='none') return true;
+      if(!nsw) return false;
+      // Primary check: class-based (matches how the app shows/hides)
+      if(nsw.classList && nsw.classList.contains('open')) return true;
+      // Fallback: computed style + dimensions (catches inline-style toggles too)
+      var cs = window.getComputedStyle(nsw);
+      if(cs.display !== 'none' && cs.visibility !== 'hidden'){
+        var rect = nsw.getBoundingClientRect();
+        if(rect.width > 0 && rect.height > 0) return true;
+      }
     } catch(e){}
     return false;
   }
