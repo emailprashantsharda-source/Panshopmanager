@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_156_cta_lang';
+    window.HISAABNOW_BUILD = 'v33_157_closing_voice';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83282,6 +83282,12 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       .replace(/\budhaar\b|\budhar\b/gi, hi ? 'उधार' : 'udhaar')
       .replace(/\bcash\b/gi, hi ? 'कैश' : 'cash')
       .replace(/\bcard\b/gi, hi ? 'कार्ड' : 'card')
+      // v33_157: "AI" was read as one syllable ("eye") and "More → AI Advisor" ran
+      // together. Spell AI out, clarify Advisor, and drop the arrow so the closing
+      // line is read clearly.
+      .replace(/→|⟶|➜|➔/g, ' ')
+      .replace(/\bAI\b/gi, hi ? 'ए आई' : 'A I')
+      .replace(/\bAdvisor\b/gi, hi ? 'एडवाइज़र' : 'Advisor')
       .replace(/✓/g, ' ')                               // checkmark: don't read aloud
       .replace(/🎉|👇|☁|⚡/g, ' ')                       // strip decorative emoji from speech
       .replace(/\s{2,}/g,' ')
@@ -84203,8 +84209,8 @@ var KB=[
 
   function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
     // v33_133e: brief final message after the dashboard spotlight step
-    var closing=L("All set — I'm here on More → AI Advisor if you need anything.",
-                  "सब set! ज़रूरत हो तो More → AI Advisor पर मैं हूँ।");
+    var closing=L("All set! Need anything later — open AI Advisor from the More menu. I'm right here.",
+                  "सब हो गया! आगे ज़रूरत पड़े तो More menu में जाकर AI Advisor खोलें — मैं यहीं हूँ।");
     say(closing);
     // v33_135: don't yank the dock away mid-sentence. Wait for the closing line to
     // be fully spoken, then dismiss. Capped at 14s so a muted/failed voice still
