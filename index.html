@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_141_tour_compact';
+    window.HISAABNOW_BUILD = 'v33_143_tour_modaladvance';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83381,6 +83381,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function isSalonBiz(){ return vkey()==='salon'; }
   function isRestaurantBiz(){ var k=vkey(); return k==='cafe' || k==='restaurant'; }
   function isBakerySweetBiz(){ var k=vkey(); return k==='bakery' || k==='sweets'; }
+  // v33_142: fine-grained helpers so each wizard vertical gets ingredient examples
+  // that actually fit it (a café shouldn't be told about paneer butter masala).
+  function isCafeBiz(){ return vkey()==='cafe'; }
+  function isBakeryBiz(){ return vkey()==='bakery'; }
+  function isSweetsBiz(){ return vkey()==='sweets'; }
   // Resale = bought-and-sold, no ingredients (cost price + sell price).
   function isResaleBiz(){ var k=vkey(); return k==='grocery'||k==='kirana'||k==='pan'||k==='stationery'||k==='tobacco'||k==='retail'||k==='other'; }
   // Verticals that open the 3-step ingredient/supply wizard. EXACT mirror of the
@@ -83696,14 +83701,22 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
             return L("Step 2 of 3: Supplies are the products you USE per service — e.g., shampoo, hair colour, oil, conditioner. Adding them now means HisaabNow can show real profit per service. Tap + Add supply to add each one, or tap Continue to skip.",
                      "Step 2 of 3: Supplies वो products हैं जो हर service में लगते हैं — जैसे शैम्पू, हेयर कलर, तेल, कंडीशनर. अभी add करेंगे तो HisaabNow हर service का असली profit दिखाएगा। + Add supply दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
-          if (isBakerySweetBiz()) {
-            // v33_133i: Devanagari shopkeeper words for correct TTS pronunciation
-            return L("Step 2 of 3: Ingredients are what goes INTO each piece — like maida, sugar, ghee, butter, eggs, milk. Adding them now means HisaabNow will show real profit per piece. Tap + Add ingredient to add each one, or tap Continue to skip.",
-                     "Step 2 of 3: Ingredients वो raw items हैं जो हर piece में जाते हैं — जैसे मैदा, चीनी, घी, बटर, अंडे, दूध. अभी add करेंगे तो HisaabNow हर piece का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+          if (isCafeBiz()) {
+            // v33_142: café-specific examples — coffee, milk, tea, syrup (NOT dishes).
+            return L("Step 2 of 3: Ingredients are what goes INTO each drink or item — e.g., for a latte: coffee beans, milk; for a chai: tea leaves, milk, sugar. Adding them now means HisaabNow shows your real profit per cup. Tap + Add ingredient to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर drink या item में जाते हैं — जैसे latte में coffee beans, दूध; चाय में चायपत्ती, दूध, चीनी. अभी add करेंगे तो HisaabNow हर cup का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+          }
+          if (isBakeryBiz()) {
+            return L("Step 2 of 3: Ingredients are what goes INTO each bake — like maida, butter, eggs, sugar, milk. Adding them now means HisaabNow shows your real profit per piece. Tap + Add ingredient to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर बेक में जाते हैं — जैसे मैदा, बटर, अंडे, चीनी, दूध. अभी add करेंगे तो HisaabNow हर piece का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+          }
+          if (isSweetsBiz()) {
+            return L("Step 2 of 3: Ingredients are what goes INTO each sweet — like khoya, besan, sugar, ghee, milk, dry fruits. Adding them now means HisaabNow shows your real profit per kg. Tap + Add ingredient to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर मिठाई में जाते हैं — जैसे खोया, बेसन, चीनी, घी, दूध, ड्राई फ्रूट्स. अभी add करेंगे तो HisaabNow हर किलो का असली profit दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           if (isRestaurantBiz()) {
-            return L("Step 2 of 3: Ingredients are the raw items that go INTO each dish — e.g., for chai: milk, sugar, tea leaves; for paneer butter masala: paneer, butter, tomato. Adding them now means HisaabNow shows your real profit margin per plate. Tap + Add ingredient to add each one, or tap Continue to skip.",
-                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे चाय में दूध, चीनी, चायपत्ती; पनीर बटर मसाला में पनीर, बटर, टमाटर. अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
+            return L("Step 2 of 3: Ingredients are the raw items that go INTO each dish — e.g., for dal makhani: dal, butter, cream; for paneer butter masala: paneer, butter, tomato. Adding them now means HisaabNow shows your real profit margin per plate. Tap + Add ingredient to add each one, or tap Continue to skip.",
+                     "Step 2 of 3: Ingredients वो raw items हैं जो हर dish में जाते हैं — जैसे दाल मखनी में दाल, बटर, क्रीम; पनीर बटर मसाला में पनीर, बटर, टमाटर. अभी add करेंगे तो HisaabNow हर plate का असली profit margin दिखाएगा। + Add ingredient दबाकर हर एक add करें, या Continue दबाकर skip करें।");
           }
           // Default fallback (Business / unknown category)
           return L("Step 2 of 3: Add supplies or ingredients used per item — or tap Continue to skip if none.",
@@ -83893,11 +83906,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
         // v33_135 (advance gate): the step is complete — but let the advisor FINISH
         // reading the current line before moving on, so steps no longer get chopped
-        // off mid-sentence. Capped at ~18s after completion so a muted/failed TTS
+        // off mid-sentence. Capped at ~25s after completion so a muted/failed TTS
         // can never freeze the tour; the Skip button is always available too.
         if(done){
           if(!_doneAt) _doneAt=Date.now();
-          if(speechBusy() && (Date.now()-_doneAt) < 25000) return;  // hold: voice still talking
+          // v33_143: do NOT hold for speech when the step completed because a modal/
+          // editor opened (wizard, retail editor, ingredient sheet, order-type sheet).
+          // The next step guides that screen, and the current line is now stale — so
+          // advance immediately rather than reading on over the new screen (which made
+          // the grocery editor look "stuck" with the dock over its CTA).
+          var _modalOpen = isWizardOpen() || isRetailEditorOpen() || isIngredientSheetOpen() || isOrderTypeSheetOpen();
+          if(!_modalOpen && speechBusy() && (Date.now()-_doneAt) < 25000) return;  // hold: voice still talking
           clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); return;
         }
       },300);
