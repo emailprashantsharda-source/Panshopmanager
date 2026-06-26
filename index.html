@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_147_orders_default';
+    window.HISAABNOW_BUILD = 'v33_150_ing_smart';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2209,6 +2209,14 @@ button[data-hn-loading="true"] {
 .sv2-emoji.sel{background:linear-gradient(135deg,#1f1f1f 0%,#000 100%);border-color:#000;box-shadow:0 0 0 3px rgba(0,0,0,.06),0 8px 16px -4px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);transform:translateY(-1px)}
 
 .sv2-field{margin-bottom:16px;flex:1;min-width:0}
+/* v33_150: raw-material name autocomplete dropdown */
+.sv2-sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1.5px solid #E7E2D5;border-radius:12px;box-shadow:0 12px 28px -8px rgba(0,0,0,.18);z-index:40;overflow:hidden;max-height:248px;overflow-y:auto}
+.sv2-sug-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid #F3EFE6}
+.sv2-sug-item:last-child{border-bottom:0}
+.sv2-sug-item:active{background:#FFF7ED}
+.sv2-sug-emo{font-size:18px;flex-shrink:0}
+.sv2-sug-nm{flex:1;font-size:14.5px;font-weight:700;color:var(--t1);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv2-sug-u{font-size:12px;font-weight:700;color:#9A3412;background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:2px 7px;flex-shrink:0}
 .sv2-label{display:block;font-size:11.5px;font-weight:700;color:var(--t3);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase;line-height:1}
 
 .sv2-input{width:100%;padding:14px 14px;border:1.5px solid #E7E2D5;border-radius:12px;font-size:15px;font-weight:600;color:var(--t1);background:#FCFAF5;font-family:inherit;letter-spacing:-.005em;outline:none;transition:border-color .18s cubic-bezier(.4,0,.2,1),box-shadow .18s cubic-bezier(.4,0,.2,1),background .15s ease;box-sizing:border-box;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;font-feature-settings:'tnum' 0,'cv11' 1,'ss01' 1;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 1px rgba(0,0,0,.015)}
@@ -9132,6 +9140,9 @@ const SEED_CATALOGS = {
   ]
 };
 window.SEED_CATALOGS = SEED_CATALOGS;
+/* v33_149: raw-material ingredient seeds (Stock-In buy-list) for recipe verticals */
+window.SEED_INGREDIENTS = {"restaurant":[{"name":"Chicken","emoji":"🍗","unit":"kg","base":"g","cat":"Proteins"},{"name":"Mutton","emoji":"🥩","unit":"kg","base":"g","cat":"Proteins"},{"name":"Fish","emoji":"🐟","unit":"kg","base":"g","cat":"Proteins"},{"name":"Prawns","emoji":"🦐","unit":"kg","base":"g","cat":"Proteins"},{"name":"Eggs","emoji":"🥚","unit":"pcs","base":"pc","cat":"Proteins"},{"name":"Paneer","emoji":"🧀","unit":"kg","base":"g","cat":"Proteins"},{"name":"Milk","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy"},{"name":"Butter","emoji":"🧈","unit":"kg","base":"g","cat":"Dairy"},{"name":"Fresh Cream","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy"},{"name":"Curd","emoji":"🥣","unit":"kg","base":"g","cat":"Dairy"},{"name":"Cheese","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy"},{"name":"Mozzarella Cheese","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy"},{"name":"Onion","emoji":"🧅","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Tomato","emoji":"🍅","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Potato","emoji":"🥔","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Ginger","emoji":"🫚","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Garlic","emoji":"🧄","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Green Chilli","emoji":"🌶️","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Capsicum","emoji":"🫑","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Cabbage","emoji":"🥬","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Carrot","emoji":"🥕","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Spinach (Palak)","emoji":"🥬","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Mushroom","emoji":"🍄","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Coriander Leaves","emoji":"🌿","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Lemon","emoji":"🍋","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Basmati Rice","emoji":"🍚","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Wheat Flour (Atta)","emoji":"🌾","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Maida","emoji":"🌾","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Besan","emoji":"🌾","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Cornflour","emoji":"🌽","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Toor Dal","emoji":"🫘","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Chana Dal","emoji":"🫘","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Urad Dal","emoji":"🫘","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Rajma","emoji":"🫘","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Hakka Noodles","emoji":"🍜","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Pasta","emoji":"🍝","unit":"kg","base":"g","cat":"Staples & Flours"},{"name":"Refined Oil","emoji":"🛢️","unit":"L","base":"ml","cat":"Oils & Ghee"},{"name":"Mustard Oil","emoji":"🛢️","unit":"L","base":"ml","cat":"Oils & Ghee"},{"name":"Ghee","emoji":"🧈","unit":"kg","base":"g","cat":"Oils & Ghee"},{"name":"Olive Oil","emoji":"🫒","unit":"L","base":"ml","cat":"Oils & Ghee"},{"name":"Salt","emoji":"🧂","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Sugar","emoji":"🍬","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Turmeric Powder","emoji":"🟡","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Red Chilli Powder","emoji":"🌶️","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Coriander Powder","emoji":"🟤","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Cumin (Jeera)","emoji":"🟤","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Garam Masala","emoji":"🟤","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Black Pepper","emoji":"⚫","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Cardamom","emoji":"🟢","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Bay Leaf","emoji":"🍃","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Kasuri Methi","emoji":"🌿","unit":"kg","base":"g","cat":"Spices & Masala"},{"name":"Ginger-Garlic Paste","emoji":"🫙","unit":"kg","base":"g","cat":"Sauces & Pastes"},{"name":"Tomato Ketchup","emoji":"🍅","unit":"kg","base":"g","cat":"Sauces & Pastes"},{"name":"Soy Sauce","emoji":"🫗","unit":"L","base":"ml","cat":"Sauces & Pastes"},{"name":"Schezwan Sauce","emoji":"🌶️","unit":"kg","base":"g","cat":"Sauces & Pastes"},{"name":"Vinegar","emoji":"🫗","unit":"L","base":"ml","cat":"Sauces & Pastes"},{"name":"Green Chilli Sauce","emoji":"🟢","unit":"kg","base":"g","cat":"Sauces & Pastes"},{"name":"Coconut Milk","emoji":"🥥","unit":"L","base":"ml","cat":"Sauces & Pastes"},{"name":"Thai Curry Paste","emoji":"🍲","unit":"kg","base":"g","cat":"Sauces & Pastes"},{"name":"Cashew","emoji":"🌰","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Almonds","emoji":"🌰","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"}],"cafe":[{"name":"Coffee Beans","emoji":"☕","unit":"kg","base":"g","cat":"Coffee & Tea"},{"name":"Ground Coffee","emoji":"☕","unit":"kg","base":"g","cat":"Coffee & Tea"},{"name":"Tea Leaves","emoji":"🍵","unit":"kg","base":"g","cat":"Coffee & Tea"},{"name":"Green Tea","emoji":"🍵","unit":"kg","base":"g","cat":"Coffee & Tea"},{"name":"Milk","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy"},{"name":"Milk Powder","emoji":"🥛","unit":"kg","base":"g","cat":"Dairy"},{"name":"Fresh Cream","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy"},{"name":"Whipping Cream","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy"},{"name":"Butter","emoji":"🧈","unit":"kg","base":"g","cat":"Dairy"},{"name":"Cheese","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy"},{"name":"Mozzarella Cheese","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy"},{"name":"Paneer","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy"},{"name":"Eggs","emoji":"🥚","unit":"pcs","base":"pc","cat":"Dairy"},{"name":"Sugar","emoji":"🍬","unit":"kg","base":"g","cat":"Syrups & Sweeteners"},{"name":"Cocoa Powder","emoji":"🟤","unit":"kg","base":"g","cat":"Syrups & Sweeteners"},{"name":"Chocolate Syrup","emoji":"🍫","unit":"L","base":"ml","cat":"Syrups & Sweeteners"},{"name":"Caramel Syrup","emoji":"🟫","unit":"L","base":"ml","cat":"Syrups & Sweeteners"},{"name":"Vanilla Syrup","emoji":"🤍","unit":"L","base":"ml","cat":"Syrups & Sweeteners"},{"name":"Hazelnut Syrup","emoji":"🌰","unit":"L","base":"ml","cat":"Syrups & Sweeteners"},{"name":"Vanilla Essence","emoji":"🫙","unit":"L","base":"ml","cat":"Syrups & Sweeteners"},{"name":"Honey","emoji":"🍯","unit":"kg","base":"g","cat":"Syrups & Sweeteners"},{"name":"Bread","emoji":"🍞","unit":"pcs","base":"pc","cat":"Bakery & Base"},{"name":"Burger Buns","emoji":"🍔","unit":"pcs","base":"pc","cat":"Bakery & Base"},{"name":"Pizza Base","emoji":"🍕","unit":"pcs","base":"pc","cat":"Bakery & Base"},{"name":"Maida","emoji":"🌾","unit":"kg","base":"g","cat":"Bakery & Base"},{"name":"Pasta","emoji":"🍝","unit":"kg","base":"g","cat":"Bakery & Base"},{"name":"Tortilla Wrap","emoji":"🌯","unit":"pcs","base":"pc","cat":"Bakery & Base"},{"name":"Mayonnaise","emoji":"🫙","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Tomato Ketchup","emoji":"🍅","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Veg Patty","emoji":"🥬","unit":"pcs","base":"pc","cat":"Toppings & Fillings"},{"name":"Chicken","emoji":"🍗","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Frozen Fries","emoji":"🍟","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Frozen Momos","emoji":"🥟","unit":"pcs","base":"pc","cat":"Toppings & Fillings"},{"name":"Lettuce","emoji":"🥬","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Onion","emoji":"🧅","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Tomato","emoji":"🍅","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Capsicum","emoji":"🫑","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Potato","emoji":"🥔","unit":"kg","base":"g","cat":"Toppings & Fillings"},{"name":"Maggi Noodles","emoji":"🍜","unit":"pcs","base":"pc","cat":"Toppings & Fillings"},{"name":"Vanilla Ice Cream","emoji":"🍨","unit":"L","base":"ml","cat":"Desserts"},{"name":"Chocolate Ice Cream","emoji":"🍨","unit":"L","base":"ml","cat":"Desserts"},{"name":"Dark Chocolate","emoji":"🍫","unit":"kg","base":"g","cat":"Desserts"},{"name":"Choco Chips","emoji":"🍫","unit":"kg","base":"g","cat":"Desserts"}],"sweets":[{"name":"Khoya (Mawa)","emoji":"🥛","unit":"kg","base":"g","cat":"Base"},{"name":"Chhena (Paneer)","emoji":"🧀","unit":"kg","base":"g","cat":"Base"},{"name":"Milk","emoji":"🥛","unit":"L","base":"ml","cat":"Base"},{"name":"Full Cream Milk","emoji":"🥛","unit":"L","base":"ml","cat":"Base"},{"name":"Milk Powder","emoji":"🥛","unit":"kg","base":"g","cat":"Base"},{"name":"Condensed Milk","emoji":"🥫","unit":"kg","base":"g","cat":"Base"},{"name":"Sugar","emoji":"🍬","unit":"kg","base":"g","cat":"Sweeteners & Fats"},{"name":"Ghee","emoji":"🧈","unit":"kg","base":"g","cat":"Sweeteners & Fats"},{"name":"Refined Oil","emoji":"🛢️","unit":"L","base":"ml","cat":"Sweeteners & Fats"},{"name":"Jaggery (Gud)","emoji":"🟫","unit":"kg","base":"g","cat":"Sweeteners & Fats"},{"name":"Besan (Gram Flour)","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Maida","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Sooji (Rava)","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Moong Dal","emoji":"🫘","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Chana Dal","emoji":"🫘","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Urad Dal","emoji":"🫘","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Rice Flour","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Poha","emoji":"🍚","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Makhana","emoji":"🪷","unit":"kg","base":"g","cat":"Flours & Grains"},{"name":"Cashew (Kaju)","emoji":"🌰","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Almonds (Badam)","emoji":"🌰","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Pistachio (Pista)","emoji":"🌰","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Walnut (Akhrot)","emoji":"🌰","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Anjeer (Fig)","emoji":"🟤","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Raisins (Kishmish)","emoji":"🍇","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Dry Coconut","emoji":"🥥","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Peanuts","emoji":"🥜","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Sesame (Til)","emoji":"⚪","unit":"kg","base":"g","cat":"Dry Fruits & Nuts"},{"name":"Cardamom (Elaichi)","emoji":"🟢","unit":"kg","base":"g","cat":"Flavour & Garnish"},{"name":"Saffron (Kesar)","emoji":"🌸","unit":"kg","base":"g","cat":"Flavour & Garnish"},{"name":"Silver Vark","emoji":"🥈","unit":"pcs","base":"pc","cat":"Flavour & Garnish"},{"name":"Rose Water","emoji":"🌹","unit":"L","base":"ml","cat":"Flavour & Garnish"},{"name":"Kewra Water","emoji":"💧","unit":"L","base":"ml","cat":"Flavour & Garnish"},{"name":"Edible Colour","emoji":"🎨","unit":"kg","base":"g","cat":"Flavour & Garnish"},{"name":"Khus Khus","emoji":"⚪","unit":"kg","base":"g","cat":"Flavour & Garnish"},{"name":"Carrot","emoji":"🥕","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Bottle Gourd (Lauki)","emoji":"🥒","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Potato","emoji":"🥔","unit":"kg","base":"g","cat":"Vegetables"},{"name":"Salt","emoji":"🧂","unit":"kg","base":"g","cat":"Spices"},{"name":"Chaat Masala","emoji":"🟤","unit":"kg","base":"g","cat":"Spices"},{"name":"Red Chilli Powder","emoji":"🌶️","unit":"kg","base":"g","cat":"Spices"}],"bakery":[{"name":"Maida (Refined Flour)","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Whole Wheat Flour","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Cornflour","emoji":"🌽","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Custard Powder","emoji":"🟡","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Yeast","emoji":"🫧","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Baking Powder","emoji":"🧂","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Baking Soda","emoji":"🧂","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Bread Improver","emoji":"🌾","unit":"kg","base":"g","cat":"Flours & Leavening"},{"name":"Butter","emoji":"🧈","unit":"kg","base":"g","cat":"Dairy & Eggs"},{"name":"Margarine","emoji":"🧈","unit":"kg","base":"g","cat":"Dairy & Eggs"},{"name":"Eggs","emoji":"🥚","unit":"pcs","base":"pc","cat":"Dairy & Eggs"},{"name":"Milk","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy & Eggs"},{"name":"Milk Powder","emoji":"🥛","unit":"kg","base":"g","cat":"Dairy & Eggs"},{"name":"Fresh Cream","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy & Eggs"},{"name":"Whipping Cream","emoji":"🥛","unit":"L","base":"ml","cat":"Dairy & Eggs"},{"name":"Cheese","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy & Eggs"},{"name":"Paneer","emoji":"🧀","unit":"kg","base":"g","cat":"Dairy & Eggs"},{"name":"Sugar","emoji":"🍬","unit":"kg","base":"g","cat":"Sweeteners"},{"name":"Powdered Sugar","emoji":"🍬","unit":"kg","base":"g","cat":"Sweeteners"},{"name":"Honey","emoji":"🍯","unit":"kg","base":"g","cat":"Sweeteners"},{"name":"Cocoa Powder","emoji":"🟤","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Dark Chocolate","emoji":"🍫","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Chocolate Compound","emoji":"🍫","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Choco Chips","emoji":"🍫","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Vanilla Essence","emoji":"🫙","unit":"L","base":"ml","cat":"Chocolate & Flavour"},{"name":"Cooking Oil","emoji":"🛢️","unit":"L","base":"ml","cat":"Chocolate & Flavour"},{"name":"Gel Colours","emoji":"🎨","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Fondant","emoji":"🎂","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Cake Gel","emoji":"🍰","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Gelatin","emoji":"🧊","unit":"kg","base":"g","cat":"Chocolate & Flavour"},{"name":"Tutti Frutti","emoji":"🟥","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Mixed Jam","emoji":"🍓","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Mango Pulp","emoji":"🥭","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Pineapple Crush","emoji":"🍍","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Strawberry Crush","emoji":"🍓","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Cherries","emoji":"🍒","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Cashew","emoji":"🌰","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Almonds","emoji":"🌰","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Walnut","emoji":"🌰","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Veg Filling","emoji":"🥬","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Chicken Filling","emoji":"🍗","unit":"kg","base":"g","cat":"Fillings & Toppings"},{"name":"Salt","emoji":"🧂","unit":"kg","base":"g","cat":"Fillings & Toppings"}]};
+
 
 const EMOJI_BY_VERTICAL = {
   cafe: [
@@ -21350,11 +21361,19 @@ const App = {
     const target = document.getElementById('ig-list');
     if (!target) return;
     if (list.length === 0) {
+      // v33_150: for recipe verticals, offer a one-tap preload of the curated raw-
+      // material buy-list (Chicken, Paneer, Maida, Khoya…) sourced from SEED_INGREDIENTS.
+      var _hasSeeds = false;
+      try { _hasSeeds = !!(window.SEED_INGREDIENTS && Array.isArray(SEED_INGREDIENTS[_vKey]) && SEED_INGREDIENTS[_vKey].length); } catch(e){}
+      var _suggestBtn = _hasSeeds
+        ? `<button class="empty-cta" style="background:#FFF7ED;border:1.5px solid #FED7AA;color:#9A3412;margin-bottom:10px" onclick="App.loadSuggestedIngredients()">✨ Add suggested raw materials</button>`
+        : '';
       target.innerHTML = `
         <div class="empty">
           <div class="empty-emoji">🌾</div>
           <div class="empty-title">${_L.emptyTitle}</div>
           <div class="empty-sub">${_L.emptySub}</div>
+          ${_suggestBtn}
           <button class="empty-cta" onclick="App.openIngredientSheet()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             ${_L.addBtn}
@@ -22874,9 +22893,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           ).join('')}
         </div>
 
-        <div class="sv2-field">
+        <div class="sv2-field" style="position:relative">
           <label class="sv2-label">${_capitalSection.replace(/s$/,'')} name</label>
-          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value)" autofocus>
+          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value); App.igNameSuggest(this.value)" autocomplete="off" autofocus>
+          <div id="sv2-name-sug" class="sv2-sug" style="display:none"></div>
         </div>
 
         <div class="sv2-row">
@@ -23120,6 +23140,82 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
   },
 
+  // v33_150: one-tap preload of the curated raw-material buy-list for this vertical.
+  loadSuggestedIngredients(){
+    try {
+      var vKey = this._supplyVerticalKey();
+      var seeds = (window.SEED_INGREDIENTS && SEED_INGREDIENTS[vKey]) || null;
+      if (!Array.isArray(seeds) || !seeds.length || !window.Store || !Store.add){ this.toast('No suggestions for this shop'); return; }
+      var existing = {};
+      (Store.list('ingredients')||[]).forEach(function(g){ if (g && g.name) existing[g.name.toLowerCase()] = 1; });
+      var n = 0;
+      seeds.forEach(function(s){
+        if (existing[(s.name||'').toLowerCase()]) return;
+        Store.add('ingredients', { name:s.name, brand:'', cat:s.cat||'Raw Material', emoji:s.emoji||'📦', baseUnit:s.base||'g', buyUnit:s.unit||'kg', packPrice:0, packQtyInBase:0, stock:0, min:0, seeded:true });
+        n++;
+      });
+      this.toast(n ? ('Added ' + n + ' raw materials') : 'Already added');
+      this.renderIngredients();
+    } catch(e){ console.warn('[loadSuggestedIngredients]', e); }
+  },
+
+  // v33_150: master raw-material list (deduped across all verticals) — powers the
+  // name autocomplete in the add-ingredient form.
+  _rawMaterialMaster(){
+    if (window.__rmMaster) return window.__rmMaster;
+    var seen = {}, out = [];
+    try {
+      var S = window.SEED_INGREDIENTS || {};
+      Object.keys(S).forEach(function(v){ (S[v]||[]).forEach(function(it){
+        var k = (it.name||'').toLowerCase(); if (!k || seen[k]) return; seen[k] = 1;
+        out.push({ name: it.name, emoji: it.emoji||'📦', unit: it.unit||'kg', base: it.base||'g', cat: it.cat||'' });
+      }); });
+    } catch(e){}
+    window.__rmMaster = out; return out;
+  },
+  // Render name suggestions as the owner types in the ingredient form.
+  igNameSuggest(val){
+    var box = document.getElementById('sv2-name-sug'); if (!box) return;
+    var q = (val||'').trim().toLowerCase();
+    if (q.length < 2){ box.style.display = 'none'; box.innerHTML = ''; this._igSug = null; return; }
+    var starts = [], contains = [];
+    this._rawMaterialMaster().forEach(function(m){
+      var nl = m.name.toLowerCase(), idx = nl.indexOf(q);
+      if (idx === 0) starts.push(m); else if (idx > 0) contains.push(m);
+    });
+    var list = starts.concat(contains).slice(0, 6);
+    this._igSug = list;
+    if (!list.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+    var self = this;
+    box.innerHTML = list.map(function(m, i){
+      return '<div class="sv2-sug-item" onclick="App.igPickSuggestion(' + i + ')">'
+        + '<span class="sv2-sug-emo">' + m.emoji + '</span>'
+        + '<span class="sv2-sug-nm">' + self.escapeHtml(m.name) + '</span>'
+        + '<span class="sv2-sug-u">' + m.unit + '</span></div>';
+    }).join('');
+    box.style.display = 'block';
+  },
+  // Apply a picked suggestion: fills name, emoji, category and buy-unit.
+  igPickSuggestion(i){
+    var m = (this._igSug || [])[i]; if (!m) return;
+    var nm = document.getElementById('sv2-name'); if (nm) nm.value = m.name;
+    try { this.igPickEmoji(m.emoji); } catch(e){}
+    try { this._supV2CatTouched = false; this.igAutoCat(m.name); } catch(e){}
+    try {
+      var us = document.getElementById('sv2-unit');
+      if (us){
+        var want = m.unit, alt = (want === 'L') ? 'litres' : (want === 'kg' ? 'kg' : want);
+        var opts = [].slice.call(us.options);
+        var hit = opts.find(function(o){ return o.value === want; })
+               || opts.find(function(o){ return o.value === alt; })
+               || opts.find(function(o){ return (o.value||'').toLowerCase().indexOf((want||'').toLowerCase()) === 0; });
+        if (hit){ us.value = hit.value; if (this._supV2OnUnitChange) this._supV2OnUnitChange(); }
+      }
+    } catch(e){}
+    var box = document.getElementById('sv2-name-sug'); if (box){ box.style.display = 'none'; box.innerHTML = ''; }
+    this._igSug = null;
+  },
+
   igAutoEmoji(name){
     if (!name || !window.EMOJI_KEYWORDS) return;
     const lower = name.toLowerCase();
@@ -23131,7 +23227,6 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
     }
   },
-
   /* Smart category for ingredients/supplies — guesses the category from the
      name (Chicken → Meat & seafood, Paneer → Dairy, Atta → Grains…). Reads
      the live options so it only picks a category the shop actually has, and
@@ -41198,6 +41293,29 @@ window.Store = {
       });
       added++;
     });
+    // v33_149: also seed raw-material INGREDIENTS for recipe verticals (restaurant,
+    // cafe, sweets, bakery) so the Stock-In / Purchase buy-list shows what you actually
+    // buy from a supplier (chicken, paneer, maida, khoya…) instead of finished dishes.
+    try {
+      var ingSeeds = (typeof window.SEED_INGREDIENTS !== 'undefined') ? window.SEED_INGREDIENTS[profession] : null;
+      if (Array.isArray(ingSeeds) && ingSeeds.length && (_arr('ingredients').length === 0)) {
+        ingSeeds.forEach(function(s){
+          Store.add('ingredients', {
+            name: s.name,
+            brand: '',
+            cat: s.cat || 'Raw Material',
+            emoji: s.emoji || '📦',
+            baseUnit: s.base || 'g',     // g | ml | pc
+            buyUnit: s.unit || 'kg',     // kg | L | pcs — how it's purchased (Stock-In)
+            packPrice: 0,
+            packQtyInBase: 0,
+            stock: 0,
+            min: 0,
+            seeded: true
+          });
+        });
+      }
+    } catch(e){ console.warn('[seedCatalog] ingredient seed failed', e); }
     return { added: added, skipped: 0, reason: 'success' };
   },
 
@@ -45505,6 +45623,10 @@ button:not(:disabled){ user-select:none }
         if (!window.Store.add){ alert('Storage missing add().'); return; }
         window.Store.add('prods', fields);
       }
+      // v33_148: reliable activation beacon for the product-tour advisor. Set the
+      // moment a product is actually committed (incl. the skip-ingredients path), so
+      // the tour can celebrate the activation even if its panel/close heuristics miss.
+      try { window.__hnLastWizardSave = { ts: Date.now(), name: fields.name }; } catch(e){}
       var A = _app();
       if (A){
         var toastMsg;
@@ -83298,6 +83420,26 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
           return r;
         };
       }
+      // v33_148: hook save() DIRECTLY — this is the real activation call. The next()
+      // heuristic above can miss activations (e.g. when the user SKIPS ingredients and
+      // the panel transitions don't line up with "wizard closed"), which left the
+      // product activated in the app but the advisor stuck, never celebrating it.
+      // save() only commits when name+price are valid; we read the name BEFORE it runs
+      // (the sheet clears on close) and confirm success by the wizard actually closing.
+      if (window.NSW && typeof window.NSW.save === 'function' && !window.NSW._hn_save){
+        var origSave = window.NSW.save.bind(window.NSW);
+        window.NSW._hn_save = true;
+        window.NSW.save = function(){
+          var nm = '';
+          try { var n=document.getElementById('ns-name'); nm = n ? (n.value||'').trim() : ''; } catch(e){}
+          var r = origSave.apply(window.NSW, arguments);
+          try {
+            // save() calls api.close() on success; a validation bounce keeps it open.
+            if (!isWizardOpen()) { _prodSaved = true; if (nm) _activatedName = nm; }
+          } catch(e){}
+          return r;
+        };
+      }
     } catch(e){}
   }
 
@@ -83630,6 +83772,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var _wizardWasOpenLast = false;
   var _activatedName = '';        // v33_134: name of the product just activated via wizard
   var _retailNameStaged = '';     // v33_145: name read live from the open retail/activation editor
+  var _tourStartTs = 0;           // v33_148: when the current tour started (for the save beacon)
   var _finalStepStart = 0;        // v33_134: timestamp for the final KPI auto-dismiss
 
   var STEPS=[
@@ -83878,6 +84021,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       var _lastTargetEl=null;  // v33_135: re-scroll when the spotlight target changes
       _pollTimer=setInterval(function(){
         hookNsw();  // v33_134: ensure activation hook is attached (NSW may init late)
+        // v33_148: activation beacon — save() stamps window.__hnLastWizardSave the
+        // instant a product is committed (the skip-ingredients path included). If one
+        // landed after this tour started, treat the product as activated even if the
+        // panel/close heuristics missed it, so the advisor always celebrates it.
+        try { var _bs=window.__hnLastWizardSave; if(_bs && _bs.ts && _bs.ts>=_tourStartTs && !_prodSaved){ _prodSaved=true; if(_bs.name && !_activatedName) _activatedName=_bs.name; } } catch(e){}
         var done=false; try{ done=s.until(); }catch(e){}
 
         var root=$('hnadv-root');
@@ -83977,7 +84125,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       },300);
     });
   }
-  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; _ingredientSheetWasOpen=false; _wizardWasOpenLast=false; _activatedName=''; _finalStepStart=0; hookMilestones(); showChips(false); showAsk(false); runStep(); }
+  function startTour(){ stepIdx=0; _billMade=false; _prodSaved=false; _chatMode=false; _wizardEverOpened=false; _ingredientSheetWasOpen=false; _wizardWasOpenLast=false; _activatedName=''; _finalStepStart=0; _tourStartTs=Date.now(); hookMilestones(); showChips(false); showAsk(false); runStep(); }
 
   function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
     // v33_133e: brief final message after the dashboard spotlight step
@@ -84685,7 +84833,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       +       '<input class="pi-in" id="pi-sup" list="pi-sup-list" placeholder="e.g. Ramesh Wholesale" oninput="Purchase._sup(this.value)" style="flex:2">'
       +       '<input class="pi-in" id="pi-phone" type="tel" placeholder="Phone" oninput="Purchase._phone(this.value)" style="flex:1">'
       +     '</div><datalist id="pi-sup-list"></datalist></div>'
-      +   '<div class="pi-fld"><label class="pi-lbl">Add products to this purchase</label>'
+      +   '<div class="pi-fld"><label class="pi-lbl" id="pi-add-lbl">Add products to this purchase</label>'
       +     '<div class="pi-search-wrap">'
       +       '<input class="pi-in" id="pi-search" placeholder="🔍 Search a product…" oninput="Purchase._search(this.value)" autocomplete="off">'
       +       '<div class="pi-dd" id="pi-dd"></div>'
@@ -84715,6 +84863,35 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     } catch(e){ return []; }
   }
 
+  // v33_149: recipe verticals BUY raw materials (ingredients), not finished dishes,
+  // so the Stock-In picker sources from the 'ingredients' store for these.
+  function purchaseVert(){
+    try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return ((a&&(a.cardType||a.profession))||(window.App&&App.vertical)||'').toLowerCase(); }
+    catch(e){ return ''; }
+  }
+  function purchaseUsesIngredients(){ return ['restaurant','cafe','sweets','bakery'].indexOf(purchaseVert())>=0; }
+  function activeIngredients(){
+    try { return (window.Store && Store.list('ingredients') || []).filter(function(g){ return g && !g._deleted; }); }
+    catch(e){ return []; }
+  }
+  // qty is entered in the buy unit (kg/L/pcs); convert to base (g/ml/pc).
+  function ingFactor(g){ var b=g&&g.baseUnit; return (b==='g'||b==='ml') ? 1000 : 1; }
+  function ingBuyUnit(g){ return (g&&g.buyUnit) || (g&&g.baseUnit==='g'?'kg':(g&&g.baseUnit==='ml'?'L':'pcs')); }
+  // v33_149: existing food-vertical shops were created before raw materials were seeded,
+  // so their ingredients store is empty. When the Stock-In sheet opens with no raw
+  // materials, backfill the curated list ONCE (only when empty — never duplicates).
+  function ensureIngredientSeeds(){
+    try {
+      if (!purchaseUsesIngredients()) return;
+      if (activeIngredients().length > 0) return;
+      var seeds = (typeof window.SEED_INGREDIENTS !== 'undefined') ? window.SEED_INGREDIENTS[purchaseVert()] : null;
+      if (!Array.isArray(seeds) || !seeds.length || !window.Store || !Store.add) return;
+      seeds.forEach(function(s){
+        Store.add('ingredients', { name:s.name, brand:'', cat:s.cat||'Raw Material', emoji:s.emoji||'📦', baseUnit:s.base||'g', buyUnit:s.unit||'kg', packPrice:0, packQtyInBase:0, stock:0, min:0, seeded:true });
+      });
+    } catch(e){}
+  }
+
   function lowStockProds(){
     return activeProds().filter(function(p){
       if (p.tracksStock === false) return false;
@@ -84723,6 +84900,18 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       var st = Number(p.stock)||0, mn = Number(p.min)||0;
       return st <= 0 || (mn > 0 && st <= mn);
     });
+  }
+  // v33_149: low-stock list respects the active store (ingredients for recipe verticals).
+  // For ingredients we only flag items with a real reorder point set (min > 0), so the
+  // 40+ freshly-seeded raw materials don't all show up as "low" on day one.
+  function lowStockItems(){
+    if (purchaseUsesIngredients()){
+      return activeIngredients().filter(function(g){
+        var st=Number(g.stock)||0, mn=Number(g.min)||0;
+        return mn > 0 && st <= mn;
+      });
+    }
+    return lowStockProds();
   }
 
   function pastSuppliers(){
@@ -84742,7 +84931,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   function renderLines(){
     var wrap = $('pi-lines'); if (!wrap) return;
     if (!state.lines.length){
-      var _low = lowStockProds();
+      var _low = lowStockItems();
       var _lowBtn = _low.length
         ? '<button onclick="Purchase._addLow()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:#FFF7ED;border:1.5px solid #FED7AA;color:#9A3412;border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:10px">↻ Reorder all ' + _low.length + ' low-stock item' + (_low.length===1?'':'s') + '</button>'
         : '';
@@ -84775,12 +84964,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var Purchase = {
     open: function(prefill){
       ensureDOM();
+      ensureIngredientSeeds();   // v33_149: backfill raw materials for existing food shops
       state = { lines: [], supplier: (prefill&&prefill.supplier)||'', phone: (prefill&&prefill.phone)||'', pay: 'cash', date: todayStr() };
       renderSupList();
       renderLines();
       var _sup=$('pi-sup'); if(_sup) _sup.value=state.supplier;
       var _ph=$('pi-phone'); if(_ph) _ph.value=state.phone;
-      var _se=$('pi-search'); if(_se) _se.value='';
+      var _se=$('pi-search'); if(_se){ _se.value=''; _se.placeholder = purchaseUsesIngredients() ? '🔍 Search a raw material…' : '🔍 Search a product…'; }
+      var _lbl=$('pi-add-lbl'); if(_lbl){ _lbl.textContent = purchaseUsesIngredients() ? 'Add raw materials to this purchase' : 'Add products to this purchase'; }
       if ($('pi-date')) $('pi-date').value = state.date;
       ['cash','upi','later'].forEach(function(p){ var c=$('pi-pay-'+p); if(c) c.classList.toggle('on', p==='cash'); });
       $('pi-overlay').classList.add('open');
@@ -84802,40 +84993,81 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       var dd = $('pi-dd'); if (!dd) return;
       q = (q||'').trim().toLowerCase();
       if (!q){ closeDD(); return; }
-      var prods = activeProds().filter(function(p){ return (p.name||'').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
-      var html = prods.map(function(p){
-        var stockStr = (p.tracksStock !== false) ? ('stock ' + (Number(p.stock)||0) + (p.unit?(' '+p.unit):'')) : 'no stock tracking';
-        return '<div class="pi-dd-item" onclick="Purchase._add(\'' + esc(p.id) + '\')">'
-          + '<span class="pi-dd-emo">' + (p.emoji||'📦') + '</span>'
-          + '<span class="pi-dd-nm">' + esc(p.name) + '</span>'
-          + '<span class="pi-dd-meta">' + stockStr + '</span></div>';
-      }).join('');
-      html += '<div class="pi-dd-item pi-dd-new" onclick="Purchase._newProduct()">+ Create new product</div>';
+      var useIng = purchaseUsesIngredients();
+      var html;
+      if (useIng){
+        var ings = activeIngredients().filter(function(g){ return (g.name||'').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+        html = ings.map(function(g){
+          var bu = ingBuyUnit(g), f = ingFactor(g);
+          var st = (Number(g.stock)||0) / (f||1);
+          var stockStr = 'stock ' + (Math.round(st*100)/100) + ' ' + bu;
+          return '<div class="pi-dd-item" onclick="Purchase._addIng(\'' + esc(g.id) + '\')">'
+            + '<span class="pi-dd-emo">' + (g.emoji||'📦') + '</span>'
+            + '<span class="pi-dd-nm">' + esc(g.name) + '</span>'
+            + '<span class="pi-dd-meta">' + stockStr + '</span></div>';
+        }).join('');
+        html += '<div class="pi-dd-item pi-dd-new" onclick="Purchase._newItem()">+ Create new ingredient</div>';
+      } else {
+        var prods = activeProds().filter(function(p){ return (p.name||'').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+        html = prods.map(function(p){
+          var stockStr = (p.tracksStock !== false) ? ('stock ' + (Number(p.stock)||0) + (p.unit?(' '+p.unit):'')) : 'no stock tracking';
+          return '<div class="pi-dd-item" onclick="Purchase._add(\'' + esc(p.id) + '\')">'
+            + '<span class="pi-dd-emo">' + (p.emoji||'📦') + '</span>'
+            + '<span class="pi-dd-nm">' + esc(p.name) + '</span>'
+            + '<span class="pi-dd-meta">' + stockStr + '</span></div>';
+        }).join('');
+        html += '<div class="pi-dd-item pi-dd-new" onclick="Purchase._newItem()">+ Create new product</div>';
+      }
       dd.innerHTML = html;
       dd.classList.add('show');
+    },
+    _addIng: function(iid){
+      if (state.lines.some(function(l){ return l.iid === iid; })){ closeDD(); var s=$('pi-search'); if(s) s.value=''; return; }
+      var g = window.Store && Store.get('ingredients', iid);
+      if (!g) return;
+      var bu = ingBuyUnit(g), f = ingFactor(g);
+      var pp = Number(g.packPrice)||0, pq = Number(g.packQtyInBase)||0;
+      var costPerBuy = (pp > 0 && pq > 0) ? (pp / pq) * f : '';
+      state.lines.push({ store:'ing', iid: g.id, name: g.name, emoji: g.emoji||'📦', unit: bu, factor: f, qty: '', cost: (costPerBuy!==''?Math.round(costPerBuy*100)/100:'') });
+      closeDD();
+      var s=$('pi-search'); if(s) s.value='';
+      renderLines();
     },
     _add: function(pid){
       if (state.lines.some(function(l){ return l.pid === pid; })){ closeDD(); var s=$('pi-search'); if(s) s.value=''; return; }
       var p = window.Store && Store.get('prods', pid);
       if (!p) return;
-      state.lines.push({ pid: p.id, name: p.name, emoji: p.emoji||'📦', unit: p.unit||'', qty: '', cost: (p.cp!=null?p.cp:'') });
+      state.lines.push({ store:'prod', pid: p.id, name: p.name, emoji: p.emoji||'📦', unit: p.unit||'', qty: '', cost: (p.cp!=null?p.cp:'') });
       closeDD();
       var s=$('pi-search'); if(s) s.value='';
       renderLines();
     },
     _addLow: function(){
-      lowStockProds().forEach(function(p){
-        if (!state.lines.some(function(l){ return l.pid === p.id; })){
-          state.lines.push({ pid: p.id, name: p.name, emoji: p.emoji||'📦', unit: p.unit||'', qty: '', cost: (p.cp!=null?p.cp:'') });
+      var useIng = purchaseUsesIngredients();
+      lowStockItems().forEach(function(p){
+        if (useIng){
+          if (!state.lines.some(function(l){ return l.iid === p.id; })){
+            var bu = ingBuyUnit(p), f = ingFactor(p);
+            var pp=Number(p.packPrice)||0, pq=Number(p.packQtyInBase)||0;
+            var cpb = (pp>0&&pq>0) ? (pp/pq)*f : '';
+            state.lines.push({ store:'ing', iid:p.id, name:p.name, emoji:p.emoji||'📦', unit:bu, factor:f, qty:'', cost:(cpb!==''?Math.round(cpb*100)/100:'') });
+          }
+        } else if (!state.lines.some(function(l){ return l.pid === p.id; })){
+          state.lines.push({ store:'prod', pid: p.id, name: p.name, emoji: p.emoji||'📦', unit: p.unit||'', qty: '', cost: (p.cp!=null?p.cp:'') });
         }
       });
       closeDD();
       renderLines();
     },
-    _newProduct: function(){
+    _newItem: function(){
+      var useIng = purchaseUsesIngredients();
       this.close();
-      try { if (window.App && App.openProductSheet) App.openProductSheet(); } catch(e){}
+      try {
+        if (useIng && window.App && App.openIngredientSheet) App.openIngredientSheet();
+        else if (window.App && App.openProductSheet) App.openProductSheet();
+      } catch(e){}
     },
+    _newProduct: function(){ this._newItem(); },
     _rm: function(i){ state.lines.splice(i,1); renderLines(); },
     _qty: function(i,v){ if(state.lines[i]){ state.lines[i].qty = v; renderLines(); } },
     _cost: function(i,v){ if(state.lines[i]){ state.lines[i].cost = v; renderLines(); } },
@@ -84851,6 +85083,21 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         var qty = Number(l.qty)||0;
         var cost = Number(l.cost)||0;
         total += qty * cost;
+        if (l.store === 'ing'){
+          // v33_149: buying a raw material — add to ingredient stock (in base units)
+          // and refresh its cost. qty is in the buy unit (kg/L/pcs); factor converts
+          // to base (g/ml/pc). costPerBase = packPrice / packQtyInBase = cost / factor.
+          var g = Store.get('ingredients', l.iid);
+          if (!g) return;
+          var f = Number(l.factor)||1;
+          var addBase = qty * f;
+          var newStock = (Number(g.stock)||0) + addBase;
+          var upd = { stock: newStock };
+          if (cost > 0){ upd.packPrice = cost; upd.packQtyInBase = f; }   // per-base = cost/f
+          Store.update('ingredients', l.iid, upd);
+          recLines.push({ iid: l.iid, name: g.name, qty: qty, cost: cost, unit: l.unit||'' });
+          return;
+        }
         var p = Store.get('prods', l.pid);
         if (!p) return;
         var newStock = (Number(p.stock)||0) + qty;
