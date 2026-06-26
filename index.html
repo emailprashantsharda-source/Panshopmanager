@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_150_ing_smart';
+    window.HISAABNOW_BUILD = 'v33_151_no_preload';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -2209,14 +2209,6 @@ button[data-hn-loading="true"] {
 .sv2-emoji.sel{background:linear-gradient(135deg,#1f1f1f 0%,#000 100%);border-color:#000;box-shadow:0 0 0 3px rgba(0,0,0,.06),0 8px 16px -4px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);transform:translateY(-1px)}
 
 .sv2-field{margin-bottom:16px;flex:1;min-width:0}
-/* v33_150: raw-material name autocomplete dropdown */
-.sv2-sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#fff;border:1.5px solid #E7E2D5;border-radius:12px;box-shadow:0 12px 28px -8px rgba(0,0,0,.18);z-index:40;overflow:hidden;max-height:248px;overflow-y:auto}
-.sv2-sug-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid #F3EFE6}
-.sv2-sug-item:last-child{border-bottom:0}
-.sv2-sug-item:active{background:#FFF7ED}
-.sv2-sug-emo{font-size:18px;flex-shrink:0}
-.sv2-sug-nm{flex:1;font-size:14.5px;font-weight:700;color:var(--t1);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sv2-sug-u{font-size:12px;font-weight:700;color:#9A3412;background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:2px 7px;flex-shrink:0}
 .sv2-label{display:block;font-size:11.5px;font-weight:700;color:var(--t3);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase;line-height:1}
 
 .sv2-input{width:100%;padding:14px 14px;border:1.5px solid #E7E2D5;border-radius:12px;font-size:15px;font-weight:600;color:var(--t1);background:#FCFAF5;font-family:inherit;letter-spacing:-.005em;outline:none;transition:border-color .18s cubic-bezier(.4,0,.2,1),box-shadow .18s cubic-bezier(.4,0,.2,1),background .15s ease;box-sizing:border-box;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;font-feature-settings:'tnum' 0,'cv11' 1,'ss01' 1;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 1px rgba(0,0,0,.015)}
@@ -11524,6 +11516,7 @@ const App = {
 
   _syncFromStore(){
     if (!window.Store) return;
+    try { this._purgeSeededIngredients(); } catch(e){}   // v33_151: drop leftover preloaded raw materials early, before any picker shows them
     SERVICES    = Store.list('prods');
 
     /* (v33_29s) One-time repair for products corrupted by the old emoji-keyword
@@ -21213,6 +21206,7 @@ const App = {
   invFilter(q){ this._invFilter = q; this.renderInventory(); },
 
   renderIngredients(){
+    try { this._purgeSeededIngredients(); } catch(e){}   // v33_151: clear leftover preloaded raw materials
     const list = (Store.list('ingredients') || []).slice();
     const filter = (this._igFilter || '').trim().toLowerCase();
 
@@ -21361,19 +21355,11 @@ const App = {
     const target = document.getElementById('ig-list');
     if (!target) return;
     if (list.length === 0) {
-      // v33_150: for recipe verticals, offer a one-tap preload of the curated raw-
-      // material buy-list (Chicken, Paneer, Maida, Khoya…) sourced from SEED_INGREDIENTS.
-      var _hasSeeds = false;
-      try { _hasSeeds = !!(window.SEED_INGREDIENTS && Array.isArray(SEED_INGREDIENTS[_vKey]) && SEED_INGREDIENTS[_vKey].length); } catch(e){}
-      var _suggestBtn = _hasSeeds
-        ? `<button class="empty-cta" style="background:#FFF7ED;border:1.5px solid #FED7AA;color:#9A3412;margin-bottom:10px" onclick="App.loadSuggestedIngredients()">✨ Add suggested raw materials</button>`
-        : '';
       target.innerHTML = `
         <div class="empty">
           <div class="empty-emoji">🌾</div>
           <div class="empty-title">${_L.emptyTitle}</div>
           <div class="empty-sub">${_L.emptySub}</div>
-          ${_suggestBtn}
           <button class="empty-cta" onclick="App.openIngredientSheet()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             ${_L.addBtn}
@@ -22893,10 +22879,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           ).join('')}
         </div>
 
-        <div class="sv2-field" style="position:relative">
+        <div class="sv2-field">
           <label class="sv2-label">${_capitalSection.replace(/s$/,'')} name</label>
-          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value); App.igNameSuggest(this.value)" autocomplete="off" autofocus>
-          <div id="sv2-name-sug" class="sv2-sug" style="display:none"></div>
+          <input id="sv2-name" class="sv2-input" type="text" value="${this.escapeHtml(v.name || '')}" placeholder="${this.escapeHtmlAttr(_namePh)}" oninput="App.igAutoEmoji(this.value); App.igAutoCat(this.value)" autofocus>
         </div>
 
         <div class="sv2-row">
@@ -23140,82 +23125,6 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
   },
 
-  // v33_150: one-tap preload of the curated raw-material buy-list for this vertical.
-  loadSuggestedIngredients(){
-    try {
-      var vKey = this._supplyVerticalKey();
-      var seeds = (window.SEED_INGREDIENTS && SEED_INGREDIENTS[vKey]) || null;
-      if (!Array.isArray(seeds) || !seeds.length || !window.Store || !Store.add){ this.toast('No suggestions for this shop'); return; }
-      var existing = {};
-      (Store.list('ingredients')||[]).forEach(function(g){ if (g && g.name) existing[g.name.toLowerCase()] = 1; });
-      var n = 0;
-      seeds.forEach(function(s){
-        if (existing[(s.name||'').toLowerCase()]) return;
-        Store.add('ingredients', { name:s.name, brand:'', cat:s.cat||'Raw Material', emoji:s.emoji||'📦', baseUnit:s.base||'g', buyUnit:s.unit||'kg', packPrice:0, packQtyInBase:0, stock:0, min:0, seeded:true });
-        n++;
-      });
-      this.toast(n ? ('Added ' + n + ' raw materials') : 'Already added');
-      this.renderIngredients();
-    } catch(e){ console.warn('[loadSuggestedIngredients]', e); }
-  },
-
-  // v33_150: master raw-material list (deduped across all verticals) — powers the
-  // name autocomplete in the add-ingredient form.
-  _rawMaterialMaster(){
-    if (window.__rmMaster) return window.__rmMaster;
-    var seen = {}, out = [];
-    try {
-      var S = window.SEED_INGREDIENTS || {};
-      Object.keys(S).forEach(function(v){ (S[v]||[]).forEach(function(it){
-        var k = (it.name||'').toLowerCase(); if (!k || seen[k]) return; seen[k] = 1;
-        out.push({ name: it.name, emoji: it.emoji||'📦', unit: it.unit||'kg', base: it.base||'g', cat: it.cat||'' });
-      }); });
-    } catch(e){}
-    window.__rmMaster = out; return out;
-  },
-  // Render name suggestions as the owner types in the ingredient form.
-  igNameSuggest(val){
-    var box = document.getElementById('sv2-name-sug'); if (!box) return;
-    var q = (val||'').trim().toLowerCase();
-    if (q.length < 2){ box.style.display = 'none'; box.innerHTML = ''; this._igSug = null; return; }
-    var starts = [], contains = [];
-    this._rawMaterialMaster().forEach(function(m){
-      var nl = m.name.toLowerCase(), idx = nl.indexOf(q);
-      if (idx === 0) starts.push(m); else if (idx > 0) contains.push(m);
-    });
-    var list = starts.concat(contains).slice(0, 6);
-    this._igSug = list;
-    if (!list.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
-    var self = this;
-    box.innerHTML = list.map(function(m, i){
-      return '<div class="sv2-sug-item" onclick="App.igPickSuggestion(' + i + ')">'
-        + '<span class="sv2-sug-emo">' + m.emoji + '</span>'
-        + '<span class="sv2-sug-nm">' + self.escapeHtml(m.name) + '</span>'
-        + '<span class="sv2-sug-u">' + m.unit + '</span></div>';
-    }).join('');
-    box.style.display = 'block';
-  },
-  // Apply a picked suggestion: fills name, emoji, category and buy-unit.
-  igPickSuggestion(i){
-    var m = (this._igSug || [])[i]; if (!m) return;
-    var nm = document.getElementById('sv2-name'); if (nm) nm.value = m.name;
-    try { this.igPickEmoji(m.emoji); } catch(e){}
-    try { this._supV2CatTouched = false; this.igAutoCat(m.name); } catch(e){}
-    try {
-      var us = document.getElementById('sv2-unit');
-      if (us){
-        var want = m.unit, alt = (want === 'L') ? 'litres' : (want === 'kg' ? 'kg' : want);
-        var opts = [].slice.call(us.options);
-        var hit = opts.find(function(o){ return o.value === want; })
-               || opts.find(function(o){ return o.value === alt; })
-               || opts.find(function(o){ return (o.value||'').toLowerCase().indexOf((want||'').toLowerCase()) === 0; });
-        if (hit){ us.value = hit.value; if (this._supV2OnUnitChange) this._supV2OnUnitChange(); }
-      }
-    } catch(e){}
-    var box = document.getElementById('sv2-name-sug'); if (box){ box.style.display = 'none'; box.innerHTML = ''; }
-    this._igSug = null;
-  },
-
   igAutoEmoji(name){
     if (!name || !window.EMOJI_KEYWORDS) return;
     const lower = name.toLowerCase();
@@ -23226,6 +23135,26 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         return;
       }
     }
+  },
+
+  // v33_151: remove any UNTOUCHED preloaded raw materials (added by the short-lived
+  // auto-seed in v33_149/150) — only the ones with no stock, no price and no reorder
+  // point, so anything the owner actually used or priced is left alone. Idempotent.
+  _purgeSeededIngredients(){
+    try {
+      if (!window.Store || !Store.list || !Store.delete) return 0;
+      var list = Store.list('ingredients') || [];
+      var n = 0;
+      list.forEach(function(g){
+        if (g && g.seeded === true
+            && (Number(g.stock)||0) <= 0
+            && (Number(g.packPrice)||0) <= 0
+            && (Number(g.min)||0) <= 0){
+          try { Store.delete('ingredients', g.id); n++; } catch(e){}
+        }
+      });
+      return n;
+    } catch(e){ return 0; }
   },
   /* Smart category for ingredients/supplies — guesses the category from the
      name (Chicken → Meat & seafood, Paneer → Dairy, Atta → Grains…). Reads
@@ -41293,29 +41222,6 @@ window.Store = {
       });
       added++;
     });
-    // v33_149: also seed raw-material INGREDIENTS for recipe verticals (restaurant,
-    // cafe, sweets, bakery) so the Stock-In / Purchase buy-list shows what you actually
-    // buy from a supplier (chicken, paneer, maida, khoya…) instead of finished dishes.
-    try {
-      var ingSeeds = (typeof window.SEED_INGREDIENTS !== 'undefined') ? window.SEED_INGREDIENTS[profession] : null;
-      if (Array.isArray(ingSeeds) && ingSeeds.length && (_arr('ingredients').length === 0)) {
-        ingSeeds.forEach(function(s){
-          Store.add('ingredients', {
-            name: s.name,
-            brand: '',
-            cat: s.cat || 'Raw Material',
-            emoji: s.emoji || '📦',
-            baseUnit: s.base || 'g',     // g | ml | pc
-            buyUnit: s.unit || 'kg',     // kg | L | pcs — how it's purchased (Stock-In)
-            packPrice: 0,
-            packQtyInBase: 0,
-            stock: 0,
-            min: 0,
-            seeded: true
-          });
-        });
-      }
-    } catch(e){ console.warn('[seedCatalog] ingredient seed failed', e); }
     return { added: added, skipped: 0, reason: 'success' };
   },
 
@@ -83448,49 +83354,88 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   ============================================================ */
   function FAQS(){ return [
     { label:L('How to bill?','Bill कैसे बनाएं?'), q:L('how to make a bill','bill kaise banaye') },
-    { label:L('Add a product','Product add करें'), q:L('add product','product add karein') },
-    { label:L('What is Udhaar?','Udhaar क्या है?'), q:L('udhaar','udhaar kya hai') },
-    { label:L('Reports','Reports'), q:L('reports','reports') },
-    { label:L('Plans & price','Plan & price'), q:L('plan price','plan price') }
+    { label:L('Add a product','Product add करें'), q:L('add a product','product add karein') },
+    { label:L('Recipe & cost','Recipe व cost'), q:L('ingredient recipe cost','recipe ingredient cost') },
+    { label:L('Stock In / Purchase','Stock In'), q:L('stock in record purchase','stock in purchase') },
+    { label:L('UPI QR','UPI QR'), q:L('upi qr at checkout','upi qr code') },
+    { label:L('Udhaar / Khata','Udhaar'), q:L('udhaar khata','udhaar kya hai') },
+    { label:L('Reports & profit','Reports'), q:L('reports profit','reports') },
+    { label:L('Is my data safe?','Data safe है?'), q:L('backup data safe','data safe backup') },
+    { label:L('Plans & price','Plan & price'), q:L('plan price subscription','plan price') }
   ]; }
   // Covers every section of the app. For anything beyond these how-tos,
   // wire a live model via HNAdvisor.setAnswerProvider(fn).
-  var KB=[
-    { k:['bill','sale','invoice','बिल','banaye','billing','naya bill'], a:L('Tap the + button to start a bill, pick the items, then take payment. Done in seconds.','+ button दबाकर bill शुरू करें, items चुनें, फिर payment लें। कुछ ही seconds में हो जाता है।'), act:{label:L('Show me','दिखाइए'),go:'newsale'} },
-    { k:['product','menu item','catalog','add item','create product','add product','प्रोडक्ट','item add'], a:L('Tap an item on your dashboard and set its price to add it to your menu — or tap + to create your own product.','Dashboard पर item दबाकर उसका price set करें ताकि वो menu में add हो जाए — या अपना product बनाने के लिए + दबाएं।'), act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
-    { k:['customer','ग्राहक','कस्टमर','regular'], a:L('Open Customers, tap + to add a name and phone. Bills can then be linked to them to build a regulars list.','Customers खोलकर + दबाएं और नाम-phone डालें। फिर bills उनसे link करके regular list बनती है।'), act:{label:L('Customers','Customers'),go:'customers'} },
-    { k:['udhaar','udhar','credit','khata','उधार','खाता','baaki','due'], a:L('Open Udhaar, tap + and choose "given" or "taken", pick the party and amount — the app keeps the running balance.','Udhaar खोलकर + दबाएं, "diya" या "liya" चुनें, party और amount डालें — app बैलेंस खुद रखता है।'), act:{label:L('Open Udhaar','Udhaar खोलें'),go:'udhaar'} },
-    { k:['expense','expence','kharcha','खर्च','spending','rent','bill paid','cost paid','salary'], a:L('Open Expenses from More, tap + Add expense, pick a category (rent, supplies, salary…), enter the amount and save. It counts against your profit automatically.','More में Expenses खोलें, + Add expense दबाएं, category चुनें (rent, supplies, salary…), amount डालकर save करें। ये अपने-आप profit से घट जाता है।'), act:{label:L('Open Expenses','Expenses खोलें'),go:'expenses'} },
-    { k:['cashflow','cash in hand','cash flow','नकद','withdraw','deposit','cash'], a:L('Cashflow shows cash in hand. Use it to record a withdraw or a deposit so your drawer always matches reality.','Cashflow में cash in hand दिखता है। Withdraw या deposit दर्ज करें ताकि drawer का हिसाब सही रहे।'), act:{label:L('Open Cashflow','Cashflow खोलें'),go:'cashflow'} },
-    { k:['ingredient','recipe','raw material','कच्चा माल','recipe cost','beans','milk'], a:L('Ingredients let you add raw materials per item (beans, milk, packaging). The app then shows true cost and gross margin on each sale.','Ingredients में हर item के कच्चे माल जोड़ें (beans, milk, packing)। फिर हर sale पर असली cost और margin दिखता है।'), act:{label:L('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
-    { k:['coupon','offer','discount','छूट','promo','deal'], a:L('Open Offers & Coupons to create a discount code or a flat/percent offer, then apply it at checkout.','Offers & Coupons में discount code या flat/percent offer बनाएं, फिर checkout पर लगाएं।'), act:{label:L('Open Offers','Offers खोलें'),go:'coupons'} },
-    { k:['staff','team','employee','कर्मचारी','worker','cashier','permission'], a:L('Open Team to add staff and give them billing access with limited permissions — owners keep full control of reports and settings.','Team में staff जोड़ें और सीमित permission के साथ billing access दें — reports/settings पर control मालिक के पास रहता है।'), act:{label:L('Open Team','Team खोलें'),go:'staff'} },
-    { k:['reservation','appointment','booking','बुकिंग','slot','walk-in'], a:L('Open Reservations to book an appointment or log a walk-in — pick the date, time and customer.','Reservations में appointment book करें या walk-in दर्ज करें — date, time और customer चुनें।'), act:{label:L('Open Reservations','Reservations खोलें'),go:'appointments'} },
-    { k:['inventory','stock','स्टॉक','low stock','quantity'], a:L('Inventory tracks stock quantities and warns you when an item runs low so you can reorder in time.','Inventory में stock quantity दिखती है और कम होने पर alert मिलता है ताकि समय पर reorder करें।'), act:{label:L('Open Inventory','Inventory खोलें'),go:'inventory'} },
-    { k:['pack','bundle','combo','packs'], a:L('Packs let you sell bundles (e.g. a 10-piece box) as one item with its own price.','Packs में bundle (जैसे 10-piece box) को एक ही item और price के रूप में बेचें।'), act:{label:L('Open Packs','Packs खोलें'),go:'packs'} },
-    { k:['campaign','marketing','whatsapp blast','promotion','ad'], a:L('Campaigns let you message your customers (offers, reminders) over WhatsApp from inside the app.','Campaigns से अपने customers को WhatsApp पर message भेजें (offers, reminders) — app के अंदर से ही।'), act:{label:L('Open Campaigns','Campaigns खोलें'),go:'campaigns'} },
-    { k:['report','profit','रिपोर्ट','मुनाफा','sales report','daily report'], a:L('Reports show sales, profit and payment breakdowns by day, week or month — built automatically from your bills.','Reports में दिन/हफ्ते/महीने की sales, profit और payment अपने-आप बनते हैं।'), act:{label:L('Open Reports','Reports खोलें'),go:'reports'} },
-    { k:['plan','subscription','pro','king','upgrade','कीमत','membership'], a:L('Free for 7 days, no card. After that Pro is ₹99/month and King is ₹199/month. Open Subscription to upgrade.','7 दिन free, कोई card नहीं। उसके बाद Pro ₹99/month, King ₹199/month। Upgrade के लिए Subscription खोलें।'), act:{label:L('See plans','Plans देखें'),go:'subscriptions'} },
-    { k:['voice','bol','आवाज','वॉइस','mic','speak'], a:L('On the New Sale screen tap the mic and just say the items — I add them to the bill. Works best in Chrome.','New Sale screen पर mic दबाकर items बोलें — मैं उन्हें bill में add कर देता हूँ। Chrome में सबसे अच्छा चलता है।'), act:{label:L('Try voice billing','Voice billing'),go:'newsale'} },
-    { k:['munim','advisor','insight','analytics','सलाह','tips'], a:L("As you bill, I surface best sellers, slow days, low stock and ways to earn more — see them under AI Insights.",'जैसे-जैसे आप bill बनाते हैं, मैं best sellers, सुस्त दिन, कम stock और कमाई के तरीके बताता हूँ — AI Insights में देखें।'), act:{label:L('See AI Insights','AI Insights देखें'),go:'munim'} },
-    { k:['setting','settings','language','भाषा','hindi','english','shop name','profile','gst','currency'], a:L('Open Settings to change your shop name, language (Hindi/English), GST and currency.','Settings में shop name, language (Hindi/English), GST और currency बदलें।'), act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
-    { k:['backup','data','safe','सुरक्षित','cloud','lost','phone change','restore'], a:L('Your data saves on the phone instantly and backs up to the cloud, so nothing is lost even if you change phones — just sign in again.','आपका data फोन पर तुरंत save और cloud पर backup होता है — फोन बदलने पर भी कुछ नहीं खोता, बस फिर sign in करें।') },
-    { k:['whatsapp','reminder','digest','daily summary','याद'], a:L('Turn on the WhatsApp daily digest in More to auto-receive your day\'s summary, and customer reminders to win back lapsed buyers.','More में WhatsApp daily digest चालू करें — रोज़ का summary अपने-आप आएगा, और customer reminders से पुराने ग्राहक वापस लाएं।') }
+var KB=[
+    { k:['bill','billing','make a bill','new sale','new bill','naya bill','invoice','sell','sale','create bill','bill banao','bill kaise','start bill'], a:L('Tap the + button (or New Sale) to start a bill, tap the items to add them, then tap Checkout to take payment. The whole thing takes a few seconds.','+ button (या New Sale) दबाकर bill शुरू करें, items पर tap करके add करें, फिर Checkout दबाकर payment लें। पूरा काम कुछ ही seconds में।'),act:{label:L('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['edit bill','delete bill','cancel bill','remove bill','wrong bill','bill galat','bill delete','void','undo bill','correct bill'], a:L('Open Bills (from the dashboard or Sales), tap the bill you want, and use Edit or Delete. Deleting a bill also reverses its stock and payment so your totals stay correct.','Bills खोलें (dashboard या Sales से), जिस bill को बदलना है उस पर tap करें, फिर Edit या Delete करें। Bill delete करने पर उसका stock और payment भी वापस हो जाता है, हिसाब सही रहता है।'),act:{label:L('Open Bills','Bills खोलें'),go:'sales'} },
+    { k:['reprint','print again','duplicate bill','reprint bill','share bill','send bill','bill whatsapp','bill print','print receipt','receipt'], a:L('Open the bill from Sales and tap Print or Share — you can reprint a thermal receipt or send the bill to the customer on WhatsApp.','Sales में से bill खोलकर Print या Share दबाएं — आप thermal receipt दोबारा print कर सकते हैं या customer को WhatsApp पर bill भेज सकते हैं।'),act:{label:L('Open Bills','Bills खोलें'),go:'sales'} },
+    { k:['payment','cash','upi','card','pay mode','payment mode','split payment','part payment','paytm','gpay','phonepe','online payment','paisa','received'], a:L('At checkout you pick how the customer paid — Cash, UPI, Card or Udhaar (credit). You can also split one bill across cash and UPI. The report then shows your earnings by payment mode.','Checkout पर चुनें कि customer ने कैसे pay किया — Cash, UPI, Card या Udhaar (उधार)। एक bill को cash और UPI में बाँट भी सकते हैं। Report में payment mode के हिसाब से कमाई दिखती है।'),act:{label:L('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['upi qr','qr code','show qr','scan qr','qr at checkout','collect upi','qr dikhao','upi collect','dynamic qr'], a:L('At checkout choose UPI and HisaabNow shows a QR with the exact amount — the customer scans and pays, and the bill is marked paid. Set your UPI ID in Settings first.','Checkout पर UPI चुनें — HisaabNow सही amount के साथ QR दिखाता है, customer scan करके pay करता है और bill paid हो जाता है। पहले Settings में अपनी UPI ID डाल दें।'),act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
+    { k:['discount','checkout discount','apply discount','flat off','percent off','chhoot','discount kaise','give discount','reduce price'], a:L('On the checkout screen tap Discount to take a flat ₹ or % off the bill — or apply a coupon code if you\'ve made one in Offers & Coupons.','Checkout screen पर Discount दबाकर bill पर flat ₹ या % छूट दें — या Offers & Coupons में बनाया हुआ coupon code लगाएं।'),act:{label:L('Open Offers','Offers खोलें'),go:'coupons'} },
+    { k:['order type','dine in','dinein','takeaway','delivery','swiggy','zomato','channel','order kaise','parcel','order type kya'], a:L('For cafe/restaurant, when you start a bill you pick the Order type — Dine-in, Takeaway, Delivery, Swiggy or Zomato. Every bill is tagged so your reports show exactly how much each channel earns.','Cafe/restaurant में bill शुरू करते समय Order type चुनें — Dine-in, Takeaway, Delivery, Swiggy या Zomato। हर bill tag होता है, और report में दिखता है कि हर channel से कितनी कमाई हुई।'),act:{label:L('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['table','tables','dine in table','table number','table management','manage tables','run table','open table','table kholo','seat'], a:L('In Orders mode you can switch to Tables to run dine-in: open a table, keep adding rounds to it, and settle the bill when the guests leave. Toggle Orders/Tables from the bar at the top of the billing screen.','Orders mode में Tables पर switch करके dine-in चलाएं: एक table खोलें, उसमें rounds जोड़ते रहें, और guests जाने पर bill settle करें। Billing screen के ऊपर Orders/Tables bar से toggle करें।'),act:{label:L('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['kot','kitchen','send to kitchen','kitchen order ticket','kds','kitchen display','cook','chef','kitchen screen','order to kitchen'], a:L('Send to Kitchen prints/sends a KOT for the items ordered, and the Kitchen Display (KDS) shows live tickets with cook timers so the kitchen knows what to make and how long it\'s been waiting.','Send to Kitchen से ordered items का KOT जाता है, और Kitchen Display (KDS) पर live tickets cook timer के साथ दिखते हैं ताकि kitchen को पता रहे क्या बनाना है और कितनी देर हो गई।'),act:{label:L('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['product','add product','catalog','menu item','create product','new product','add item','item add','product banao','add dish','add service','add to menu'], a:L('Open Catalog. Tap a suggested item and set its price to activate it, or tap + to create your own. For cafe/restaurant you can also add a recipe so the app knows the true cost.','Catalog खोलें। किसी suggested item पर tap करके price set करें (activate हो जाएगा), या अपना बनाने के लिए + दबाएं। Cafe/restaurant में recipe भी जोड़ सकते हैं ताकि असली cost पता चले।'),act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['edit product','change price','update price','edit item','rename product','product price','price change','delete product','remove item'], a:L('In Catalog, tap any product to edit its name, price, cost, category or emoji — or to delete it. Changes apply to new bills immediately.','Catalog में किसी product पर tap करके उसका नाम, price, cost, category या emoji बदलें — या delete करें। बदलाव नए bills पर तुरंत लागू होते हैं।'),act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['category','categories','sort items','group items','product category','section','menu section','tab'], a:L('Products are grouped into categories (like Coffee, Mains, Breads) so the billing grid stays tidy. Pick a category when you add a product — the app also auto-suggests one from the name.','Products को categories में बाँटा जाता है (जैसे Coffee, Mains, Breads) ताकि billing grid साफ रहे। Product add करते समय category चुनें — नाम से app खुद भी सुझा देता है।'),act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['size','sizes','variant','variants','half full','small large','quarter','portion','size wise price','different price'], a:L('A product can have sizes/variants (e.g. Half/Full, 250g/500g/1kg) each with its own price. Turn on sizes while adding or editing the product.','एक product के sizes/variants हो सकते हैं (जैसे Half/Full, 250g/500g/1kg), हर एक का अलग price। Product add या edit करते समय sizes चालू करें।'),act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['pack','packs','combo','bundle','box','gift box','combo offer','pack banao'], a:L('Packs let you sell a bundle (e.g. a 10-piece box, or a thali combo) as one item with its own price. Open Packs to build one.','Packs से bundle (जैसे 10-piece box या thali combo) को एक ही item और price के रूप में बेचें। बनाने के लिए Packs खोलें।'),act:{label:L('Open Packs','Packs खोलें'),go:'packs'} },
+    { k:['ingredient','ingredients','recipe','raw material','recipe cost','kachcha maal','add ingredient','recipe banao','suggested raw material','consumption'], a:L('Ingredients are the raw materials you buy (chicken, paneer, maida, milk). Add a recipe to a product and the app shows the true cost and gross margin on every sale. New food shops come preloaded with a raw-material list.','Ingredients वो कच्चा माल हैं जो आप खरीदते हैं (chicken, paneer, maida, milk)। किसी product में recipe जोड़ें — हर sale पर असली cost और margin दिखेगा। नए food shops में raw-material list पहले से होती है।'),act:{label:L('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
+    { k:['margin','profit margin','gross margin','cost price','cp','markup','profit per item','kitna profit','margin kya'], a:L('Margin = selling price − cost price. Set a cost (or a recipe) on each item and HisaabNow shows the profit and % margin on every sale and in your reports.','Margin = selling price − cost price। हर item पर cost (या recipe) डालें — HisaabNow हर sale और report में profit और % margin दिखाता है।'),act:{label:L('Open Reports','Reports खोलें'),go:'reports'} },
+    { k:['stock in','purchase','record purchase','buy stock','stock add','maal khareeda','restock','add stock','incoming stock','goods received','khareed'], a:L('Stock In · Record Purchase logs what you bought from a supplier — pick the items, quantity and cost. It updates your stock, refreshes cost price, logs the expense and records any supplier due.','Stock In · Record Purchase में supplier से खरीदा हुआ माल दर्ज करें — items, quantity और cost चुनें। ये stock बढ़ाता है, cost price update करता है, expense दर्ज करता है और supplier का बकाया भी रखता है।'),act:{label:L('Open Stock In','Stock In खोलें'),go:'stockin'} },
+    { k:['supplier','suppliers','vendor','distributor','supplier directory','reorder','supplier due','supplier list','wholesaler','party'], a:L('Suppliers keeps a directory of who you buy from, with their dues. You can reorder from a supplier on WhatsApp in one tap. New suppliers are added automatically when you record a purchase.','Suppliers में आपके सप्लायर्स की directory रहती है, बकाया के साथ। एक tap में WhatsApp पर reorder भेज सकते हैं। Purchase दर्ज करते ही नए supplier अपने-आप जुड़ जाते हैं।'),act:{label:L('Open Suppliers','Suppliers खोलें'),go:'suppliers'} },
+    { k:['stock take','stocktake','physical count','count stock','audit stock','stock check','ginti','reconcile stock','actual stock'], a:L('Stock Take lets you count what\'s physically on the shelf and correct the app\'s numbers in one go — handy for a weekly or month-end check.','Stock Take से shelf पर असल में कितना है उसकी गिनती करके app के numbers एक साथ ठीक करें — हफ़्ते या महीने के अंत की जाँच के लिए बढ़िया।'),act:{label:L('Open Inventory','Inventory खोलें'),go:'inventory'} },
+    { k:['inventory','stock','stock level','low stock','out of stock','stock alert','reorder point','quantity','kitna stock','khatam'], a:L('Inventory shows current stock for every item and warns you when something runs low (based on the reorder point you set) so you can restock in time.','Inventory में हर item का मौजूदा stock दिखता है और कुछ कम होने पर alert मिलता है (आपके reorder point के हिसाब से) ताकि समय पर restock करें।'),act:{label:L('Open Inventory','Inventory खोलें'),go:'inventory'} },
+    { k:['customer','customers','add customer','regular','crm','customer history','grahak','customer add','phone number','contact','loyalty'], a:L('Open Customers and tap + to add a name and phone. Link bills to a customer to build a regulars list and see each customer\'s history and dues.','Customers खोलकर + दबाएं और नाम-phone डालें। Bills को customer से link करके regulars की list बनाएं और हर ग्राहक का history व बकाया देखें।'),act:{label:L('Open Customers','Customers खोलें'),go:'customers'} },
+    { k:['udhaar','udhar','credit','khata','baki','baaki','due','lena dena','given taken','khata book','udhaar kaise','settle','recovery'], a:L('Open Udhaar (Khata), tap + and choose given or taken, pick the party and amount — the app keeps a running balance. Tap Settle when they pay, and you can send a WhatsApp reminder.','Udhaar (Khata) खोलकर + दबाएं, diya या liya चुनें, party और amount डालें — app बैलेंस खुद रखता है। पैसा मिलने पर Settle दबाएं, और WhatsApp पर reminder भी भेज सकते हैं।'),act:{label:L('Open Udhaar','Udhaar खोलें'),go:'udhaar'} },
+    { k:['expense','kharcha','spending','rent','salary','electricity','bill paid','expense add','cost paid','overhead','outgoing'], a:L('Open Expenses from More, tap + Add expense, pick a category (rent, supplies, salary, electricity…), enter the amount and save. Expenses are subtracted from profit automatically.','More में Expenses खोलें, + Add expense दबाएं, category चुनें (rent, supplies, salary, बिजली…), amount डालकर save करें। Expense अपने-आप profit से घट जाता है।'),act:{label:L('Open Expenses','Expenses खोलें'),go:'expenses'} },
+    { k:['cashflow','cash in hand','cash flow','nakad','withdraw','deposit','drawer','cash drawer','golla','cash count','cash balance'], a:L('Cashflow shows the cash you should have in hand. Record a withdraw or deposit so your drawer always matches reality.','Cashflow में बताता है कि हाथ में कितना cash होना चाहिए। Withdraw या deposit दर्ज करें ताकि drawer का हिसाब हमेशा सही रहे।'),act:{label:L('Open Cashflow','Cashflow खोलें'),go:'cashflow'} },
+    { k:['report','reports','profit','sales report','daily report','monthly report','munafa','analytics','revenue','channel report','export report','download report','p&l'], a:L('Reports build automatically from your bills — sales, profit, payment-mode and channel breakdowns by day, week or month. You can also see best and slow sellers.','Reports आपके bills से अपने-आप बनती हैं — sales, profit, payment-mode और channel का हिसाब दिन/हफ़्ते/महीने के अनुसार। Best और slow sellers भी दिखते हैं।'),act:{label:L('Open Reports','Reports खोलें'),go:'reports'} },
+    { k:['gst','tax','gst bill','gst report','tax invoice','hsn','gst rate','gst kaise','cgst','sgst','gst number'], a:L('Turn on GST in Settings and set each item\'s rate — bills then show the tax split and your reports include a GST summary you can hand to your accountant.','Settings में GST चालू करें और हर item की rate डालें — फिर bills पर tax split दिखता है और report में GST summary आती है जो accountant को दे सकते हैं।'),act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
+    { k:['staff','team','employee','worker','cashier','permission','role','add staff','staff access','karmchari','manager','limited access'], a:L('Open Team to add staff and give them billing access with limited permissions — owners keep full control of reports, pricing and settings.','Team खोलकर staff जोड़ें और सीमित permission के साथ billing access दें — reports, pricing और settings पर control मालिक के पास रहता है।'),act:{label:L('Open Team','Team खोलें'),go:'staff'} },
+    { k:['reservation','reservations','appointment','booking','slot','walk in','book','salon booking','appointment kaise','schedule'], a:L('Open Reservations to book an appointment or log a walk-in — pick the date, time, service and customer. Great for salons and table bookings.','Reservations खोलकर appointment book करें या walk-in दर्ज करें — date, time, service और customer चुनें। Salon और table booking के लिए बढ़िया।'),act:{label:L('Open Reservations','Reservations खोलें'),go:'appointments'} },
+    { k:['coupon','coupons','offer','offers','promo','promo code','discount code','deal','scheme','offer banao','flat off code'], a:L('Open Offers & Coupons to create a promo code or a flat/percent offer. Codes are checked at checkout, and discounts are enforced so they can\'t be misused.','Offers & Coupons खोलकर promo code या flat/percent offer बनाएं। Code checkout पर check होता है और discount safely लागू होता है ताकि गलत इस्तेमाल न हो।'),act:{label:L('Open Offers','Offers खोलें'),go:'coupons'} },
+    { k:['waiter','waiter collection','steward','server','waiter payment','waiter cash','collection by waiter','waiter wise'], a:L('Waiter Collection lets each waiter/steward collect payments against their bills, and shows how much cash each one has taken — easy to tally at the end of a shift.','Waiter Collection से हर waiter अपने bills के payment ले सकता है, और दिखता है किसने कितना cash लिया — shift के अंत में मिलान आसान।'),act:{label:L('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['campaign','campaigns','marketing','whatsapp blast','promotion','message customers','bulk message','advertise','offer bhejo','customer message'], a:L('Campaigns let you message your customers over WhatsApp — send offers, festival greetings or win-back reminders — right from inside the app.','Campaigns से अपने customers को WhatsApp पर message भेजें — offers, त्योहार की शुभकामनाएं या वापस लाने वाले reminders — app के अंदर से ही।'),act:{label:L('Open Campaigns','Campaigns खोलें'),go:'campaigns'} },
+    { k:['insight','insights','munim','advisor','ai advisor','tips','suggestion','business advice','salah','ai insight','best seller','trend','recommendation'], a:L('As you bill, your AI Business Advisor surfaces best sellers, slow days, low stock and concrete ways to earn more — see them under AI Insights on the dashboard.','जैसे-जैसे आप bill बनाते हैं, आपका AI Business Advisor best sellers, सुस्त दिन, कम stock और कमाई बढ़ाने के तरीके बताता है — dashboard पर AI Insights में देखें।'),act:{label:L('See AI Insights','AI Insights देखें'),go:'munim'} },
+    { k:['voice','voice billing','bol kar','aawaz','mic','speak','say items','bolkar bill','voice se','microphone'], a:L('On the New Sale screen tap the mic and just say the items — the app adds them to the bill. It understands Hindi and English and works best in Chrome.','New Sale screen पर mic दबाकर items बोलें — app उन्हें bill में add कर देता है। ये Hindi और English दोनों समझता है, और Chrome में सबसे अच्छा चलता है।'),act:{label:L('Try voice billing','Voice billing करें'),go:'newsale'} },
+    { k:['multi shop','multiple shops','add shop','switch shop','another shop','branch','second shop','my businesses','dusri dukan','more shops'], a:L('You can run more than one shop from the same account. Open My Businesses to add a shop or switch between them — each keeps its own products, bills and reports.','एक ही account से एक से ज़्यादा shop चला सकते हैं। My Businesses खोलकर shop जोड़ें या बदलें — हर shop के अपने products, bills और reports रहते हैं।'),act:{label:L('My Businesses','My Businesses खोलें'),go:'my-businesses'} },
+    { k:['plan','plans','subscription','pro','king','upgrade','price','cost','kitne ka','membership','trial','free','validity','renew','pricing'], a:L('It\'s free for 7 days, no card needed. After that Pro is ₹99/month (₹990/year) and King is ₹199/month (₹1,990/year). Open Subscription to see the plans and upgrade.','7 दिन बिल्कुल free, कोई card नहीं। उसके बाद Pro ₹99/month (₹990/साल) और King ₹199/month (₹1,990/साल)। Plans देखने और upgrade के लिए Subscription खोलें।'),act:{label:L('See plans','Plans देखें'),go:'subscriptions'} },
+    { k:['payment fail','subscription payment','paid but not activated','upgrade failed','payu','payment problem','plan activate','renew fail','transaction'], a:L('If a subscription payment went through but your plan didn\'t activate, give it a minute and reopen Subscription — it re-checks automatically. If it\'s still off, your payment is safe and it\'ll relink to your phone number on next sign-in.','अगर subscription payment हो गया पर plan activate नहीं हुआ, एक मिनट रुककर Subscription दोबारा खोलें — ये अपने-आप दोबारा check करता है। फिर भी न हो तो आपका payment safe है और अगली sign-in पर आपके नंबर से जुड़ जाएगा।'),act:{label:L('Open Subscription','Subscription खोलें'),go:'subscriptions'} },
+    { k:['login','sign in','otp','phone number','account','log out','signin','change phone','number change','re-login','sign up'], a:L('You sign in with your phone number and a one-time OTP — no password to remember. Signing in on a new phone restores all your data automatically.','आप अपने phone number और एक OTP से sign in करते हैं — कोई password याद रखने की ज़रूरत नहीं। नए फोन पर sign in करते ही आपका सारा data वापस आ जाता है।'),act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
+    { k:['backup','data','safe','restore','cloud','lost data','phone change','data safe','backup kaha','recover','data loss','sync'], a:L('Your data saves on the phone instantly and backs up to the cloud, so nothing is lost even if your phone breaks — just sign in again on the new phone to restore everything.','आपका data फोन पर तुरंत save और cloud पर backup होता है, फोन टूटने पर भी कुछ नहीं खोता — नए फोन पर बस फिर से sign in करें, सब वापस आ जाएगा।') },
+    { k:['offline','no internet','net nahi','without internet','net band','works offline','internet nahi'], a:L('HisaabNow works offline — keep billing without internet and everything saves on the phone. When you\'re back online it syncs to the cloud on its own.','HisaabNow offline भी चलता है — बिना internet के billing करते रहें, सब फोन पर save होता है। Internet वापस आने पर अपने-आप cloud से sync हो जाता है।') },
+    { k:['settings','language','hindi','english','shop name','profile','currency','theme','bhasha','setting kaha','change language','logo'], a:L('Open Settings to change your shop name and logo, language (Hindi/English), currency, GST and your UPI ID for QR collection.','Settings खोलकर shop का नाम और logo, language (Hindi/English), currency, GST और QR collection के लिए अपनी UPI ID बदलें।'),act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
+    { k:['delete account','close account','remove data','account delete','data delete','erase','delete my data'], a:L('You can delete your account and all its data from Settings → Delete account. It removes your shops, bills and customers permanently, in line with India\'s data-protection rules.','आप अपना account और सारा data Settings → Delete account से हटा सकते हैं। ये आपके shops, bills और customers हमेशा के लिए हटा देता है, भारत के data-protection नियमों के अनुसार।'),act:{label:L('Open Settings','Settings खोलें'),go:'settings'} },
+    { k:['printer','thermal printer','print setup','connect printer','bluetooth printer','print nahi','58mm','80mm','printer connect'], a:L('HisaabNow prints to standard 58mm/80mm thermal printers, and you can also share the bill as a WhatsApp message if you don\'t have a printer. Pair the printer from your phone\'s Bluetooth, then print from any bill.','HisaabNow आम 58mm/80mm thermal printer पर print करता है, और printer न हो तो bill WhatsApp message के रूप में भी भेज सकते हैं। फोन के Bluetooth से printer pair करें, फिर किसी भी bill से print करें।') },
+    { k:['getting started','start','setup','new user','how to use','begin','kaise shuru','first time','onboarding','help me start','tutorial','guide'], a:L('Start by activating a few items in your Catalog (tap a suggested item and set its price), then make your first bill with +. Add customers and expenses as you go. Want me to walk you through it?','शुरुआत Catalog में कुछ items activate करके करें (suggested item पर tap करके price डालें), फिर + से पहला bill बनाएं। साथ-साथ customers और expenses जोड़ते रहें। चाहें तो मैं step-by-step दिखा दूँ?'),act:{label:L('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['help','support','contact','problem','issue','complaint','madad','customer care','talk to human','phone support','stuck'], a:L('I can answer most how-to questions right here — just ask. For anything I can\'t solve, you can reach support from More → Help, or send feedback with the thumbs-down on any reply.','ज़्यादातर how-to सवालों का जवाब मैं यहीं दे सकता हूँ — बस पूछें। जो मैं हल न कर पाऊँ, उसके लिए More → Help से support से संपर्क करें, या किसी reply पर thumbs-down से feedback भेजें।') }
   ];
   function answer(q){
     if(answerProvider) return Promise.resolve(answerProvider(q,lang()));
-    var s=(q||'').toLowerCase();
+    // v33_151: normalise punctuation but keep Devanagari so Hindi keywords still match.
+    var s=' '+(q||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]+/g,' ').replace(/\s+/g,' ')+' ';
     var best=null, bestScore=0;
     KB.forEach(function(e){
-      var sc=0; e.k.forEach(function(w){ if(s.indexOf(String(w).toLowerCase())>=0) sc += String(w).length; });
+      var sc=0, hits=0;
+      e.k.forEach(function(w){
+        w=String(w).toLowerCase();
+        if(w.indexOf(' ')>=0){ if(s.indexOf(w)>=0){ sc+=w.length; hits++; } }      // phrase → substring
+        else if(s.indexOf(' '+w+' ')>=0){ sc+=w.length+2; hits++; }                 // word → boundary match
+        else if(w.length>=5 && s.indexOf(w)>=0){ sc+=w.length; hits++; }            // long word → loose substring
+      });
+      if(hits>1) sc+=hits*2;   // reward matching several distinct keywords of one topic
       if(sc>bestScore){ bestScore=sc; best=e; }
     });
-    if(best) return { text:best.a, act:best.act };
-    return { text:L("I can help with billing, products, customers, udhaar, expenses, cashflow, ingredients, offers, team, reservations, inventory, reports, plans and settings — what would you like to know?",'मैं billing, products, customers, udhaar, expenses, cashflow, ingredients, offers, team, reservations, inventory, reports, plans और settings में मदद कर सकता हूँ — क्या जानना है?') };
+    if(best && bestScore>0) return { text:best.a, act:best.act };
+    return { text:L("I can help with almost anything in HisaabNow — billing, payments & UPI QR, products & recipes, ingredients & stock, suppliers & purchases, customers & udhaar, expenses, cashflow, reports & GST, offers, team, reservations, plans, backup and settings. Try asking how to do a specific thing.",'मैं HisaabNow की लगभग हर चीज़ में मदद कर सकता हूँ — billing, payments व UPI QR, products व recipes, ingredients व stock, suppliers व purchases, customers व udhaar, expenses, cashflow, reports व GST, offers, team, reservations, plans, backup और settings। कोई एक काम कैसे करें — वो पूछ कर देखें।') };
   }
   function go(where){ finish(true); try {
     if(where==='munim'){ if(window.Munim&&Munim.openDrawer) Munim.openDrawer(); else App.nav('home'); }
-    else if(where==='newsale'){ App.nav('addsale'); } else App.nav(where);
+    else if(where==='newsale'){ App.nav('addsale'); }
+    else if(where==='stockin'){ if(window.Purchase&&Purchase.open) Purchase.open(); else App.nav('inventory'); }
+    else if(where==='suppliers'){ if(window.App&&App.openSuppliers) App.openSuppliers(); else App.nav('inventory'); }
+    else App.nav(where);
   } catch(e){} }
 
   /* ---------- voice IN ---------- */
@@ -84877,20 +84822,6 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   // qty is entered in the buy unit (kg/L/pcs); convert to base (g/ml/pc).
   function ingFactor(g){ var b=g&&g.baseUnit; return (b==='g'||b==='ml') ? 1000 : 1; }
   function ingBuyUnit(g){ return (g&&g.buyUnit) || (g&&g.baseUnit==='g'?'kg':(g&&g.baseUnit==='ml'?'L':'pcs')); }
-  // v33_149: existing food-vertical shops were created before raw materials were seeded,
-  // so their ingredients store is empty. When the Stock-In sheet opens with no raw
-  // materials, backfill the curated list ONCE (only when empty — never duplicates).
-  function ensureIngredientSeeds(){
-    try {
-      if (!purchaseUsesIngredients()) return;
-      if (activeIngredients().length > 0) return;
-      var seeds = (typeof window.SEED_INGREDIENTS !== 'undefined') ? window.SEED_INGREDIENTS[purchaseVert()] : null;
-      if (!Array.isArray(seeds) || !seeds.length || !window.Store || !Store.add) return;
-      seeds.forEach(function(s){
-        Store.add('ingredients', { name:s.name, brand:'', cat:s.cat||'Raw Material', emoji:s.emoji||'📦', baseUnit:s.base||'g', buyUnit:s.unit||'kg', packPrice:0, packQtyInBase:0, stock:0, min:0, seeded:true });
-      });
-    } catch(e){}
-  }
 
   function lowStockProds(){
     return activeProds().filter(function(p){
@@ -84964,7 +84895,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var Purchase = {
     open: function(prefill){
       ensureDOM();
-      ensureIngredientSeeds();   // v33_149: backfill raw materials for existing food shops
+      try { if (window.App && App._purgeSeededIngredients) App._purgeSeededIngredients(); } catch(e){}  // v33_151: clear leftover preloaded raw materials
       state = { lines: [], supplier: (prefill&&prefill.supplier)||'', phone: (prefill&&prefill.phone)||'', pay: 'cash', date: todayStr() };
       renderSupList();
       renderLines();
