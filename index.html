@@ -39743,6 +39743,21 @@ async function bootstrap(user, options){
 
     _restoreShopData(state.activeShopId);
 
+    /* (audit fix Jun 2026) Resolve role NOW, from the shop metadata already
+       loaded above (_isStaffShop / _staffRole), BEFORE the awaited
+       HisaabSync.init() — whose fullSync() pulls every synced collection.
+       _computeRole() needs only MShop.getActive(); it does NOT need synced
+       data. Doing it here means the 4s role safety-net (which defaults to
+       'cashier') can't fire just because the initial pull got slower as more
+       collections were added to sync. Prevents the brief cashier-dashboard
+       flash on fresh logins. The end-of-bootstrap AppRole.refresh() below
+       stays (idempotent) to catch any role change after data loads. */
+    try {
+      if (window.AppRole && typeof window.AppRole.refresh === 'function') {
+        window.AppRole.refresh();
+      }
+    } catch(e) { console.warn('[MShop] early AppRole.refresh failed (non-fatal):', e); }
+
     if (window.HisaabSync && typeof window.HisaabSync.init === 'function') {
       try {
         await window.HisaabSync.init({ shopId: state.activeShopId, debug: false });
