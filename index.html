@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_145_tour_ceprice';
+    window.HISAABNOW_BUILD = 'v33_146_tour_copy';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83673,8 +83673,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         if (!usesWizard()) {
           if (isRetailEditorOpen()) {
             return L(
-              "No recipe needed here — just two prices. Enter the Sell price (what the customer pays), then the Cost price (what you buy it for). That's how HisaabNow shows your profit on every sale. Then tap Add to activate it.",
-              "यहाँ कोई recipe नहीं — बस दो दाम. Sell price भरें (जो ग्राहक देता है), फिर Cost price (जो आप खरीदते हैं). इसी से HisaabNow हर sale पर आपका profit दिखाता है. फिर Add दबाकर activate करें."
+              "Enter the Sell price (what the customer pays), then the Cost price (what you buy it for). That's how HisaabNow shows your profit on every sale. Then tap Add to activate it.",
+              "Sell price भरें (जो ग्राहक देता है), फिर Cost price (जो आप खरीदते हैं). इसी से HisaabNow हर sale पर आपका profit दिखाता है. फिर Add दबाकर activate करें."
             );
           }
           if (_prodSaved===true || _activatedName) {
@@ -83823,9 +83823,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     { target: elKpiRow,
       requirePage: 'home',   // ensure we're on the dashboard so the KPI row exists
       forceTop: false,
-      line: function(){ return L(
-        "🎉 First bill done! And here's the magic — because you set the cost, your Profit and Margin update instantly, right here. That's your whole loop: add a product, add its ingredients to know the true cost, then bill in seconds.",
-        "🎉 पहला bill हो गया! और यही कमाल है — आपने cost set की थी, इसलिए आपका Profit और Margin यहीं तुरंत update होता है. यही है पूरा तरीका: product add करें, ingredients डालकर असली cost जानें, फिर seconds में bill बनाएं."
+      line: function(){
+        // v33_146: resale verticals (grocery/pan/etc.) have no recipe — don't say
+        // "ingredients" in the closing loop. Recipe verticals keep the recipe step.
+        var wiz = usesWizard();
+        var loopEN = wiz ? "add a product, add its recipe to know the true cost, then bill in seconds."
+                         : "add a product, set its cost, then bill in seconds.";
+        var loopHI = wiz ? "product add करें, उसकी recipe डालकर असली cost जानें, फिर seconds में bill बनाएं."
+                         : "product add करें, उसकी cost set करें, फिर seconds में bill बनाएं.";
+        return L(
+        "🎉 First bill done! And here's the magic — because you set the cost, your Profit and Margin update instantly, right here. That's your whole loop: " + loopEN,
+        "🎉 पहला bill हो गया! और यही कमाल है — आपने cost set की थी, इसलिए आपका Profit और Margin यहीं तुरंत update होता है. यही है पूरा तरीका: " + loopHI
       ); },
       // Min display is short; the speech-completion gate keeps the dock up until
       // this (long) closing line has been read out in full before celebrate().
