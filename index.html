@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_134_tour_fixes';
+    window.HISAABNOW_BUILD = 'v33_135_tour_speech';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83057,6 +83057,12 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
   var muted=false, recog=null, listening=false;
   var answerProvider=null, ttsProvider=null;
   var _speechStarted=false, _pollTimer=null, _billMade=false, _prodSaved=false, _chatMode=false;
+  // v33_135: track whether the voice is actively speaking the current line, so the
+  // tour can wait for it to finish before advancing. _speechSeq is a session token:
+  // when a new line starts it increments, so a stale end-event from a superseded
+  // line can't wrongly mark speech as finished for the newer line.
+  var _speechActive=false, _speechSeq=0;
+  function speechBusy(){ if(muted) return false; return !!_speechActive; }
 
   function $(id){ return document.getElementById(id); }
   // Language follows the app. 'auto' = follow app; or force 'en' / 'hi'.
@@ -83097,7 +83103,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     return pool[0]||null;
   }
   var _audio=null;
-  function deviceSpeak(text){
+  function deviceSpeak(text, seq){
+    if(seq==null) seq=_speechSeq;
     var av=$('hnadv-avatar');
     var doSpeak=function(){ try {
       window.speechSynthesis.cancel();
@@ -83106,11 +83113,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       // v33_133: pitch=1.0 to avoid chipmunk effect on male-picked voices
       u.rate=0.92; u.pitch=1.0;
       var v=pickVoice(lc); if(v){ u.voice=v; u.lang=v.lang; }
-      u.onstart=function(){ _speechStarted=true; if(av) av.classList.add('speaking'); };
-      u.onend=function(){ if(av) av.classList.remove('speaking'); };
-      u.onerror=function(){ if(av) av.classList.remove('speaking'); };
+      u.onstart=function(){ _speechStarted=true; if(seq===_speechSeq) _speechActive=true; if(av) av.classList.add('speaking'); };
+      u.onend=function(){ if(seq===_speechSeq) _speechActive=false; if(av) av.classList.remove('speaking'); };
+      u.onerror=function(){ if(seq===_speechSeq) _speechActive=false; if(av) av.classList.remove('speaking'); };
       window.speechSynthesis.speak(u);
-    } catch(e){} };
+    } catch(e){ if(seq===_speechSeq) _speechActive=false; } };
     if(!_voices.length){ loadVoices(); if(!_voices.length){ setTimeout(function(){ loadVoices(); doSpeak(); },250); return; } }
     doSpeak();
   }
@@ -83133,6 +83140,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     var av=$('hnadv-avatar');
     if(muted || !text) return;
     var spoken=forSpeech(text);   // v33_134: audio uses spoken-form, bubble keeps symbols
+    var mySeq=++_speechSeq; _speechActive=true;   // v33_135: claim this speech session
     // v33_133f: cancel any in-progress speech (device synthesis OR cloud audio)
     // before starting a new one. Fixes the double-voice bug where greet's
     // device-TTS keeps playing while tour-step cloud-TTS also starts.
@@ -83142,24 +83150,25 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     if(ttsProvider){
       try {
         Promise.resolve(ttsProvider(spoken, lang())).then(function(src){
-          if(!src){ deviceSpeak(spoken); return; }
+          if(mySeq!==_speechSeq) return;          // v33_135: superseded by a newer line
+          if(!src){ deviceSpeak(spoken, mySeq); return; }
           try {
             if(_audio){ _audio.pause(); _audio=null; }
             var url = (typeof src==='string') ? src : URL.createObjectURL(src);
             _audio=new Audio(url); _speechStarted=true;
             if(av) av.classList.add('speaking');
-            _audio.onended=function(){ if(av) av.classList.remove('speaking'); };
-            _audio.onerror=function(){ if(av) av.classList.remove('speaking'); deviceSpeak(spoken); };
-            _audio.play().catch(function(){ deviceSpeak(spoken); });
-          } catch(e){ deviceSpeak(spoken); }
-        }).catch(function(){ deviceSpeak(spoken); });
-      } catch(e){ deviceSpeak(spoken); }
+            _audio.onended=function(){ if(mySeq===_speechSeq) _speechActive=false; if(av) av.classList.remove('speaking'); };
+            _audio.onerror=function(){ if(av) av.classList.remove('speaking'); deviceSpeak(spoken, mySeq); };
+            _audio.play().catch(function(){ deviceSpeak(spoken, mySeq); });
+          } catch(e){ deviceSpeak(spoken, mySeq); }
+        }).catch(function(){ if(mySeq===_speechSeq) deviceSpeak(spoken, mySeq); });
+      } catch(e){ deviceSpeak(spoken, mySeq); }
       return;
     }
-    if(!('speechSynthesis' in window)) return;
-    deviceSpeak(spoken);
+    if(!('speechSynthesis' in window)){ if(mySeq===_speechSeq) _speechActive=false; return; }
+    deviceSpeak(spoken, mySeq);
   }
-  function stopSpeak(){ try { window.speechSynthesis.cancel(); } catch(e){} try{ if(_audio){_audio.pause();_audio=null;} }catch(e){} var av=$('hnadv-avatar'); if(av) av.classList.remove('speaking'); }
+  function stopSpeak(){ _speechSeq++; _speechActive=false; try { window.speechSynthesis.cancel(); } catch(e){} try{ if(_audio){_audio.pause();_audio=null;} }catch(e){} var av=$('hnadv-avatar'); if(av) av.classList.remove('speaking'); }
   function armSpeechFallback(text){
     if(muted) return;
     setTimeout(function(){ if(_speechStarted) return;
@@ -83596,7 +83605,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       until: function(){
         if (!STEPS[4]._startedAt) STEPS[4]._startedAt = Date.now();
         var p=curPage();
-        return p==='addsale'||cartCount()>0||_billMade===true || (Date.now()-STEPS[4]._startedAt)>4000;
+        return p==='addsale'||cartCount()>0||_billMade===true || (Date.now()-STEPS[4]._startedAt)>1500;
       } },
     // ─── STEP 6 (v33_134): Point to the + FAB to start the first bill.
     { target: elFab,
@@ -83629,10 +83638,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         "🎉 First bill done! And here's the magic — because you set the cost, your Profit and Margin update live, right here. That's your whole loop: add a product, add its ingredients to know the true cost, then bill in seconds.",
         "🎉 पहला bill हो गया! और यही कमाल है — आपने cost set की थी, इसलिए आपका Profit और Margin यहीं live update होता है. यही है पूरा तरीका: product add करें, ingredients डालकर असली cost जानें, फिर seconds में bill बनाएं."
       ); },
-      // Auto-advance after 8 seconds so celebrate() fires and dismisses.
+      // Min display is short; the speech-completion gate keeps the dock up until
+      // this (long) closing line has been read out in full before celebrate().
       until: function(){
         if (!_finalStepStart) _finalStepStart = Date.now();
-        return (Date.now() - _finalStepStart) > 8000;
+        return (Date.now() - _finalStepStart) > 1500;
       } }
   ];
   var stepIdx=0;
@@ -83665,14 +83675,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         var dock=$('hnadv-dock');
         if (dock) { dock.classList.remove('bottom'); dock.classList.add('top'); }
       }
+      var _doneAt=0;  // v33_135: when the advance condition first became true
       _pollTimer=setInterval(function(){
         hookNsw();  // v33_134: ensure activation hook is attached (NSW may init late)
-        // v33_133i: Check until() FIRST so completed steps advance immediately
-        // without re-rendering text. Fixes the "Open the wizard" flash that
-        // appeared after activation because the wizard had closed before
-        // the until check ran.
         var done=false; try{ done=s.until(); }catch(e){}
-        if(done){ clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); return; }
 
         var root=$('hnadv-root');
 
@@ -83705,8 +83711,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
           dock.classList.remove('bottom'); dock.classList.add('top');
         }
         // If the line is dynamic (function), re-render text on each tick — wizard
-        // panels can change without the step advancing.
-        if (typeof s.line === 'function') {
+        // panels can change without the step advancing. Skip once the step is done
+        // so we don't restart the voice on the very line we're waiting to finish.
+        if (!done && typeof s.line === 'function') {
           try {
             var bubble = $('hnadv-bubble');
             var newText = s.line();
@@ -83716,8 +83723,18 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
             }
           } catch(e){}
         }
-        // Update spotlight ring
+        // Update spotlight ring (kept fresh even while holding for speech)
         try{ var e2=s.target(); if(e2){ var r=e2.getBoundingClientRect(); if(r.width){ moveRing(r); if(!s.forceTop) placeDock(r); } } else { var ring=$('hnadv-ring'); if(ring) ring.classList.remove('show'); } }catch(e){}
+
+        // v33_135 (advance gate): the step is complete — but let the advisor FINISH
+        // reading the current line before moving on, so steps no longer get chopped
+        // off mid-sentence. Capped at ~18s after completion so a muted/failed TTS
+        // can never freeze the tour; the Skip button is always available too.
+        if(done){
+          if(!_doneAt) _doneAt=Date.now();
+          if(speechBusy() && (Date.now()-_doneAt) < 25000) return;  // hold: voice still talking
+          clearPoll(); buzz(); stepIdx++; setTimeout(runStep,500); return;
+        }
       },300);
     });
   }
@@ -83725,10 +83742,19 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
 
   function celebrate(){ clearPoll(); clearSpotlight(); placeDock(null); setDots(0,0);
     // v33_133e: brief final message after the dashboard spotlight step
-    say(L("All set — I'm here on More → AI Advisor if you need anything.",
-           "सब set! ज़रूरत हो तो More → AI Advisor पर मैं हूँ।"));
-    setActions([{ label:L('Done','हो गया'), style:'pri', onClick:function(){ finish(true); } }]);
-    setTimeout(function(){ finish(true); }, 3500);
+    var closing=L("All set — I'm here on More → AI Advisor if you need anything.",
+                  "सब set! ज़रूरत हो तो More → AI Advisor पर मैं हूँ।");
+    say(closing);
+    // v33_135: don't yank the dock away mid-sentence. Wait for the closing line to
+    // be fully spoken, then dismiss. Capped at 14s so a muted/failed voice still
+    // closes cleanly; the Done button lets the user leave immediately.
+    var _ct=null;
+    setActions([{ label:L('Done','हो गया'), style:'pri', onClick:function(){ if(_ct) clearInterval(_ct); finish(true); } }]);
+    var startedAt=Date.now(), minShow=1500;
+    _ct=setInterval(function(){
+      var elapsed=Date.now()-startedAt;
+      if((!speechBusy() && elapsed>minShow) || elapsed>14000){ clearInterval(_ct); finish(true); }
+    },300);
   }
 
   /* ---------- greeting (first run) ---------- */
