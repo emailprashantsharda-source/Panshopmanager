@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_160_mirch_to_spice';
+    window.HISAABNOW_BUILD = 'v33_162_cafe_expense_tags';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -6633,14 +6633,27 @@ window.SUPPLY_CATEGORIES = {
     { id: 'disposables', label: 'Disposables',        emoji: '🧤' }
   ],
 
+  // v33_161: robust café + fast-food (QSR) category set. Existing ids
+  // (coffee_tea, dairy, syrups, bakery, food_prep, packaging, cleaning) are kept
+  // so supplies already saved on live café shops don't lose their category; the
+  // rest are new. Labels are worded so the smart auto-category matcher can map
+  // typed names onto them (it looks for words like 'meat', 'fries', 'sauce' etc.).
   cafe: [
-    { id: 'coffee_tea',  label: 'Coffee & tea',       emoji: '☕' },
-    { id: 'dairy',       label: 'Dairy',              emoji: '🥛' },
-    { id: 'syrups',      label: 'Syrups & sweeteners', emoji: '🍯' },
-    { id: 'bakery',      label: 'Bakery & bread',     emoji: '🥖' },
-    { id: 'food_prep',   label: 'Food prep',          emoji: '🥗' },
-    { id: 'packaging',   label: 'Cups & packaging',   emoji: '🥤' },
-    { id: 'cleaning',    label: 'Cleaning & misc',    emoji: '🧽' }
+    { id: 'coffee_tea',  label: 'Coffee & tea',            emoji: '☕' },
+    { id: 'dairy',       label: 'Dairy & cheese',          emoji: '🥛' },
+    { id: 'syrups',      label: 'Syrups & sweeteners',     emoji: '🍯' },
+    { id: 'bakery',      label: 'Buns, breads & bakery',   emoji: '🍞' },
+    { id: 'proteins',    label: 'Patties, meat & eggs',    emoji: '🍗' },
+    { id: 'frozen',      label: 'Frozen & fries',          emoji: '🍟' },
+    { id: 'food_prep',   label: 'Vegetables & food prep',  emoji: '🥗' },
+    { id: 'sauces',      label: 'Sauces, dips & condiments', emoji: '🥫' },
+    { id: 'spices',      label: 'Spices & seasonings',     emoji: '🧂' },
+    { id: 'grains',      label: 'Grains, pasta & noodles', emoji: '🍝' },
+    { id: 'oils',        label: 'Oils & frying',           emoji: '🛢️' },
+    { id: 'beverages',   label: 'Cold drinks & juices',    emoji: '🥤' },
+    { id: 'desserts',    label: 'Ice cream & desserts',    emoji: '🍨' },
+    { id: 'packaging',   label: 'Cups, boxes & packaging', emoji: '📦' },
+    { id: 'cleaning',    label: 'Cleaning & misc',         emoji: '🧽' }
   ],
 
   restaurant: [
@@ -9477,14 +9490,24 @@ const EXPENSE_TAXONOMY = {
         { id: 'misc_stock',         label: 'Other stock',        emoji: '📦' }
       ],
       cafe: [
-        { id: 'coffee_beans',       label: 'Coffee beans',       emoji: '☕' },
-        { id: 'milk_dairy',         label: 'Milk & dairy',       emoji: '🥛' },
-        { id: 'tea_sugar',          label: 'Tea & sugar',        emoji: '🍵' },
-        { id: 'fresh_produce',      label: 'Fresh produce',      emoji: '🥗' },
-        { id: 'bakery_bought_in',   label: 'Bakery items (bought-in)', emoji: '🥐' },
-        { id: 'bottled_drinks',     label: 'Bottled drinks',     emoji: '🥤' },
-        { id: 'packaging_cups',     label: 'Cups & lids',        emoji: '🥤' },
-        { id: 'misc_stock',         label: 'Other ingredients',  emoji: '📦' }
+        // v33_162: robust café + fast-food (QSR) expense tags, aligned with the café
+        // supply categories. Existing ids kept (coffee_beans, milk_dairy, tea_sugar,
+        // fresh_produce, bakery_bought_in, bottled_drinks, packaging_cups, misc_stock)
+        // so previously-tagged expenses keep their bucket; sauces/spices and grains/oils
+        // are grouped here (vs. split in supplies) because they're usually one grocery buy.
+        { id: 'coffee_beans',       label: 'Coffee beans',            emoji: '☕' },
+        { id: 'milk_dairy',         label: 'Milk, dairy & cheese',    emoji: '🥛' },
+        { id: 'tea_sugar',          label: 'Tea, syrups & sugar',     emoji: '🍯' },
+        { id: 'bakery_bought_in',   label: 'Buns, breads & bakery',   emoji: '🍞' },
+        { id: 'patties_proteins',   label: 'Patties, meat & eggs',    emoji: '🍗' },
+        { id: 'frozen_fries',       label: 'Frozen & fries',          emoji: '🍟' },
+        { id: 'fresh_produce',      label: 'Vegetables & produce',    emoji: '🥗' },
+        { id: 'sauces_condiments',  label: 'Sauces, dips & spices',   emoji: '🥫' },
+        { id: 'grains_oils',        label: 'Grains, pasta & oils',    emoji: '🍝' },
+        { id: 'bottled_drinks',     label: 'Cold drinks & juices',    emoji: '🥤' },
+        { id: 'desserts_icecream',  label: 'Ice cream & desserts',    emoji: '🍨' },
+        { id: 'packaging_cups',     label: 'Cups, boxes & packaging', emoji: '📦' },
+        { id: 'misc_stock',         label: 'Other ingredients',       emoji: '📦' }
       ],
       restaurant: [
         { id: 'fresh_produce',      label: 'Fresh produce',      emoji: '🥗' },
@@ -23226,6 +23249,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       // NOTE: \b word-boundaries only apply to the roman terms; Devanagari terms are
       // matched as plain substrings (\b does not fire between Devanagari characters).
       [/(\begg\b|eggs|anda|ande|anday|अंडा|अंडे|इंडा)/, ['egg','meat','dairy']],
+      // v33_161: café / fast-food (QSR) priority rules. Placed high so QSR items beat
+      // the generic grocery rules below — e.g. "ice cream" must win over dairy's "cream",
+      // and "veg patty" must land in Proteins, not Bakery. Candidates map onto the café
+      // category labels; in other verticals those labels are absent so the line falls
+      // through harmlessly to the next rule.
+      [/(ice ?cream|kulfi|gelato|sundae|softy|soft serve|brownie|\bdessert|waffle cone|choco ?chips?|whipped cream)/, ['ice cream','dessert','sweetener','syrup']],
+      [/(\bfries\b|french fries|frozen|hash ?brown|smiley|potato wedges|aloo tikki|momo\b|momos)/, ['frozen','fries','food prep']],
+      [/(patty|patties|cutlet|sausage|salami|\bham\b|hot ?dog|nugget|chicken strip|popcorn chicken|seekh|kebab|kabab)/, ['patties','protein','meat','food prep']],
+      [/(pasta|macaroni|spaghetti|penne|fusilli|lasagne|lasagna|noodle|hakka|maggi|ramen|breadcrumb|bread crumb)/, ['pasta','noodle','grain','food prep']],
+      [/(soft drink|cold drink|\bcola\b|pepsi|\bcoke\b|sprite|fanta|mirinda|thums up|thumbs up|maaza|frooti|sting|red bull|energy drink|iced tea|ice tea|mojito|mocktail|milkshake|\bshake\b|smoothie)/, ['drink','beverage','juice']],
+      [/(latte|mocha|frappe|frappuccino|cappuccino|americano|macchiato|cold brew|cold coffee|espresso|arabica|robusta|matcha)/, ['coffee','tea','beverage']],
+      [/(mayo|mayonnaise|peri ?peri|periperi|schezwan|sriracha|thousand island|tartar|barbecue|\bbbq\b|cheese sauce|cheese dip|\bdip\b|salsa)/, ['sauce','dip','condiment']],
       [/(chocolate|chocolat|cocoa|choco|compound|ganache|couverture|चॉकलेट|कोको)/, ['chocolate','cocoa','sweetener','syrup','flavor']],
       [/(coffee|coffe|kofi|\btea\b|\bchai\b|chaai|espresso|arabica|robusta|cappuccino|matcha|chicory|decaf|kahwa|कॉफ़ी|कॉफी|चाय|चायपत्ती)/, ['coffee','tea','beverage']],
       [/(yeast|khameer|khamir|baking powder|baking soda|leavening|improver|cake gel|gelatin|custard powder|यीस्ट|बेकिंग|खमीर)/, ['yeast','leavening','bakery','flour']],
@@ -23237,15 +23272,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       [/(paneer|chhena|chenna|\bmilk\b|doodh|dudh|curd|dahi|dhai|\bcream\b|malai|cheese|mozzarella|\bbutter\b|makhan|makkhan|khoya|khova|mawa|dairy|yogurt|yoghurt|condensed|पनीर|दूध|दही|क्रीम|मलाई|मक्खन|खोया|मावा|चीज़|चीज)/, ['milk','dairy','paneer']],
       [/(\boil\b|\btel\b|\btail\b|refined|mustard oil|sarso|sarson|sarsoon|sunflower|olive oil|vanaspati|dalda|cooking oil|\bghee\b|\bghi\b|margarine|\bfat\b|तेल|घी|सरसों|वनस्पति|डालडा)/, ['ghee','oil','fat']],
       [/(\bdal\b|\bdaal\b|chana|chanaa|rajma|moong|\bmung\b|masoor|toor|\btur\b|arhar|urad|\burd\b|lentil|legume|chickpea|kabuli|lobia|\bseed\b|\btil\b|sesame|khus|दाल|चना|राजमा|मूंग|मसूर|अरहर|उड़द|तूर|तिल)/, ['dal','legume','lentil','seed']],
-      [/(\bsalt\b|namak|नमक|chilli powder|chili powder|mirch powder|mirchi powder|lal mirch powder|red chilli powder|kali mirch|kalimirch|black pepper|masala|masaala|spice|haldi|huldi|turmeric|jeera|zeera|cumin|garam|coriander powder|dhania powder|elaichi|ilaichi|cardamom|clove|laung|\bpepper\b|saunf|sounf|\bhing\b|heeng|methi|ajwain|kesar|saffron|essence|vanilla|मसाला|हल्दी|जीरा|गरम मसाला|इलायची|लौंग|काली मिर्च|सौंफ|हींग|मेथी|अजवाइन|केसर|मिर्च पाउडर|लाल मिर्च पाउडर)/, ['spice','masala','flavor','seasoning','flavour']],
+      [/(\bsalt\b|namak|नमक|chilli powder|chili powder|mirch powder|mirchi powder|lal mirch powder|red chilli powder|kali mirch|kalimirch|black pepper|masala|masaala|spice|haldi|huldi|turmeric|jeera|zeera|cumin|garam|coriander powder|dhania powder|elaichi|ilaichi|cardamom|clove|laung|\bpepper\b|saunf|sounf|\bhing\b|heeng|methi|ajwain|kesar|saffron|essence|vanilla|oregano|mixed herbs|italian seasoning|\bherbs?\b|basil|thyme|parsley|rosemary|paprika|chilli flakes|chili flakes|peri peri masala|मसाला|हल्दी|जीरा|गरम मसाला|इलायची|लौंग|काली मिर्च|सौंफ|हींग|मेथी|अजवाइन|केसर|मिर्च पाउडर|लाल मिर्च पाउडर)/, ['spice','masala','flavor','seasoning','flavour']],
       [/(colour|\bcolor\b|\bvark\b|silver leaf|decoration|edible colour|edible color|gel colour|fondant|वर्क|फूड कलर)/, ['colour','color','decoration','flavor','garnish']],
-      [/(\bsauce\b|sauces|ketchup|catchup|vinegar|sirka|\bsoy\b|soya sauce|mayo|mayonnaise|condiment|\bpaste\b|chutney|chatni|pickle|achar|achaar|coagulant|citric|alum|fitkari|सॉस|केचप|सिरका|चटनी|अचार|सोया)/, ['sauce','condiment','acid','coagulant']],
+      [/(\bsauce\b|sauces|ketchup|catchup|vinegar|sirka|\bsoy\b|soya sauce|mayo|mayonnaise|condiment|\bpaste\b|chutney|chatni|pickle|achar|achaar|coagulant|citric|\balum\b|fitkari|सॉस|केचप|सिरका|चटनी|अचार|सोया)/, ['sauce','condiment','acid','coagulant']],
       [/(cashew|kaju|almond|badam|pista|pistachio|raisin|kishmish|\bnut\b|dry fruit|dryfruit|mewa|meva|walnut|akhrot|anjeer|\bfig\b|coconut|nariyal|narial|peanut|mungfali|moongfali|groundnut|काजू|बादाम|पिस्ता|किशमिश|अखरोट|अंजीर|नारियल|मूंगफली|मेवा)/, ['dry fruit','nut']],
       [/(bhujia|namkeen|\bsev\b|mixture|dalmoth|chivda|भुजिया|नमकीन)/, ['bhujia','namkeen','food prep']],
       [/(\bjam\b|pulp|crush|cherry|tutti|fruit|\bmango\b|\baam\b|pineapple|ananas|strawberry|jaam|जैम|फल|आम|अनानास|स्ट्रॉबेरी)/, ['fruit','filling','flavor']],
-      [/(tomato|tamatar|tamaatar|onion|pyaz|pyaaz|kanda|potato|aloo|\balu\b|carrot|gajar|capsicum|shimla|ginger|adrak|garlic|lehsun|lahsun|spinach|palak|lemon|nimbu|nimboo|cabbage|patta gobhi|pattagobhi|band gobhi|cauliflower|\bgobi\b|gobhi|\bpeas\b|matar|mutter|\bchilli\b|\bchili\b|mirchi|\bmirch\b|hari mirch|lal mirch|beans|brinjal|baingan|eggplant|cucumber|kheera|kakdi|mushroom|lettuce|lauki|ghiya|gourd|bhindi|okra|coriander|dhania|kothmir|\bveg\b|sabzi|टमाटर|प्याज|आलू|गाजर|शिमला मिर्च|अदरक|लहसुन|पालक|नींबू|गोभी|मटर|मिर्च|बैंगन|खीरा|भिंडी|धनिया|सब्जी)/, ['vegetable','food prep']],
+      [/(tomato|tamatar|tamaatar|onion|pyaz|pyaaz|kanda|potato|aloo|\balu\b|carrot|gajar|capsicum|shimla|ginger|adrak|garlic|lehsun|lahsun|spinach|palak|lemon|nimbu|nimboo|cabbage|patta gobhi|pattagobhi|band gobhi|cauliflower|\bgobi\b|gobhi|\bpeas\b|matar|mutter|\bchilli\b|\bchili\b|mirchi|\bmirch\b|hari mirch|lal mirch|beans|brinjal|baingan|eggplant|cucumber|kheera|kakdi|mushroom|lettuce|lauki|ghiya|gourd|bhindi|okra|jalapeno|jalapeño|olives?|gherkin|sweet ?corn|baby ?corn|\bcorn\b|broccoli|zucchini|coriander|dhania|kothmir|\bveg\b|sabzi|टमाटर|प्याज|आलू|गाजर|शिमला मिर्च|अदरक|लहसुन|पालक|नींबू|गोभी|मटर|मिर्च|बैंगन|खीरा|भिंडी|धनिया|सब्जी)/, ['vegetable','food prep']],
       [/(\bwater\b|paani|\bpani\b|cola|\bsoda\b|juice|\bras\b|beverage|\bdrink\b|squash|lassi|chaas|पानी|जूस|कोला|सोडा|लस्सी|छाछ)/, ['beverage','drink']],
-      [/(\bbox\b|dibba|packaging|disposable|foil|napkin|\bplate\b|\bcup\b|\bbag\b|thaila|container|carry|tissue|straw|\bwrap\b|डिब्बा|पैकिंग|प्लेट|थैला)/, ['packaging','box','cup','disposable']],
+      [/(\bbox\b|dibba|packaging|disposable|foil|napkin|\bplate\b|\bcups?\b|glass|\blid\b|spoon|\bfork\b|\bbag\b|thaila|container|carry|tissue|straw|\bwrap\b|डिब्बा|पैकिंग|प्लेट|थैला)/, ['packaging','box','cup','disposable']],
       [/(cleaning|\bsoap\b|saabun|sabun|detergent|sanitizer|phenyl|phenail|wiper|scrub|dish wash|dishwash|jhadu|pochha|misc|साबुन|डिटर्जेंट|फिनाइल|सफाई)/, ['cleaning','misc']]
     ];
     var cands = null;
@@ -23293,9 +23328,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     // v33_159: keep Devanagari letters so Hindi-script names aren't stripped to 0.
     if (n.replace(/[^a-z\u0900-\u097f]/g, '').length < 2) return;
     var unit;
-    if (/(\begg\b|eggs|anda|ande|anday|\bbun\b|buns|\bpav\b|paav|\bbread\b|loaf|bagel|\bbase\b|tortilla|wrap|momo|patty|patties|croissant|\bvark\b|cookie|biscuit|rusk|\bpuff\b|cake|pastry|samosa|kachori|\bpcs\b|piece|अंडा|अंडे|बन|पाव|ब्रेड|समोसा)/.test(n)) {
+    if (/(\begg\b|eggs|anda|ande|anday|\bbun\b|buns|\bpav\b|paav|\bbread\b|loaf|bagel|\bbase\b|tortilla|wrap|momo|patty|patties|tikki|nugget|taco|\bcone\b|scoop|croissant|\bvark\b|cookie|biscuit|rusk|\bpuff\b|cake|pastry|samosa|kachori|\bpcs\b|piece|अंडा|अंडे|बन|पाव|ब्रेड|समोसा)/.test(n)) {
       unit = 'pc';
-    } else if (/(milk|doodh|dudh|\boil\b|\btel\b|water|paani|\bpani\b|syrup|sirap|juice|\bras\b|vinegar|sirka|\bcream\b|malai|essence|lassi|chaas|\bsoda\b|sharbat|\bsoy\b|sauce|rose water|kewra|squash|coconut milk|condensed|दूध|तेल|पानी|जूस|सिरप|क्रीम|लस्सी|सिरका|सोडा)/.test(n)) {
+    } else if (/(milk|doodh|dudh|\boil\b|\btel\b|water|paani|\bpani\b|syrup|sirap|juice|\bras\b|vinegar|sirka|\bcream\b|malai|essence|lassi|chaas|\bsoda\b|sharbat|\bsoy\b|sauce|rose water|kewra|squash|coconut milk|condensed|\bcola\b|soft drink|cold drink|\bshake\b|milkshake|smoothie|frappe|ice ?cream|दूध|तेल|पानी|जूस|सिरप|क्रीम|लस्सी|सिरका|सोडा)/.test(n)) {
       unit = 'L';
     } else {
       unit = 'kg';
