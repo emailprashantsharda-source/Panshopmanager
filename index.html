@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_157_closing_voice';
+    window.HISAABNOW_BUILD = 'v33_158_smart_advisor';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -83288,6 +83288,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       .replace(/→|⟶|➜|➔/g, ' ')
       .replace(/\bAI\b/gi, hi ? 'ए आई' : 'A I')
       .replace(/\bAdvisor\b/gi, hi ? 'एडवाइज़र' : 'Advisor')
+      // v33_158: data answers contain ₹ amounts — strip thousands commas and say "rupees"
+      // so the voice reads "₹5,000" as "rupaye 5000", not "5 comma 0 0 0".
+      .replace(/(\d),(?=\d)/g, '$1')
+      .replace(/₹\s*/g, hi ? 'रुपये ' : 'rupees ')
       .replace(/✓/g, ' ')                               // checkmark: don't read aloud
       .replace(/🎉|👇|☁|⚡/g, ' ')                       // strip decorative emoji from speech
       .replace(/\s{2,}/g,' ')
@@ -83503,7 +83507,7 @@ var KB=[
     { k:['category','categories','sort items','group items','product category','section','menu section','tab'], a:L('Products are grouped into categories (like Coffee, Mains, Breads) so the billing grid stays tidy. Pick a category when you add a product — the app also auto-suggests one from the name.','Products को categories में बाँटा जाता है (जैसे Coffee, Mains, Breads) ताकि billing grid साफ रहे। Product add करते समय category चुनें — नाम से app खुद भी सुझा देता है।'),act:{label:LC('Open Catalog','Catalog खोलें'),go:'catalog'} },
     { k:['size','sizes','variant','variants','half full','small large','quarter','portion','size wise price','different price'], a:L('A product can have sizes/variants (e.g. Half/Full, 250g/500g/1kg) each with its own price. Turn on sizes while adding or editing the product.','एक product के sizes/variants हो सकते हैं (जैसे Half/Full, 250g/500g/1kg), हर एक का अलग price। Product add या edit करते समय sizes चालू करें।'),act:{label:LC('Open Catalog','Catalog खोलें'),go:'catalog'} },
     { k:['pack','packs','combo','bundle','box','gift box','combo offer','pack banao'], a:L('Packs let you sell a bundle (e.g. a 10-piece box, or a thali combo) as one item with its own price. Open Packs to build one.','Packs से bundle (जैसे 10-piece box या thali combo) को एक ही item और price के रूप में बेचें। बनाने के लिए Packs खोलें।'),act:{label:LC('Open Packs','Packs खोलें'),go:'packs'} },
-    { k:['ingredient','ingredients','recipe','raw material','recipe cost','kachcha maal','add ingredient','recipe banao','suggested raw material','consumption'], a:L('Ingredients are the raw materials you buy (chicken, paneer, maida, milk). Add a recipe to a product and the app shows the true cost and gross margin on every sale. New food shops come preloaded with a raw-material list.','Ingredients वो कच्चा माल हैं जो आप खरीदते हैं (chicken, paneer, maida, milk)। किसी product में recipe जोड़ें — हर sale पर असली cost और margin दिखेगा। नए food shops में raw-material list पहले से होती है।'),act:{label:LC('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
+    { k:['ingredient','ingredients','recipe','raw material','recipe cost','kachcha maal','add ingredient','recipe banao','suggested raw material','consumption'], a:L('Ingredients are the raw materials you buy (chicken, paneer, maida, milk). Add a recipe to a product and the app shows the true cost and gross margin on every sale. Add each ingredient with its purchase price and pack size so the per-unit cost is exact.','Ingredients वो कच्चा माल हैं जो आप खरीदते हैं (chicken, paneer, maida, milk)। किसी product में recipe जोड़ें — हर sale पर असली cost और margin दिखेगा। हर ingredient को उसके purchase price और pack size के साथ डालें ताकि per-unit cost सही रहे।'),act:{label:LC('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
     { k:['margin','profit margin','gross margin','cost price','cp','markup','profit per item','kitna profit','margin kya'], a:L('Margin = selling price − cost price. Set a cost (or a recipe) on each item and HisaabNow shows the profit and % margin on every sale and in your reports.','Margin = selling price − cost price। हर item पर cost (या recipe) डालें — HisaabNow हर sale और report में profit और % margin दिखाता है।'),act:{label:LC('Open Reports','Reports खोलें'),go:'reports'} },
     { k:['stock in','purchase','record purchase','buy stock','stock add','maal khareeda','restock','add stock','incoming stock','goods received','khareed'], a:L('Stock In · Record Purchase logs what you bought from a supplier — pick the items, quantity and cost. It updates your stock, refreshes cost price, logs the expense and records any supplier due.','Stock In · Record Purchase में supplier से खरीदा हुआ माल दर्ज करें — items, quantity और cost चुनें। ये stock बढ़ाता है, cost price update करता है, expense दर्ज करता है और supplier का बकाया भी रखता है।'),act:{label:LC('Open Stock In','Stock In खोलें'),go:'stockin'} },
     { k:['supplier','suppliers','vendor','distributor','supplier directory','reorder','supplier due','supplier list','wholesaler','party'], a:L('Suppliers keeps a directory of who you buy from, with their dues. You can reorder from a supplier on WhatsApp in one tap. New suppliers are added automatically when you record a purchase.','Suppliers में आपके सप्लायर्स की directory रहती है, बकाया के साथ। एक tap में WhatsApp पर reorder भेज सकते हैं। Purchase दर्ज करते ही नए supplier अपने-आप जुड़ जाते हैं।'),act:{label:LC('Open Suppliers','Suppliers खोलें'),go:'suppliers'} },
@@ -83532,26 +83536,122 @@ var KB=[
     { k:['delete account','close account','remove data','account delete','data delete','erase','delete my data'], a:L('You can delete your account and all its data from Settings → Delete account. It removes your shops, bills and customers permanently, in line with India\'s data-protection rules.','आप अपना account और सारा data Settings → Delete account से हटा सकते हैं। ये आपके shops, bills और customers हमेशा के लिए हटा देता है, भारत के data-protection नियमों के अनुसार।'),act:{label:LC('Open Settings','Settings खोलें'),go:'settings'} },
     { k:['printer','thermal printer','print setup','connect printer','bluetooth printer','print nahi','58mm','80mm','printer connect'], a:L('HisaabNow prints to standard 58mm/80mm thermal printers, and you can also share the bill as a WhatsApp message if you don\'t have a printer. Pair the printer from your phone\'s Bluetooth, then print from any bill.','HisaabNow आम 58mm/80mm thermal printer पर print करता है, और printer न हो तो bill WhatsApp message के रूप में भी भेज सकते हैं। फोन के Bluetooth से printer pair करें, फिर किसी भी bill से print करें।') },
     { k:['getting started','start','setup','new user','how to use','begin','kaise shuru','first time','onboarding','help me start','tutorial','guide'], a:L('Start by activating a few items in your Catalog (tap a suggested item and set its price), then make your first bill with +. Add customers and expenses as you go. Want me to walk you through it?','शुरुआत Catalog में कुछ items activate करके करें (suggested item पर tap करके price डालें), फिर + से पहला bill बनाएं। साथ-साथ customers और expenses जोड़ते रहें। चाहें तो मैं step-by-step दिखा दूँ?'),act:{label:LC('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['dashboard','home screen','kpi','main screen','dashboard kya','overview','today numbers','aaj ka hisaab'], a:L('The Dashboard is your home screen — it shows today\'s sales, profit, cash in hand, best sellers and AI insights at a glance, and refreshes with every bill.','Dashboard आपकी home screen है — इसमें आज की sales, profit, cash in hand, best sellers और AI insights एक नज़र में दिखते हैं, और हर bill पर update होते हैं।'),act:{label:LC('Open Dashboard','Dashboard खोलें'),go:'home'} },
+    { k:['how profit','profit calculated','profit kaise nikalta','margin kaise','calculate profit','profit kaha se','where does profit'], a:L('Profit = what you sold − what it cost you. For each item the app takes its cost price (or recipe cost) off the selling price and adds it up across the bill. Set a cost on every item so the number is accurate.','Profit = आपने जो बेचा − उसकी लागत। हर item के लिए app उसका cost price (या recipe cost) selling price से घटाता है और पूरे bill में जोड़ देता है। हर item पर cost डालें ताकि number सही रहे।'),act:{label:LC('Open Reports','Reports खोलें'),go:'reports'} },
+    { k:['cost price','set cost','buying price','lagat','cost kaise','add cost','cost daalo','item cost'], a:L('Set an item\'s cost price while adding or editing it in Catalog — or let a recipe fill it from your purchase price. The app then shows profit and margin on every sale.','Item का cost price Catalog में add/edit करते समय डालें — या recipe से purchase price के हिसाब से अपने-आप भर जाए। फिर हर sale पर profit और margin दिखता है।'),act:{label:LC('Open Catalog','Catalog खोलें'),go:'catalog'} },
+    { k:['edit ingredient','delete ingredient','change ingredient','update ingredient','ingredient price','remove ingredient'], a:L('Open Ingredients and tap any one to edit its name, price, pack size, unit or reorder point — or to delete it. The cost on your recipes updates automatically.','Ingredients खोलकर किसी पर tap करके उसका नाम, price, pack size, unit या reorder point बदलें — या delete करें। आपके recipes का cost अपने-आप update हो जाता है।'),act:{label:LC('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
+    { k:['pack size','unit','cost per unit','per gram','per ml','quantity in pack','pack price','how cost per'], a:L('When you add an ingredient you enter its purchase price and the pack size (e.g. ₹500 for 1 kg). The app divides them to get the cost per gram/ml/piece, then charges your recipe exactly that.','Ingredient add करते समय उसका purchase price और pack size डालें (जैसे 1 kg का ₹500)। App इन्हें भाग करके per gram/ml/piece cost निकालता है और recipe में बिल्कुल वही लगाता है।'),act:{label:LC('Open Ingredients','Ingredients खोलें'),go:'ingredients'} },
+    { k:['refund','return','return item','money back','wapsi','refund kaise','customer return'], a:L('To refund, open the bill in Sales and delete it (or remove the returned item) — the app reverses the stock and the payment so your totals and cash stay correct.','Refund के लिए Sales में bill खोलकर उसे delete करें (या लौटाया हुआ item हटाएं) — app stock और payment वापस कर देता है ताकि totals और cash सही रहें।'),act:{label:LC('Open Bills','Bills खोलें'),go:'sales'} },
+    { k:['hold bill','park bill','save bill','pending bill','bill rok','keep bill','later','park order'], a:L('You don\'t have to finish a bill right away — in Orders/Tables mode an open order stays saved until you settle it, so you can keep adding to it and take payment later.','Bill तुरंत खत्म करना ज़रूरी नहीं — Orders/Tables mode में खुला order settle होने तक save रहता है, उसमें जोड़ते रहें और payment बाद में लें।'),act:{label:LC('Start a bill','Bill शुरू करें'),go:'newsale'} },
+    { k:['low stock alert','reorder point','stock alert','minimum stock','reorder kab','alert kaise','when to reorder'], a:L('Set a reorder point on each product/ingredient (the "reorder when below" value). When stock drops under it, the item shows up in low-stock so you know to buy more in time.','हर product/ingredient पर reorder point डालें ("reorder when below")। Stock उससे नीचे जाने पर item low-stock में दिखता है ताकि आप समय पर खरीद लें।'),act:{label:LC('Open Inventory','Inventory खोलें'),go:'inventory'} },
+    { k:['export','download data','excel','share report','export report','csv','pdf report','accountant ko'], a:L('Open Reports and use the share/export option to send a sales or GST summary to your accountant. Your full data also stays safe in the cloud backup.','Reports खोलकर share/export से sales या GST summary अपने accountant को भेजें। आपका पूरा data cloud backup में भी safe रहता है।'),act:{label:LC('Open Reports','Reports खोलें'),go:'reports'} },
+    { k:['share app','refer','referral','recommend','tell friend','invite','dusron ko batao'], a:L('Glad it\'s helping! Share HisaabNow with other shopkeepers from More → Share — it helps them run their shop better, and helps us keep improving the app for you.','खुशी है कि काम आ रहा है! More → Share से दूसरे दुकानदारों को HisaabNow भेजें — उनकी दुकान भी अच्छे से चलेगी, और हम app को और बेहतर बनाते रहेंगे।') },
     { k:['help','support','contact','problem','issue','complaint','madad','customer care','talk to human','phone support','stuck'], a:L('I can answer most how-to questions right here — just ask. For anything I can\'t solve, you can reach support from More → Help, or send feedback with the thumbs-down on any reply.','ज़्यादातर how-to सवालों का जवाब मैं यहीं दे सकता हूँ — बस पूछें। जो मैं हल न कर पाऊँ, उसके लिए More → Help से support से संपर्क करें, या किसी reply पर thumbs-down से feedback भेजें।') }
   ];
+  // v33_158: synonym layer — varied phrasings (invoice→bill, munafa→profit,
+  // kitna→how much) get expanded with canonical terms so they still hit the KB.
+  var SYN=[
+    ['bill',['invoice','receipt','parchi','bil']],
+    ['sale',['sales','bikri','becha','bechna','selling','revenue','turnover']],
+    ['profit',['munafa','munaafa','kamai','kamaai','earning','earnings','income','fayda','faida']],
+    ['udhaar',['udhar','credit','khata','baki','baaki','lena','dena','owe','owes','owed','borrow']],
+    ['discount',['chhoot','rebate']],
+    ['customer',['grahak','client','buyer']],
+    ['product',['item','dish','service','samaan','saman','goods']],
+    ['price',['rate','daam','keemat','mrp']],
+    ['cost',['lagat','laagat','buying','purchase']],
+    ['how',['kaise','kese']],
+    ['much',['kitna','kitne','kitni']],
+    ['stock',['inventory','quantity']],
+    ['report',['reports','hisaab','analytics']],
+    ['payment',['paisa','paise','paytm','gpay','phonepe']],
+    ['delete',['remove','hatao','mitao']],
+    ['edit',['change','update','badlo','badal']],
+    ['today',['aaj','abhi']],
+    ['cash',['nakad','golla','rokad']]
+  ];
+  function synExpand(s){
+    var extra='';
+    SYN.forEach(function(p){ var v=p[1]; for(var i=0;i<v.length;i++){ if(s.indexOf(' '+v[i]+' ')>=0){ extra+=' '+p[0]; break; } } });
+    return s+extra+' ';
+  }
+  function rupee(n){ try{ return '₹'+Math.round(Number(n)||0).toLocaleString('en-IN'); }catch(e){ return '₹'+Math.round(Number(n)||0); } }
+  function topicLabel(e){ var k=(e.k&&e.k[0])||''; return k.charAt(0).toUpperCase()+k.slice(1); }
+
+  // v33_158: data-aware answers — read the shop's own numbers so the advisor can
+  // answer "how much did I sell today?", "who owes me?", "what's low on stock?".
+  function dataAnswer(s){
+    var sales=null; try{ sales=(window.Store&&Store.todaySales)?(Store.todaySales()||[]):null; }catch(e){ sales=null; }
+    // today's sales / earnings
+    if(/(sales|sale|bik|revenue|kamai|kamaai|earning|becha|turnover).*(today|aaj|abhi)|(today|aaj).*(sales|sale|kamai|bik|earning|revenue|becha)|how much.*(sold|sales|earn|today)|aaj.*(kitn|kamaya|becha|bik)|kitni.*bik/.test(s)){
+      if(sales==null) return null;
+      var rev=sales.reduce(function(a,x){return a+Number(x.total||x.amt||0);},0), cnt=sales.length;
+      if(cnt===0) return { text:L("No bills yet today — make your first sale and it'll show up here and on the dashboard.","आज अभी कोई bill नहीं बना — पहली sale करें, यहीं और dashboard पर दिखने लगेगी।"), act:{label:LC('Start a bill','Bill शुरू करें'),go:'newsale'} };
+      var avg=Math.round(rev/cnt);
+      return { text:L("Today so far: "+rupee(rev)+" across "+cnt+" bill"+(cnt>1?'s':'')+" (average "+rupee(avg)+" per bill). Open the dashboard for live profit and the full breakdown.","आज अब तक: "+rupee(rev)+" — "+cnt+" bill"+(cnt>1?'s':'')+" में (औसत "+rupee(avg)+" प्रति bill)। live profit और पूरा breakdown dashboard पर देखें।"), act:{label:LC('Open Dashboard','Dashboard खोलें'),go:'home'} };
+    }
+    // best seller (today)
+    if(/(best|top|most|sabse|highest|zyada|jyada).*(sell|seller|selling|bik|product|item|dish)|(kya|konsa|kaunsa).*(zyada|jyada).*(bik|sell)|best ?seller|top ?seller/.test(s)){
+      if(sales==null||sales.length===0) return { text:L("No sales yet today, so there's no best seller to show. Make a few bills and I'll point out your top item.","आज अभी कोई sale नहीं, तो best seller दिखाने को कुछ नहीं। कुछ bills बनाएं, मैं top item बता दूँगा।"), act:{label:LC('Open Catalog','Catalog खोलें'),go:'catalog'} };
+      var tally={}; sales.forEach(function(b){ (Array.isArray(b.items)?b.items:[]).forEach(function(it){ var nm=(it.name||'Item'); tally[nm]=(tally[nm]||0)+Number(it.qty||1); }); });
+      var top=null,topQ=0; Object.keys(tally).forEach(function(k){ if(tally[k]>topQ){ topQ=tally[k]; top=k; } });
+      if(!top) return null;
+      return { text:L("Today's top seller is "+top+" ("+topQ+" sold). See your full best & slow sellers in Reports.","आज का top seller है "+top+" ("+topQ+" बिके)। पूरी best व slow seller list Reports में देखें।"), act:{label:LC('Open Reports','Reports खोलें'),go:'reports'} };
+    }
+    // cash in hand
+    if(/(cash|nakad|golla|rokad|drawer).*(hand|hai|kitna|kitni|balance|count|mein)|kitna cash|cash kitna|how much cash/.test(s)){
+      var bal=null; try{ if(window.CashDrawer&&CashDrawer.currentBalance) bal=CashDrawer.currentBalance(); }catch(e){}
+      if(bal==null||isNaN(bal)) return { text:L("Open Cashflow to set up cash tracking — then I can tell you exactly how much should be in your drawer.","Cashflow खोलकर cash tracking set करें — फिर मैं बता सकता हूँ drawer में कितना होना चाहिए।"), act:{label:LC('Open Cashflow','Cashflow खोलें'),go:'cashflow'} };
+      return { text:L("You should have about "+rupee(bal)+" cash in hand right now. Record any withdraw or deposit in Cashflow to keep it exact.","अभी आपके पास करीब "+rupee(bal)+" cash होना चाहिए। सही रखने के लिए कोई withdraw/deposit Cashflow में दर्ज करें।"), act:{label:LC('Open Cashflow','Cashflow खोलें'),go:'cashflow'} };
+    }
+    // udhaar outstanding
+    if(/(udhaar|udhar|khata|baki|baaki|due|credit|lena|owe|owes|pending).*(total|kitna|kitni|outstanding|owe|pending|baki|sum|hai)|kitna udhaar|total udhaar|who owes|kisne lena|how much.*(due|credit|udhaar)/.test(s)){
+      var due=null,parties=0;
+      try{ var lena=(Store.list('khata')||[]).filter(function(k){return k&&k.type==='lena';});
+        due=lena.reduce(function(a,k){return a+(Number(k.amount||0)-Number(k.paidAmount||0));},0);
+        var pset={}; lena.forEach(function(k){ if((Number(k.amount||0)-Number(k.paidAmount||0))>0.5) pset[k.partyId||k.name||k.party||Math.random()]=1; }); parties=Object.keys(pset).length;
+      }catch(e){ due=null; }
+      if(due==null) return { text:L("Open Udhaar (Khata) to see who owes you and the running balance.","Udhaar (Khata) खोलकर देखें किसने उधार लिया है और बैलेंस।"), act:{label:LC('Open Udhaar','Udhaar खोलें'),go:'udhaar'} };
+      if(due<=0.5) return { text:L("You have no outstanding udhaar right now — all clear!","अभी कोई बकाया उधार नहीं — सब clear!"), act:{label:LC('Open Udhaar','Udhaar खोलें'),go:'udhaar'} };
+      return { text:L("Customers owe you about "+rupee(due)+" in total"+(parties?(" across "+parties+" "+(parties>1?'people':'person')):'')+". Open Udhaar to send a WhatsApp reminder or settle.","ग्राहकों पर कुल करीब "+rupee(due)+" का उधार है"+(parties?(" — "+parties+" "+(parties>1?'लोगों':'व्यक्ति')+" पर"):'')+"। reminder भेजने या settle करने के लिए Udhaar खोलें।"), act:{label:LC('Open Udhaar','Udhaar खोलें'),go:'udhaar'} };
+    }
+    // low stock
+    if(/(low|out of|khatam|kam|finish|short).*(stock|maal|item)|stock.*(low|khatam|kam|over|out|finish)|kya khatam|kaunsa khatam|running low|what.*low stock/.test(s)){
+      var lows=null; try{ lows=[]; ['prods','ingredients'].forEach(function(c){ (Store.list(c)||[]).forEach(function(it){ var mn=Number(it.min||0),st=Number(it.stock||0); if(mn>0&&st<=mn) lows.push(it.name||'Item'); }); }); }catch(e){ lows=null; }
+      if(lows==null) return null;
+      if(lows.length===0) return { text:L("Nothing is low on stock right now — you're well stocked. I'll flag items as they drop below their reorder point.","अभी कुछ भी कम नहीं — stock अच्छा है। जैसे ही कोई reorder point से नीचे जाएगा, बता दूँगा।"), act:{label:LC('Open Inventory','Inventory खोलें'),go:'inventory'} };
+      var show=lows.slice(0,6).join(', ');
+      return { text:L(lows.length+" item"+(lows.length>1?'s are':' is')+" running low: "+show+(lows.length>6?' and more':'')+". Open Stock In to restock and record the purchase.","कम stock वाले "+lows.length+" item: "+show+(lows.length>6?' और भी':'')+"। restock और purchase दर्ज करने के लिए Stock In खोलें।"), act:{label:LC('Open Stock In','Stock In खोलें'),go:'stockin'} };
+    }
+    return null;
+  }
+
   function answer(q){
     if(answerProvider) return Promise.resolve(answerProvider(q,lang()));
-    // v33_151: normalise punctuation but keep Devanagari so Hindi keywords still match.
-    var s=' '+(q||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]+/g,' ').replace(/\s+/g,' ')+' ';
-    var best=null, bestScore=0;
+    var raw=' '+(q||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]+/g,' ').replace(/\s+/g,' ')+' ';
+    // 1) data-aware ("how much did I sell today", "who owes me", "what's low")
+    try{ var d=dataAnswer(raw); if(d) return d; }catch(e){}
+    // 2) keyword match over the KB (synonym-expanded)
+    var s=synExpand(raw), ranked=[];
     KB.forEach(function(e){
-      var sc=0, hits=0;
-      e.k.forEach(function(w){
-        w=String(w).toLowerCase();
-        if(w.indexOf(' ')>=0){ if(s.indexOf(w)>=0){ sc+=w.length; hits++; } }      // phrase → substring
-        else if(s.indexOf(' '+w+' ')>=0){ sc+=w.length+2; hits++; }                 // word → boundary match
-        else if(w.length>=5 && s.indexOf(w)>=0){ sc+=w.length; hits++; }            // long word → loose substring
+      var sc=0,hits=0;
+      e.k.forEach(function(w){ w=String(w).toLowerCase();
+        if(w.indexOf(' ')>=0){ if(s.indexOf(w)>=0){ sc+=w.length; hits++; } }
+        else if(s.indexOf(' '+w+' ')>=0){ sc+=w.length+2; hits++; }
+        else if(w.length>=5 && s.indexOf(w)>=0){ sc+=w.length; hits++; }
       });
-      if(hits>1) sc+=hits*2;   // reward matching several distinct keywords of one topic
-      if(sc>bestScore){ bestScore=sc; best=e; }
+      if(hits>1) sc+=hits*2;
+      if(sc>0) ranked.push({e:e,sc:sc});
     });
-    if(best && bestScore>0) return { text:best.a, act:best.act };
-    return { text:L("I can help with almost anything in HisaabNow — billing, payments & UPI QR, products & recipes, ingredients & stock, suppliers & purchases, customers & udhaar, expenses, cashflow, reports & GST, offers, team, reservations, plans, backup and settings. Try asking how to do a specific thing.",'मैं HisaabNow की लगभग हर चीज़ में मदद कर सकता हूँ — billing, payments व UPI QR, products व recipes, ingredients व stock, suppliers व purchases, customers व udhaar, expenses, cashflow, reports व GST, offers, team, reservations, plans, backup और settings। कोई एक काम कैसे करें — वो पूछ कर देखें।') };
+    ranked.sort(function(a,b){ return b.sc-a.sc; });
+    if(ranked.length && ranked[0].sc>=6) return { text:ranked[0].e.a, act:ranked[0].e.act };
+    // 3) weak match → offer the closest topics as tappable suggestions
+    if(ranked.length){
+      var sugg=ranked.slice(0,3).map(function(r){ return { label:topicLabel(r.e), q:(r.e.k&&r.e.k[0])||'' }; });
+      return { text:L("I'm not fully sure what you meant — did you want one of these?","मुझे पूरा यकीन नहीं कि आपका मतलब क्या था — क्या इनमें से कोई?"), acts:sugg };
+    }
+    // 4) nothing matched → friendly helper
+    return { text:L("I can help with almost anything in HisaabNow — billing, payments & UPI QR, products & recipes, ingredients & stock, suppliers, customers & udhaar, expenses, cashflow, reports & GST, offers, team, reservations, plans and settings. Ask how to do a specific thing — or try \"how much did I sell today?\".",'मैं HisaabNow की लगभग हर चीज़ में मदद कर सकता हूँ — billing, payments व UPI QR, products व recipes, ingredients व stock, suppliers, customers व udhaar, expenses, cashflow, reports व GST, offers, team, reservations, plans और settings। कोई एक काम कैसे करें — पूछें, या पूछें "आज कितनी बिक्री हुई?"।') };
   }
   function go(where){ finish(true); try {
     if(where==='munim'){ if(window.Munim&&Munim.openDrawer) Munim.openDrawer(); else App.nav('home'); }
@@ -83576,9 +83676,11 @@ var KB=[
   function askText(q){ var inp=$('hnadv-input'); if(inp) inp.value=q; submitQuestion(); }
   function submitQuestion(){ var inp=$('hnadv-input'); if(!inp) return; var q=(inp.value||'').trim(); if(!q) return; inp.value='';
     stopSpeak(); say(L('Let me see…','देखता हूँ…'),{silent:true});
-    Promise.resolve(answer(q)).then(function(res){ var text=(typeof res==='string')?res:(res.text||''); var act=(typeof res==='object')?res.act:null;
+    Promise.resolve(answer(q)).then(function(res){ var text=(typeof res==='string')?res:(res.text||''); var act=(typeof res==='object')?res.act:null; var acts=(typeof res==='object'&&Array.isArray(res.acts))?res.acts:null;
       say(text);
-      var actions=[]; if(act&&act.go) actions.push({label:act.label,style:'gold',onClick:function(){ go(act.go); }});
+      var actions=[];
+      if(acts && acts.length){ acts.forEach(function(su){ actions.push({label:su.label,style:'sec',onClick:function(){ askText(su.q); }}); }); }
+      else if(act&&act.go){ actions.push({label:act.label,style:'gold',onClick:function(){ go(act.go); }}); }
       actions.push({label:LC('Done','हो गया'),style:'sec',onClick:function(){ finish(false); }});
       setActions(actions); showChips(true);
     });
