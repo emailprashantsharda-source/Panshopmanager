@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_162_cafe_expense_tags';
+    window.HISAABNOW_BUILD = 'v33_163_dup_hash_fix';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -41132,16 +41132,22 @@ window.Store = {
     try {
       var parts = [coll];
       if (coll === 'sales') {
-        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('t=' + Math.floor((rec.t || rec.createdAt || 0) / 1000));
         parts.push('total=' + (rec.total || 0));
         parts.push('mode=' + (rec.mode || rec.paymentMode || ''));
         parts.push('cust=' + (rec.custId || rec.custPhone || rec.custName || ''));
         parts.push('items=' + JSON.stringify(rec.items || []));
       } else if (coll === 'exps') {
-        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        /* v33_163: expense records store `desc` + `date` (no `note`/`t`), so the
+           old hash (t=0, note='') collapsed every same-amount Raw-Material expense
+           into one "duplicate" group. Include desc/date/ingredientId and fall back
+           to createdAt for time so genuinely-separate restocks no longer collide. */
+        parts.push('t=' + Math.floor((rec.t || rec.createdAt || 0) / 1000));
         parts.push('amt=' + (rec.amt || 0));
         parts.push('cat=' + (rec.cat || rec.catLabel || ''));
-        parts.push('note=' + (rec.note || ''));
+        parts.push('note=' + (rec.note || rec.desc || ''));
+        parts.push('date=' + (rec.date || ''));
+        parts.push('ing=' + (rec.ingredientId || ''));
       } else if (coll === 'custs') {
         parts.push('phone=' + (rec.phone || ''));
         parts.push('name=' + (rec.name || ''));
@@ -41152,11 +41158,11 @@ window.Store = {
         parts.push('name=' + (rec.name || ''));
         parts.push('phone=' + (rec.phone || ''));
       } else if (coll === 'udh') {
-        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('t=' + Math.floor((rec.t || rec.createdAt || 0) / 1000));
         parts.push('amt=' + (rec.amt || 0));
         parts.push('cust=' + (rec.custId || rec.name || ''));
       } else if (coll === 'appts') {
-        parts.push('t=' + Math.floor((rec.t || 0) / 1000));
+        parts.push('t=' + Math.floor((rec.t || rec.createdAt || 0) / 1000));
         parts.push('cust=' + (rec.customerName || rec.custName || ''));
         parts.push('staff=' + (rec.staffId || ''));
       } else if (coll === 'coupons') {
@@ -41187,22 +41193,35 @@ window.Store = {
     return _arr(coll).filter(predicate);
   },
 
-  /* (Phase 1.5) Find all records with a given _clientHash.
-     Returns array (may be empty). If length > 1, that's a duplicate signal. */
+  /* (Phase 1.5 / v33_163) Find all records whose LIVE fingerprint matches `hash`.
+     Computed live (not the stored _clientHash) so it stays consistent with
+     detectDuplicates — the cleanup button then acts on exactly the group shown. */
   findByHash: function(coll, hash){
     if (!hash) return [];
-    return _arr(coll).filter(function(x){ return x._clientHash === hash; });
+    var self = this;
+    return _arr(coll).filter(function(x){
+      var h; try { h = self._computeClientHash(coll, x); } catch(e){ h = x._clientHash; }
+      return h === hash;
+    });
   },
 
   /* (Phase 1.5) Detect duplicates across the entire collection.
      Returns Map of hash → array of matching records. Only includes hashes
      with 2+ records (the duplicate set). Excludes records without hashes. */
   detectDuplicates: function(coll){
+    /* v33_163: compute the fingerprint LIVE here rather than trusting the stored
+       _clientHash. Older records were stamped with the previous formula, which
+       false-grouped distinct expenses; recomputing means the corrected formula
+       applies to existing data immediately, with no risky rewrite of stored
+       hashes (those are still used by the sync layer for cloud dedupe). */
+    var self = this;
     var byHash = {};
     _arr(coll).forEach(function(r){
-      if (!r._clientHash) return;
-      if (!byHash[r._clientHash]) byHash[r._clientHash] = [];
-      byHash[r._clientHash].push(r);
+      var h;
+      try { h = self._computeClientHash(coll, r); } catch(e){ h = r._clientHash; }
+      if (!h) return;
+      if (!byHash[h]) byHash[h] = [];
+      byHash[h].push(r);
     });
     var dupes = {};
     Object.keys(byHash).forEach(function(h){
