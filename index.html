@@ -394,7 +394,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v33_158_smart_advisor';
+    window.HISAABNOW_BUILD = 'v33_160_mirch_to_spice';
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
       'background:#FF6B35;color:#fff;padding:4px 10px;border-radius:6px;font-weight:700');
@@ -9329,6 +9329,44 @@ const EMOJI_KEYWORDS = [
   ['battery', '🔋'], ['phone', '📱'], ['recharge', '📱'],
 
   ['cigarette', '🚬'], ['beedi', '🚬'], ['paan', '🍃'], ['gutka', '🍃'], ['tobacco', '🚬'],
+
+  // v33_159: Hinglish spelling variants + Hindi (Devanagari) for name → emoji.
+  // (substring match, so kept distinctive to avoid false hits; placed after the
+  //  English entries above so those keep priority.)
+  ['aata', '🌾'], ['attaa', '🌾'], ['gehu', '🌾'], ['gehun', '🌾'], ['rava', '🌾'],
+  ['आटा', '🌾'], ['मैदा', '🌾'], ['बेसन', '🌾'], ['सूजी', '🌾'],
+  ['chawal', '🍚'], ['चावल', '🍚'], ['poha', '🍚'], ['पोहा', '🍚'],
+  ['cheeni', '🍚'], ['chini', '🍚'], ['shakkar', '🍚'], ['चीनी', '🍚'], ['शक्कर', '🍚'],
+  ['gud', '🟫'], ['gur', '🟫'], ['jaggery', '🟫'], ['गुड़', '🟫'],
+  ['shahad', '🍯'], ['honey', '🍯'], ['शहद', '🍯'],
+  ['namak', '🧂'], ['नमक', '🧂'],
+  ['sarso', '🛢️'], ['sarson', '🛢️'], ['तेल', '🛢️'],
+  ['ghi', '🧈'], ['घी', '🧈'], ['makhan', '🧈'], ['मक्खन', '🧈'],
+  ['anda', '🥚'], ['ande', '🥚'], ['अंडा', '🥚'], ['अंडे', '🥚'],
+  ['doodh', '🥛'], ['dudh', '🥛'], ['दूध', '🥛'], ['दही', '🥛'], ['malai', '🥛'], ['मलाई', '🥛'],
+  ['पनीर', '🧀'],
+  ['tamatar', '🍅'], ['टमाटर', '🍅'],
+  ['pyaz', '🧅'], ['pyaaz', '🧅'], ['kanda', '🧅'], ['प्याज', '🧅'],
+  ['aloo', '🥔'], ['आलू', '🥔'],
+  ['gajar', '🥕'], ['गाजर', '🥕'],
+  ['gobi', '🥦'], ['gobhi', '🥦'], ['गोभी', '🥦'],
+  ['पालक', '🥬'], ['bhindi', '🥬'], ['भिंडी', '🥬'],
+  ['nimbu', '🍋'], ['nimboo', '🍋'], ['नींबू', '🍋'],
+  ['adrak', '🫚'], ['अदरक', '🫚'],
+  ['lehsun', '🧄'], ['lahsun', '🧄'], ['लहसुन', '🧄'],
+  ['mirch', '🌶️'], ['मिर्च', '🌶️'],
+  ['baingan', '🍆'], ['बैंगन', '🍆'],
+  ['kheera', '🥒'], ['खीरा', '🥒'],
+  ['dhania', '🌿'], ['kothmir', '🌿'], ['धनिया', '🌿'],
+  ['kaju', '🌰'], ['badam', '🌰'], ['mewa', '🌰'], ['काजू', '🌰'], ['बादाम', '🌰'],
+  ['nariyal', '🥥'], ['नारियल', '🥥'],
+  ['matar', '🟢'], ['peas', '🟢'], ['मटर', '🟢'],
+  ['dal', '🫘'], ['daal', '🫘'], ['chana', '🫘'], ['rajma', '🫘'], ['moong', '🫘'],
+  ['दाल', '🫘'], ['चना', '🫘'], ['राजमा', '🫘'],
+  ['haldi', '🟡'], ['हल्दी', '🟡'],
+  ['jeera', '🟤'], ['जीरा', '🟤'], ['masala', '🟤'], ['मसाला', '🟤'],
+  ['chai', '🍵'], ['चाय', '🍵'], ['coffee', '☕'], ['कॉफी', '☕'],
+  ['paani', '💧'], ['पानी', '💧'],
 
   ['water', '💧'], ['box', '📦']
 ];
@@ -22839,6 +22877,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
                               : (_isSalon ? 'Save supply' : 'Save ingredient');
 
     this._supV2PickedEmoji = v.emoji || null;
+    this._supV2EmojiTouched = !!v.emoji;   // v33_159: respect existing icon on edit; allow auto-pick for new
     this._supV2PickedCat = v.cat || null;
     this._supV2CatTouched = !!v.cat;   // respect existing category; allow auto-fill for new
     this._supV2UnitTouched = isEdit;   // v33_152: new ingredient → allow smart unit; edit → keep saved unit
@@ -22876,7 +22915,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
         <div class="sv2-emoji-bar" id="sv2-emoji-bar">
           ${_emojiSet.map(e =>
-            `<button type="button" class="sv2-emoji${(this._supV2PickedEmoji || _defaultEmoji) === e ? ' sel' : ''}" data-emoji="${e}" onclick="App._supV2PickEmoji('${e}')">${e}</button>`
+            `<button type="button" class="sv2-emoji${(this._supV2PickedEmoji || _defaultEmoji) === e ? ' sel' : ''}" data-emoji="${e}" onclick="App._supV2PickEmoji('${e}', true)">${e}</button>`
           ).join('')}
         </div>
 
@@ -22975,8 +23014,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._supV2Recalc();
   },
 
-  _supV2PickEmoji(e){
+  _supV2PickEmoji(e, userTap){
     this._supV2PickedEmoji = e;
+    if (userTap) this._supV2EmojiTouched = true;   // v33_159: stop auto-pick once owner taps an icon
     document.querySelectorAll('#sv2-emoji-bar .sv2-emoji').forEach(el => {
       el.classList.toggle('sel', el.getAttribute('data-emoji') === e);
     });
@@ -23129,13 +23169,24 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   igAutoEmoji(name){
     if (!name || !window.EMOJI_KEYWORDS) return;
     const lower = name.toLowerCase();
+    let matched = null;
     for (let i = 0; i < window.EMOJI_KEYWORDS.length; i++) {
       const [keyword, emoji] = window.EMOJI_KEYWORDS[i];
-      if (lower.includes(keyword)) {
-        this.igPickEmoji(emoji);
-        return;
-      }
+      if (lower.includes(keyword)) { matched = emoji; break; }
     }
+    if (!matched) return;
+    // v33_159: the current ingredient sheet (sv2) has its own emoji bar + state.
+    // Drive it directly so the icon follows the typed name (e.g. आटा → 🌾, lal mirch → 🌶️),
+    // but stop once the owner has tapped an emoji themselves.
+    const bar = document.getElementById('sv2-emoji-bar');
+    if (bar) {
+      if (this._supV2EmojiTouched) return;
+      const btn = bar.querySelector('.sv2-emoji[data-emoji="' + matched + '"]');
+      if (btn) { this._supV2PickEmoji(matched); }
+      return;
+    }
+    // legacy ig sheet
+    this.igPickEmoji(matched);
   },
 
   // v33_151: remove any UNTOUCHED preloaded raw materials (added by the short-lived
@@ -23164,37 +23215,53 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   igAutoCat(name){
     if (this._supV2CatTouched) return;
     var n = (name || '').toLowerCase();
-    if (n.replace(/[^a-z]/g, '').length < 3) return;
+    // v33_159: keep Devanagari letters too so Hindi-script names aren't stripped to 0.
+    if (n.replace(/[^a-z\u0900-\u097f]/g, '').length < 2) return;
     var rules = [
       // order matters — most specific first. Candidates are matched against the
       // shop's actual category LABELS, so each list spans the wording used across
       // café / restaurant / bakery / sweets (e.g. flour → "Bakery & bread" in a café,
       // "Grains & flour" in a restaurant, "Flour & grains" in a bakery).
-      [/(\begg\b|eggs|anda)/, ['egg','meat','dairy']],
-      [/(chocolate|cocoa|choco|compound|ganache|couverture)/, ['chocolate','cocoa','sweetener','syrup','flavor']],
-      [/(coffee|\btea\b|espresso|arabica|robusta|cappuccino|matcha|chicory|decaf|kahwa)/, ['coffee','tea','beverage']],
-      [/(yeast|baking powder|baking soda|leavening|improver|cake gel|gelatin|custard powder)/, ['yeast','leavening','bakery','flour']],
-      [/(atta|maida|flour|besan|gram flour|sooji|suji|rava|cornflour|corn flour|semolina)/, ['flour','grain','besan','bakery','food prep']],
-      [/(\brice\b|basmati|poha|vermicelli|makhana|oats)/, ['grain','flour','pantry','food prep']],
-      [/(\bsugar\b|powdered sugar|syrup|honey|sweetener|jaggery|gud|stevia|caramel)/, ['sweetener','sugar','syrup','flavor']],
-      [/(croissant|\bbun\b|buns|bagel|\bbread\b|loaf|\bpuff\b|tortilla|pita|baguette|pizza base|patty|patties)/, ['bakery','bread','food prep']],
-      [/(chicken|mutton|fish|prawn|lamb|keema|\bmeat\b|seafood|crab|murgh|gosht|bacon|sausage|filling)/, ['meat','seafood','food prep']],
-      [/(paneer|chhena|chenna|\bmilk\b|curd|dahi|\bcream\b|cheese|mozzarella|\bbutter\b|khoya|mawa|malai|dairy|yogurt|condensed)/, ['milk','dairy','paneer']],
-      [/(\boil\b|refined|mustard oil|sunflower|olive oil|vanaspati|cooking oil|\bghee\b|margarine|\bfat\b)/, ['ghee','oil','fat']],
-      [/(\bdal\b|\bdaal\b|chana|rajma|moong|masoor|toor|urad|lentil|legume|chickpea|kabuli|lobia|\bseed\b|\btil\b|sesame|khus)/, ['dal','legume','lentil','seed']],
-      [/(masala|spice|haldi|turmeric|jeera|cumin|garam|coriander|dhania|elaichi|cardamom|clove|laung|pepper|saunf|hing|methi|kesar|saffron|essence|vanilla)/, ['spice','masala','flavor','seasoning','flavour']],
-      [/(colour|color|\bvark\b|silver|decoration|edible colour|gel colour|fondant)/, ['colour','color','decoration','flavor','garnish']],
-      [/(sauce|ketchup|vinegar|\bsoy\b|mayo|mayonnaise|condiment|paste|chutney|pickle|achaar|coagulant|citric|alum)/, ['sauce','condiment','acid','coagulant']],
-      [/(cashew|almond|kaju|badam|pista|raisin|kishmish|\bnut\b|dry fruit|walnut|akhrot|anjeer|coconut|peanut)/, ['dry fruit','nut']],
-      [/(bhujia|namkeen|\bsev\b|mixture|dalmoth|chivda)/, ['bhujia','namkeen','food prep']],
-      [/(\bjam\b|pulp|crush|cherry|tutti|fruit|mango|pineapple|strawberry|filling)/, ['fruit','filling','flavor']],
-      [/(tomato|onion|potato|aloo|pyaz|carrot|capsicum|shimla|ginger|garlic|adrak|lehsun|spinach|palak|lemon|nimbu|cabbage|cauliflower|gobi|\bpeas\b|matar|chilli|mirchi|beans|brinjal|baingan|cucumber|mushroom|lettuce|lauki|gourd|\bveg\b)/, ['vegetable','food prep']],
-      [/(water|cola|\bsoda\b|juice|beverage|\bdrink\b|squash|lassi)/, ['beverage','drink']],
-      [/(box|packaging|disposable|foil|napkin|plate|\bcup\b|\bbag\b|container|carry|tissue|straw|wrap)/, ['packaging','box','cup','disposable']],
-      [/(cleaning|\bsoap\b|detergent|sanitizer|phenyl|wiper|scrub|dish wash|misc)/, ['cleaning','misc']]
+      // v33_159: each rule now spans English + Hinglish spellings + Hindi (Devanagari).
+      // NOTE: \b word-boundaries only apply to the roman terms; Devanagari terms are
+      // matched as plain substrings (\b does not fire between Devanagari characters).
+      [/(\begg\b|eggs|anda|ande|anday|अंडा|अंडे|इंडा)/, ['egg','meat','dairy']],
+      [/(chocolate|chocolat|cocoa|choco|compound|ganache|couverture|चॉकलेट|कोको)/, ['chocolate','cocoa','sweetener','syrup','flavor']],
+      [/(coffee|coffe|kofi|\btea\b|\bchai\b|chaai|espresso|arabica|robusta|cappuccino|matcha|chicory|decaf|kahwa|कॉफ़ी|कॉफी|चाय|चायपत्ती)/, ['coffee','tea','beverage']],
+      [/(yeast|khameer|khamir|baking powder|baking soda|leavening|improver|cake gel|gelatin|custard powder|यीस्ट|बेकिंग|खमीर)/, ['yeast','leavening','bakery','flour']],
+      [/(\bata\b|aata|atta|attaa|maida|meda|flour|besan|gram flour|sooji|suji|soojee|\brava\b|rawa|cornflour|corn flour|semolina|gehu|gehun|आटा|मैदा|बेसन|सूजी|रवा|गेहूं)/, ['flour','grain','besan','bakery','food prep']],
+      [/(\brice\b|chawal|chaaval|chaawal|basmati|poha|pohe|vermicelli|sevai|makhana|oats|चावल|बासमती|पोहा|सेवई|मखाना)/, ['grain','flour','pantry','food prep']],
+      [/(\bsugar\b|cheeni|chini|chinee|shakkar|shakar|powdered sugar|syrup|sirap|honey|shahad|sweetener|jaggery|\bgud\b|\bgur\b|stevia|caramel|चीनी|शक्कर|गुड़|शहद|सिरप)/, ['sweetener','sugar','syrup','flavor']],
+      [/(croissant|\bbun\b|buns|bagel|\bbread\b|loaf|\bpuff\b|tortilla|pita|baguette|pizza base|\bpav\b|paav|\bpatty\b|patties|ब्रेड|बन|पाव|डबल रोटी)/, ['bakery','bread','food prep']],
+      [/(chicken|chiken|murga|murgi|murgha|\bmurg\b|murgh|mutton|mutan|gosht|\bgosh\b|\bfish\b|machhli|machli|machhi|prawn|jhinga|lamb|keema|qeema|kheema|\bmeat\b|seafood|crab|kekda|bacon|sausage|filling|चिकन|मुर्गा|मुर्गी|मटन|मछली|कीमा|गोश्त|झींगा)/, ['meat','seafood','food prep']],
+      [/(paneer|chhena|chenna|\bmilk\b|doodh|dudh|curd|dahi|dhai|\bcream\b|malai|cheese|mozzarella|\bbutter\b|makhan|makkhan|khoya|khova|mawa|dairy|yogurt|yoghurt|condensed|पनीर|दूध|दही|क्रीम|मलाई|मक्खन|खोया|मावा|चीज़|चीज)/, ['milk','dairy','paneer']],
+      [/(\boil\b|\btel\b|\btail\b|refined|mustard oil|sarso|sarson|sarsoon|sunflower|olive oil|vanaspati|dalda|cooking oil|\bghee\b|\bghi\b|margarine|\bfat\b|तेल|घी|सरसों|वनस्पति|डालडा)/, ['ghee','oil','fat']],
+      [/(\bdal\b|\bdaal\b|chana|chanaa|rajma|moong|\bmung\b|masoor|toor|\btur\b|arhar|urad|\burd\b|lentil|legume|chickpea|kabuli|lobia|\bseed\b|\btil\b|sesame|khus|दाल|चना|राजमा|मूंग|मसूर|अरहर|उड़द|तूर|तिल)/, ['dal','legume','lentil','seed']],
+      [/(\bsalt\b|namak|नमक|chilli powder|chili powder|mirch powder|mirchi powder|lal mirch powder|red chilli powder|kali mirch|kalimirch|black pepper|masala|masaala|spice|haldi|huldi|turmeric|jeera|zeera|cumin|garam|coriander powder|dhania powder|elaichi|ilaichi|cardamom|clove|laung|\bpepper\b|saunf|sounf|\bhing\b|heeng|methi|ajwain|kesar|saffron|essence|vanilla|मसाला|हल्दी|जीरा|गरम मसाला|इलायची|लौंग|काली मिर्च|सौंफ|हींग|मेथी|अजवाइन|केसर|मिर्च पाउडर|लाल मिर्च पाउडर)/, ['spice','masala','flavor','seasoning','flavour']],
+      [/(colour|\bcolor\b|\bvark\b|silver leaf|decoration|edible colour|edible color|gel colour|fondant|वर्क|फूड कलर)/, ['colour','color','decoration','flavor','garnish']],
+      [/(\bsauce\b|sauces|ketchup|catchup|vinegar|sirka|\bsoy\b|soya sauce|mayo|mayonnaise|condiment|\bpaste\b|chutney|chatni|pickle|achar|achaar|coagulant|citric|alum|fitkari|सॉस|केचप|सिरका|चटनी|अचार|सोया)/, ['sauce','condiment','acid','coagulant']],
+      [/(cashew|kaju|almond|badam|pista|pistachio|raisin|kishmish|\bnut\b|dry fruit|dryfruit|mewa|meva|walnut|akhrot|anjeer|\bfig\b|coconut|nariyal|narial|peanut|mungfali|moongfali|groundnut|काजू|बादाम|पिस्ता|किशमिश|अखरोट|अंजीर|नारियल|मूंगफली|मेवा)/, ['dry fruit','nut']],
+      [/(bhujia|namkeen|\bsev\b|mixture|dalmoth|chivda|भुजिया|नमकीन)/, ['bhujia','namkeen','food prep']],
+      [/(\bjam\b|pulp|crush|cherry|tutti|fruit|\bmango\b|\baam\b|pineapple|ananas|strawberry|jaam|जैम|फल|आम|अनानास|स्ट्रॉबेरी)/, ['fruit','filling','flavor']],
+      [/(tomato|tamatar|tamaatar|onion|pyaz|pyaaz|kanda|potato|aloo|\balu\b|carrot|gajar|capsicum|shimla|ginger|adrak|garlic|lehsun|lahsun|spinach|palak|lemon|nimbu|nimboo|cabbage|patta gobhi|pattagobhi|band gobhi|cauliflower|\bgobi\b|gobhi|\bpeas\b|matar|mutter|\bchilli\b|\bchili\b|mirchi|\bmirch\b|hari mirch|lal mirch|beans|brinjal|baingan|eggplant|cucumber|kheera|kakdi|mushroom|lettuce|lauki|ghiya|gourd|bhindi|okra|coriander|dhania|kothmir|\bveg\b|sabzi|टमाटर|प्याज|आलू|गाजर|शिमला मिर्च|अदरक|लहसुन|पालक|नींबू|गोभी|मटर|मिर्च|बैंगन|खीरा|भिंडी|धनिया|सब्जी)/, ['vegetable','food prep']],
+      [/(\bwater\b|paani|\bpani\b|cola|\bsoda\b|juice|\bras\b|beverage|\bdrink\b|squash|lassi|chaas|पानी|जूस|कोला|सोडा|लस्सी|छाछ)/, ['beverage','drink']],
+      [/(\bbox\b|dibba|packaging|disposable|foil|napkin|\bplate\b|\bcup\b|\bbag\b|thaila|container|carry|tissue|straw|\bwrap\b|डिब्बा|पैकिंग|प्लेट|थैला)/, ['packaging','box','cup','disposable']],
+      [/(cleaning|\bsoap\b|saabun|sabun|detergent|sanitizer|phenyl|phenail|wiper|scrub|dish wash|dishwash|jhadu|pochha|misc|साबुन|डिटर्जेंट|फिनाइल|सफाई)/, ['cleaning','misc']]
     ];
     var cands = null;
-    for (var i = 0; i < rules.length; i++){ if (rules[i][0].test(n)){ cands = rules[i][1]; break; } }
+    // v33_160: chilli/mirch disambiguation. Fresh green chilli & capsicum stay
+    // vegetables; plain "lal mirch" / "mirch" / "mirchi" usually means the GROUND
+    // POWDER in a shop, so it goes to Spices. (No lookbehind — works on old WebViews.)
+    if (/(\bmirch\b|\bmirchi\b|\bchilli\b|\bchili\b|मिर्च|मिर्ची)/.test(n)) {
+      if (/(hari mirch|hari mirchi|green chilli|green chili|shimla|capsicum|bell pepper|हरी मिर्च|शिमला)/.test(n)) {
+        cands = ['vegetable','food prep'];
+      } else {
+        cands = ['spice','masala','flavor','seasoning','flavour'];
+      }
+    }
+    if (!cands) {
+      for (var i = 0; i < rules.length; i++){ if (rules[i][0].test(n)){ cands = rules[i][1]; break; } }
+    }
     if (!cands) return;
     // sv2 sheet (the current ingredient sheet)
     var sel = document.getElementById('sv2-cat');
@@ -23223,11 +23290,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   igAutoUnit(name){
     if (this._supV2UnitTouched) return;
     var n = (name || '').toLowerCase();
-    if (n.replace(/[^a-z]/g, '').length < 3) return;
+    // v33_159: keep Devanagari letters so Hindi-script names aren't stripped to 0.
+    if (n.replace(/[^a-z\u0900-\u097f]/g, '').length < 2) return;
     var unit;
-    if (/(\begg\b|eggs|anda|\bbun\b|buns|\bbread\b|loaf|bagel|\bbase\b|tortilla|wrap|momo|patty|patties|croissant|\bvark\b|cookie|biscuit|\bpuff\b|cake|pastry|\bpcs\b|piece)/.test(n)) {
+    if (/(\begg\b|eggs|anda|ande|anday|\bbun\b|buns|\bpav\b|paav|\bbread\b|loaf|bagel|\bbase\b|tortilla|wrap|momo|patty|patties|croissant|\bvark\b|cookie|biscuit|rusk|\bpuff\b|cake|pastry|samosa|kachori|\bpcs\b|piece|अंडा|अंडे|बन|पाव|ब्रेड|समोसा)/.test(n)) {
       unit = 'pc';
-    } else if (/(milk|\boil\b|water|syrup|juice|vinegar|\bcream\b|essence|lassi|\bsoda\b|\bsoy\b|sauce|rose water|kewra|squash|coconut milk|condensed)/.test(n)) {
+    } else if (/(milk|doodh|dudh|\boil\b|\btel\b|water|paani|\bpani\b|syrup|sirap|juice|\bras\b|vinegar|sirka|\bcream\b|malai|essence|lassi|chaas|\bsoda\b|sharbat|\bsoy\b|sauce|rose water|kewra|squash|coconut milk|condensed|दूध|तेल|पानी|जूस|सिरप|क्रीम|लस्सी|सिरका|सोडा)/.test(n)) {
       unit = 'L';
     } else {
       unit = 'kg';
