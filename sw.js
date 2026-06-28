@@ -11,7 +11,7 @@
  * DEPLOY RULE: bump SW_VERSION every deploy (set it to window.HISAABNOW_BUILD).
  */
 
-const SW_VERSION  = 'v33_192_install_completed';
+const SW_VERSION  = 'v33_166_cafe_fruits_merged';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000; /* ms before falling back to cached HTML */
 
