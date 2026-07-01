@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<title>HisaabNow Support — Ask Munim, your AI helpdesk</title>
+<meta name="description" content="Get instant answers about billing, stock, purchases, udhaar, GST and plans. Munim, the HisaabNow AI helpdesk, answers in seconds — or opens a support ticket resolved within 1 working day.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://hisaabnow.com/support">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="HisaabNow Support — Ask Munim">
+<meta property="og:description" content="Instant answers for shopkeepers. Munim, the AI helpdesk, solves billing, stock and udhaar questions in seconds — or opens a ticket resolved within 1 working day.">
+<meta property="og:url" content="https://hisaabnow.com/support">
+<meta property="og:image" content="https://hisaabnow.com/og-support.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#FFFBF5; --surface:#FFFFFF; --surface-2:#FFF7E0; --surface-warm:#FFF1E0;
+  --ink:#18181B; --text:#18181B; --text-2:#545454; --text-3:#6B6B6B; --text-4:#9C9C9C;
+  --border:#F0E9DD; --border-2:#EEE5D2; --border-3:#D4C8B5;
+  --gold:#FFC043; --gold-2:#F2B341; --gold-deep:#B8860B; --gold-tint:#FFF7E0; --gold-soft:#FFE082;
+  --navy:#1F5F8B; --navy-deep:#12405E;
+  --success:#06C167; --success-soft:#D1FAE5; --danger:#E11900; --danger-soft:#FDE8E4;
+  --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:26px;
+  --sh-sm:0 1px 2px rgba(0,0,0,.06),0 1px 1px rgba(0,0,0,.03);
+  --sh-md:0 4px 16px -2px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+  --sh-lg:0 18px 36px -10px rgba(0,0,0,.14),0 6px 12px rgba(0,0,0,.05);
+  --sh-gold:0 12px 30px -8px rgba(255,192,67,.45);
+  --font-display:"Bricolage Grotesque","Inter",system-ui,-apple-system,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font-body); background:var(--bg); color:var(--text);
+  font-size:16px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; min-height:100dvh;
+}
+[data-lang="hi"] body{font-family:var(--font-body),"Noto Sans Devanagari",sans-serif}
+h1,h2,h3{font-family:var(--font-display); letter-spacing:-.025em; font-weight:700}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit}
+input,textarea,select{font-family:inherit;font-size:inherit}
+a{color:inherit}
+:focus-visible{outline:2.5px solid var(--navy); outline-offset:2px; border-radius:4px}
+
+/* ── Ledger paper backdrop (signature motif: an accountant's ruled ledger) ── */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 39px, rgba(31,95,139,.045) 39px 40px),
+    radial-gradient(1200px 600px at 80% -10%, rgba(255,192,67,.10), transparent 60%);
+}
+
+/* ═══════════════ HEADER ═══════════════ */
+.hdr{
+  position:relative; z-index:3; background:var(--surface);
+  border-bottom:1px solid var(--border);
+  box-shadow:var(--sh-sm);
+}
+.hdr-in{
+  max-width:760px; margin:0 auto; padding:14px 20px;
+  display:flex; align-items:center; gap:14px;
+}
+.brand{display:flex; align-items:center; gap:11px; text-decoration:none; margin-right:auto}
+.munim-mark{
+  width:44px; height:44px; border-radius:13px; flex-shrink:0;
+  background:linear-gradient(150deg,#FFD873,var(--gold) 55%,var(--gold-2));
+  display:grid; place-items:center; box-shadow:var(--sh-gold);
+  position:relative;
+}
+.munim-mark svg{width:26px;height:26px}
+.munim-mark::after{ /* status dot */
+  content:""; position:absolute; right:-2px; bottom:-2px; width:13px; height:13px;
+  border-radius:50%; background:var(--success); border:2.5px solid var(--surface);
+}
+.brand-txt .b1{font-family:var(--font-display); font-weight:800; font-size:17px; letter-spacing:-.03em; line-height:1.05}
+.brand-txt .b2{font-size:12.5px; color:var(--text-3); font-weight:600; margin-top:1px}
+.hdr-app{
+  display:inline-flex; align-items:center; gap:6px; padding:9px 15px; border-radius:11px;
+  background:var(--ink); color:#fff; font-size:13.5px; font-weight:700; text-decoration:none;
+  transition:transform .12s, background .15s; white-space:nowrap;
+}
+.hdr-app:hover{transform:translateY(-1px); background:#000}
+.hdr-app svg{width:14px;height:14px}
+.lang-btn{
+  padding:8px 11px; border-radius:10px; border:1px solid var(--border-2);
+  background:var(--surface); font-size:13px; font-weight:700; color:var(--text-2);
+}
+.lang-btn:hover{border-color:var(--border-3)}
+
+/* ═══════════════ CHAT ═══════════════ */
+.stage{position:relative; z-index:2; flex:1; display:flex; flex-direction:column; overflow:hidden}
+.chat-scroll{
+  flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+.chat{max-width:760px; margin:0 auto; padding:26px 20px 8px; width:100%}
+
+/* Intro / hero card */
+.intro{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-xl); padding:24px 22px 20px; box-shadow:var(--sh-md);
+  margin-bottom:22px; position:relative; overflow:hidden;
+}
+.intro::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:4px;
+  background:linear-gradient(90deg,var(--gold),var(--gold-deep));
+}
+.intro-eyebrow{
+  font-size:11.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--gold-deep); margin-bottom:9px;
+}
+.intro h1{font-size:27px; line-height:1.12; margin-bottom:8px}
+.intro h1 em{font-style:normal; color:var(--gold-deep)}
+.intro p{font-size:15px; color:var(--text-2); font-weight:500; max-width:52ch}
+.intro-sla{
+  display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;
+}
+.sla-chip{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border-radius:99px;
+  background:var(--surface-2); border:1px solid var(--border-2);
+  font-size:12.5px; font-weight:700; color:var(--gold-deep);
+}
+.sla-chip svg{width:14px;height:14px}
+.sla-chip.green{background:var(--success-soft); border-color:#B6EFCE; color:#067a44}
+
+/* messages */
+.msg{display:flex; gap:11px; margin-bottom:16px; align-items:flex-end; animation:rise .32s cubic-bezier(.16,.84,.44,1)}
+@keyframes rise{from{opacity:0; transform:translateY(9px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.msg,.intro,.esc{animation:none!important}}
+.msg.user{flex-direction:row-reverse}
+.avatar{
+  width:34px; height:34px; border-radius:10px; flex-shrink:0;
+  background:linear-gradient(150deg,#FFD873,var(--gold) 60%,var(--gold-2));
+  display:grid; place-items:center; box-shadow:var(--sh-sm);
+}
+.avatar svg{width:19px;height:19px}
+.msg.user .avatar{background:var(--navy)}
+.msg.user .avatar svg{stroke:#fff}
+.bubble{
+  max-width:78%; padding:13px 16px; border-radius:16px; font-size:14.5px; line-height:1.55;
+  box-shadow:var(--sh-sm);
+}
+.msg.bot .bubble{background:var(--surface); border:1px solid var(--border); border-bottom-left-radius:5px; color:var(--text)}
+.msg.user .bubble{background:var(--navy); color:#fff; border-bottom-right-radius:5px; font-weight:500}
+.bubble p{margin:0 0 9px} .bubble p:last-child{margin-bottom:0}
+.bubble b,.bubble strong{font-weight:700}
+.bubble code{background:var(--surface-2); border:1px solid var(--border-2); border-radius:6px; padding:1px 6px; font-size:.9em; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--gold-deep)}
+.msg.user .bubble code{background:rgba(255,255,255,.16); border-color:transparent; color:#fff}
+.bubble .steps{margin:4px 0 4px; padding-left:0; list-style:none; counter-reset:s}
+.bubble .steps li{
+  position:relative; padding:6px 0 6px 30px; font-size:14px; border-bottom:1px dashed var(--border);
+}
+.bubble .steps li:last-child{border-bottom:none}
+.bubble .steps li::before{
+  counter-increment:s; content:counter(s); position:absolute; left:0; top:6px;
+  width:21px; height:21px; border-radius:7px; background:var(--surface-2); color:var(--gold-deep);
+  font-size:11.5px; font-weight:800; display:grid; place-items:center; border:1px solid var(--border-2);
+}
+.bubble .callout{
+  margin-top:10px; padding:9px 12px; border-radius:11px; font-size:13px; font-weight:600;
+  background:var(--surface-2); border:1px solid var(--border-2); color:var(--gold-deep);
+  display:flex; gap:8px; align-items:flex-start; line-height:1.45;
+}
+.bubble .callout.warn{background:var(--danger-soft); border-color:#F7C9C0; color:#B3170A}
+.bubble .callout svg{width:15px;height:15px;flex-shrink:0;margin-top:1px}
+
+/* helpful footer under a bot answer */
+.ans-foot{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; padding-top:11px; border-top:1px solid var(--border)}
+.mini-btn{
+  display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:99px;
+  border:1px solid var(--border-2); background:var(--surface); font-size:12.5px; font-weight:700; color:var(--text-2);
+  transition:border-color .12s, background .12s, color .12s; white-space:nowrap;
+}
+.mini-btn:hover{border-color:var(--border-3); background:var(--surface-2)}
+.mini-btn.good:hover{border-color:#B6EFCE; background:var(--success-soft); color:#067a44}
+.mini-btn svg{width:14px;height:14px}
+
+/* related / suggestion chips */
+.chip-row{display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 20px 45px}
+.chip-row.center{margin-left:0; justify-content:flex-start}
+.chip{
+  padding:9px 14px; border-radius:99px; border:1px solid var(--border-2);
+  background:var(--surface); font-size:13.5px; font-weight:600; color:var(--text);
+  box-shadow:var(--sh-sm); transition:transform .12s, border-color .12s, background .12s;
+}
+.chip:hover{transform:translateY(-1px); border-color:var(--gold); background:var(--surface-2)}
+.chip .em{margin-right:6px}
+
+/* typing */
+.typing{display:flex; gap:5px; padding:15px 17px; align-items:center}
+.typing span{width:7px; height:7px; border-radius:50%; background:var(--gold-deep); opacity:.4; animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s} .typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+/* ── KING priority card (urgent routing) ── */
+.king{
+  margin:2px 0 20px 45px; max-width:82%;
+  background:linear-gradient(155deg,#14405E,#1F5F8B); color:#fff;
+  border-radius:18px; padding:18px 18px 16px; box-shadow:var(--sh-lg); position:relative; overflow:hidden;
+}
+.king::after{content:""; position:absolute; top:-40px; right:-30px; width:150px; height:150px; border-radius:50%; background:radial-gradient(circle,rgba(255,192,67,.35),transparent 70%)}
+.king-tag{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-soft); margin-bottom:7px}
+.king-tag svg{width:14px;height:14px}
+.king h3{font-size:17px; margin-bottom:5px; color:#fff}
+.king p{font-size:13.5px; color:rgba(255,255,255,.82); font-weight:500; margin-bottom:13px; line-height:1.5}
+.king-cta{
+  display:inline-flex; align-items:center; gap:7px; padding:11px 17px; border-radius:12px;
+  background:var(--gold); color:#3a2a00; font-weight:800; font-size:14px; text-decoration:none;
+  box-shadow:0 8px 18px -6px rgba(255,192,67,.6); transition:transform .12s;
+}
+.king-cta:hover{transform:translateY(-1px)}
+.king-cta svg{width:15px;height:15px}
+.king .later{display:block; margin-top:11px; font-size:12.5px; color:rgba(255,255,255,.6); font-weight:600; text-decoration:underline; text-underline-offset:2px}
+
+/* ═══════════════ COMPOSER ═══════════════ */
+.composer-wrap{position:relative; z-index:4; background:linear-gradient(to top,var(--bg) 62%,transparent); padding-top:8px}
+.composer{
+  max-width:760px; margin:0 auto; padding:8px 20px calc(16px + env(safe-area-inset-bottom));
+}
+.composer-hint{font-size:11.5px; color:var(--text-4); font-weight:600; text-align:center; margin-bottom:8px}
+.composer-bar{
+  display:flex; align-items:flex-end; gap:9px; background:var(--surface);
+  border:1.5px solid var(--border-2); border-radius:18px; padding:8px 8px 8px 16px;
+  box-shadow:var(--sh-md); transition:border-color .15s, box-shadow .15s;
+}
+.composer-bar:focus-within{border-color:var(--gold); box-shadow:0 0 0 4px rgba(255,192,67,.14),var(--sh-md)}
+#q{
+  flex:1; border:none; background:none; resize:none; font-size:15px; line-height:1.45; padding:8px 0;
+  max-height:120px; color:var(--text);
+}
+#q::placeholder{color:var(--text-4)}
+.send{
+  width:42px; height:42px; border-radius:13px; flex-shrink:0;
+  background:var(--gold); display:grid; place-items:center; box-shadow:var(--sh-gold);
+  transition:transform .12s, opacity .15s;
+}
+.send:hover{transform:translateY(-1px)} .send:disabled{opacity:.4; box-shadow:none; cursor:default; transform:none}
+.send svg{width:20px;height:20px}
+
+/* ═══════════════ TICKET SHEET ═══════════════ */
+.mask{position:fixed; inset:0; background:rgba(20,16,8,.42); z-index:50; opacity:0; pointer-events:none; transition:opacity .22s; backdrop-filter:blur(2px)}
+.mask.open{opacity:1; pointer-events:auto}
+.esc{
+  position:fixed; left:50%; bottom:0; transform:translate(-50%,100%); z-index:51;
+  width:100%; max-width:540px; background:var(--surface); border-radius:24px 24px 0 0;
+  box-shadow:0 -12px 40px -8px rgba(0,0,0,.25); transition:transform .3s cubic-bezier(.16,.84,.44,1);
+  max-height:92dvh; display:flex; flex-direction:column;
+}
+.esc.open{transform:translate(-50%,0)}
+@media(min-width:600px){.esc{border-radius:24px; bottom:auto; top:50%; transform:translate(-50%,-46%) scale(.97); opacity:0; pointer-events:none}
+  .esc.open{transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto}}
+.esc-h{padding:20px 22px 14px; border-bottom:1px solid var(--border); position:relative}
+.esc-grip{width:38px; height:4px; border-radius:99px; background:var(--border-3); margin:0 auto 14px}
+@media(min-width:600px){.esc-grip{display:none}}
+.esc-h h2{font-size:20px; margin-bottom:4px}
+.esc-h p{font-size:13.5px; color:var(--text-2); font-weight:500}
+.esc-close{position:absolute; top:16px; right:18px; width:34px; height:34px; border-radius:10px; display:grid; place-items:center; color:var(--text-3)}
+.esc-close:hover{background:var(--surface-2)}
+.esc-close svg{width:18px;height:18px}
+.esc-body{padding:18px 22px; overflow-y:auto; flex:1}
+.field{margin-bottom:15px}
+.field label{display:block; font-size:12.5px; font-weight:800; color:var(--text-2); margin-bottom:6px; letter-spacing:.01em}
+.field label .opt{color:var(--text-4); font-weight:600}
+.field input,.field textarea,.field select{
+  width:100%; border:1.5px solid var(--border-2); border-radius:12px; padding:12px 13px;
+  font-size:14.5px; background:var(--surface); color:var(--text); transition:border-color .14s;
+}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(255,192,67,.15)}
+.field textarea{resize:vertical; min-height:82px; line-height:1.5}
+.sla-note{
+  display:flex; gap:10px; align-items:flex-start; padding:13px 14px; border-radius:13px;
+  background:var(--surface-2); border:1px solid var(--border-2); margin-bottom:16px;
+}
+.sla-note svg{width:18px;height:18px;flex-shrink:0;color:var(--gold-deep); margin-top:1px}
+.sla-note div{font-size:12.8px; color:var(--text-2); font-weight:600; line-height:1.5}
+.sla-note b{color:var(--ink)}
+.esc-foot{padding:14px 22px calc(20px + env(safe-area-inset-bottom)); border-top:1px solid var(--border)}
+.submit{
+  width:100%; padding:15px; border-radius:14px; background:var(--ink); color:#fff;
+  font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:9px;
+  transition:transform .12s, opacity .15s;
+}
+.submit:hover{transform:translateY(-1px)} .submit:disabled{opacity:.55; cursor:default; transform:none}
+.submit svg{width:17px;height:17px}
+.esc-alt{text-align:center; margin-top:11px; font-size:12.5px; color:var(--text-3); font-weight:600}
+.esc-alt a{color:#067a44; font-weight:700; text-decoration:none}
+
+/* confirmation state */
+.done{text-align:center; padding:14px 6px}
+.done-badge{width:66px; height:66px; border-radius:50%; background:var(--success-soft); display:grid; place-items:center; margin:0 auto 16px}
+.done-badge svg{width:34px; height:34px; color:var(--success)}
+.done h2{font-size:22px; margin-bottom:8px}
+.done .tid{display:inline-block; margin:4px 0 12px; padding:8px 16px; border-radius:11px; background:var(--surface-2); border:1px dashed var(--border-3); font-family:ui-monospace,Menlo,monospace; font-size:16px; font-weight:800; color:var(--gold-deep); letter-spacing:.02em}
+.done p{font-size:14px; color:var(--text-2); font-weight:500; line-height:1.55; max-width:40ch; margin:0 auto 6px}
+.done p b{color:var(--ink)}
+
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+@media(max-width:520px){
+  .intro h1{font-size:23px}
+  .bubble{max-width:84%}
+  .king,.chip-row{margin-left:0}
+  .king{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- ═════════ HEADER ═════════ -->
+<header class="hdr">
+  <div class="hdr-in">
+    <a class="brand" href="https://hisaabnow.com" aria-label="HisaabNow home">
+      <span class="munim-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3a2a00" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity=".0"/><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 11h6M9 15h6M9 8h3"/></svg>
+      </span>
+      <span class="brand-txt">
+        <span class="b1">HisaabNow</span>
+        <span class="b2" data-i18n="hdr.sub">Support · Ask Munim</span>
+      </span>
+    </a>
+    <button class="lang-btn" id="langBtn" type="button" aria-label="Switch language">हिं</button>
+    <a class="hdr-app" href="https://app.hisaabnow.com/?utm_source=support&utm_medium=header&utm_campaign=open_app" data-i18n="hdr.app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M12 18h.01"/></svg>
+      <span>Open app</span>
+    </a>
+  </div>
+</header>
+
+<!-- ═════════ CHAT STAGE ═════════ -->
+<main class="stage">
+  <div class="chat-scroll" id="scroll">
+    <div class="chat" id="chat">
+
+      <section class="intro" id="intro">
+        <div class="intro-eyebrow" data-i18n="intro.eyebrow">Your digital munim, at your service</div>
+        <h1 data-i18n="intro.h1">Namaste! I'm <em>Munim</em>. How can I help your shop today?</h1>
+        <p data-i18n="intro.p">Ask me anything about billing, stock, purchases, udhaar, GST or your plan. I know the HisaabNow app inside out — and I answer in seconds.</p>
+        <div class="intro-sla">
+          <span class="sla-chip green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg><span data-i18n="intro.sla1">Instant answers</span></span>
+          <span class="sla-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span data-i18n="intro.sla2">Ticket resolved in 1 working day</span></span>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- composer -->
+  <div class="composer-wrap">
+    <div class="composer">
+      <div class="composer-hint" data-i18n="composer.hint">Type in English or Hinglish — “stock kaise add karein”, “bill edit”, “GST”…</div>
+      <div class="composer-bar">
+        <textarea id="q" rows="1" placeholder="Ask about billing, stock, purchases, udhaar…" data-i18n-ph="composer.ph" aria-label="Ask Munim a question"></textarea>
+        <button class="send" id="send" type="button" aria-label="Send" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3a2a00" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ═════════ TICKET SHEET ═════════ -->
+<div class="mask" id="mask"></div>
+<div class="esc" id="esc" role="dialog" aria-modal="true" aria-labelledby="escTitle">
+  <div class="esc-h">
+    <div class="esc-grip"></div>
+    <button class="esc-close" id="escClose" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <h2 id="escTitle" data-i18n="esc.title">Open a support ticket</h2>
+    <p data-i18n="esc.sub">A real person from the HisaabNow team will sort this out for you.</p>
+  </div>
+
+  <div class="esc-body" id="escBody">
+    <div class="sla-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <div data-i18n="esc.slaNote"></div>
+    </div>
+    <div class="field">
+      <label for="tShop" data-i18n="esc.shop">Shop name</label>
+      <input id="tShop" type="text" autocomplete="organization" placeholder="e.g. Sharma Café">
+    </div>
+    <div class="field">
+      <label for="tPhone" data-i18n="esc.phone">WhatsApp number <span class="opt" data-i18n="esc.phoneOpt">(we reply here)</span></label>
+      <input id="tPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile number">
+    </div>
+    <div class="field">
+      <label for="tCat" data-i18n="esc.cat">What is this about?</label>
+      <select id="tCat">
+        <option value="Billing" data-i18n="esc.o.bill">Billing / receipts</option>
+        <option value="Stock & Purchases" data-i18n="esc.o.stock">Stock &amp; purchases</option>
+        <option value="Udhaar / Khata" data-i18n="esc.o.udhaar">Udhaar / khata</option>
+        <option value="Payments & Plan" data-i18n="esc.o.plan">Payments &amp; plan</option>
+        <option value="GST" data-i18n="esc.o.gst">GST &amp; tax invoices</option>
+        <option value="App not working" data-i18n="esc.o.bug">App not working</option>
+        <option value="Other" data-i18n="esc.o.other">Something else</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="tMsg" data-i18n="esc.msg">Describe the problem</label>
+      <textarea id="tMsg" placeholder="Tell us what you were trying to do and what happened…"></textarea>
+    </div>
+  </div>
+
+  <div class="esc-foot">
+    <button class="submit" id="tSubmit" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+      <span data-i18n="esc.submit">Submit ticket</span>
+    </button>
+    <div class="esc-alt" data-i18n="esc.alt"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   HisaabNow Support · Munim AI helpdesk · v1
+   Standalone page for hisaabnow.com/support (place at /support/index.html)
+
+   Engine: a self-contained, synonym-aware knowledge base ported and
+   enriched from the in-app Help Center (20 articles) + shopkeeper intents
+   (purchases, stock, café combos/KDS/ingredients). Works with ZERO backend.
+
+   Optional upgrades (graceful — page works fine without them):
+     • supportChat        → OpenAI-backed answers (deploy the CF, then flip USE_AI)
+     • createSupportTicket → writes tickets to Firestore for the admin panel
+   Both fall back to a guaranteed WhatsApp hand-off to the admin.
+════════════════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+
+  /* ─── CONFIG ─────────────────────────────────────────────────── */
+  var CFG = {
+    ADMIN_WA: "917838361200",                         // admin WhatsApp (from Help Center)
+    APP_URL:  "https://app.hisaabnow.com/",
+    CF_BASE:  "https://us-central1-panshopmanager.cloudfunctions.net",
+    USE_AI:   true,   // try the supportChat CF; silently falls back to the local KB
+    KING_PRICE: "₹199/mo",
+    SLA_WORKING_DAYS: 1
+  };
+  var AI_URL     = CFG.CF_BASE + "/supportChat";
+  var TICKET_URL = CFG.CF_BASE + "/createSupportTicket";
+
+  /* ─── DOM ────────────────────────────────────────────────────── */
+  function $(id){ return document.getElementById(id); }
+  var chat = $("chat"), scroll = $("scroll"), q = $("q"), sendBtn = $("send");
+  var esc = $("esc"), mask = $("mask");
+
+  function esc_(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
+  function scrollDown(){ requestAnimationFrame(function(){ scroll.scrollTop = scroll.scrollHeight; }); }
+
+  /* ════════════════════════════════════════════════════════════════
+     KNOWLEDGE BASE — what Munim knows about the app.
+     Each entry: id, cat, em, title, kw (match keywords), ans (HTML),
+     steps (ordered list), tip / warn, and `see` (related ids).
+  ════════════════════════════════════════════════════════════════ */
+  var KB = [
+    /* ── GETTING STARTED ── */
+    { id:"welcome", cat:"Getting started", em:"👋", title:"Getting started with HisaabNow",
+      kw:"start begin new welcome setup first shuru kaise use overview account signup register",
+      ans:"HisaabNow is your <b>digital munim</b> — it tracks sales, stock, customers and real profit in one place. Here's the fastest way to get going:",
+      steps:["Set your shop name in <b>Settings</b>","Add a few products in <b>Catalog</b>","Make your first sale with <b>+ New Sale</b>","Your dashboard lights up with live insights"],
+      tip:"You get 7 days of everything free — no card needed. Try it, then pick a plan.", see:["first-product","quick-bill","plans"] },
+
+    { id:"setup-shop", cat:"Getting started", em:"🏪", title:"Setting up your shop profile",
+      kw:"shop name profile upi whatsapp number address logo setup settings shop detail",
+      ans:"A few minutes on your profile makes everything faster. Open <b>Settings</b> and set:",
+      steps:["<b>Shop name</b> — shows on every bill &amp; receipt","<b>UPI ID</b> — customers pay you straight from WhatsApp receipts","<b>WhatsApp Business number</b> — where customers reach you","<b>Language</b> — English or Hindi"],
+      tip:"Your shop name sits on top of every bill PDF — keep it clean and recognisable.", see:["upi","whatsapp-receipt"] },
+
+    /* ── BILLING ── */
+    { id:"quick-bill", cat:"Billing", em:"⚡", title:"Make a quick bill",
+      kw:"bill make new sale receipt invoice cash upi checkout fast quick counter kaise banaye naya",
+      ans:"Billing is built for speed — most shopkeepers finish a bill in under 5 seconds.",
+      steps:["Tap <b>+ New Sale</b> (or press <code>F2</code>)","Tap products — they drop into the cart","Adjust quantity with <b>−/+</b>","Pick <b>Cash · UPI · Udhaar · Mix</b>","Tap <b>Complete Sale</b> (or <code>F12</code>)"],
+      tip:"After completing, send a WhatsApp receipt with one tap.", see:["voice-bill","edit-bill","whatsapp-receipt"] },
+
+    { id:"voice-bill", cat:"Billing", em:"🎤", title:"Voice billing (Hindi + English)",
+      kw:"voice bill speak mic microphone bolkar awaaz hindi english say do coffee",
+      ans:"Say it and the bill builds itself — works in Hindi, English and Hinglish. On the New Sale screen, tap the <b>mic</b> and speak naturally, e.g. <i>“do cappuccino, ek brownie”</i>. Items auto-add to the cart.",
+      tip:"Understands Hindi quantities: <code>ek, do, teen, char, paanch, adha, derh, dhai</code>.",
+      warn:"Voice works best on <b>Chrome</b>. Some browsers have limited speech recognition.", see:["quick-bill","voice-fail"] },
+
+    { id:"edit-bill", cat:"Billing", em:"✏️", title:"Edit or correct a bill",
+      kw:"edit bill correct change modify fix mistake galti sudhar delete cancel refund return wapas",
+      ans:"Made a mistake? Any bill can be edited — the app keeps an audit trail of who changed what.",
+      steps:["Open <b>Bills</b> and tap the bill","Tap <b>Edit</b> (Manager/Owner only)","Change items, quantity, price or payment mode","For changes over ₹100, add a reason","Save — it now shows an “Edited” badge"],
+      warn:"If GST is on and the bill has tax, editing creates a <b>Credit/Debit Note</b> instead (a legal requirement) — the app walks you through it.", see:["credit-note","refund"] },
+
+    { id:"refund", cat:"Billing", em:"↩️", title:"Refunds & returns",
+      kw:"refund return wapas paisa money back exchange returned item cancel bill",
+      ans:"To process a return, open the bill and reduce or remove the returned items — or issue a Credit Note if GST is enabled.",
+      steps:["Open <b>Bills</b> → find the bill","Tap <b>Edit</b>","Remove/reduce the returned items, add a reason","Refund via cash or UPI as agreed"],
+      tip:"Returns still update your stock — the returned item goes back into inventory automatically.", see:["edit-bill","credit-note"] },
+
+    { id:"whatsapp-receipt", cat:"Billing", em:"📱", title:"Send a WhatsApp receipt",
+      kw:"whatsapp receipt send share bill pdf customer message bhejo",
+      ans:"After any sale, send the receipt straight to the customer's WhatsApp:",
+      steps:["Complete the sale → tap the <b>WhatsApp icon</b>","Enter the number (or pick a saved customer)","WhatsApp opens with a formatted receipt + PDF","Tap Send — done"],
+      tip:"Save regulars — next time the bill goes to them with one tap, no typing.", see:["add-cust","print"] },
+
+    { id:"print", cat:"Billing", em:"🖨️", title:"Printing bills",
+      kw:"print printer thermal bluetooth receipt paper kot kitchen print",
+      ans:"HisaabNow prints to any standard <b>Bluetooth thermal printer</b>, and you can also share a PDF or WhatsApp receipt. Pair the printer once in your phone's Bluetooth, then choose it from the print sheet after a sale.",
+      tip:"Restaurants &amp; cafés can send a separate <b>kitchen ticket (KOT)</b> to a kitchen-side printer.", see:["whatsapp-receipt","kds"] },
+
+    /* ── CATALOG & STOCK ── */
+    { id:"first-product", cat:"Catalog & Stock", em:"➕", title:"Add your first product or service",
+      kw:"add product service item catalog menu sku create naya samaan dish price",
+      ans:"A tidy catalog is the secret to fast billing. Each item needs just three fields to start.",
+      steps:["Open <b>Catalog</b> → tap <b>+</b>","Enter <b>name</b>, <b>selling price</b>, and (optional) <b>cost price</b> for profit tracking","Tap <b>Save</b>"],
+      tip:"Start with your top 10 best-sellers — you don't have to add everything at once.", see:["manage-cat","track-stock"] },
+
+    { id:"track-stock", cat:"Catalog & Stock", em:"📦", title:"Track stock & low-stock alerts",
+      kw:"stock inventory quantity qty low alert restock maal saman track khatam running out min level",
+      ans:"Knowing what's in stock stops lost sales. To turn on stock tracking for a product:",
+      steps:["Open the product in <b>Catalog</b>","Set <b>Tracks Stock = ON</b>","Enter <b>current quantity</b> and <b>minimum quantity</b>","Drop below the minimum → you get an automatic dashboard alert"],
+      tip:"For cafés, salons and restaurants the real stock lives in <b>Ingredients</b> (coffee beans, milk, colour tubes) — see “ingredient stock”.", see:["ingredients","purchase","reorder"] },
+
+    { id:"manage-cat", cat:"Catalog & Stock", em:"📋", title:"Manage & organise your catalog",
+      kw:"catalog manage edit organise category deactivate hide inactive seasonal remove product",
+      ans:"Keep your catalog clean so the New Sale screen stays fast.",
+      steps:["Open <b>Catalog</b>","Tap any row to edit","Use <b>Activate / Deactivate</b> for seasonal items","Filter by category to find items quickly"],
+      tip:"Set old items to <b>Inactive</b> — they stay in past bills but leave the billing screen.", see:["first-product","combos"] },
+
+    { id:"expiry", cat:"Catalog & Stock", em:"⏱️", title:"Track expiry dates",
+      kw:"expiry expire date perishable food fmcg batch fresh kharab expire hone",
+      ans:"For perishables, add an expiry date to each batch and the app warns you before you sell something stale.",
+      steps:["Open a product → scroll to <b>Expiry</b>","Enter the batch expiry date","Get a red alert when expired, amber alert within 7 days"],
+      see:["track-stock","reorder"] },
+
+    /* ── PURCHASES & SUPPLIERS ── */
+    { id:"purchase", cat:"Purchases & Suppliers", em:"🛒", title:"Record a purchase / restock",
+      kw:"purchase buy restock supplier vendor stock in received delivery kharida khareed maal aaya inward incoming add stock",
+      ans:"When new stock arrives from a supplier, record it so your quantities and costs stay accurate:",
+      steps:["Open <b>Inventory</b> (or <b>Purchases</b>) from the menu","Tap <b>+ Add Purchase / Restock</b>","Pick the supplier (or add a new one)","Add the items, quantities and cost price","Save — stock levels go up automatically"],
+      tip:"Recording the <b>cost price</b> at purchase is what lets Munim show your <b>real profit</b> on every sale.", see:["track-stock","suppliers","reorder"] },
+
+    { id:"suppliers", cat:"Purchases & Suppliers", em:"🚚", title:"Manage suppliers & dena (payables)",
+      kw:"supplier vendor dena payable owe pay supplier khata purchase party wholesaler distributor",
+      ans:"Save your suppliers to track what <b>you owe them</b> (dena) and speed up restocking.",
+      steps:["Go to <b>Suppliers</b> (or the Purchases screen)","Add supplier name and phone","Record purchases against them","Money you owe shows as <b>Dena</b> in your khata"],
+      tip:"You can send a supplier a WhatsApp order or a payment note in one tap.", see:["purchase","udhaar"] },
+
+    { id:"reorder", cat:"Purchases & Suppliers", em:"🔮", title:"Predictive reorder alerts",
+      kw:"reorder predict alert restock suggestion buy again low order suggest kab mangao king",
+      ans:"Munim watches how fast items sell and flags what to reorder <i>before</i> you run out — e.g. “Coffee beans: 2 left, you sold 5 last week — restock today.” You'll see it on the dashboard and in AI Insights.",
+      tip:"Advanced predictive reorder is part of the <b>KING</b> plan.", see:["track-stock","munim","plans"] },
+
+    /* ── CUSTOMERS & UDHAAR ── */
+    { id:"add-cust", cat:"Customers & Udhaar", em:"👤", title:"Add & save customers",
+      kw:"customer add save regular client party grahak name phone contact",
+      ans:"Save customers to track repeat business, send reminders and offer loyalty.",
+      steps:["Go to <b>Customers</b> → <b>+ Add Customer</b>","Enter <b>name</b> and <b>phone</b> (needed for WhatsApp)","Optionally add address and GSTIN","Save"],
+      tip:"While billing, type the first 2 letters of a saved customer's name — autocomplete finds them.", see:["udhaar","reminder"] },
+
+    { id:"udhaar", cat:"Customers & Udhaar", em:"💰", title:"Record udhaar (credit / khata)",
+      kw:"udhaar udhar credit khata bakaya pending lena dena due balance owe customer credit book",
+      ans:"Udhaar in HisaabNow is a digital khata — every entry has a date, amount and can be shared with the customer on WhatsApp.",
+      steps:["While billing, set <b>Payment = Udhaar</b> and pick the customer","Or go to <b>Udhaar</b> → <b>+ Add Entry</b> to log an existing balance","<b>Lena</b> = customer owes you · <b>Dena</b> = you owe them/supplier"],
+      tip:"Send a polite WhatsApp reminder with a UPI quick-pay link in one tap.", see:["reminder","add-cust","suppliers"] },
+
+    { id:"reminder", cat:"Customers & Udhaar", em:"🔔", title:"Send a WhatsApp udhaar reminder",
+      kw:"reminder whatsapp udhaar follow up collect chase yaad dilana payment recover",
+      ans:"Chasing udhaar in person is awkward — WhatsApp makes it easy and polite.",
+      steps:["Open the <b>Udhaar</b> page","Find the customer with a pending balance","Tap the <b>WhatsApp icon</b> next to their name","A polite, pre-written message opens — review and send"],
+      tip:"The message includes the exact amount, your shop name and a UPI quick-pay link.", see:["udhaar"] },
+
+    /* ── REPORTS & AI ── */
+    { id:"daily-rep", cat:"Reports & AI", em:"📈", title:"Daily revenue & profit report",
+      kw:"report daily revenue profit sales today dashboard kamai hisaab summary numbers total",
+      ans:"The Dashboard shows today's key numbers at a glance — Revenue, Profit, Bills, Average Ticket and Outstanding Udhaar. The 14-day chart shows your trend; tap any bar to drill into that day's bills.",
+      tip:"Open the dashboard first thing every morning — spotting a slow start by 11 AM lets you act on it.", see:["munim","daily-rep"] },
+
+    { id:"munim", cat:"Reports & AI", em:"🧠", title:"AI Insights (the in-app Munim)",
+      kw:"ai insight munim advisor advice coach analytics tip smart suggestion business question ask",
+      ans:"Inside the app, <b>Munim</b> reads your data every day and flags what you'd miss — a dish priced below cost, a customer who stopped paying, an item about to run out, a margin slipping. Tap the AI Insights card on the dashboard to see them all. On the <b>KING</b> plan you can ask Munim any business question in plain Hindi or English.",
+      tip:"New insights appear every morning — make it your first check of the day.", see:["daily-rep","reorder","plans"] },
+
+    /* ── GST ── */
+    { id:"enable-gst", cat:"GST", em:"✅", title:"Enable GST in your shop",
+      kw:"gst enable setup gstin tax registration hsn invoice prefix cgst sgst",
+      ans:"If your shop is GST-registered, turn on GST once and every bill becomes a proper tax invoice.",
+      steps:["Open <b>Settings</b> → toggle <b>GST = ON</b>","Enter your <b>GSTIN</b> (e.g. <code>09ABCDE1234F1Z5</code>)","Enter shop address and state","Set a default <b>HSN code</b> and an <b>invoice prefix</b>","Save"],
+      tip:"From now on every bill auto-calculates CGST + SGST (or IGST for inter-state).", see:["tax-invoice","credit-note"] },
+
+    { id:"tax-invoice", cat:"GST", em:"📄", title:"Issue a GST tax invoice",
+      kw:"tax invoice gst bill cgst sgst igst b2b gstin customer tax",
+      ans:"Once GST is enabled, every bill is automatically a tax invoice — no extra steps. Each one carries a sequential invoice number, your GSTIN, the tax split, and the customer's GSTIN if you add it. WhatsApp receipts and PDFs include all GST details.",
+      see:["enable-gst","credit-note"] },
+
+    { id:"credit-note", cat:"GST", em:"🧾", title:"Credit & Debit Notes",
+      kw:"credit note debit note cn dn return refund adjustment gst correction",
+      ans:"Under GST you can't simply edit a tax invoice — you issue a Credit Note (reduce) or Debit Note (increase) referencing the original.",
+      steps:["Open the original bill → <b>Edit</b>","Choose <b>Issue Credit/Debit Note</b>","Enter amount and reason","Save — a linked note is created"],
+      tip:"Both notes appear in your GSTR-1 at month-end.", see:["edit-bill","tax-invoice"] },
+
+    /* ── PLANS & PAYMENT ── */
+    { id:"plans", cat:"Plans & Payment", em:"⭐", title:"Plans & pricing",
+      kw:"plan pricing price cost subscription pro king upgrade kitna paisa monthly yearly trial free",
+      ans:"Every plan starts with a <b>7-day free trial</b> — all features, no card.",
+      steps:["<b>Pro</b> — ₹99/month or ₹990/year — one shop: voice billing, GST, udhaar, staff commissions, loyalty, AI Insights","<b>KING</b> — ₹199/month or ₹1,990/year — up to 5 outlets, recipe &amp; cost calculator, predictive reorder, cross-outlet benchmarking, the advanced AI Munim, and <b>priority support</b>"],
+      tip:"Annual saves about 17%. You can cancel anytime.", see:["pay","king-support"] },
+
+    { id:"pay", cat:"Plans & Payment", em:"💳", title:"How to pay / upgrade",
+      kw:"pay payment upgrade buy subscribe activate upi paytm qr proof plan how to pay",
+      ans:"To upgrade, tap <b>See Plans</b> anywhere in the app (sidebar, trial banner, or Settings):",
+      steps:["Pick <b>Pro</b> or <b>KING</b>, monthly or annual","Pay via UPI / card at checkout","Your plan activates — usually within minutes"],
+      tip:"Trouble paying? Open a ticket below and we'll activate it for you.", see:["plans","king-support"] },
+
+    /* ── CAFÉ FEATURES ── */
+    { id:"combos", cat:"Café features", em:"🍔", title:"Create combos / meal deals",
+      kw:"combo meal deal bundle set thali package cafe combo price group items",
+      ans:"Combos let you sell a group of items at one price and bill them in a single tap.",
+      steps:["Open <b>Catalog</b> → <b>+</b> → choose <b>Combo</b>","Name it (e.g. “Coffee + Sandwich”)","Add the items that make up the combo","Set the combo price → Save"],
+      tip:"Combo sales still deduct each ingredient's stock, so your profit stays accurate.", see:["ingredients","kds"] },
+
+    { id:"ingredients", cat:"Café features", em:"🥛", title:"Ingredient stock & recipes",
+      kw:"ingredient recipe cogs cost of goods raw material coffee beans milk cup stock cafe consumable",
+      ans:"For cafés, restaurants, salons and bakeries the real stock is your <b>ingredients</b> (beans, milk, cups, colour tubes). Set a recipe on each menu item so selling a cappuccino auto-deducts its ingredients and shows true margin.",
+      steps:["Open <b>Ingredients</b> → add each raw item with stock &amp; a low-stock minimum","Open a menu item → add its <b>recipe</b> (which ingredients + how much)","Now every sale deducts ingredients and computes real profit"],
+      tip:"The recipe &amp; cost-of-goods calculator is a <b>KING</b> feature.", see:["combos","track-stock","plans"] },
+
+    { id:"kds", cat:"Café features", em:"👨‍🍳", title:"Orders & Kitchen Display (KDS)",
+      kw:"order kds kitchen display screen dine in takeaway zomato swiggy channel ticket kot cafe restaurant",
+      ans:"Take orders by channel (Dine-in, Takeaway, Zomato, Swiggy) and send them to a live <b>Kitchen Display</b> with timers, so the kitchen sees every order as it comes in.",
+      steps:["Enable <b>Orders / KDS</b> from the menu","Tag each order with its channel","The kitchen screen shows open orders with a running timer","Mark ready → it clears from the board"],
+      tip:"Sales-by-channel analytics show which channel actually makes you money.", see:["print","combos"] },
+
+    /* ── TROUBLESHOOTING ── */
+    { id:"sync", cat:"Troubleshooting", em:"🔄", title:"Data not syncing between devices",
+      kw:"sync data device phone desktop missing not showing gayab backup restore login same account",
+      ans:"HisaabNow syncs automatically. If something's missing on one device:",
+      steps:["Make sure both devices are logged in to the <b>same account</b>","Tap the <b>Sync</b> button on the dashboard","Wait ~10 seconds and refresh","Still missing? Check the internet on both devices"],
+      tip:"Bills sync instantly; other data has a short lag for performance. You can keep working offline — it syncs when you're back online.", see:["login","support-contact"] },
+
+    { id:"login", cat:"Troubleshooting", em:"🔑", title:"Login & OTP problems",
+      kw:"login otp sign in phone number code not received verify account locked cant login password",
+      ans:"HisaabNow logs you in with a phone OTP. If the code doesn't arrive:",
+      steps:["Check the number is correct and has network","Wait 30–60 seconds and tap <b>Resend</b>","Check SMS spam / blocked messages","Try on Wi-Fi if mobile data is weak"],
+      warn:"Still stuck after a few tries? Open a ticket below with your registered number and we'll help you in.", see:["sync","support-contact"] },
+
+    { id:"voice-fail", cat:"Troubleshooting", em:"🎙️", title:"Voice billing not working",
+      kw:"voice mic not working microphone speech recognition fail no sound bolne pe nahi",
+      ans:"Voice billing needs mic access and a supported browser.",
+      steps:["Use <b>Chrome</b> on Android or desktop","Allow microphone access when asked","Check your phone's mic isn't muted","Try short phrases (“two coffees”) over long sentences"],
+      warn:"In very noisy shops, manual billing is usually faster anyway.", see:["voice-bill"] },
+
+    { id:"support-contact", cat:"Troubleshooting", em:"💬", title:"Talk to a human",
+      kw:"support human contact help talk agent team person real ticket complaint call email",
+      ans:"Can't find what you need, or something's genuinely broken? I'll open a ticket to the HisaabNow team for you — they resolve it within <b>1 working day</b>. Tap the button below to start.",
+      see:["king-support"] },
+
+    { id:"king-support", cat:"Plans & Payment", em:"⚡", title:"Urgent / priority support",
+      kw:"urgent priority fast immediately asap emergency turant abhi jaldi critical down not working now king priority support",
+      ans:"Standard tickets are resolved within <b>1 working day</b>. If your shop can't wait, <b>KING</b> plan members get <b>priority support</b> — your ticket jumps the queue and gets a faster response. You can upgrade in seconds inside the app.",
+      see:["plans","support-contact"] }
+  ];
+
+  /* Fast lookup by id */
+  var KB_BY_ID = {}; KB.forEach(function(a){ KB_BY_ID[a.id]=a; });
+
+  /* ════════════════════════════════════════════════════════════════
+     MATCHER — synonym-aware scoring so Hinglish & shopkeeper slang work.
+  ════════════════════════════════════════════════════════════════ */
+  /* Map colloquial / Hindi / Hinglish tokens → canonical keywords the KB uses. */
+  var SYN = {
+    "maal":"stock","saman":"stock","samaan":"stock","inventory":"stock","qty":"stock","quantity":"stock","khatam":"stock",
+    "kharida":"purchase","khareed":"purchase","khareeda":"purchase","buy":"purchase","buying":"purchase","restock":"purchase","vendor":"supplier","inward":"purchase",
+    "udhar":"udhaar","credit":"udhaar","bakaya":"udhaar","khata":"udhaar","khaata":"udhaar","due":"udhaar","baki":"udhaar","lena":"udhaar","dena":"udhaar","owe":"udhaar","pending":"udhaar",
+    "bill":"bill","invoice":"bill","receipt":"bill","rasid":"bill","memo":"bill","billing":"bill",
+    "grahak":"customer","client":"customer","party":"customer","buyer":"customer",
+    "paisa":"payment","paise":"payment","pay":"payment","payment":"payment","upi":"payment","qr":"payment",
+    "plan":"plan","subscription":"plan","upgrade":"plan","pricing":"plan","price":"plan","kitna":"plan","charge":"plan",
+    "kamai":"revenue","sale":"revenue","sales":"revenue","hisaab":"revenue","profit":"profit","munafa":"profit","margin":"profit",
+    "band":"broken","broke":"broken","broken":"broken","crash":"broken","error":"broken","kaam":"broken","nahi":"broken","working":"broken","stuck":"broken","hang":"broken",
+    "urgent":"urgent","turant":"urgent","abhi":"urgent","jaldi":"urgent","asap":"urgent","immediately":"urgent","emergency":"urgent","now":"urgent","fast":"urgent","quick":"urgent",
+    "add":"add","naya":"add","new":"add","banao":"add","banaye":"add","create":"add","kaise":"how","how":"how",
+    "cafe":"cafe","coffee":"cafe","restaurant":"restaurant","kitchen":"kds","order":"kds","combo":"combo","recipe":"recipe","ingredient":"ingredient",
+    "gst":"gst","tax":"gst","hsn":"gst","gstin":"gst",
+    "voice":"voice","bolkar":"voice","awaaz":"voice","mic":"voice","microphone":"voice",
+    "whatsapp":"whatsapp","wa":"whatsapp","send":"send","bhejo":"send","share":"send",
+    "print":"print","printer":"print","thermal":"print",
+    "sync":"sync","backup":"sync","gayab":"sync","missing":"sync","restore":"sync",
+    "login":"login","otp":"login","signin":"login","verify":"login",
+    "expire":"expiry","expiry":"expiry","kharab":"expiry",
+    "supplier":"supplier","distributor":"supplier","wholesaler":"supplier",
+    "reminder":"reminder","yaad":"reminder","chase":"reminder","collect":"reminder",
+    "human":"human","talk":"human","agent":"human","person":"human","complaint":"human","ticket":"human","support":"support","help":"support","madad":"support"
+  };
+  var STOP = {"i":1,"a":1,"an":1,"the":1,"to":1,"is":1,"in":1,"on":1,"of":1,"for":1,"my":1,"me":1,"do":1,"how":0,"can":1,"i'm":1,"im":1,"it":1,"and":1,"or":1,"with":1,"please":1,"pls":1,"hai":1,"ka":1,"ki":1,"ke":1,"ko":1,"kar":1,"karein":1,"kare":1,"main":1,"mera":1,"meri":1};
+
+  function normalize(s){
+    return String(s||"").toLowerCase()
+      .replace(/[^\w\s'’]/g," ")
+      .replace(/[’]/g,"'")
+      .replace(/\s+/g," ").trim();
+  }
+  function tokens(s){
+    var out=[], raw=normalize(s).split(" ");
+    raw.forEach(function(w){
+      if(!w) return;
+      if(SYN[w]) w=SYN[w];
+      if(STOP[w]) return;
+      if(w.length<2) return;
+      out.push(w);
+    });
+    return out;
+  }
+
+  function score(queryToks, art){
+    var hay = (art.title+" "+art.kw+" "+(art.ans||"")).toLowerCase();
+    var kwSet = {}; art.kw.split(" ").forEach(function(k){ kwSet[k]=1; });
+    var titleToks = {}; normalize(art.title).split(" ").forEach(function(t){ titleToks[t]=1; });
+    var s=0, hits=0;
+    queryToks.forEach(function(t){
+      var got=false;
+      if(kwSet[t]){ s+=3; got=true; }            // explicit keyword hit — strongest
+      else if(hay.indexOf(t)!==-1){ s+=1; got=true; } // appears anywhere
+      if(titleToks[t]){ s+=2; }                   // title match boost
+      if(got) hits++;
+    });
+    // coverage bonus: reward matching a larger share of the query
+    if(queryToks.length) s += (hits/queryToks.length)*2;
+    return s;
+  }
+
+  function search(text){
+    var qt = tokens(text);
+    if(!qt.length) return { best:null, conf:0, ranked:[] };
+    var ranked = KB.map(function(a){ return { a:a, s:score(qt,a) }; })
+                   .filter(function(r){ return r.s>0; })
+                   .sort(function(x,y){ return y.s-x.s; });
+    var best = ranked[0] || null;
+    // confidence: normalise the top score against query length
+    var conf = best ? Math.min(1, best.s / (qt.length*3 + 1)) : 0;
+    return { best: best?best.a:null, conf: conf, ranked: ranked, qt: qt };
+  }
+
+  function isUrgent(text){
+    var t = normalize(text).split(" ");
+    for(var i=0;i<t.length;i++){ if(SYN[t[i]]==="urgent") return true; }
+    return /\b(urgent|asap|immediately|emergency|right now|turant|abhi|jaldi|crash|down)\b/i.test(text);
+  }
+  function wantsHuman(text){
+    return /\b(human|agent|person|talk to|complaint|ticket|call|someone|team|real person)\b/i.test(text)
+        || /\bbaat\b/i.test(text);
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     RENDERING
+  ════════════════════════════════════════════════════════════════ */
+  var BOT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#3a2a00" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 3v15H6V3z" opacity="0"/><path d="M7 3h8l3 3v15H7z"/><path d="M15 3v3h3"/><path d="M10 12h5M10 16h5M10 8h2"/></svg>';
+  var USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>';
+
+  function addUser(text){
+    var d=document.createElement("div"); d.className="msg user";
+    d.innerHTML='<div class="avatar">'+USER_SVG+'</div><div class="bubble">'+esc_(text)+'</div>';
+    chat.appendChild(d); scrollDown();
+  }
+  function typing(){
+    var d=document.createElement("div"); d.className="msg bot"; d.dataset.typing="1";
+    d.innerHTML='<div class="avatar">'+BOT_SVG+'</div><div class="bubble typing"><span></span><span></span><span></span></div>';
+    chat.appendChild(d); scrollDown(); return d;
+  }
+  function botBubble(html){
+    var d=document.createElement("div"); d.className="msg bot";
+    d.innerHTML='<div class="avatar">'+BOT_SVG+'</div><div class="bubble">'+html+'</div>';
+    chat.appendChild(d); scrollDown(); return d;
+  }
+
+  function articleHTML(a){
+    var h = "<p>"+a.ans+"</p>";
+    if(a.steps && a.steps.length){
+      h += '<ol class="steps">'+a.steps.map(function(s){return "<li>"+s+"</li>";}).join("")+"</ol>";
+    }
+    if(a.tip) h += '<div class="callout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg><span>'+a.tip+'</span></div>';
+    if(a.warn) h += '<div class="callout warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><span>'+a.warn+'</span></div>';
+    return h;
+  }
+
+  function answerFoot(hostMsg){
+    var bubble = hostMsg.querySelector ? (hostMsg.querySelector(".bubble") || hostMsg) : hostMsg;
+    var f=document.createElement("div"); f.className="ans-foot";
+    f.innerHTML =
+      '<button class="mini-btn good" data-act="solved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'+T("foot.solved","That helped")+'</button>'+
+      '<button class="mini-btn" data-act="ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v6a2 2 0 0 0 0 4v6H4v-6a2 2 0 0 0 0-4z"/></svg>'+T("foot.ticket","Still need help")+'</button>';
+    bubble.appendChild(f);
+    f.querySelector('[data-act="solved"]').onclick=function(){ f.remove(); botBubble(T("solved.msg","Shabaash! 🎉 Happy to help. Ask me anything else whenever you need.")); };
+    f.querySelector('[data-act="ticket"]').onclick=function(){ openTicket(); };
+    scrollDown();
+  }
+
+  function relatedChips(ids){
+    if(!ids || !ids.length) return;
+    var row=document.createElement("div"); row.className="chip-row";
+    ids.slice(0,3).forEach(function(id){
+      var a=KB_BY_ID[id]; if(!a) return;
+      var c=document.createElement("button"); c.className="chip"; c.type="button";
+      c.innerHTML='<span class="em">'+a.em+'</span>'+esc_(a.title);
+      c.onclick=function(){ handle(a.title, a); };
+      row.appendChild(c);
+    });
+    if(row.children.length){ chat.appendChild(row); scrollDown(); }
+  }
+
+  function kingCard(afterText){
+    var d=document.createElement("div"); d.className="king";
+    d.innerHTML =
+      '<div class="king-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4 4 5-7 5 7 4-4v10H3z"/></svg>'+T("king.tag","Need it faster?")+'</div>'+
+      '<h3>'+T("king.h","Priority support with KING")+'</h3>'+
+      '<p>'+T("king.p","Standard tickets are solved within 1 working day. KING members ("+CFG.KING_PRICE+") jump the queue for the fastest response — plus multi-outlet, predictive reorder and the advanced AI Munim.")+'</p>'+
+      '<a class="king-cta" href="'+CFG.APP_URL+'?utm_source=support&utm_medium=urgent&utm_campaign=king_priority" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4 4 5-7 5 7 4-4v10H3z"/></svg>'+T("king.cta","Upgrade to KING")+'</a>'+
+      '<button class="later" data-act="ticket-anyway">'+T("king.later","No thanks — just open a normal ticket")+'</button>';
+    chat.appendChild(d);
+    d.querySelector('[data-act="ticket-anyway"]').onclick=function(){ openTicket(); };
+    scrollDown();
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     OPTIONAL AI BACKEND (supportChat CF). Degrades to KB silently.
+     Expected response JSON: { answer: "<html/text>", escalate: false }
+  ════════════════════════════════════════════════════════════════ */
+  function askAIBackend(text, history){
+    if(!CFG.USE_AI) return Promise.resolve(null);
+    return fetch(AI_URL, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ message:text, history:history, lang:LANG })
+    }).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ return (j && (j.answer!=null)) ? j : null; })
+      .catch(function(){ return null; });
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     MAIN HANDLER
+  ════════════════════════════════════════════════════════════════ */
+  var convo = [];          // running transcript for ticket + AI history
+  var lastUnanswered = ""; // last query the KB couldn't confidently answer
+
+  function handle(text, forcedArticle){
+    text = String(text||"").trim(); if(!text) return;
+    addUser(text);
+    convo.push({ role:"user", text:text });
+    var intro=$("intro"); if(intro && !intro.dataset.gone){ intro.style.display="none"; intro.dataset.gone="1"; }
+
+    var t = typing();
+    var urgent = isUrgent(text);
+
+    var finish = function(runner){ setTimeout(function(){ t.remove(); runner(); }, 480 + Math.random()*260); };
+
+    /* forced article (from a chip click) — answer directly */
+    if(forcedArticle){
+      finish(function(){
+        var b=botBubble(articleHTML(forcedArticle));
+        answerFoot(b); relatedChips(forcedArticle.see);
+        convo.push({ role:"bot", text:forcedArticle.title });
+      });
+      return;
+    }
+
+    /* explicit "talk to human" → escalate straight away */
+    if(wantsHuman(text) && !isUrgent(text)){
+      finish(function(){
+        botBubble("<p>"+T("human.msg","Of course — I'll connect you to the HisaabNow team. Let me grab a few quick details and open a ticket. They'll get back to you within <b>1 working day</b>.")+"</p>");
+        setTimeout(openTicket, 300);
+      });
+      return;
+    }
+
+    /* try the local KB */
+    var res = search(text);
+    var HIGH = 0.42, MED = 0.24;
+
+    /* If the AI backend is on, race it with the KB for a richer answer. */
+    var history = convo.slice(-6).map(function(m){ return {role:m.role==="user"?"user":"assistant", content:m.text}; });
+
+    askAIBackend(text, history).then(function(ai){
+      finish(function(){
+        /* 1) A confident local KB answer wins for speed + reliability… */
+        if(res.best && res.conf >= HIGH){
+          var b=botBubble(articleHTML(res.best));
+          convo.push({ role:"bot", text:res.best.title });
+          if(urgent){ answerFoot(b); kingCard(); }
+          else { answerFoot(b); relatedChips(res.best.see); }
+          return;
+        }
+        /* 2) …otherwise use the AI answer if the backend gave one. */
+        if(ai && ai.escalate!==true && ai.answer){
+          var html = /<[a-z][\s\S]*>/i.test(ai.answer) ? ai.answer : "<p>"+esc_(ai.answer)+"</p>";
+          var ab=botBubble(html);
+          convo.push({ role:"bot", text:"(AI) "+text });
+          if(urgent){ answerFoot(ab); kingCard(); } else { answerFoot(ab); }
+          return;
+        }
+        /* 3) A medium local match — give best guess + alternatives. */
+        if(res.best && res.conf >= MED){
+          var mb=botBubble("<p>"+T("guess.pre","Here's what I think you're after:")+"</p>"+articleHTML(res.best));
+          convo.push({ role:"bot", text:res.best.title });
+          answerFoot(mb);
+          var alts = res.ranked.slice(1,4).map(function(r){return r.a.id;});
+          if(alts.length){ botBubble("<p>"+T("guess.alt","Not quite? You might mean one of these:")+"</p>"); relatedChips(alts); }
+          if(urgent) kingCard();
+          return;
+        }
+        /* 4) Didn't understand → clarify once, then escalate. */
+        lastUnanswered = text;
+        if(urgent){
+          botBubble("<p>"+T("nomatch.urgent","I couldn't find a ready answer for that, and it sounds urgent. Let me get you to the team right away — or jump the queue with KING priority support.")+"</p>");
+          kingCard();
+          setTimeout(function(){ /* also offer normal ticket via king card button */ }, 0);
+        } else {
+          var nb=botBubble("<p>"+T("nomatch.msg","I'm not fully sure I understood that one. You can rephrase it, tap a topic below, or I can open a ticket to the team — they'll reply within <b>1 working day</b>.")+"</p>");
+          var f=document.createElement("div"); f.className="ans-foot";
+          f.innerHTML='<button class="mini-btn" data-act="ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v6a2 2 0 0 0 0 4v6H4v-6a2 2 0 0 0 0-4z"/></svg>'+T("nomatch.ticket","Open a ticket")+'</button>';
+          nb.querySelector(".bubble").appendChild(f);
+          f.querySelector('[data-act="ticket"]').onclick=openTicket;
+          suggestStarters();
+        }
+        convo.push({ role:"bot", text:"(no confident match)" });
+      });
+    });
+  }
+
+  /* Starter chips shown at boot + on a miss */
+  var STARTERS = ["quick-bill","track-stock","purchase","udhaar","enable-gst","plans"];
+  function suggestStarters(){
+    var row=document.createElement("div"); row.className="chip-row center";
+    STARTERS.forEach(function(id){
+      var a=KB_BY_ID[id]; if(!a) return;
+      var c=document.createElement("button"); c.className="chip"; c.type="button";
+      c.innerHTML='<span class="em">'+a.em+'</span>'+esc_(a.title);
+      c.onclick=function(){ handle(a.title, a); };
+      row.appendChild(c);
+    });
+    chat.appendChild(row); scrollDown();
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     TICKET FLOW
+  ════════════════════════════════════════════════════════════════ */
+  function pad(n){ return n<10?"0"+n:""+n; }
+  function ticketId(){
+    var d=new Date();
+    var rnd = Math.floor(1000+Math.random()*9000);
+    return "HN-"+String(d.getFullYear()).slice(2)+pad(d.getMonth()+1)+pad(d.getDate())+"-"+rnd;
+  }
+  /* Resolve-by = now + N working days (skips Sundays; note: public holidays not modelled). */
+  function resolveBy(days){
+    var d=new Date(); var added=0;
+    while(added<days){ d.setDate(d.getDate()+1); if(d.getDay()!==0) added++; }
+    d.setHours(19,0,0,0); // end of a working day, 7 PM
+    return d;
+  }
+  function fmtDate(d){
+    return d.toLocaleDateString(LANG==="hi"?"hi-IN":"en-IN",{weekday:"short",day:"numeric",month:"short"})
+         + ", " + d.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",hour12:true});
+  }
+
+  function openTicket(prefillCat){
+    // prefill message from the conversation
+    var lastUser = ""; for(var i=convo.length-1;i>=0;i--){ if(convo[i].role==="user"){ lastUser=convo[i].text; break; } }
+    if($("tMsg") && !$("tMsg").value) $("tMsg").value = lastUnanswered || lastUser || "";
+    if(prefillCat && $("tCat")) $("tCat").value = prefillCat;
+    // fill dynamic SLA note
+    var by = resolveBy(CFG.SLA_WORKING_DAYS);
+    $("escBody").querySelector(".sla-note div").innerHTML =
+      T("esc.slaNote","We resolve every ticket within <b>1 working day</b> of the time you submit it. Based on right now, you'll hear back by <b>"+fmtDate(by)+"</b>.");
+    mask.classList.add("open"); esc.classList.add("open");
+    document.body.style.overflow="hidden";
+    setTimeout(function(){ var s=$("tShop"); if(s && !s.value) s.focus(); }, 260);
+  }
+  function closeTicket(){
+    mask.classList.remove("open"); esc.classList.remove("open");
+    document.body.style.overflow="";
+  }
+
+  function transcript(){
+    return convo.map(function(m){ return (m.role==="user"?"👤 ":"🤖 ")+m.text; }).join("\n");
+  }
+
+  function submitTicket(){
+    var shop=$("tShop").value.trim(), phone=$("tPhone").value.trim(),
+        cat=$("tCat").value, msg=$("tMsg").value.trim();
+    if(!msg){ $("tMsg").focus(); $("tMsg").style.borderColor="var(--danger)"; return; }
+    var tid = ticketId();
+    var by  = resolveBy(CFG.SLA_WORKING_DAYS);
+    var payload = {
+      ticketId: tid, shop: shop, phone: phone, category: cat, message: msg,
+      transcript: transcript(), createdAt: new Date().toISOString(),
+      resolveBy: by.toISOString(), source:"web-support", url: location.href,
+      ua: navigator.userAgent, lang: LANG
+    };
+
+    var btn=$("tSubmit"); btn.disabled=true;
+    btn.querySelector("span").textContent = T("esc.sending","Submitting…");
+
+    // 1) try the Cloud Function (writes to Firestore for the admin panel)
+    var post = fetch(TICKET_URL, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+
+    post.then(function(ok){
+      // 2) always give the shopkeeper a guaranteed WhatsApp hand-off too
+      showTicketDone(tid, by, payload);
+    });
+  }
+
+  function waLink(tid, payload){
+    var lines = [
+      "*HisaabNow Support Ticket*",
+      "ID: "+tid,
+      payload.shop ? "Shop: "+payload.shop : "",
+      "Topic: "+payload.category,
+      "",
+      payload.message
+    ].filter(Boolean).join("\n");
+    return "https://wa.me/"+CFG.ADMIN_WA+"?text="+encodeURIComponent(lines);
+  }
+
+  function showTicketDone(tid, by, payload){
+    $("escBody").innerHTML =
+      '<div class="done">'+
+        '<div class="done-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>'+
+        '<h2>'+T("done.h","Ticket opened")+'</h2>'+
+        '<div class="tid">'+tid+'</div>'+
+        '<p>'+T("done.p1","Our team will get back to you by")+' <b>'+fmtDate(by)+'</b> '+T("done.p2","— within 1 working day.")+'</p>'+
+        (payload.phone? '<p>'+T("done.p3","We'll reply on WhatsApp at")+' <b>'+esc_(payload.phone)+'</b>.</p>' : '')+
+      '</div>';
+    var foot=esc.querySelector(".esc-foot");
+    foot.innerHTML =
+      '<a class="submit" style="text-decoration:none;background:#16A34A" href="'+waLink(tid,payload)+'" target="_blank" rel="noopener">'+
+        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>'+
+        T("done.wa","Send a copy to the team on WhatsApp")+
+      '</a>'+
+      '<div class="esc-alt">'+T("done.close","You can close this and keep chatting with Munim.")+' <a href="#" id="doneClose">'+T("done.closeLink","Close")+'</a></div>';
+    $("doneClose").onclick=function(e){ e.preventDefault(); closeTicket(); botBubble("<p>"+T("done.chat","Your ticket <b>"+tid+"</b> is in. We'll be in touch by "+fmtDate(by)+". Anything else I can help with meanwhile?")+"</p>"); };
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     i18n (light — EN default, HI overrides for the shell)
+  ════════════════════════════════════════════════════════════════ */
+  var LANG = "en";
+  var HI = {
+    "hdr.sub":"सपोर्ट · मुनीम से पूछें","hdr.app":"ऐप खोलें",
+    "intro.eyebrow":"आपका डिजिटल मुनीम, हाज़िर है",
+    "intro.h1":"नमस्ते! मैं हूँ <em>मुनीम</em>। आज आपकी दुकान की क्या मदद करूँ?",
+    "intro.p":"बिलिंग, स्टॉक, ख़रीद, उधार, GST या प्लान — कुछ भी पूछें। मुझे HisaabNow ऐप पूरी तरह पता है, और मैं सेकंडों में जवाब देता हूँ।",
+    "intro.sla1":"तुरंत जवाब","intro.sla2":"टिकट 1 कार्य-दिवस में हल",
+    "composer.hint":"अंग्रेज़ी या हिंग्लिश में लिखें — “stock kaise add karein”, “bill edit”, “GST”…",
+    "composer.ph":"बिलिंग, स्टॉक, ख़रीद, उधार के बारे में पूछें…",
+    "foot.solved":"मदद हुई","foot.ticket":"अभी भी मदद चाहिए",
+    "solved.msg":"शाबाश! 🎉 और कुछ पूछना हो तो बताइए।",
+    "guess.pre":"शायद आप ये पूछ रहे हैं:","guess.alt":"ये नहीं? हो सकता है आपका मतलब हो:",
+    "nomatch.msg":"मुझे यह पूरी तरह समझ नहीं आया। आप दोबारा लिख सकते हैं, नीचे कोई विषय चुनें, या मैं टीम को टिकट भेज दूँ — जवाब <b>1 कार्य-दिवस</b> में।",
+    "nomatch.ticket":"टिकट खोलें",
+    "nomatch.urgent":"इसका तैयार जवाब नहीं मिला, और यह ज़रूरी लग रहा है। मैं आपको तुरंत टीम से जोड़ता हूँ — या KING प्रायोरिटी सपोर्ट से लाइन में आगे बढ़ें।",
+    "human.msg":"ज़रूर — मैं आपको HisaabNow टीम से जोड़ता हूँ। कुछ जानकारी लेकर टिकट खोलता हूँ। जवाब <b>1 कार्य-दिवस</b> में मिलेगा।",
+    "king.tag":"जल्दी चाहिए?","king.h":"KING के साथ प्रायोरिटी सपोर्ट",
+    "king.p":"आम टिकट 1 कार्य-दिवस में हल होते हैं। KING सदस्य ("+CFG.KING_PRICE+") लाइन में आगे — सबसे तेज़ जवाब, साथ में मल्टी-आउटलेट, प्रेडिक्टिव रीऑर्डर और एडवांस्ड AI मुनीम।",
+    "king.cta":"KING में अपग्रेड करें","king.later":"नहीं, बस सामान्य टिकट खोलें",
+    "esc.title":"सपोर्ट टिकट खोलें","esc.sub":"HisaabNow टीम का व्यक्ति आपकी समस्या हल करेगा।",
+    "esc.shop":"दुकान का नाम","esc.phone":"WhatsApp नंबर","esc.phoneOpt":"(यहीं जवाब देंगे)",
+    "esc.cat":"किस बारे में है?","esc.msg":"समस्या बताइए",
+    "esc.o.bill":"बिलिंग / रसीद","esc.o.stock":"स्टॉक और ख़रीद","esc.o.udhaar":"उधार / खाता","esc.o.plan":"पेमेंट और प्लान","esc.o.gst":"GST","esc.o.bug":"ऐप नहीं चल रहा","esc.o.other":"कुछ और",
+    "esc.submit":"टिकट भेजें","esc.sending":"भेज रहे हैं…",
+    "done.h":"टिकट खुल गया","done.p1":"हमारी टीम आपसे संपर्क करेगी","done.p2":"— 1 कार्य-दिवस के भीतर।","done.p3":"हम WhatsApp पर जवाब देंगे",
+    "done.wa":"टीम को WhatsApp पर कॉपी भेजें","done.close":"बंद करके मुनीम से बात जारी रखें।","done.closeLink":"बंद करें",
+    "done.chat":"आपका टिकट दर्ज हो गया। और किसी चीज़ में मदद करूँ?"
+  };
+  function T(key, en){
+    if(LANG==="hi" && HI[key]!=null) return HI[key];
+    return en!=null ? en : key;
+  }
+  function applyI18n(){
+    document.documentElement.setAttribute("data-lang", LANG);
+    document.querySelectorAll("[data-i18n]").forEach(function(el){
+      var k=el.getAttribute("data-i18n"); var v=T(k, el.innerHTML);
+      if(LANG==="hi" && HI[k]!=null) el.innerHTML=HI[k];
+    });
+    var ph=$("q"); if(ph) ph.placeholder = T("composer.ph", ph.getAttribute("placeholder"));
+    $("langBtn").textContent = LANG==="hi" ? "EN" : "हिं";
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     WIRING
+  ════════════════════════════════════════════════════════════════ */
+  function submit(){
+    var v=q.value.trim(); if(!v) return;
+    q.value=""; autosize(); sendBtn.disabled=true;
+    handle(v);
+  }
+  function autosize(){ q.style.height="auto"; q.style.height=Math.min(q.scrollHeight,120)+"px"; }
+
+  q.addEventListener("input", function(){ autosize(); sendBtn.disabled = !q.value.trim(); });
+  q.addEventListener("keydown", function(e){ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(); } });
+  sendBtn.addEventListener("click", submit);
+
+  $("langBtn").addEventListener("click", function(){ LANG = LANG==="hi"?"en":"hi"; applyI18n(); });
+
+  $("escClose").addEventListener("click", closeTicket);
+  mask.addEventListener("click", closeTicket);
+  $("tSubmit").addEventListener("click", submitTicket);
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape" && esc.classList.contains("open")) closeTicket(); });
+  $("tMsg").addEventListener("input", function(){ this.style.borderColor=""; });
+
+  /* boot: show starter chips under the intro */
+  applyI18n();
+  suggestStarters();
+  q.focus();
+
+  /* expose for debugging / deep links */
+  window.HNSupport = { ask:handle, openTicket:openTicket, kb:KB };
+})();
+</script>
+</body>
+</html>
