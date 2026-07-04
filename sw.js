@@ -11,7 +11,7 @@
  * DEPLOY RULE: bump SW_VERSION every deploy (set it to window.HISAABNOW_BUILD).
  */
 
-const SW_VERSION  = 'v33_302_cash_period_scoped';
+const SW_VERSION  = 'v33_303_fix_stuck_bills';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000; /* ms before falling back to cached HTML */
 
