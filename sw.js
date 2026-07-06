@@ -11,7 +11,7 @@
  * DEPLOY RULE: bump SW_VERSION every deploy (set it to window.HISAABNOW_BUILD).
  */
 
-const SW_VERSION  = 'v33_349_kitchen_flow';
+const SW_VERSION  = 'v33_352_board_parcel';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000; /* ms before falling back to cached HTML */
 
