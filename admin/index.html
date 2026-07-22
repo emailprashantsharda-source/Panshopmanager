@@ -1457,7 +1457,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
-  import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, signOut, onAuthStateChanged, PhoneAuthProvider, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
   // ═══ FIREBASE CONFIG ═════════════════════════════════════════════════════
@@ -1600,6 +1600,16 @@
     }
   }
 
+  // Kill any existing reCAPTCHA widget so each Send OTP gets a fresh token.
+  // A reCAPTCHA token is single-use; reusing the verifier is the #1 cause of
+  // silent verification failures on the 2nd+ attempt.
+  function _resetRecaptcha() {
+    try { if (recaptchaVerifier) recaptchaVerifier.clear(); } catch (e) { console.warn('recaptcha clear', e); }
+    recaptchaVerifier = null;
+    const box = document.getElementById('recaptcha-container');
+    if (box) box.innerHTML = '';
+  }
+
   window.sendOTP = async function() {
     const phoneRaw = document.getElementById('phone').value.trim();
     if (!phoneRaw) { toast('Phone number required', 'error'); return; }
@@ -1608,34 +1618,82 @@
     document.getElementById('send-otp-btn').disabled = true;
     document.getElementById('send-otp-btn').textContent = 'Sending...';
     try {
-      if (!recaptchaVerifier) {
-        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal', callback: () => {} });
-        await recaptchaVerifier.render();
-      }
+      _resetRecaptcha();
+      recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal', callback: () => {} });
+      await recaptchaVerifier.render();
       confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+      // Survive a page reload / tab discard while the user switches to SMS app.
+      try {
+        sessionStorage.setItem('hn_admin_vid', confirmationResult.verificationId || '');
+        sessionStorage.setItem('hn_admin_vid_at', String(Date.now()));
+      } catch (e) {}
+      const otpBox = document.getElementById('otp');
+      if (otpBox) { otpBox.value = ''; setTimeout(() => otpBox.focus(), 100); }
       toast('OTP sent', 'success');
       document.getElementById('phone-screen').classList.add('hidden');
       document.getElementById('otp-screen').classList.add('active');
     } catch (err) {
-      console.error(err);
-      toast('Failed: ' + err.message, 'error');
+      console.error('[sendOTP]', err.code, err.message, err);
+      _resetRecaptcha();
+      toast('Send failed: ' + (err.code || err.message), 'error');
       document.getElementById('send-otp-btn').disabled = false;
       document.getElementById('send-otp-btn').textContent = 'Send OTP';
     }
   };
 
+  const _AUTH_ERR = {
+    'auth/invalid-verification-code': 'Wrong OTP — re-check the 6 digits',
+    'auth/missing-verification-code': 'Enter the OTP',
+    'auth/code-expired': 'OTP expired — tap Send OTP again',
+    'auth/session-expired': 'OTP expired — tap Send OTP again',
+    'auth/invalid-verification-id': 'Login session lost — tap Send OTP again',
+    'auth/too-many-requests': 'Too many attempts — wait ~15 min or use a test number',
+    'auth/invalid-app-credential': 'reCAPTCHA/App Check rejected — reload the page',
+    'auth/network-request-failed': 'Network error — check your connection',
+    'auth/user-disabled': 'This number is disabled in Firebase Auth',
+    'auth/operation-not-allowed': 'Phone sign-in is disabled in Firebase Console',
+    'auth/quota-exceeded': 'Daily SMS quota exceeded on this project'
+  };
+
   window.verifyOTP = async function() {
-    const otp = document.getElementById('otp').value.trim();
+    // Strip spaces/dashes and any non-digits pasted in from the SMS
+    const otpBox = document.getElementById('otp');
+    const otp = (otpBox.value || '').replace(/\D/g, '');
     if (otp.length !== 6) { toast('Enter 6-digit OTP', 'error'); return; }
+
     try {
-      await confirmationResult.confirm(otp);
+      if (confirmationResult) {
+        await confirmationResult.confirm(otp);
+      } else {
+        // Page reloaded between Send and Verify — rebuild the credential
+        // from the stored verificationId instead of failing as "Wrong OTP".
+        const vid = sessionStorage.getItem('hn_admin_vid');
+        const at = Number(sessionStorage.getItem('hn_admin_vid_at') || 0);
+        if (!vid || !at || (Date.now() - at) > 10 * 60 * 1000) {
+          toast('Login session expired — tap Send OTP again', 'error');
+          window.resetLogin();
+          return;
+        }
+        await signInWithCredential(auth, PhoneAuthProvider.credential(vid, otp));
+      }
+      try { sessionStorage.removeItem('hn_admin_vid'); sessionStorage.removeItem('hn_admin_vid_at'); } catch (e) {}
       toast('Logged in', 'success');
     } catch (err) {
-      toast('Wrong OTP', 'error');
+      console.error('[verifyOTP]', err.code, err.message, err);
+      toast(_AUTH_ERR[err.code] || ('Login failed: ' + (err.code || err.message)), 'error');
+      if (err.code === 'auth/code-expired' || err.code === 'auth/session-expired' || err.code === 'auth/invalid-verification-id') {
+        confirmationResult = null;
+        try { sessionStorage.removeItem('hn_admin_vid'); } catch (e) {}
+        window.resetLogin();
+      }
     }
   };
 
   window.resetLogin = function() {
+    confirmationResult = null;
+    _resetRecaptcha();
+    const otpBox = document.getElementById('otp');
+    if (otpBox) otpBox.value = '';
     document.getElementById('phone-screen').classList.remove('hidden');
     document.getElementById('otp-screen').classList.remove('active');
     document.getElementById('send-otp-btn').disabled = false;
