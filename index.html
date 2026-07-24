@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_118_inv_clean';
+    window.HISAABNOW_BUILD = 'v34_120_purchase_register';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -52346,7 +52346,7 @@ html[data-shell="desktop"] .hnd-tb {
              feature shipped and could not find it. Stock-in is a daily job for
              a grocery; it earns its own row. -->
         <button class="hnd-nav-item" type="button" data-hnd-nav="purchases"
-          onclick="try{ if(window.App&&App.nav) App.nav('inventory'); setTimeout(function(){ try{ if(window.Purchase&&Purchase.open) Purchase.open(); }catch(e){} },220); }catch(e){}">
+          onclick="try{ if(window.PurchaseReg&&PurchaseReg.open) PurchaseReg.open(); }catch(e){}">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           <span class="lbl">Purchases</span>
         </button>
@@ -52777,7 +52777,27 @@ html[data-shell="desktop"] .hnd-pos-grid, html[data-shell="desktop"] .hnd-pos-it
 .hnd-pos-empty-cta { display: inline-block; padding: 8px 16px; background: var(--hnd-ink); color: #fff; border: 0; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
 
 /* RIGHT: cart panel */
-.hnd-pos-r { background: var(--hnd-card); border: 1px solid var(--hnd-line); border-radius: 12px; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; min-height: 0; min-width: 0; position: relative; }
+/* (v34_118) The bill column had overflow-y:auto AND contained .hnd-pos-items
+   which also scrolls — two nested scrollers competing for the same gesture.
+   The outer one never had a usable height, so the moment the discount row
+   appeared the payment buttons were pushed out of sight with no way to reach
+   them: a customer standing at the counter and no way to take their money.
+
+   Every POS resolves this the same way and so does this one now: the CART
+   LIST is the only thing that scrolls, and totals, discount, note and the
+   payment row are pinned to the bottom where the hand expects them. */
+.hnd-pos-r { background: var(--hnd-card); border: 1px solid var(--hnd-line); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; position: relative; }
+.hnd-pos-r > .hnd-pos-cust,
+.hnd-pos-r > .hnd-pos-bill-meta,
+.hnd-pos-r > .hnd-pos-totals,
+.hnd-pos-r > .hnd-pos-extras,
+.hnd-pos-r > .hnd-pos-grand,
+.hnd-pos-r > .hnd-pos-pay,
+.hnd-pos-r > .hnd-pos-complete,
+.hnd-pos-r > .hnd-pos-actions { flex-shrink: 0; }
+/* The list absorbs whatever space is left, and can go to nothing without
+   taking the payment row down with it. */
+.hnd-pos-r > .hnd-pos-items { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* === STEP HHH: Sticky bottom action bar (Total + Payment + Complete) ===
    When content overflows, keep these always visible at the bottom of the cart panel.
@@ -92836,7 +92856,34 @@ var KB=[
       var supplier = (state.supplier||'').trim();
       var phone = (state.phone||'').trim();
       var paidNow = state.pay !== 'later';
-      var expId = null;
+      var expId = null, supId = null, khataId = null;
+
+      /* 0) Supplier master — create or match BEFORE anything references it.
+         A purchase used to store the supplier as free text and never touch
+         the sups collection at all, so Purchases and the Suppliers section
+         were two unconnected worlds: a supplier's page showed no purchase
+         history, and "Ramesh Wholesale" / "ramesh wholesale" / "Ramesh W/S"
+         counted as three different people. Grouping payables by a typed
+         string is not something to build a "who you owe" screen on.
+
+         Same normalised lookup the udhaar flow already uses, so a supplier
+         created there and one created here are the same record. */
+      if (supplier) {
+        try {
+          var _sn = function(x){ return String(x == null ? '' : x).trim().toLowerCase(); };
+          var _ex = (Store.list('sups') || []).find(function(x){
+            return x && !x._deleted && _sn(x.name) === _sn(supplier); });
+          if (_ex) {
+            supId = _ex.id;
+            /* fill a blank phone rather than overwrite a known one */
+            if (phone && !_ex.phone) { try { Store.update('sups', _ex.id, { phone: phone }); } catch(e){} }
+            if (!phone && _ex.phone) phone = _ex.phone;
+          } else {
+            var _ns = Store.add('sups', { name: supplier, phone: phone || '', createdAt: Date.now() });
+            supId = _ns && _ns.id;
+          }
+        } catch(e){ console.warn('[purchase] supplier link failed', e); }
+      }
 
       // 1) Expense (purchase cost)
       try {
@@ -92848,34 +92895,29 @@ var KB=[
           clr: '#EA580C',
           date: state.date || todayStr(),
           paid: paidNow,
+          /* Cashflow excludes obligations by checking mode === 'unpaid'; it
+             does not look at `paid`. Writing only the boolean meant a
+             pay-later purchase was counted as cash leaving the drawer that
+             never left — a ₹12,500 credit purchase made the day look ₹12,500
+             worse than it was. Recurring expenses already use this field. */
+          mode: paidNow ? 'cash' : 'unpaid',
+          supplierId: supId || null,
           source: 'purchase_entry'
         });
         expId = exp && exp.id;
       } catch(e){ console.warn('[purchase] expense log failed', e); }
 
-      // 2) Purchase record
-      try {
-        Store.add('purchases', {
-          date: state.date || todayStr(),
-          supplier: supplier,
-          phone: phone,
-          payMode: state.pay,
-          total: total,
-          invoiceNo: state.inv || '',
-          inputGst: Number(state.gst) || 0,
-          lines: recLines,
-          expenseId: expId
-        });
-      } catch(e){ console.warn('[purchase] record failed', e); }
-
-      // 3) Supplier due (khata dena) if pay later
+      // 2) Supplier due (khata dena) if pay later — BEFORE the purchase record,
+      //    so the purchase can carry the id and the register never has to join
+      //    through the expense to know whether a bill is settled.
       if (!paidNow && total > 0) {
         try {
-          Store.add('khata', {
+          var _k = Store.add('khata', {
             t: Date.now(),
             type: 'dena',
             partyName: supplier || 'Supplier',
             partyPhone: phone || '',
+            partyId: supId || null,
             amount: total,
             paidAmount: 0,
             mode: 'goods',
@@ -92884,8 +92926,26 @@ var KB=[
             status: 'open',
             createdAt: Date.now()
           });
+          khataId = _k && _k.id;
         } catch(e){ console.warn('[purchase] supplier due failed', e); }
       }
+
+      // 3) Purchase record — now able to point at all three
+      try {
+        Store.add('purchases', {
+          date: state.date || todayStr(),
+          supplier: supplier,
+          supplierId: supId || null,
+          phone: phone,
+          payMode: state.pay,
+          total: total,
+          invoiceNo: state.inv || '',
+          inputGst: Number(state.gst) || 0,
+          lines: recLines,
+          expenseId: expId,
+          khataId: khataId
+        });
+      } catch(e){ console.warn('[purchase] record failed', e); }
 
       this.close();
       try {
@@ -92899,6 +92959,85 @@ var KB=[
       try { if (window.Munim && Munim.refresh) Munim.refresh(); } catch(e){}
     }
   };
+
+  /* ── one-time repair for purchases recorded before the links existed ──
+     Purely additive: it creates the supplier masters that were never made,
+     points old purchases at them, and corrects expenses that were logged as
+     cash-out while still unpaid. It never changes an amount, never deletes,
+     and never touches a record that already has what it needs — so a second
+     run is a no-op rather than a second set of suppliers.
+
+     Deliberately NOT wired to any button: it runs once, quietly, and reports
+     to the console. A shopkeeper should not have to be told his data needs
+     repairing before he can trust a screen. */
+  function backfillPurchaseLinks(){
+    try {
+      if (localStorage.getItem('hn_purch_backfill_v1') === '1') return;
+    } catch(e){}
+    var made = { sups:0, linked:0, exps:0, khata:0 };
+    try {
+      var norm = function(x){ return String(x == null ? '' : x).trim().toLowerCase(); };
+      var purchases = (Store.list('purchases') || []).filter(function(p){ return p && !p._deleted; });
+      if (!purchases.length) { try { localStorage.setItem('hn_purch_backfill_v1','1'); } catch(e){} return; }
+
+      var sups = (Store.list('sups') || []).filter(function(x){ return x && !x._deleted; });
+      var byName = {};
+      sups.forEach(function(x){ if (x.name) byName[norm(x.name)] = x; });
+
+      var exps  = (Store.list('exps')  || []);
+      var khata = (Store.list('khata') || []);
+
+      purchases.forEach(function(p){
+        var name = (p.supplier || '').trim();
+
+        /* a) supplier master + link */
+        if (name && !p.supplierId) {
+          var m = byName[norm(name)];
+          if (!m) {
+            try {
+              m = Store.add('sups', { name: name, phone: p.phone || '', createdAt: Date.now() });
+              if (m) { byName[norm(name)] = m; made.sups++; }
+            } catch(e){}
+          }
+          if (m && m.id) {
+            try { Store.update('purchases', p.id, { supplierId: m.id }); made.linked++; } catch(e){}
+          }
+        }
+
+        /* b) the khata this bill created, found the only way it was ever
+              recorded — through the expense */
+        if (!p.khataId && p.expenseId) {
+          var k = khata.find(function(x){
+            return x && !x._deleted && x.linkedExpenseId === p.expenseId && x.type === 'dena'; });
+          if (k && k.id) {
+            try { Store.update('purchases', p.id, { khataId: k.id }); made.khata++; } catch(e){}
+          }
+        }
+
+        /* c) an unpaid purchase whose expense is still counted as cash out */
+        if (p.payMode === 'later' && p.expenseId) {
+          var e2 = exps.find(function(x){ return x && !x._deleted && x.id === p.expenseId; });
+          if (e2 && (e2.mode || '').toLowerCase() !== 'unpaid') {
+            /* only if it is genuinely still outstanding — a bill settled since
+               then is correctly cash-out and must be left alone */
+            var kk = khata.find(function(x){
+              return x && !x._deleted && x.linkedExpenseId === p.expenseId && x.type === 'dena'; });
+            var stillOwed = kk ? (kk.status !== 'paid' &&
+              (Number(kk.amount)||0) - (Number(kk.paidAmount)||0) > 0) : false;
+            if (stillOwed) {
+              try { Store.update('exps', e2.id, { mode: 'unpaid' }); made.exps++; } catch(e){}
+            }
+          }
+        }
+      });
+
+      try { localStorage.setItem('hn_purch_backfill_v1','1'); } catch(e){}
+      if (made.sups || made.linked || made.exps || made.khata)
+        console.info('[purchase] backfill', made);
+    } catch(e){ console.warn('[purchase] backfill failed', e); }
+  }
+  /* after Store has loaded */
+  try { setTimeout(backfillPurchaseLinks, 3000); } catch(e){}
 
   window.Purchase = Purchase;
   try { if (window.App) window.App.openPurchaseSheet = function(){ Purchase.open(); }; } catch(e){}
@@ -92914,242 +93053,438 @@ var KB=[
 })();
 </script>
 
-<!-- ═══ PURCHASE REGISTER ═══ -->
+<!-- ════════════════════════════════════════════════════════════════════
+     PURCHASE REGISTER  (v34_120)
+     The bills, not the entry form.
+
+     "Purchases" used to open the Stock In sheet — the wrong door. A section
+     called Purchases should show the purchases already made, with entry as
+     one action inside it.
+
+     A purchase is three things at once and the old list showed only one. It
+     is an EXPENSE (logged), it is INPUT GST he can claim, and if it was on
+     credit it is a LIABILITY. That last one is the number a shopkeeper needs
+     before he pays anyone, and it used to live only as a khata entry filed
+     under Udhaar where nobody looks for supplier dues. So this screen leads
+     with what he owes, ages it 0-30/31-60/60+ the way any payables ledger
+     does, and keeps input GST separate because it is a credit, not a cost.
+
+     Reads: purchases (+ supplierId, khataId, expenseId written by v34_119),
+     khata (type 'dena') for settlement state, sups for grouping by identity
+     rather than by spelling.
+     ════════════════════════════════════════════════════════════════════ -->
 <style>
-  #preg-overlay{position:fixed;inset:0;z-index:4000;background:rgba(17,17,17,.4);display:none;align-items:flex-end;justify-content:center}
-  #preg-overlay.open{display:flex}
-  .preg-sheet{background:var(--bg,#F9FAFB);width:100%;max-width:520px;max-height:94vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden;animation:piUp .22s ease}
-  .preg-hdr{display:flex;align-items:center;gap:10px;padding:16px 16px 12px;border-bottom:1px solid var(--bd,#ececec);background:#fff}
-  .preg-hdr h3{flex:1;margin:0;font-size:17px;font-weight:800;color:var(--t1,#111);letter-spacing:-.01em}
-  .preg-x{width:34px;height:34px;border:none;background:#f1f1f1;border-radius:10px;font-size:18px;cursor:pointer;color:#555;display:flex;align-items:center;justify-content:center}
-  .preg-filter{display:flex;gap:8px;padding:10px 16px 0;background:#fff}
-  .preg-in{border:1px solid var(--bd,#e6e6e6);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13.5px;background:#fff;color:var(--t1,#111)}
-  .preg-chip{border:1.5px solid var(--bd,#e6e6e6);background:#fff;color:var(--t1,#111);border-radius:99px;padding:8px 14px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
-  .preg-chip.on{background:var(--p,#FF6B35);border-color:var(--p,#FF6B35);color:#fff}
-  .preg-sum{display:flex;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd,#ececec)}
-  .preg-sc{flex:1;background:var(--bg,#F9FAFB);border-radius:11px;padding:9px 10px;text-align:center}
-  .preg-sc .l{display:block;font-size:10.5px;font-weight:700;color:var(--t3,#8a8a8a);text-transform:uppercase;letter-spacing:.04em}
-  .preg-sc .v{display:block;font-size:14.5px;font-weight:800;color:var(--t1,#111);margin-top:2px}
-  .preg-body{flex:1;overflow-y:auto;padding:10px 16px 8px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .preg-row{background:#fff;border:1px solid var(--bd,#ececec);border-radius:13px;padding:11px 13px;margin-bottom:9px;cursor:pointer}
-  .preg-row.open{border-color:var(--p,#FF6B35)}
-  .preg-r1{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .preg-sup{font-size:14px;font-weight:800;color:var(--t1,#111);letter-spacing:-.01em}
-  .preg-tot{font-size:14px;font-weight:800;color:var(--t1,#111)}
-  .preg-r2{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:5px;font-size:11.5px;color:var(--t3,#8a8a8a);font-weight:600}
-  .preg-inv{background:#EEF2FF;color:#3730A3;border-radius:6px;padding:2px 7px;font-weight:700}
-  .preg-gst{background:#ECFDF5;color:#047857;border-radius:6px;padding:2px 7px;font-weight:700}
-  .preg-cnt{margin-left:auto}
-  .preg-lines{margin-top:9px;padding-top:9px;border-top:1px dashed var(--bd,#e6e6e6)}
-  .preg-li{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2,#555);padding:3px 0}
-  .preg-li span:first-child{flex:1;font-weight:600;color:var(--t1,#111)}
-  .preg-li b{color:var(--t1,#111)}
-  .preg-empty{text-align:center;padding:34px 16px;color:var(--t3,#8a8a8a);font-size:13.5px;font-weight:600}
-  .preg-empty span{font-size:12px;font-weight:500}
-  .preg-foot{padding:12px 16px;border-top:1px solid var(--bd,#ececec);background:#fff}
-  .preg-exp{width:100%;background:var(--p,#FF6B35);color:#fff;border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;letter-spacing:-.01em}
+  #preg-ov{position:fixed;inset:0;z-index:4000;background:rgba(17,17,17,.42);
+    display:none;align-items:flex-end;justify-content:center}
+  #preg-ov.open{display:flex}
+  .preg{background:var(--bg,#FBF7F0);width:100%;max-width:560px;max-height:95vh;
+    border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden;
+    animation:pregUp .22s cubic-bezier(.2,.8,.3,1)}
+  @keyframes pregUp{from{transform:translateY(26px);opacity:.6}to{transform:none;opacity:1}}
+  html[data-shell="desktop"] .preg{max-width:720px;max-height:92vh;border-radius:18px;margin:auto}
+  html[data-shell="desktop"] #preg-ov{align-items:center}
+
+  .preg-hd{display:flex;align-items:center;gap:10px;padding:15px 16px 12px;
+    border-bottom:1px solid var(--bd,#E4E0D8);background:#fff;flex-shrink:0}
+  .preg-hd h3{flex:1;margin:0;font-size:19px;font-weight:850;letter-spacing:-.025em;color:var(--t1,#0A0A0A)}
+  .preg-x{width:34px;height:34px;border:0;background:#F1EFEA;border-radius:10px;
+    font-size:18px;cursor:pointer;color:#555;display:flex;align-items:center;justify-content:center}
+  .preg-new{border:0;border-radius:10px;padding:9px 13px;font-size:12.5px;font-weight:800;
+    background:var(--p,#000);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+  .preg-body{flex:1;min-height:0;overflow-y:auto;padding:12px 16px 20px;
+    -webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+  .preg-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:11px;flex-shrink:0}
+  .preg-chips::-webkit-scrollbar{display:none}
+  .preg-chip{flex:0 0 auto;border:1.5px solid var(--bd,#E4E0D8);background:#fff;color:var(--t2,#454545);
+    border-radius:99px;padding:7px 13px;font-size:12px;font-weight:750;cursor:pointer;
+    white-space:nowrap;font-family:inherit;transition:background .15s,color .15s,border-color .15s}
+  .preg-chip.on{background:var(--p,#000);border-color:var(--p,#000);color:#fff}
+
+  /* what he owes — the reason this screen exists */
+  .preg-owe{background:linear-gradient(150deg,#7A1F14,#B4231A);color:#fff;border-radius:16px;
+    padding:16px;margin-bottom:11px;position:relative;overflow:hidden;
+    box-shadow:0 10px 26px -14px rgba(180,35,26,.9)}
+  .preg-owe:after{content:'';position:absolute;right:-30px;top:-40px;width:130px;height:130px;
+    border-radius:50%;background:rgba(255,255,255,.07)}
+  .preg-owe-l{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.82}
+  .preg-owe-v{font-size:32px;font-weight:850;letter-spacing:-.03em;line-height:1.1;margin:3px 0 2px;
+    font-variant-numeric:tabular-nums}
+  .preg-owe-s{font-size:12px;opacity:.9;font-weight:600}
+  .preg-age{display:flex;gap:7px;margin-top:12px;position:relative}
+  .preg-age div{flex:1;background:rgba(255,255,255,.14);border-radius:9px;padding:7px 8px;text-align:center}
+  .preg-age .n{font-size:14px;font-weight:850;font-variant-numeric:tabular-nums}
+  .preg-age .k{font-size:9.5px;font-weight:700;opacity:.85;letter-spacing:.03em}
+
+  .preg-two{display:flex;gap:9px;margin-bottom:11px}
+  .preg-kpi{flex:1;background:#fff;border:1px solid var(--bd,#E4E0D8);border-radius:13px;padding:11px 12px}
+  .preg-kpi .l{font-size:10px;font-weight:800;color:var(--t3,#6B6B6B);text-transform:uppercase;letter-spacing:.05em}
+  .preg-kpi .v{font-size:19px;font-weight:850;letter-spacing:-.025em;margin-top:2px;font-variant-numeric:tabular-nums}
+  .preg-kpi .s{font-size:10.5px;color:var(--t3,#6B6B6B);font-weight:650;margin-top:2px}
+  .preg-kpi.gst{background:#E7F9F0;border-color:#B7ECD1}
+  .preg-kpi.gst .v{color:#048A45}
+
+  .preg-sec{font-size:10.5px;font-weight:800;color:var(--t3,#6B6B6B);text-transform:uppercase;
+    letter-spacing:.07em;margin:16px 2px 9px}
+  .preg-card{background:#fff;border:1px solid var(--bd,#E4E0D8);border-radius:14px;padding:12px;
+    margin-bottom:9px;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer;
+    transition:border-color .15s,transform .1s}
+  .preg-card:active{transform:scale(.995)}
+  .preg-card.void{opacity:.55}
+  .preg-row{display:flex;align-items:center;gap:10px}
+  .preg-grow{flex:1;min-width:0}
+  .preg-nm{font-size:14.5px;font-weight:800;letter-spacing:-.012em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .preg-mut{color:var(--t3,#6B6B6B);font-size:12px}
+  .preg-amt{font-size:15px;font-weight:850;font-variant-numeric:tabular-nums}
+  .preg-pill{display:inline-flex;border-radius:99px;padding:3px 8px;font-size:10px;
+    font-weight:850;letter-spacing:.03em;flex-shrink:0}
+  .preg-pill.paid{background:#E7F9F0;color:#048A45}
+  .preg-pill.due{background:#FDECEA;color:#E11900}
+  .preg-pill.part{background:#FFF7E0;color:#95610A}
+  .preg-bno{font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;color:var(--t3,#6B6B6B)}
+  .preg-late{color:#E11900;font-weight:800}
+  .preg-empty{text-align:center;padding:38px 16px;color:var(--t3,#6B6B6B)}
+  .preg-empty b{display:block;font-size:15px;color:var(--t1,#0A0A0A);margin-bottom:4px}
+  .preg-foot{padding:11px 16px;border-top:1px solid var(--bd,#E4E0D8);background:#fff;flex-shrink:0}
+  .preg-exp{width:100%;background:#fff;color:var(--t1,#0A0A0A);border:1.5px solid var(--bd,#E4E0D8);
+    border-radius:12px;padding:12px;font-size:13.5px;font-weight:750;cursor:pointer;font-family:inherit}
+
+  .preg-line{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;
+    font-size:13.5px;font-variant-numeric:tabular-nums}
+  .preg-line.tot{border-top:1.5px solid var(--bd,#E4E0D8);margin-top:6px;padding-top:11px;
+    font-size:16px;font-weight:850}
+  .preg-line .neg{color:#E11900}
+  .preg-line .pos{color:#048A45}
 </style>
+
+<div id="preg-ov"><div class="preg" onclick="event.stopPropagation()">
+  <div class="preg-hd">
+    <h3>Purchases</h3>
+    <button class="preg-new" onclick="PurchaseReg.newBill()">+ New purchase</button>
+    <button class="preg-x" onclick="PurchaseReg.close()" aria-label="Close">×</button>
+  </div>
+  <div class="preg-body" id="preg-body"></div>
+  <div class="preg-foot"><button class="preg-exp" onclick="PurchaseReg.exportCsv()">Export CSV for GST filing</button></div>
+</div></div>
+
 <script>
-/* ═════════════════════════════════════════════
-   PURCHASE REGISTER  (v34_106)
-   Read-only register over Store('purchases').
-     • month filter (or All time) + search by supplier / bill no.
-     • summary strip: purchases, total spend, input GST
-     • tap a row to expand its line items
-     • CSV export (GST-input friendly, Excel-safe BOM)
-   Read-only by design: editing a purchase would have to unwind stock,
-   cost price, the expense and the supplier due. Not attempted here.
-   Exposes window.PurchaseReg.
-   ═════════════════════════════════════════════ */
-(function () {
-  function $(id) { return document.getElementById(id); }
-  function T(k, f) { try { return (window.App && App._T) ? App._T(k, f) : f; } catch (e) { return f; } }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function num(v){ var n=Number(v); return isFinite(n)?n:0; }
+  function money(n){ return '\u20B9' + Math.round(num(n)).toLocaleString('en-IN'); }
+  function safe(coll){
+    try { return ((window.Store && Store.list && Store.list(coll)) || [])
+      .filter(function(r){ return r && !r._deleted && !r.deletedAt; }); }
+    catch(e){ return []; }
+  }
+  function dayMs(d){
+    if (!d) return 0;
+    var t = new Date(String(d) + 'T12:00:00').getTime();
+    return isFinite(t) ? t : 0;
+  }
+  function fmtDate(d){
+    var t = dayMs(d); if (!t) return '\u2014';
+    return new Date(t).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+  }
+  var DAY = 86400000;
+
+  var st = { period:'m', status:'all' };
+
+  function range(){
+    var end = new Date(); end.setHours(23,59,59,999);
+    var start = new Date(); start.setHours(0,0,0,0);
+    if (st.period === 'm')  start.setDate(1);
+    else if (st.period === 'lm'){
+      start.setMonth(start.getMonth()-1, 1);
+      end.setTime(new Date(start.getFullYear(), start.getMonth()+1, 0, 23,59,59,999).getTime());
+    }
+    else if (st.period === 'd90') start.setDate(start.getDate()-89);
+    else if (st.period === 'all') start.setTime(0);
+    return { s:start.getTime(), e:end.getTime() };
+  }
+  function periodLabel(){
+    return ({ m:'This month', lm:'Last month', d90:'90 days', all:'All time' })[st.period] || '';
+  }
+
+  /* Settlement comes from the khata the purchase created. v34_119 stores
+     khataId directly; older rows are matched through the expense, which is
+     the only link they ever had. */
+  function khataFor(p, khata){
+    if (!p) return null;
+    if (p.khataId){
+      var direct = khata.find(function(k){ return k.id === p.khataId; });
+      if (direct) return direct;
+    }
+    if (p.expenseId){
+      return khata.find(function(k){
+        return k.type === 'dena' && k.linkedExpenseId === p.expenseId; }) || null;
+    }
+    return null;
+  }
+
+  function statusOf(p, khata){
+    /* A purchase paid at the counter never created a payable at all. */
+    if (p.payMode !== 'later') return { key:'paid', label:'PAID', due:0, paid:num(p.total) };
+    var k = khataFor(p, khata);
+    if (!k) return { key:'paid', label:'PAID', due:0, paid:num(p.total) };
+    var amt = num(k.amount), pd = num(k.paidAmount);
+    var due = Math.max(0, amt - pd);
+    if (k.status === 'paid' || due <= 0) return { key:'paid', label:'PAID', due:0, paid:amt };
+    if (pd > 0) return { key:'part', label:'PART PAID', due:due, paid:pd };
+    return { key:'due', label:'UNPAID', due:due, paid:0 };
+  }
+
+  function rows(){
+    var khata = safe('khata');
+    var r = range();
+    return safe('purchases')
+      .map(function(p){
+        var s = statusOf(p, khata);
+        var t = dayMs(p.date);
+        return { p:p, s:s, t:t, age: t ? Math.floor((Date.now()-t)/DAY) : 0 };
+      })
+      .filter(function(x){
+        if (st.period !== 'all' && (x.t < r.s || x.t > r.e)) return false;
+        if (st.status === 'due')  return x.s.key !== 'paid';
+        if (st.status === 'paid') return x.s.key === 'paid';
+        return true;
+      })
+      .sort(function(a,b){ return b.t - a.t; });
+  }
+
+  /* Payables are LIVE, not period-scoped: what he owes is what he owes,
+     regardless of which month the bill happens to sit in. */
+  function payables(){
+    var khata = safe('khata');
+    var out = { total:0, bills:0, a30:0, a60:0, a90:0, bySup:{} };
+    safe('purchases').forEach(function(p){
+      var s = statusOf(p, khata);
+      if (s.key === 'paid') return;
+      var t = dayMs(p.date);
+      var age = t ? Math.floor((Date.now()-t)/DAY) : 0;
+      out.total += s.due; out.bills++;
+      if (age <= 30) out.a30 += s.due; else if (age <= 60) out.a60 += s.due; else out.a90 += s.due;
+      /* Group by supplierId where we have it — grouping by a typed name is
+         how "Ramesh Wholesale" and "ramesh wholesale" become two creditors. */
+      var key = p.supplierId || ('name:' + String(p.supplier||'').trim().toLowerCase());
+      if (!out.bySup[key]) out.bySup[key] = { name:p.supplier||'Supplier', due:0, bills:0, oldest:0 };
+      out.bySup[key].due += s.due;
+      out.bySup[key].bills++;
+      if (age > out.bySup[key].oldest) out.bySup[key].oldest = age;
     });
-  }
-  function num(v) { var x = Number(v); return isFinite(x) ? x : 0; }
-  function money(v) { return '\u20B9' + num(v).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
-  function pad2(n) { return String(n).padStart(2, '0'); }
-  function thisMonth() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1); }
-  function fmtDate(s) {
-    if (!s) return '\u2014';
-    var p = String(s).split('-');
-    if (p.length !== 3) return String(s);
-    var mm = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return p[2] + ' ' + (mm[Number(p[1]) - 1] || p[1]);
-  }
-  function payLabel(m) {
-    if (m === 'upi') return '\uD83D\uDCF2 ' + T('pur.upi', 'UPI');
-    if (m === 'later') return '\uD83D\uDCD2 ' + T('pur.payLater', 'Pay later');
-    return '\uD83D\uDCB5 ' + T('pur.cash', 'Cash');
+    return out;
   }
 
-  var st = { month: thisMonth(), q: '', all: false, open: {} };
-
-  function allRecs() {
-    try {
-      return (window.Store && Store.list('purchases') || []).filter(function (p) { return p && !p._deleted; });
-    } catch (e) { return []; }
-  }
-
-  function rows() {
-    var q = String(st.q || '').toLowerCase().trim();
-    return allRecs().filter(function (p) {
-      if (!st.all && String(p.date || '').slice(0, 7) !== st.month) return false;
-      if (!q) return true;
-      return (String(p.supplier || '') + ' ' + String(p.invoiceNo || '')).toLowerCase().indexOf(q) !== -1;
-    }).sort(function (a, b) {
-      return String(b.date || '').localeCompare(String(a.date || ''));
-    });
-  }
-
-  function ensureDOM() {
-    if ($('preg-overlay')) return;
-    var ov = document.createElement('div');
-    ov.id = 'preg-overlay';
-    ov.innerHTML =
-      '<div class="preg-sheet" role="dialog" aria-label="Purchase register">'
-      + '<div class="preg-hdr"><h3>' + T('preg.title', 'Purchase register') + '</h3>'
-      + '<button class="preg-x" onclick="PurchaseReg.close()" aria-label="Close">\u00D7</button></div>'
-      + '<div class="preg-filter">'
-      + '<input class="preg-in" id="preg-month" type="month" onchange="PurchaseReg._month(this.value)">'
-      + '<button class="preg-chip" id="preg-all" onclick="PurchaseReg._toggleAll()">' + T('preg.allTime', 'All time') + '</button>'
-      + '</div>'
-      + '<div class="preg-filter">'
-      + '<input class="preg-in" id="preg-q" placeholder="' + T('preg.searchPh', '\uD83D\uDD0D Supplier or bill no\u2026') + '" oninput="PurchaseReg._q(this.value)" style="flex:1">'
-      + '</div>'
-      + '<div class="preg-sum" id="preg-sum"></div>'
-      + '<div class="preg-body" id="preg-list"></div>'
-      + '<div class="preg-foot">'
-      + '<button class="preg-exp" id="preg-export" onclick="PurchaseReg.exportCsv()">' + T('preg.export', 'Export CSV') + '</button>'
-      + '</div>'
-      + '</div>';
-    document.body.appendChild(ov);
-    ov.addEventListener('click', function (e) { if (e.target === ov) PurchaseReg.close(); });
-  }
-
-  function render() {
+  function render(){
     var list = rows();
-    var totSpend = 0, totGst = 0;
-    list.forEach(function (p) { totSpend += num(p.total); totGst += num(p.inputGst); });
+    var pay = payables();
+    var totals = list.reduce(function(a,x){
+      a.amt += num(x.p.total); a.gst += num(x.p.inputGst); return a; }, { amt:0, gst:0 });
+    var dueCount = safe('purchases').filter(function(p){
+      return statusOf(p, safe('khata')).key !== 'paid'; }).length;
 
-    var sum = $('preg-sum');
-    if (sum) {
-      sum.innerHTML =
-        '<div class="preg-sc"><span class="l">' + T('preg.count', 'Purchases') + '</span><span class="v">' + list.length + '</span></div>'
-        + '<div class="preg-sc"><span class="l">' + T('preg.total', 'Total') + '</span><span class="v">' + money(totSpend) + '</span></div>'
-        + '<div class="preg-sc"><span class="l">' + T('preg.gst', 'Input GST') + '</span><span class="v">' + money(totGst) + '</span></div>';
+    var chips = function(items, cur, fn){
+      return items.map(function(it){
+        return '<button class="preg-chip' + (cur===it[0]?' on':'') + '" onclick="PurchaseReg.' + fn + '(\'' + it[0] + '\')">'
+          + esc(it[1]) + '</button>';
+      }).join('');
+    };
+
+    var body =
+      '<div class="preg-chips">' + chips(
+        [['m','This month'],['lm','Last month'],['d90','90 days'],['all','All']], st.period, '_period') + '</div>';
+
+    if (pay.total > 0){
+      body += '<div class="preg-owe">'
+        + '<div class="preg-owe-l">You owe suppliers</div>'
+        + '<div class="preg-owe-v">' + money(pay.total) + '</div>'
+        + '<div class="preg-owe-s">across ' + pay.bills + ' unpaid bill' + (pay.bills===1?'':'s')
+        + ' \u00b7 ' + Object.keys(pay.bySup).length + ' supplier'
+        + (Object.keys(pay.bySup).length===1?'':'s') + '</div>'
+        + '<div class="preg-age">'
+        + '<div><div class="n">' + money(pay.a30) + '</div><div class="k">0\u201330 DAYS</div></div>'
+        + '<div><div class="n">' + money(pay.a60) + '</div><div class="k">31\u201360</div></div>'
+        + '<div><div class="n">' + money(pay.a90) + '</div><div class="k">60+ DAYS</div></div>'
+        + '</div></div>';
     }
 
-    var box = $('preg-list');
-    if (!box) return;
-    if (!list.length) {
-      box.innerHTML = '<div class="preg-empty">' + T('preg.empty', 'No purchases for this period.') + '<br><span>'
-        + T('preg.emptySub', 'Record one from Stock \u2192 Stock In.') + '</span></div>';
-      return;
-    }
-    var html = '';
-    list.forEach(function (p) {
-      var id = String(p.id || '');
-      var isOpen = !!st.open[id];
-      var lines = (p.lines || []);
-      html += '<div class="preg-row' + (isOpen ? ' open' : '') + '" onclick="PurchaseReg._toggle(\'' + esc(id) + '\')">'
-        + '<div class="preg-r1">'
-        + '<span class="preg-sup">' + esc(p.supplier || T('preg.noSup', 'No supplier')) + '</span>'
-        + '<span class="preg-tot">' + money(p.total) + '</span>'
-        + '</div>'
-        + '<div class="preg-r2">'
-        + '<span>' + fmtDate(p.date) + '</span>'
-        + (p.invoiceNo ? '<span class="preg-inv">' + esc(p.invoiceNo) + '</span>' : '')
-        + '<span>' + payLabel(p.payMode) + '</span>'
-        + (num(p.inputGst) > 0 ? '<span class="preg-gst">GST ' + money(p.inputGst) + '</span>' : '')
-        + '<span class="preg-cnt">' + lines.length + ' ' + T('preg.items', 'items') + '</span>'
-        + '</div>';
-      if (isOpen && lines.length) {
-        html += '<div class="preg-lines">';
-        lines.forEach(function (l) {
-          html += '<div class="preg-li"><span>' + esc(l.name || '\u2014') + '</span>'
-            + '<span>' + num(l.qty) + (l.unit ? ' ' + esc(l.unit) : '') + ' \u00D7 ' + money(l.cost) + '</span>'
-            + '<b>' + money(num(l.qty) * num(l.cost)) + '</b></div>';
-        });
-        html += '</div>';
-      }
-      html += '</div>';
-    });
-    box.innerHTML = html;
-  }
+    body += '<div class="preg-two">'
+      + '<div class="preg-kpi"><div class="l">Purchases</div><div class="v">' + money(totals.amt) + '</div>'
+      + '<div class="s">' + esc(periodLabel().toLowerCase()) + ' \u00b7 ' + list.length + ' bill' + (list.length===1?'':'s') + '</div></div>'
+      + '<div class="preg-kpi gst"><div class="l">Input GST</div><div class="v">' + money(totals.gst) + '</div>'
+      + '<div class="s">claimable</div></div>'
+      + '</div>';
 
-  function csvCell(v) {
-    var s = String(v == null ? '' : v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    body += '<div class="preg-chips">' + chips(
+      [['all','All bills'],['due','Unpaid \u00b7 ' + dueCount],['paid','Paid']], st.status, '_status') + '</div>';
+
+    body += '<div class="preg-sec">Bills</div>';
+    if (!list.length){
+      body += '<div class="preg-empty"><b>No purchases in this period</b>'
+        + '<span>Record one with <b>+ New purchase</b>.</span></div>';
+    } else {
+      body += list.map(function(x){
+        var p = x.p, s = x.s;
+        var n = (p.lines || []).length;
+        var overdue = (s.key !== 'paid' && x.age > 30);
+        return '<div class="preg-card" onclick="PurchaseReg.bill(\'' + esc(p.id) + '\')">'
+          + '<div class="preg-row"><div class="preg-grow">'
+            + '<div class="preg-row" style="gap:7px">'
+              + '<span class="preg-nm">' + esc(p.supplier || 'No supplier') + '</span>'
+              + '<span class="preg-pill ' + s.key + '">' + s.label + '</span>'
+            + '</div>'
+            + '<div class="preg-mut" style="margin-top:3px">' + fmtDate(p.date)
+              + (p.invoiceNo ? ' \u00b7 <span class="preg-bno">' + esc(p.invoiceNo) + '</span>' : '')
+              + (n ? ' \u00b7 ' + n + ' item' + (n===1?'':'s') : '') + '</div>'
+            + '<div class="preg-mut" style="margin-top:3px">'
+              + (num(p.inputGst) > 0 ? 'GST ' + money(p.inputGst) : 'No GST')
+              + (s.key === 'part' ? ' \u00b7 ' + money(s.paid) + ' paid \u00b7 ' + money(s.due) + ' due' : '')
+              + (overdue ? ' \u00b7 <span class="preg-late">' + x.age + ' days overdue</span>' : '')
+            + '</div>'
+          + '</div>'
+          + '<div style="text-align:right"><div class="preg-amt">' + money(p.total) + '</div>'
+          + '<div class="preg-mut" style="font-size:10.5px;margin-top:2px">BILL \u203a</div></div>'
+          + '</div></div>';
+      }).join('');
+    }
+
+    var sups = Object.keys(pay.bySup).map(function(k){ return pay.bySup[k]; })
+      .sort(function(a,b){ return b.due - a.due; });
+    if (sups.length){
+      body += '<div class="preg-sec">Who you owe</div>'
+        + sups.map(function(v){
+          return '<div class="preg-card" style="cursor:default">'
+            + '<div class="preg-row"><span class="preg-grow preg-nm" style="font-size:13.5px">'
+            + esc(v.name) + '</span>'
+            + '<b class="preg-amt" style="color:#E11900">' + money(v.due) + '</b></div>'
+            + '<div class="preg-mut" style="margin-top:3px">' + v.bills + ' bill' + (v.bills===1?'':'s')
+            + ' \u00b7 oldest ' + v.oldest + ' days</div></div>';
+        }).join('');
+    }
+
+    $('preg-body').innerHTML = body;
   }
 
   var PurchaseReg = {
-    open: function () {
-      ensureDOM();
-      var m = $('preg-month'); if (m) m.value = st.month;
-      var q = $('preg-q'); if (q) q.value = st.q;
-      var a = $('preg-all'); if (a) a.classList.toggle('on', !!st.all);
-      render();
-      $('preg-overlay').classList.add('open');
+    open: function(){
+      $('preg-ov').classList.add('open');
       document.body.style.overflow = 'hidden';
+      render();
     },
-    close: function () {
-      var ov = $('preg-overlay'); if (ov) ov.classList.remove('open');
+    close: function(){
+      $('preg-ov').classList.remove('open');
       document.body.style.overflow = '';
     },
-    _month: function (v) { st.month = v || thisMonth(); st.all = false; var a = $('preg-all'); if (a) a.classList.remove('on'); render(); },
-    _q: function (v) { st.q = v || ''; render(); },
-    _toggleAll: function () {
-      st.all = !st.all;
-      var a = $('preg-all'); if (a) a.classList.toggle('on', st.all);
-      render();
+    _period: function(k){ st.period = k; render(); },
+    _status: function(k){ st.status = k; render(); },
+    newBill: function(){
+      this.close();
+      try { if (window.Purchase && Purchase.open) Purchase.open(); } catch(e){}
     },
-    _toggle: function (id) { st.open[id] = !st.open[id]; render(); },
-    exportCsv: function () {
-      var list = rows();
-      if (!list.length) {
-        try { if (window.App && App.toast) App.toast(T('preg.nothing', 'Nothing to export')); } catch (e) {}
-        return;
-      }
-      var head = ['Date', 'Supplier', 'Phone', 'Bill no', 'Payment', 'Total', 'Input GST', 'Items'];
-      var csv = head.join(',') + '\n';
-      list.forEach(function (p) {
-        var items = (p.lines || []).map(function (l) {
-          return (l.name || '') + ' x' + num(l.qty) + (l.unit ? l.unit : '') + ' @' + num(l.cost);
-        }).join(' | ');
-        csv += [
-          csvCell(p.date || ''),
-          csvCell(p.supplier || ''),
-          csvCell(p.phone || ''),
-          csvCell(p.invoiceNo || ''),
-          csvCell(p.payMode || 'cash'),
-          num(p.total).toFixed(2),
-          num(p.inputGst).toFixed(2),
-          csvCell(items)
-        ].join(',') + '\n';
-      });
-      var tag = st.all ? 'all' : st.month;
+
+    bill: function(id){
+      var p = safe('purchases').find(function(x){ return x.id === id; });
+      if (!p) return;
+      var s = statusOf(p, safe('khata'));
+      var lines = p.lines || [];
+      var sub = lines.reduce(function(a,l){ return a + num(l.qty) * num(l.cost); }, 0);
+      var html =
+        '<div class="preg-hd" style="border:0;padding:0 0 12px">'
+          + '<h3>Bill</h3><button class="preg-x" onclick="PurchaseReg.open()">\u2190</button></div>'
+        + '<div class="preg-card" style="cursor:default">'
+          + '<div class="preg-row"><span class="preg-grow preg-nm">' + esc(p.supplier || 'No supplier') + '</span>'
+          + '<span class="preg-pill ' + s.key + '">' + s.label + '</span></div>'
+          + '<div class="preg-mut" style="margin-top:4px">' + fmtDate(p.date)
+          + (p.invoiceNo ? ' \u00b7 <span class="preg-bno">' + esc(p.invoiceNo) + '</span>' : '')
+          + (p.phone ? ' \u00b7 ' + esc(p.phone) : '') + '</div></div>'
+        + '<div class="preg-sec">Items</div><div class="preg-card" style="cursor:default">'
+        + (lines.length
+            ? lines.map(function(l){
+                return '<div class="preg-line"><span>' + esc(l.name || '\u2014')
+                  + ' <span class="preg-mut">' + num(l.qty) + (l.unit ? ' ' + esc(l.unit) : '')
+                  + ' \u00d7 ' + money(l.cost) + '</span></span><b>' + money(num(l.qty)*num(l.cost)) + '</b></div>';
+              }).join('')
+            : '<div class="preg-mut">No item detail recorded.</div>')
+        + (num(p.inputGst) > 0
+            ? '<div class="preg-line"><span>Input GST <span class="preg-mut">claimable</span></span>'
+              + '<b class="pos">' + money(p.inputGst) + '</b></div>' : '')
+        + '<div class="preg-line tot"><span>Bill total</span><b>' + money(p.total) + '</b></div>'
+        + '</div>'
+        + '<div class="preg-sec">Payment</div><div class="preg-card" style="cursor:default">'
+        + '<div class="preg-line"><span>Terms</span><b>'
+          + (p.payMode === 'later' ? 'On credit' : (p.payMode === 'upi' ? 'Paid \u00b7 UPI' : 'Paid \u00b7 Cash'))
+          + '</b></div>'
+        + (s.paid > 0 ? '<div class="preg-line"><span>Paid</span><b class="pos">' + money(s.paid) + '</b></div>' : '')
+        + (s.due > 0 ? '<div class="preg-line tot"><span>Still owed</span><b class="neg">' + money(s.due) + '</b></div>' : '')
+        + '</div>'
+        + (s.due > 0
+            ? '<button class="preg-exp" style="margin-top:12px;background:var(--p,#000);color:#fff;border-color:var(--p,#000)"'
+              + ' onclick="PurchaseReg.pay(\'' + esc(id) + '\')">Record payment to supplier</button>'
+            : '');
+      $('preg-body').innerHTML = html;
+    },
+
+    /* Settlement is Khata's job — it already handles part payment, reopening
+       and the ledger entry. Duplicating it here would give two places that
+       can disagree about whether a bill is paid. */
+    pay: function(id){
+      var p = safe('purchases').find(function(x){ return x.id === id; });
+      if (!p) return;
+      var k = khataFor(p, safe('khata'));
+      if (!k){ try { App.toast('No supplier due found for this bill'); } catch(e){} return; }
+      this.close();
       try {
-        var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+        if (window.App && App.nav) App.nav('udhaar');
+        setTimeout(function(){
+          try { if (App.openKhataDetail) App.openKhataDetail(k.id);
+                else if (App.openSettleSheet) App.openSettleSheet(k.id); } catch(e){}
+        }, 260);
+      } catch(e){}
+    },
+
+    exportCsv: function(){
+      var list = rows();
+      if (!list.length){ try { App.toast('Nothing to export'); } catch(e){} return; }
+      var cell = function(v){
+        var s = String(v == null ? '' : v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      };
+      var csv = 'Date,Supplier,Bill no,Terms,Status,Total,Input GST,Paid,Due,Items\n';
+      list.forEach(function(x){
+        var p = x.p, s = x.s;
+        var items = (p.lines || []).map(function(l){
+          return (l.name||'') + ' x' + num(l.qty) + (l.unit||'') + ' @' + num(l.cost); }).join(' | ');
+        csv += [cell(p.date||''), cell(p.supplier||''), cell(p.invoiceNo||''),
+          cell(p.payMode === 'later' ? 'credit' : 'paid'), cell(s.label),
+          num(p.total).toFixed(2), num(p.inputGst).toFixed(2),
+          num(s.paid).toFixed(2), num(s.due).toFixed(2), cell(items)].join(',') + '\n';
+      });
+      try {
+        var blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8' });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
-        a.href = url; a.download = 'hisaabnow-purchases-' + tag + '.csv'; a.style.display = 'none';
+        a.href = url; a.download = 'purchases-' + st.period + '.csv'; a.style.display = 'none';
         document.body.appendChild(a); a.click();
-        setTimeout(function () { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 400);
-        try { if (window.App && App.toast) App.toast(T('preg.exported', 'Exported')); } catch (e) {}
-      } catch (e) {
-        try { if (window.App && App.toast) App.toast(T('preg.exportFail', 'Export failed on this device')); } catch (e2) {}
-      }
+        setTimeout(function(){ try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch(e){} }, 400);
+        try { App.toast('Exported'); } catch(e){}
+      } catch(e){ try { App.toast('Export failed on this device'); } catch(e2){} }
     }
   };
 
+  try {
+    var ov = $('preg-ov');
+    if (ov) ov.addEventListener('click', function(){ PurchaseReg.close(); });
+  } catch(e){}
+
   window.PurchaseReg = PurchaseReg;
-  try { if (window.App) window.App.openPurchaseRegister = function () { PurchaseReg.open(); }; } catch (e) {}
+  try { if (window.App) window.App.openPurchaseRegister = function(){ PurchaseReg.open(); }; } catch(e){}
 })();
 </script>
+
 
 <!-- ════════════════════════════════════════════════════════════════════
      STOCK TAKE  (v33_112)
@@ -105470,7 +105805,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
 })();
 </script>
 
-<!-- ===== HNRoyalBill v34_118_inv_clean · self-hosted royal WhatsApp bills (offline) ===== -->
+<!-- ===== HNRoyalBill v34_120_purchase_register · self-hosted royal WhatsApp bills (offline) ===== -->
 <script id="hnrb-lib-h2i">/*! html-to-image (MIT) */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).htmlToImage={})}(this,(function(t){"use strict";function e(t,e,n,r){return new(n||(n=Promise))((function(i,o){function u(t){try{a(r.next(t))}catch(t){o(t)}}function c(t){try{a(r.throw(t))}catch(t){o(t)}}function a(t){var e;t.done?i(t.value):(e=t.value,e instanceof n?e:new n((function(t){t(e)}))).then(u,c)}a((r=r.apply(t,e||[])).next())}))}function n(t,e){var n,r,i,o,u={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return o={next:c(0),throw:c(1),return:c(2)},"function"==typeof Symbol&&(o[Symbol.iterator]=function(){return this}),o;function c(c){return function(a){return function(c){if(n)throw new TypeError("Generator is already executing.");for(;o&&(o=0,c[0]&&(u=0)),u;)try{if(n=1,r&&(i=2&c[0]?r.return:c[0]?r.throw||((i=r.return)&&i.call(r),0):r.next)&&!(i=i.call(r,c[1])).done)return i;switch(r=0,i&&(c=[2&c[0],i.value]),c[0]){case 0:case 1:i=c;break;case 4:return u.label++,{value:c[1],done:!1};case 5:u.label++,r=c[1],c=[0];continue;case 7:c=u.ops.pop(),u.trys.pop();continue;default:if(!(i=u.trys,(i=i.length>0&&i[i.length-1])||6!==c[0]&&2!==c[0])){u=0;continue}if(3===c[0]&&(!i||c[1]>i[0]&&c[1]<i[3])){u.label=c[1];break}if(6===c[0]&&u.label<i[1]){u.label=i[1],i=c;break}if(i&&u.label<i[2]){u.label=i[2],u.ops.push(c);break}i[2]&&u.ops.pop(),u.trys.pop();continue}c=e.call(t,u)}catch(t){c=[6,t],r=0}finally{n=i=0}if(5&c[0])throw c[1];return{value:c[0]?c[1]:void 0,done:!0}}([c,a])}}}var r,i=(r=0,function(){return r+=1,"u".concat("0000".concat((Math.random()*Math.pow(36,4)<<0).toString(36)).slice(-4)).concat(r)});function o(t){for(var e=[],n=0,r=t.length;n<r;n++)e.push(t[n]);return e}var u=null;function c(t){return void 0===t&&(t={}),u||(u=t.includeStyleProperties?t.includeStyleProperties:o(window.getComputedStyle(document.documentElement)))}function a(t,e){var n=(t.ownerDocument.defaultView||window).getComputedStyle(t).getPropertyValue(e);return n?parseFloat(n.replace("px","")):0}function s(t,e){void 0===e&&(e={});var n,r,i,o=e.width||(r=a(n=t,"border-left-width"),i=a(n,"border-right-width"),n.clientWidth+r+i),u=e.height||function(t){var e=a(t,"border-top-width"),n=a(t,"border-bottom-width");return t.clientHeight+e+n}(t);return{width:o,height:u}}var l=16384;function f(t,e){return void 0===e&&(e={}),t.toBlob?new Promise((function(n){t.toBlob(n,e.type?e.type:"image/png",e.quality?e.quality:1)})):new Promise((function(n){for(var r=window.atob(t.toDataURL(e.type?e.type:void 0,e.quality?e.quality:void 0).split(",")[1]),i=r.length,o=new Uint8Array(i),u=0;u<i;u+=1)o[u]=r.charCodeAt(u);n(new Blob([o],{type:e.type?e.type:"image/png"}))}))}function h(t){return new Promise((function(e,n){var r=new Image;r.onload=function(){r.decode().then((function(){requestAnimationFrame((function(){return e(r)}))}))},r.onerror=n,r.crossOrigin="anonymous",r.decoding="async",r.src=t}))}function d(t){return e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Promise.resolve().then((function(){return(new XMLSerializer).serializeToString(t)})).then(encodeURIComponent).then((function(t){return"data:image/svg+xml;charset=utf-8,".concat(t)}))]}))}))}function v(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u;return n(this,(function(n){return e="http://www.w3.org/2000/svg",o=document.createElementNS(e,"svg"),u=document.createElementNS(e,"foreignObject"),o.setAttribute("width","".concat(r)),o.setAttribute("height","".concat(i)),o.setAttribute("viewBox","0 0 ".concat(r," ").concat(i)),u.setAttribute("width","100%"),u.setAttribute("height","100%"),u.setAttribute("x","0"),u.setAttribute("y","0"),u.setAttribute("externalResourcesRequired","true"),o.appendChild(u),u.appendChild(t),[2,d(o)]}))}))}var p=function(t,e){if(t instanceof e)return!0;var n=Object.getPrototypeOf(t);return null!==n&&(n.constructor.name===e.name||p(n,e))};function g(t,e,n,r){var i=".".concat(t,":").concat(e),o=n.cssText?function(t){var e=t.getPropertyValue("content");return"".concat(t.cssText," content: '").concat(e.replace(/'|"/g,""),"';")}(n):function(t,e){return c(e).map((function(e){var n=t.getPropertyValue(e),r=t.getPropertyPriority(e);return"".concat(e,": ").concat(n).concat(r?" !important":"",";")})).join(" ")}(n,r);return document.createTextNode("".concat(i,"{").concat(o,"}"))}function m(t,e,n,r){var o=window.getComputedStyle(t,n),u=o.getPropertyValue("content");if(""!==u&&"none"!==u){var c=i();try{e.className="".concat(e.className," ").concat(c)}catch(t){return}var a=document.createElement("style");a.appendChild(g(c,n,o,r)),e.appendChild(a)}}var w="application/font-woff",y="image/jpeg",b={woff:w,woff2:w,ttf:"application/font-truetype",eot:"application/vnd.ms-fontobject",png:"image/png",jpg:y,jpeg:y,gif:"image/gif",tiff:"image/tiff",svg:"image/svg+xml",webp:"image/webp"};function S(t){var e=function(t){var e=/\.([^./]*?)$/g.exec(t);return e?e[1]:""}(t).toLowerCase();return b[e]||""}function E(t){return-1!==t.search(/^(data:)/)}function x(t,e){return"data:".concat(e,";base64,").concat(t)}function C(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){switch(n.label){case 0:return[4,fetch(t,r)];case 1:if(404===(e=n.sent()).status)throw new Error('Resource "'.concat(e.url,'" not found'));return[4,e.blob()];case 2:return o=n.sent(),[2,new Promise((function(t,n){var r=new FileReader;r.onerror=n,r.onloadend=function(){try{t(i({res:e,result:r.result}))}catch(t){n(t)}},r.readAsDataURL(o)}))]}}))}))}var P={};function R(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u,c,a;return n(this,(function(n){switch(n.label){case 0:if(e=function(t,e,n){var r=t.replace(/\?.*/,"");return n&&(r=t),/ttf|otf|eot|woff2?/i.test(r)&&(r=r.replace(/.*\//,"")),e?"[".concat(e,"]").concat(r):r}(t,r,i.includeQueryParams),null!=P[e])return[2,P[e]];i.cacheBust&&(t+=(/\?/.test(t)?"&":"?")+(new Date).getTime()),n.label=1;case 1:return n.trys.push([1,3,,4]),[4,C(t,i.fetchRequestInit,(function(t){var e=t.res,n=t.result;return r||(r=e.headers.get("Content-Type")||""),function(t){return t.split(/,/)[1]}(n)}))];case 2:return u=n.sent(),o=x(u,r),[3,4];case 3:return c=n.sent(),o=i.imagePlaceholder||"",a="Failed to fetch resource: ".concat(t),c&&(a="string"==typeof c?c:c.message),a&&console.warn(a),[3,4];case 4:return P[e]=o,[2,o]}}))}))}function T(t){return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){return"data:,"===(e=t.toDataURL())?[2,t.cloneNode(!1)]:[2,h(e)]}))}))}function A(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return t.currentSrc?(e=document.createElement("canvas"),i=e.getContext("2d"),e.width=t.clientWidth,e.height=t.clientHeight,null==i||i.drawImage(t,0,0,e.width,e.height),[2,h(e.toDataURL())]):(o=t.poster,u=S(o),[4,R(o,u,r)]);case 1:return[2,h(n.sent())]}}))}))}function k(t,r){var i;return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return e.trys.push([0,3,,4]),(null===(i=null==t?void 0:t.contentDocument)||void 0===i?void 0:i.body)?[4,I(t.contentDocument.body,r,!0)]:[3,2];case 1:return[2,e.sent()];case 2:return[3,4];case 3:return e.sent(),[3,4];case 4:return[2,t.cloneNode(!1)]}}))}))}var L=function(t){return null!=t.tagName&&"SVG"===t.tagName.toUpperCase()};function N(t,e,n){return p(e,Element)&&(function(t,e,n){var r=e.style;if(r){var i=window.getComputedStyle(t);i.cssText?(r.cssText=i.cssText,r.transformOrigin=i.transformOrigin):c(n).forEach((function(n){var o=i.getPropertyValue(n);if("font-size"===n&&o.endsWith("px")){var u=Math.floor(parseFloat(o.substring(0,o.length-2)))-.1;o="".concat(u,"px")}p(t,HTMLIFrameElement)&&"display"===n&&"inline"===o&&(o="block"),"d"===n&&e.getAttribute("d")&&(o="path(".concat(e.getAttribute("d"),")")),r.setProperty(n,o,i.getPropertyPriority(n))}))}}(t,e,n),function(t,e,n){m(t,e,":before",n),m(t,e,":after",n)}(t,e,n),function(t,e){p(t,HTMLTextAreaElement)&&(e.innerHTML=t.value),p(t,HTMLInputElement)&&e.setAttribute("value",t.value)}(t,e),function(t,e){if(p(t,HTMLSelectElement)){var n=e,r=Array.from(n.children).find((function(e){return t.value===e.getAttribute("value")}));r&&r.setAttribute("selected","")}}(t,e)),e}function I(t,r,i){return e(this,void 0,void 0,(function(){return n(this,(function(u){return i||!r.filter||r.filter(t)?[2,Promise.resolve(t).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){return p(t,HTMLCanvasElement)?[2,T(t)]:p(t,HTMLVideoElement)?[2,A(t,r)]:p(t,HTMLIFrameElement)?[2,k(t,r)]:[2,t.cloneNode(L(t))]}))}))}(t,r)})).then((function(i){return function(t,r,i){var u,c;return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){switch(n.label){case 0:return L(r)?[2,r]:(e=[],0===(e=null!=(a=t).tagName&&"SLOT"===a.tagName.toUpperCase()&&t.assignedNodes?o(t.assignedNodes()):p(t,HTMLIFrameElement)&&(null===(u=t.contentDocument)||void 0===u?void 0:u.body)?o(t.contentDocument.body.childNodes):o((null!==(c=t.shadowRoot)&&void 0!==c?c:t).childNodes)).length||p(t,HTMLVideoElement)?[2,r]:[4,e.reduce((function(t,e){return t.then((function(){return I(e,i)})).then((function(t){t&&r.appendChild(t)}))}),Promise.resolve())]);case 1:return n.sent(),[2,r]}var a}))}))}(t,i,r)})).then((function(e){return N(t,e,r)})).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c,a,s,l,f,h,d,v,p;return n(this,(function(n){switch(n.label){case 0:if(0===(e=t.querySelectorAll?t.querySelectorAll("use"):[]).length)return[2,t];i={},p=0,n.label=1;case 1:return p<e.length?(o=e[p],(u=o.getAttribute("xlink:href"))?(c=t.querySelector(u),a=document.querySelector(u),c||!a||i[u]?[3,3]:(s=i,l=u,[4,I(a,r,!0)])):[3,3]):[3,4];case 2:s[l]=n.sent(),n.label=3;case 3:return p++,[3,1];case 4:if((f=Object.values(i)).length){for(h="http://www.w3.org/1999/xhtml",(d=document.createElementNS(h,"svg")).setAttribute("xmlns",h),d.style.position="absolute",d.style.width="0",d.style.height="0",d.style.overflow="hidden",d.style.display="none",v=document.createElementNS(h,"defs"),d.appendChild(v),p=0;p<f.length;p++)v.appendChild(f[p]);t.appendChild(d)}return[2,t]}}))}))}(t,r)}))]:[2,null]}))}))}var D=/url\((['"]?)([^'"]+?)\1\)/g,H=/url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g,M=/src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;function F(t,r,i,o,u){return e(this,void 0,void 0,(function(){var e,c,a,s;return n(this,(function(n){switch(n.label){case 0:return n.trys.push([0,5,,6]),e=i?function(t,e){if(t.match(/^[a-z]+:\/\//i))return t;if(t.match(/^\/\//))return window.location.protocol+t;if(t.match(/^[a-z]+:/i))return t;var n=document.implementation.createHTMLDocument(),r=n.createElement("base"),i=n.createElement("a");return n.head.appendChild(r),n.body.appendChild(i),e&&(r.href=e),i.href=t,i.href}(r,i):r,c=S(r),a=void 0,u?[4,u(e)]:[3,2];case 1:return s=n.sent(),a=x(s,c),[3,4];case 2:return[4,R(e,c,o)];case 3:a=n.sent(),n.label=4;case 4:return[2,t.replace((l=r,f=l.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1"),new RegExp("(url\\(['\"]?)(".concat(f,")(['\"]?\\))"),"g")),"$1".concat(a,"$3"))];case 5:return n.sent(),[3,6];case 6:return[2,t]}var l,f}))}))}function V(t){return-1!==t.search(D)}function q(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){return V(t)?(e=function(t,e){var n=e.preferredFontFormat;return n?t.replace(M,(function(t){for(;;){var e=H.exec(t)||[],r=e[0],i=e[2];if(!i)return"";if(i===n)return"src: ".concat(r,";")}})):t}(t,i),o=function(t){var e=[];return t.replace(D,(function(t,n,r){return e.push(r),t})),e.filter((function(t){return!E(t)}))}(e),[2,o.reduce((function(t,e){return t.then((function(t){return F(t,e,r,i)}))}),Promise.resolve(e))]):[2,t]}))}))}function U(t,r,i){var o;return e(this,void 0,void 0,(function(){var e,u;return n(this,(function(n){switch(n.label){case 0:return(e=null===(o=r.style)||void 0===o?void 0:o.getPropertyValue(t))?[4,q(e,null,i)]:[3,2];case 1:return u=n.sent(),r.style.setProperty(t,u,r.style.getPropertyPriority(t)),[2,!0];case 2:return[2,!1]}}))}))}function j(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,U("background",t,r)];case 1:return n.sent()?[3,3]:[4,U("background-image",t,r)];case 2:n.sent(),n.label=3;case 3:return[4,U("mask",t,r)];case 4:return(i=n.sent())?[3,6]:[4,U("-webkit-mask",t,r)];case 5:i=n.sent(),n.label=6;case 6:return(e=i)?[3,8]:[4,U("mask-image",t,r)];case 7:e=n.sent(),n.label=8;case 8:return e?[3,10]:[4,U("-webkit-mask-image",t,r)];case 9:n.sent(),n.label=10;case 10:return[2]}}))}))}function O(t,r){return e(this,void 0,void 0,(function(){var e,i,o;return n(this,(function(n){switch(n.label){case 0:return(e=p(t,HTMLImageElement))&&!E(t.src)||p(t,SVGImageElement)&&!E(t.href.baseVal)?[4,R(i=e?t.src:t.href.baseVal,S(i),r)]:[2];case 1:return o=n.sent(),[4,new Promise((function(n,i){t.onload=n,t.onerror=r.onImageErrorHandler?function(){for(var t=[],e=0;e<arguments.length;e++)t[e]=arguments[e];try{n(r.onImageErrorHandler.apply(r,t))}catch(t){i(t)}}:i;var u=t;u.decode&&(u.decode=n),"lazy"===u.loading&&(u.loading="eager"),e?(t.srcset="",t.src=o):t.href.baseVal=o}))];case 2:return n.sent(),[2]}}))}))}function B(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return e=o(t.childNodes),i=e.map((function(t){return z(t,r)})),[4,Promise.all(i).then((function(){return t}))];case 1:return n.sent(),[2]}}))}))}function z(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return p(t,Element)?[4,j(t,r)]:[3,4];case 1:return e.sent(),[4,O(t,r)];case 2:return e.sent(),[4,B(t,r)];case 3:e.sent(),e.label=4;case 4:return[2]}}))}))}var W={};function $(t){return e(this,void 0,void 0,(function(){var e,r;return n(this,(function(n){switch(n.label){case 0:return null!=(e=W[t])?[2,e]:[4,fetch(t)];case 1:return[4,n.sent().text()];case 2:return r=n.sent(),e={url:t,cssText:r},W[t]=e,[2,e]}}))}))}function G(t,r){return e(this,void 0,void 0,(function(){var i,o,u,c,a=this;return n(this,(function(s){return i=t.cssText,o=/url\(["']?([^"')]+)["']?\)/g,u=i.match(/url\([^)]+\)/g)||[],c=u.map((function(u){return e(a,void 0,void 0,(function(){var e;return n(this,(function(n){return(e=u.replace(o,"$1")).startsWith("https://")||(e=new URL(e,t.url).href),[2,C(e,r.fetchRequestInit,(function(t){var e=t.result;return i=i.replace(u,"url(".concat(e,")")),[u,e]}))]}))}))})),[2,Promise.all(c).then((function(){return i}))]}))}))}function _(t){if(null==t)return[];for(var e=[],n=t.replace(/(\/\*[\s\S]*?\*\/)/gi,""),r=new RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})","gi");;){if(null===(u=r.exec(n)))break;e.push(u[0])}n=n.replace(r,"");for(var i=/@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi,o=new RegExp("((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})","gi");;){var u;if(null===(u=i.exec(n))){if(null===(u=o.exec(n)))break;i.lastIndex=o.lastIndex}else o.lastIndex=i.lastIndex;e.push(u[0])}return e}function J(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){return e=[],i=[],t.forEach((function(e){if("cssRules"in e)try{o(e.cssRules||[]).forEach((function(t,n){if(t.type===CSSRule.IMPORT_RULE){var o=n+1,u=$(t.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){try{e.insertRule(t,t.startsWith("@import")?o+=1:e.cssRules.length)}catch(e){console.error("Error inserting rule from remote css",{rule:t,error:e})}}))})).catch((function(t){console.error("Error loading remote css",t.toString())}));i.push(u)}}))}catch(o){var n=t.find((function(t){return null==t.href}))||document.styleSheets[0];null!=e.href&&i.push($(e.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){n.insertRule(t,n.cssRules.length)}))})).catch((function(t){console.error("Error loading remote stylesheet",t)}))),console.error("Error inlining remote css file",o)}})),[2,Promise.all(i).then((function(){return t.forEach((function(t){if("cssRules"in t)try{o(t.cssRules||[]).forEach((function(t){e.push(t)}))}catch(e){console.error("Error while reading CSS rules from ".concat(t.href),e)}})),e}))]}))}))}function Q(t){return t.filter((function(t){return t.type===CSSRule.FONT_FACE_RULE})).filter((function(t){return V(t.style.getPropertyValue("src"))}))}function X(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:if(null==t.ownerDocument)throw new Error("Provided element is not within a Document");return[4,J(o(t.ownerDocument.styleSheets),r)];case 1:return[2,Q(e.sent())]}}))}))}function K(t){return t.trim().replace(/["']/g,"")}function Y(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,X(t,r)];case 1:return e=n.sent(),i=function(t){var e=new Set;return function t(n){(n.style.fontFamily||getComputedStyle(n).fontFamily).split(",").forEach((function(t){e.add(K(t))})),Array.from(n.children).forEach((function(e){e instanceof HTMLElement&&t(e)}))}(t),e}(t),[4,Promise.all(e.filter((function(t){return i.has(K(t.style.fontFamily))})).map((function(t){var e=t.parentStyleSheet?t.parentStyleSheet.href:null;return q(t.cssText,e,r)})))];case 2:return[2,n.sent().join("\n")]}}))}))}function Z(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c;return n(this,(function(n){switch(n.label){case 0:return null==r.fontEmbedCSS?[3,1]:(i=r.fontEmbedCSS,[3,5]);case 1:return r.skipFonts?(o=null,[3,4]):[3,2];case 2:return[4,Y(t,r)];case 3:o=n.sent(),n.label=4;case 4:i=o,n.label=5;case 5:return(e=i)&&(u=document.createElement("style"),c=document.createTextNode(e),u.appendChild(c),t.firstChild?t.insertBefore(u,t.firstChild):t.appendChild(u)),[2]}}))}))}function tt(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,I(t,r,!0)];case 1:return[4,Z(u=n.sent(),r)];case 2:return n.sent(),[4,z(u,r)];case 3:return n.sent(),function(t,e){var n=t.style;e.backgroundColor&&(n.backgroundColor=e.backgroundColor),e.width&&(n.width="".concat(e.width,"px")),e.height&&(n.height="".concat(e.height,"px"));var r=e.style;null!=r&&Object.keys(r).forEach((function(t){n[t]=r[t]}))}(u,r),[4,v(u,i,o)];case 4:return[2,n.sent()]}}))}))}function et(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u,c,a,f,d,v;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,tt(t,r)];case 1:return[4,h(n.sent())];case 2:return u=n.sent(),c=document.createElement("canvas"),a=c.getContext("2d"),f=r.pixelRatio||function(){var t,e;try{e=process}catch(t){}var n=e&&e.env?e.env.devicePixelRatio:null;return n&&(t=parseInt(n,10),Number.isNaN(t)&&(t=1)),t||window.devicePixelRatio||1}(),d=r.canvasWidth||i,v=r.canvasHeight||o,c.width=d*f,c.height=v*f,r.skipAutoScale||function(t){(t.width>l||t.height>l)&&(t.width>l&&t.height>l?t.width>t.height?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l):t.width>l?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l))}(c),c.style.width="".concat(d),c.style.height="".concat(v),r.backgroundColor&&(a.fillStyle=r.backgroundColor,a.fillRect(0,0,c.width,c.height)),a.drawImage(u,0,0,c.width,c.height),[2,c]}}))}))}t.getFontEmbedCSS=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Y(t,r)]}))}))},t.toBlob=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[4,f(e.sent())];case 2:return[2,e.sent()]}}))}))},t.toCanvas=et,t.toJpeg=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL("image/jpeg",r.quality||1)]}}))}))},t.toPixelData=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,et(t,r)];case 1:return u=n.sent(),[2,u.getContext("2d").getImageData(0,0,i,o).data]}}))}))},t.toPng=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL()]}}))}))},t.toSvg=tt}));
 //# sourceMappingURL=html-to-image.js.map
