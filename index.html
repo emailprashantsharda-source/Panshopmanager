@@ -52318,7 +52318,7 @@ html[data-shell="desktop"] .hnd-tb {
              a grocery; it earns its own row. -->
         <button class="hnd-nav-item" type="button" data-hnd-nav="purchases"
           onclick="try{ if(window.App&&App.nav) App.nav('inventory'); setTimeout(function(){ try{ if(window.Purchase&&Purchase.open) Purchase.open(); }catch(e){} },220); }catch(e){}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           <span class="lbl">Purchases</span>
         </button>
     <button class="hnd-nav-item" type="button" id="hnd-nav-liquorstock" style="display:none" onclick="try{ if(window.App&&App.openLiquorStock) App.openLiquorStock(); }catch(e){}">
@@ -52876,9 +52876,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
     <div class="hnd-pos-extras" style="padding:8px 18px 2px;display:flex;flex-direction:column;gap:9px">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12.5px;color:var(--hnd-muted);font-weight:600;display:inline-flex;align-items:center;gap:5px">💸 <span data-i18n="common.discount">Discount</span></span>
+        <div id="hnd-disc-mode" style="display:inline-flex;border:1px solid var(--hnd-line);border-radius:7px;overflow:hidden">
+          <button type="button" data-dm="flat" class="on" style="border:0;background:var(--hnd-ink);color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;cursor:pointer">₹ Flat</button>
+          <button type="button" data-dm="pct" style="border:0;background:none;color:var(--hnd-muted);font-family:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;cursor:pointer">% Off</button>
+        </div>
         <div style="margin-left:auto;display:flex;align-items:center;border:1px solid var(--hnd-line);border-radius:7px;padding:0 8px;background:var(--hnd-bg)">
-          <span style="color:var(--hnd-muted);font-size:12px">₹</span>
-          <input id="hnd-pos-disc-input" type="number" min="0" placeholder="0" style="width:72px;border:0;background:none;outline:none;padding:7px 4px;font-size:13px;font-family:inherit;text-align:right;color:var(--hnd-ink)">
+          <span id="hnd-disc-sym" style="color:var(--hnd-muted);font-size:12px">₹</span>
+          <input id="hnd-pos-disc-input" type="number" min="0" placeholder="0" style="width:64px;border:0;background:none;outline:none;padding:7px 4px;font-size:13px;font-family:inherit;text-align:right;color:var(--hnd-ink)">
+          <span id="hnd-disc-eq" style="color:var(--hnd-muted);font-size:11px;margin-left:6px;min-width:0"></span>
         </div>
       </div>
       <textarea id="hnd-pos-note-input" rows="2" placeholder="📝 Add a note for this bill (optional)…" style="width:100%;border:1px solid var(--hnd-line);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;background:var(--hnd-bg);color:var(--hnd-ink);resize:vertical;box-sizing:border-box;line-height:1.4"></textarea>
@@ -53132,25 +53137,54 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
      uses (#discount-input / #bill-notes) — the single source completeSale reads.
      recalcTotal() re-clamps to the current subtotal and syncs App._discount,
      which desktop renderCart() reads for the totals stack. */
+  var discMode = 'flat';
+  function setDiscMode(m){
+    discMode = (m === 'pct') ? 'pct' : 'flat';
+    var box = $('hnd-disc-mode');
+    if (box) [].forEach.call(box.children, function(b){
+      var on = b.getAttribute('data-dm') === discMode;
+      b.classList.toggle('on', on);
+      b.style.background = on ? 'var(--hnd-ink)' : 'none';
+      b.style.color = on ? '#fff' : 'var(--hnd-muted)';
+    });
+    var sym = $('hnd-disc-sym'); if (sym) sym.textContent = discMode === 'pct' ? '%' : '₹';
+    var inp = $('hnd-pos-disc-input');
+    if (inp) inp.setAttribute('max', discMode === 'pct' ? '100' : '');
+    setDiscount();
+  }
+  HND.setDiscMode = setDiscMode;
+
   function setDiscount(){
     var deskEl = $('hnd-pos-disc-input'); if (!deskEl) return;
     var v = parseFloat(deskEl.value) || 0;
     var src = $('discount-input');
-    if (src) src.value = v > 0 ? v : '';
-    /* (v34_116) recalcTotal() clamps the discount to App._cartSubtotal, and
-       that is only ever set by the MOBILE checkout screen — which a desktop
-       user never opens. So the subtotal was 0, every discount clamped to 0,
-       and the field looked like a dead control. Compute the subtotal from the
-       live cart before handing over. */
+    /* recalcTotal() clamps the discount to App._cartSubtotal, and that is only
+       ever set by the MOBILE checkout screen — which a desktop user never
+       opens. Subtotal stayed 0, so every discount clamped to 0 and the field
+       looked like a dead control.
+
+       The desktop cart is an OBJECT keyed by cart key → qty (getCart()), not
+       an array of line items, so it has to be summed the same way renderCart
+       does or the total is wrong in a different way. */
+    var sub = 0;
     try {
-      if (window.App && Array.isArray(App.cart)) {
-        App._cartSubtotal = App.cart.reduce(function(a,it){
-          return a + (Number(it.price)||0) * (Number(it.qty)||0);
-        }, 0);
-      }
+      var c = getCart() || {};
+      Object.keys(c).forEach(function(k){
+        var q = +c[k] || 0; if (q > 0) sub += (+cartKeyPrice(k) || 0) * q;
+      });
     } catch(e){}
+    /* % mode converts to rupees here: App._discount and completeSale both
+       deal in rupees, and a percentage stored as one would silently become a
+       ₹10 discount on a ₹250 bill. */
+    if (discMode === 'pct') v = Math.round(sub * Math.min(100, Math.max(0, v)) / 100);
+    try { if (window.App) App._cartSubtotal = sub; } catch(e){}
+    if (src) src.value = v > 0 ? v : '';
     try { if (window.App && App.updateCartSummary) App.updateCartSummary(); } catch(e){}
     try { if (window.App && App.recalcTotal) App.recalcTotal(); } catch(e){}
+    /* Show what a percentage actually comes to — a shopkeeper agreeing "10%"
+       with a customer still has to say a number out loud. */
+    var eq = $('hnd-disc-eq');
+    if (eq) eq.textContent = (discMode === 'pct' && v > 0) ? ('= ₹' + v) : '';
     renderCart();
   }
   function setNote(){
@@ -53252,6 +53286,13 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
     } else if (e.target.id === 'hnd-pos-note-input'){
       setNote();
     }
+  });
+
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest && e.target.closest('#hnd-disc-mode button');
+    if (!b) return;
+    e.preventDefault();
+    setDiscMode(b.getAttribute('data-dm'));
   });
 
   /* Keyboard shortcuts (POS specific) */
