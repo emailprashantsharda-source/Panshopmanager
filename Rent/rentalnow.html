@@ -259,7 +259,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_6_0_delete</div>
+<div class="wm" id="wm">rn_v2_6_1_createfix</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -273,7 +273,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_6_0_delete';
+const BUILD = 'rn_v2_6_1_createfix';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -519,6 +519,13 @@ const R = {
     return t.active;
   },
   ratesBanner(){
+    if (window.Cloud && Cloud.ready && !(DB.d.rates||[]).length && this.isOwner()) {
+      return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">No models yet</b>
+        <div class="muted" style="margin-top:3px">Add the starter list, then set your own prices.</div>
+        <button class="btn sm" style="margin-top:10px;width:100%" onclick="Cloud.seedCatalogue()">
+          Add starter models</button></div>`;
+    }
     const n = this.ratesPending();
     if (!n || !(DB.d.rates||[]).length) return '';
     return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
@@ -1784,34 +1791,50 @@ const Cloud = {
     if (!name) return window.toast('Business name is required');
     const shopId = 'rs_' + this.uid.slice(0,6) + '_' + Date.now().toString(36);
     try {
-      const b = writeBatch(db);
-      b.set(doc(db,'rn_shops',shopId), {
+      /* TWO commits, deliberately.
+
+         Rules evaluate a batch against the state BEFORE it runs, so any write
+         guarded by rnIsOwner() fails if the membership doc granting ownership
+         is created in that same batch — the rule reads a member document that
+         does not exist yet. Seeding rates and vehicles alongside the shop
+         therefore failed the whole batch with permission-denied.
+
+         So: establish identity first, then write everything that depends on
+         it. */
+      const b1 = writeBatch(db);
+      b1.set(doc(db,'rn_shops',shopId), {
         name, city: ($('g-city').value||'').trim(), ownerUid: this.uid,
         orgId: null, createdAt: serverTimestamp(),
         openRentals: 0, depositsHeld: 0
       });
-      b.set(doc(db,'rn_shops',shopId,'members',this.uid), {
+      b1.set(doc(db,'rn_shops',shopId,'members',this.uid), {
         role:'owner', phone: (auth.currentUser.phoneNumber||''), addedAt: serverTimestamp()
       });
-      b.set(doc(db,'rn_members',this.uid), {
+      b1.set(doc(db,'rn_members',this.uid), {
         shops: { [shopId]: 'owner' }, lastShopId: shopId,
         phone: (auth.currentUser.phoneNumber||'')
       }, { merge:true });
-      /* Seed the catalogue server-side so it exists for every device from
-         the first second, rather than on whichever phone happened to open
-         the app first. */
-      window.seed();
-      ((window.DB && window.DB.d && window.DB.d.rates) || []).forEach(rc => {
-        const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
-        b.set(doc(db,'rn_shops',shopId,'rates',rid),
-          { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
-        b.set(doc(db,'rn_shops',shopId,'vehicles','v_'+rid), {
-          name: rc.model, regNo: '', rateId: rid, model: rc.model,
-          status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0
-        });
-      });
-      await b.commit();
+      await b1.commit();
       this.role='owner';
+
+      /* Now the membership exists, so rnIsOwner() passes and the catalogue
+         can be written. Non-fatal on failure: the shop is already real, and
+         the Rates screen can seed it later. */
+      try {
+        const b2 = writeBatch(db);
+        window.seed();
+        ((window.DB && window.DB.d && window.DB.d.rates) || []).forEach(rc => {
+          const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+          b2.set(doc(db,'rn_shops',shopId,'rates',rid),
+            { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
+          b2.set(doc(db,'rn_shops',shopId,'vehicles','v_'+rid), {
+            name: rc.model, regNo: '', rateId: rid, model: rc.model,
+            status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0
+          });
+        });
+        await b2.commit();
+      } catch(e2){ console.warn('catalogue seed failed (shop is fine)', e2); }
+
       await this.open(shopId);
     } catch(e){ console.error(e); window.toast('Could not create business — '+(e.code||e.message)); }
   },
