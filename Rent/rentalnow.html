@@ -319,6 +319,22 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .mn-hero-s{font-size:12.5px;opacity:.85;font-weight:600}
 .mn-track{background:#EFEBE3;border-radius:6px;height:7px;overflow:hidden}
 .mn-track>div{height:100%;border-radius:6px;transition:width .35s cubic-bezier(.2,.8,.3,1)}
+.pl-toggle{display:flex;gap:6px;background:var(--p-50);border:1px solid var(--bd);
+  border-radius:13px;padding:4px;margin-bottom:14px}
+.pl-toggle button{flex:1;border:0;background:none;border-radius:10px;padding:10px 6px;
+  font-family:inherit;font-size:13px;font-weight:750;color:var(--t3);cursor:pointer;
+  transition:background .15s,color .15s}
+.pl-toggle button.on{background:var(--card);color:var(--t1);box-shadow:var(--shadow-sm)}
+.pl-toggle span{display:block;font-size:10px;font-weight:800;color:var(--success-d);margin-top:1px}
+.pl{background:var(--card);border:1px solid var(--bd);border-radius:15px;padding:14px;
+  margin-bottom:11px;box-shadow:var(--shadow-sm);position:relative}
+.pl.sug{border-color:var(--p);border-width:2px;box-shadow:0 8px 22px -12px rgba(15,61,92,.6)}
+.pl-tag{position:absolute;top:-9px;left:14px;background:var(--p);color:#fff;
+  font-size:10px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px}
+.pl-n{font-size:16px;font-weight:850;letter-spacing:-.02em}
+.pl-p{font-size:22px;font-weight:850;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.pl-save{font-size:10.5px;font-weight:800;color:var(--success-d);margin-top:2px}
 .pm-split{display:flex;gap:9px}
 .pm-box{flex:1;border-radius:13px;padding:12px 11px;border:1px solid var(--bd)}
 .pm-box.cash{background:var(--success-tint);border-color:#B7ECD1}
@@ -443,7 +459,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_4_1_sync</div>
+<div class="wm" id="wm">rn_v3_6_0_payu</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -457,7 +473,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_4_1_sync';
+const BUILD = 'rn_v3_6_0_payu';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -681,6 +697,7 @@ const R = {
     DB.load();
     document.getElementById('wm').textContent = BUILD;
     this.render();
+    this.payuReturnCheck();
     setInterval(()=>{ if (this.page==='out') this.renderOut(); }, 60000);
   },
 
@@ -759,7 +776,7 @@ const R = {
       <b style="font-size:13.5px;color:var(--danger)">Trial ended — renting out is paused</b>
       <div class="muted" style="margin-top:3px">Returns, settlements and deposit refunds still work,
       so no customer is left stranded. Contact us to continue renting out.</div>
-      <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.contact()">Talk to us</button></div>`;
+      <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.plans()">See plans</button></div>`;
   },
   contact(){
     window.open('https://wa.me/917838361200?text='+encodeURIComponent('RentalNow — I want to continue my subscription'), '_blank');
@@ -777,6 +794,8 @@ const R = {
           uploads by itself when the connection returns.</div>`:''}</div>
       <div class="muted" style="margin:0 2px 14px">Your data is saved to your account and appears
         on every device you sign in on.</div>
+      <button class="btn" style="margin-bottom:9px" onclick="R.plans()">
+        \u{1F48E} Plans &amp; pricing</button>
       <button class="btn ghost" style="margin-bottom:9px" onclick="R.toggleHaptic(this)">
         Vibration on tap: ${window.Haptic && Haptic.on ? 'On' : 'Off'}</button>
       ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>
@@ -830,6 +849,143 @@ const R = {
     try { localStorage.setItem('rn_haptic', Haptic.on ? '1' : '0'); } catch(e){}
     if (Haptic.on) Haptic.primary();
     btn.textContent = 'Vibration on tap: ' + (Haptic.on ? 'On' : 'Off');
+  },
+
+  /* ══════════════════════════════════════════════════════════════════
+     PLANS
+     Priced by fleet size, because a 15-bike shop and a 150-bike operator
+     get very different value from identical software. Kept as data so the
+     price can change without touching any logic.
+
+     Annual is priced at ten months for twelve — the shape everyone already
+     understands ("pay for ten, use twelve") and the one that matters most
+     in a seasonal trade, where a monthly customer cancels in the quiet
+     months and an annual one rides them out.
+     ══════════════════════════════════════════════════════════════════ */
+  PLANS: [
+    { id:'starter', name:'Starter', bikes:15,  m:499,  y:4990  },
+    { id:'growth',  name:'Growth',  bikes:50,  m:1299, y:12990 },
+    { id:'pro',     name:'Pro',     bikes:150, m:2499, y:24990 },
+    { id:'multi',   name:'Multi-branch', bikes:null, m:4999, y:49990 },
+  ],
+  _billing: 'y',
+
+  /* Suggest the plan that actually fits their yard, rather than making a
+     shopkeeper work out which bracket he is in. */
+  suggestedPlan(){
+    const n = (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
+    return this.PLANS.find(p => p.bikes === null || n <= p.bikes) || this.PLANS[this.PLANS.length-1];
+  },
+
+  plans(){
+    const fleet = (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
+    const sug = this.suggestedPlan();
+    const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    const yearly = this._billing === 'y';
+    openSheet(`
+      <div class="sheet-hd"><h2>Plans</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+
+      ${t && !t.paid ? `<div class="card" style="background:${t.active?'var(--y-tint)':'var(--danger-tint)'};
+        border-color:${t.active?'var(--y-bd)':'var(--danger)'}">
+        <b style="font-size:13.5px">${t.active
+          ? t.daysLeft + ' day' + (t.daysLeft===1?'':'s') + ' left in your trial'
+          : 'Your trial has ended'}</b>
+        <div class="muted" style="margin-top:3px">${t.active
+          ? 'Everything keeps working. Renting out pauses when it ends — returns never do.'
+          : 'Returns and settlements still work, so no customer is left stranded. Renting out is paused.'}</div>
+      </div>` : ''}
+
+      <div class="pl-toggle">
+        <button class="${yearly?'':'on'}" onclick="R.setBilling('m')">Monthly</button>
+        <button class="${yearly?'on':''}" onclick="R.setBilling('y')">Yearly <span>2 months free</span></button>
+      </div>
+
+      <div class="muted" style="margin:0 2px 12px">You have <b>${fleet}</b> bike${fleet===1?'':'s'}.</div>
+
+      ${this.PLANS.map(p=>{
+        const price = yearly ? p.y : p.m;
+        const isSug = p.id === sug.id;
+        return `<div class="pl ${isSug?'sug':''}">
+          ${isSug?'<div class="pl-tag">Fits your fleet</div>':''}
+          <div class="row">
+            <div class="grow">
+              <div class="pl-n">${p.name}</div>
+              <div class="muted">${p.bikes ? 'Up to '+p.bikes+' bikes' : 'Unlimited · multiple branches'}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="pl-p">${money(price)}</div>
+              <div class="muted" style="font-size:11px">${yearly?'per year':'per month'}</div>
+              ${yearly?`<div class="pl-save">save ${money(p.m*12 - p.y)}</div>`:''}
+            </div>
+          </div>
+          <button class="btn ${isSug?'':'ghost'}" style="margin-top:11px"
+            onclick="R.choosePlan('${p.id}')">Choose ${p.name}</button>
+        </div>`;
+      }).join('')}
+
+      <div class="muted" style="margin:14px 2px 0;line-height:1.55">
+        Every plan includes all features, unlimited staff and unlimited rentals.
+        Prices exclude GST.</div>
+    `);
+  },
+  setBilling(b){ this._billing = b; Haptic.tap(); this.plans(); },
+
+  async choosePlan(id){
+    const p = this.PLANS.find(x=>x.id===id); if (!p) return;
+    if (!this.isManager()) return toast('Ask the owner to pay for the plan');
+    const yearly = this._billing === 'y';
+    Haptic.primary();
+    openSheet(`<div class="sheet-hd"><h2>Opening payment\u2026</h2></div>
+      <div class="empty"><div class="e">\u{1F4B3}</div><b>Taking you to PayU</b>
+      <span>${esc(p.name)} \u00b7 ${money(yearly?p.y:p.m)} ${yearly?'per year':'per month'}</span></div>`);
+    const res = await Cloud.startCheckout(p.id, yearly ? 'annual' : 'monthly');
+    if (!res.ok){
+      Haptic.error();
+      openSheet(`<div class="sheet-hd"><h2>Could not start payment</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+        <div class="card"><div class="muted">${esc(res.msg||'Please try again.')}</div></div>
+        <button class="btn ghost" onclick="R.payHelp('${esc(id)}')">Pay another way</button>`);
+    }
+  },
+
+  /* If checkout fails there still has to be a way to give you money. */
+  payHelp(id){
+    const p = this.PLANS.find(x=>x.id===id);
+    const yearly = this._billing === 'y';
+    const shop = (window.Cloud && Cloud.shopName) || '';
+    const msg = 'RentalNow — I want the ' + (p?p.name:'') + ' plan ('
+      + (yearly ? 'yearly ' + money(p?p.y:0) : 'monthly ' + money(p?p.m:0)) + ')'
+      + (shop ? '\nBusiness: ' + shop : '')
+      + ((window.Cloud && Cloud.shopId) ? '\nRef: ' + Cloud.shopId : '');
+    window.open('https://wa.me/917838361200?text=' + encodeURIComponent(msg), '_blank');
+  },
+
+  /* Coming back from PayU: say what happened. The webhook is the source of
+     truth, so a success here is confirmed by the shop document updating —
+     we do not take the redirect's word for it. */
+  payuReturnCheck(){
+    try {
+      const q = new URLSearchParams(location.search);
+      const r = q.get('payu'); if (!r) return;
+      history.replaceState({}, '', location.pathname);
+      if (r === 'success'){
+        Haptic.success();
+        setTimeout(()=>{
+          const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+          openSheet(`<div class="sheet-hd"><h2>Payment received</h2>
+            <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+            <div class="card" style="background:var(--success-tint);border-color:#B7ECD1">
+              <b style="font-size:14px;color:var(--success-d)">You're all set</b>
+              <div class="muted" style="margin-top:4px">${t && t.paid
+                ? 'Your plan is active.'
+                : 'Activation can take a few seconds. If it has not appeared in a minute, message us and we will sort it.'}</div></div>`);
+        }, 1200);
+      } else {
+        Haptic.error();
+        toast('Payment did not go through — nothing was charged');
+      }
+    } catch(e){}
   },
 
   /* ── staff ──────────────────────────────────────────────────────── */
@@ -2937,6 +3093,34 @@ const Cloud = {
       }, { merge:true });
       return { ok:true };
     } catch(e){ console.error('rollupDelta', e); return { ok:false, code:(e&&e.code)||'unknown' }; }
+  },
+
+  /* PayU hosted checkout. The client never sends an amount — it sends the
+     plan, and the server prices it. That is the whole point: a price in the
+     browser is a price a customer can edit. */
+  async startCheckout(tier, cycle){
+    if (!this.shopId) return { ok:false, msg:'Sign in first' };
+    try {
+      const fn = httpsCallable(fns, 'payuCreateOrder');
+      const res = await fn({ product:'rentalnow', tier, cycle, shopId:this.shopId });
+      const d = (res && res.data) || {};
+      if (!d.paymentUrl || !d.params) return { ok:false, msg:'Could not start payment' };
+
+      /* PayU's hosted page expects a form POST, not a redirect. */
+      const form = document.createElement('form');
+      form.method = 'POST'; form.action = d.paymentUrl; form.style.display = 'none';
+      Object.keys(d.params).forEach(k => {
+        const i = document.createElement('input');
+        i.type = 'hidden'; i.name = k; i.value = d.params[k] == null ? '' : String(d.params[k]);
+        form.appendChild(i);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      return { ok:true };
+    } catch(e){
+      console.error('startCheckout', e);
+      return { ok:false, msg: (e && (e.message || e.code)) || 'Payment could not start' };
+    }
   },
 
   /* ── staff ─────────────────────────────────────────────────────── */
