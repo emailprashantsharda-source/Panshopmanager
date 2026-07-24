@@ -486,7 +486,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_6_2_gatefix</div>
+<div class="wm" id="wm">rn_v3_7_0_refundfix</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -500,7 +500,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_6_2_gatefix';
+const BUILD = 'rn_v3_7_0_refundfix';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1956,7 +1956,15 @@ Please return on time to get your full deposit back.`;
     this._ci.collecting = collecting;
     this._ci.unpaid = Math.max(0, due - collecting);
     const unpaid = this._ci.unpaid;
-    const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
+    /* The deposit covers only what is still UNPAID.
+
+       It used to be depositHeld − due, which took the whole bill out of the
+       deposit even when the customer had just handed the money over in cash.
+       They paid once at the counter and again out of their deposit: a ₹450
+       rental cost them ₹900 and the drawer read ₹450 too high. A deposit is
+       security against non-payment, not a second way to charge for the same
+       rental. */
+    const refund = Math.max(0, (Number(r.depositHeld)||0) - unpaid);
 
     document.getElementById('i-settle').innerHTML = `
       <div class="card" style="background:var(--p-50);border-color:#D9E2EA">
@@ -1976,8 +1984,11 @@ Please return on time to get your full deposit back.`;
         <div class="line" style="border-top:1px dashed var(--bd);margin-top:6px;padding-top:10px">
           <span>Deposit held</span><b>${money(r.depositHeld)}</b></div>
         <div class="line tot" style="border:0;padding-top:4px">
-          <span>${refund>=0?'Refundable deposit':'Still to collect'}</span>
-          <b class="${refund>=0?'pos':'neg'}">${money(Math.abs(refund))}</b></div>
+          <span>Refund to customer</span>
+          <b class="pos">${money(refund)}</b></div>
+        ${(Number(r.depositHeld)||0) - refund > 0 ? `<div class="line">
+          <span>Kept from deposit <span class="muted">— covers unpaid rent</span></span>
+          <b class="neg">${money((Number(r.depositHeld)||0) - refund)}</b></div>` : ''}
         ${unpaid>0?`<div class="line" style="border-top:1px dashed var(--bd);margin-top:6px;padding-top:9px">
           <span>Left unpaid <span class="muted">— recorded as due</span></span>
           <b class="neg">${money(unpaid)}</b></div>`:''}
@@ -2006,7 +2017,8 @@ Please return on time to get your full deposit back.`;
     const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
     const charges = rentTotal + dmg + fuelc + other;
     const due = charges - (Number(r.advancePaid)||0);
-    const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
+    const _unpaid = Math.max(0, this._ci.unpaid || 0);
+    const refund = Math.max(0, (Number(r.depositHeld)||0) - _unpaid);
 
     const patch = {
       status: 'closed', returnedAt: inAt, settledAt: Date.now(),
@@ -2063,8 +2075,9 @@ Please return on time to get your full deposit back.`;
     }
     Haptic.success();
     closeSheet(); this.nav('out');
-    toast(refund >= 0 ? 'Closed · refund ' + money(refund)
-                      : 'Closed · collect ' + money(Math.abs(refund)));
+    toast(patch.unpaid > 0
+      ? 'Closed · ' + money(patch.unpaid) + ' still owed'
+      : 'Closed · refund ' + money(refund));
   },
 
   waOverdue(id){
