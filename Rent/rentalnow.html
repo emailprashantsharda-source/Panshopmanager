@@ -187,6 +187,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <h1 id="top-title">Out Now</h1>
     <div class="sub" id="top-sub">—</div>
   </div>
+  <button class="top-btn" onclick="R.account()" style="padding:7px 9px" title="Account">☰</button>
   <button class="top-btn" id="top-action" onclick="R.topAction()">+ Rent out</button>
 </div>
 
@@ -229,9 +230,25 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <span>Money</span></button>
 </div>
 
+<!-- ═══ AUTH GATE ═══ -->
+<div id="gate" style="position:fixed;inset:0;z-index:900;background:var(--p);color:#fff;
+     display:none;flex-direction:column;justify-content:center;padding:26px 22px;overflow-y:auto">
+  <div style="max-width:400px;margin:0 auto;width:100%">
+    <div style="font-size:42px;margin-bottom:6px">🛵</div>
+    <h1 style="font-size:26px;font-weight:850;margin-bottom:4px">RentalNow</h1>
+    <p style="opacity:.75;font-size:14px;margin:0 0 26px">Your rentals, on every device.</p>
+    <div id="gate-body"></div>
+  </div>
+</div>
+
+<div id="syncchip" onclick="Cloud.explain()" style="display:none;position:fixed;
+     right:10px;top:calc(10px + env(safe-area-inset-top));z-index:70;
+     background:rgba(255,255,255,.16);color:#fff;border-radius:99px;padding:5px 11px;
+     font-size:11px;font-weight:800;cursor:pointer;backdrop-filter:blur(6px)">…</div>
+
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v1_2_0</div>
+<div class="wm" id="wm">rn_v2_1_0_tier0</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -245,7 +262,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v1_2_0';
+const BUILD = 'rn_v2_1_0_tier0';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -256,6 +273,7 @@ const DB = {
       const raw = localStorage.getItem(this.k);
       if (raw) this.d = Object.assign(this.d, JSON.parse(raw));
     } catch(e){ console.warn('load failed', e); }
+    if (window.Cloud && Cloud.ready) return this.d;   /* cloud owns the data */
     if (!this.d.seeded) { seed(); this.d.seeded = 1; this.save(); }
     /* (v1.2) The rate card the shop handed over already names every vehicle,
        so making them re-type the same ten names as "bikes" was pure friction —
@@ -279,6 +297,11 @@ const DB = {
     return this.d;
   },
   save(){
+    /* Once signed in, Firestore is the source of truth and listeners own
+       DB.d — writing the local blob back would resurrect stale rows on the
+       next reload. Local storage stays the store only until the account
+       exists, and afterwards as the pre-migration safety copy. */
+    if (window.Cloud && Cloud.ready) return;
     try { localStorage.setItem(this.k, JSON.stringify(this.d)); }
     catch(e){ toast('Could not save — storage full?'); }
   },
@@ -423,13 +446,126 @@ const R = {
   },
 
   nav(p){
+    if ((p==='money' && !this.isManager()) || (p==='rates' && !this.isManager())) {
+      toast('Ask the owner for access'); p = 'out';
+    }
     this.page = p;
     document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
     document.getElementById('pg-'+p).classList.add('active');
     document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));
     document.getElementById('nv-'+p).classList.add('on');
+    document.getElementById('nv-money').style.display = this.isManager() ? '' : 'none';
     window.scrollTo(0,0);
     this.render();
+  },
+
+  /* Client-side role checks are UX only — the Firestore rules are the
+     real enforcement. These just stop staff being shown doors that would
+     slam in their face. */
+  role(){ return (window.Cloud && Cloud.ready) ? (Cloud.role||'counter') : 'owner'; },
+  isOwner(){ return this.role()==='owner'; },
+  isManager(){ return ['owner','manager'].includes(this.role()); },
+  canRentOut(){
+    if (!window.Cloud || !Cloud.ready) return true;
+    const t = Cloud.trialInfo();
+    return t.active;
+  },
+  trialBanner(){
+    if (!window.Cloud || !Cloud.ready) return '';
+    const t = Cloud.trialInfo();
+    if (t.paid) return '';
+    if (t.active) {
+      if (t.daysLeft > 5) return '';
+      return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">${t.daysLeft} day${t.daysLeft===1?'':'s'} left in your trial</b>
+        <div class="muted" style="margin-top:3px">After that you can still take bikes back and
+        settle deposits — only renting out pauses.</div></div>`;
+    }
+    /* Expired: returns MUST keep working. Locking the shop out entirely would
+       strand bikes already on the road with no way to refund a deposit —
+       turning a billing event into their customer's problem. */
+    return `<div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+      <b style="font-size:13.5px;color:var(--danger)">Trial ended — renting out is paused</b>
+      <div class="muted" style="margin-top:3px">Returns, settlements and deposit refunds still work,
+      so no customer is left stranded. Contact us to continue renting out.</div>
+      <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.contact()">Talk to us</button></div>`;
+  },
+  contact(){
+    window.open('https://wa.me/917838361200?text='+encodeURIComponent('RentalNow — I want to continue my subscription'), '_blank');
+  },
+
+  account(){
+    if (!window.Cloud || !Cloud.ready) return;
+    openSheet(`<div class="sheet-hd"><h2>${esc(Cloud.shopName||'Your business')}</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card"><div class="line"><span>Signed in as</span><b>${esc(Cloud.role||'')}</b></div>
+        <div class="line"><span>Sync</span><b>${Cloud.online?'Connected':'Offline'}</b></div></div>
+      <div class="muted" style="margin:0 2px 14px">Your data is saved to your account and appears
+        on every device you sign in on.</div>
+      ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>`:''}
+      <button class="btn ghost" onclick="Cloud.logout()">Sign out</button>`);
+  },
+
+  /* ── staff ──────────────────────────────────────────────────────── */
+  staff(){
+    const ms = DB.d.members || [];
+    openSheet(`<div class="sheet-hd"><h2>Staff &amp; roles</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      ${ms.map(m=>`<div class="card"><div class="row">
+          <b class="grow">${esc(m.phone||m.id)}</b>
+          <span class="pill ${m.role==='owner'?'ok':'out'}">${esc(m.role||'')}</span></div></div>`).join('')}
+      <div class="sec-hd">Invite someone</div>
+      <div class="muted" style="margin:0 2px 10px">They join when they sign in with this number.</div>
+      <div class="fld"><input class="in" id="st-ph" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile"></div>
+      <div class="fld"><label class="lbl">Role</label>
+        <select class="in" id="st-role">
+          <option value="counter">Counter — rent out &amp; take back only</option>
+          <option value="manager">Manager — also bikes &amp; money</option>
+        </select></div>
+      <button class="btn" onclick="R.staffAdd()">Send invite</button>`);
+  },
+  async staffAdd(){
+    const ph = document.getElementById('st-ph').value;
+    const role = document.getElementById('st-role').value;
+    const res = await Cloud.addStaff(ph, role);
+    if (!res.ok) return toast(res.msg||'Could not invite');
+    closeSheet(); toast('Invited — they join when they sign in');
+  },
+
+  /* ── history: paged query, never a live listener ─────────────────
+     Closed rentals grow without bound, so this is the one screen that
+     must never load "everything". */
+  async history(reset){
+    if (!window.Cloud || !Cloud.ready) return toast('Sign in to see history');
+    if (reset) this._h = { rows: [], cursor: null, done: false };
+    const st = this._h = this._h || { rows: [], cursor: null, done: false };
+    if (st.done) return;
+    try {
+      const res = await Cloud.history(st.cursor, 25);
+      st.rows = st.rows.concat(res.rows);
+      st.cursor = res.cursor;
+      if (!res.rows.length || res.rows.length < 25) st.done = true;
+    } catch(e){ console.error(e); return toast('Could not load history — index may still be building'); }
+    this.historySheet();
+  },
+  historySheet(){
+    const st = this._h || { rows: [] };
+    openSheet(`<div class="sheet-hd"><h2>Past rentals</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      ${!st.rows.length ? '<div class="empty"><b>No closed rentals yet</b></div>' :
+        st.rows.map(r=>{
+          const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
+          return `<div class="card"><div class="row">
+            <div class="grow"><b class="ell">${esc(v?vLabel(v):(r.vehicleId||'—'))}</b>
+              <div class="muted" style="margin-top:2px">${esc(r.customerName||'')} ${esc(r.customerPhone||'')}</div>
+              <div class="muted" style="margin-top:3px">${r.outAt?fmtDT(r.outAt):''} → ${r.returnedAt?fmtDT(r.returnedAt):''}
+                ${r.extraHours?' · '+r.extraHours+'h extra':''}</div></div>
+            <div style="text-align:right"><b>${money(r.revenue)}</b>
+              <div class="muted" style="font-size:11px">refund ${money(r.depositRefunded)}</div></div>
+          </div></div>`;
+        }).join('')}
+      ${st.done ? '<div class="muted" style="text-align:center;padding:8px">That\'s everything.</div>'
+                : '<button class="btn ghost" onclick="R.history()">Load more</button>'}`);
   },
 
   topAction(){
@@ -474,6 +610,7 @@ const R = {
       open.length + ' open rental' + (open.length===1?'':'s') + ' · refundable';
 
     const box = document.getElementById('out-list');
+    const banner = this.trialBanner();
     if (!open.length){
       /* Rate cards ship pre-seeded, so a brand-new shop sees 10 models under
          Rates and reasonably assumes it is set up — then "+ Rent out" dead-ends
@@ -481,7 +618,7 @@ const R = {
          bike with a number plate. Until at least one bike exists there is
          nothing to rent, so say that here instead of pointing at a button that
          cannot work yet. */
-      box.innerHTML = DB.d.vehicles.length
+      box.innerHTML = banner + (DB.d.vehicles.length
         ? `<div class="empty"><div class="e">🛵</div>
              <b>Nothing is out right now</b>
              <span>Tap <b>+ Rent out</b> to start a rental.</span></div>`
@@ -489,12 +626,14 @@ const R = {
              <b>Add your bikes first</b>
              <span>Rates are ready for ${DB.d.rates.length} models. Now add the actual
              bikes you own — each one with its number plate.</span>
-             <div style="margin-top:18px"><button class="btn" onclick="R.nav('fleet')">
-               Go to Fleet</button></div></div>`;
+             <div style="margin-top:18px"><button class="btn" onclick="R.fillFromRates()">
+               + Create ${DB.d.rates.length} bikes from my rate card</button></div>
+             <div style="margin-top:9px"><button class="btn ghost" onclick="R.nav('fleet')">
+               Go to Fleet</button></div></div>`);
       return;
     }
     open.sort((a,b)=> a.dueAt - b.dueAt);
-    box.innerHTML = open.map(r => {
+    box.innerHTML = banner + open.map(r => {
       const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
       const isLate = now > r.dueAt;
       const overH = isLate ? hoursBetween(r.dueAt, now) : 0;
@@ -524,14 +663,19 @@ const R = {
   /* ── FLEET ──────────────────────────────────────────────────────── */
   renderFleet(){
     const box = document.getElementById('fleet-list');
-    const hdr = `<div class="muted" style="margin:0 2px 12px">
-      One bike per row. Created from your rate card — rename, add a vehicle
-      number, or add a second bike of the same model from Rates.</div>`;
+    const missing = DB.d.rates.filter(rc => !DB.d.vehicles.some(v => v.rateId===rc.id)).length;
+    const hdr = `<div class="muted" style="margin:0 2px 10px">
+        One bike per row. Rename it, add a vehicle number, or add a second bike
+        of the same model from Rates.</div>` +
+      (missing ? `<button class="btn ghost" style="margin-bottom:12px" onclick="R.fillFromRates()">
+          + Add ${missing} missing bike${missing===1?'':'s'} from your rate card</button>` : '');
     if (!DB.d.vehicles.length){
       box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
-        <b>No bikes yet</b><span>Rates are set for ${DB.d.rates.length} models. Add the actual
-        bikes you own — one entry per number plate.</span>
-        <div style="margin-top:16px"><button class="btn" onclick="R.editVehicle()">+ Add first vehicle</button></div></div>`;
+        <b>No bikes yet</b><span>Your rate card lists ${DB.d.rates.length} models.
+        Create one bike for each, then rename or add numbers as you like.</span>
+        <div style="margin-top:16px"><button class="btn" onclick="R.fillFromRates()">
+          + Create ${DB.d.rates.length} bikes from my rate card</button></div>
+        <div style="margin-top:9px"><button class="btn ghost" onclick="R.editVehicle()">Add one manually</button></div></div>`;
       return;
     }
     const order = { available:0, rented:1, maintenance:2, retired:3 };
@@ -581,7 +725,29 @@ const R = {
     return '';
   },
 
+  /* (v1.2.1) The auto-seed only ran when the fleet was completely empty, so a
+     single leftover test bike silently blocked all ten — and a one-time flag
+     meant there was no way to ask for them again. This is the same job as a
+     visible, repeatable button: one bike for every rate card that has none.
+     Safe to press any time; it never duplicates and never touches what is
+     already there. */
+  fillFromRates(){
+    let made = 0;
+    DB.d.rates.forEach(rc => {
+      if (DB.d.vehicles.some(v => v.rateId === rc.id)) return;
+      const rec = { name: rc.model, regNo: '', rateId: rc.id, model: rc.model,
+                    status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0 };
+      if (window.Cloud && Cloud.ready) Cloud.put('vehicles', Cloud.nid('v'), rec);
+      else DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec));
+      made++;
+    });
+    if (!made) return toast('Every rate card already has a bike');
+    DB.save(); this.render();
+    toast(made + ' bike' + (made===1?'':'s') + ' added from your rate card');
+  },
+
   editVehicle(id, preRate){
+    if (!this.isManager()) return toast('Ask the owner or manager to change bikes');
     const v = id ? DB.d.vehicles.find(x=>x.id===id) : null;
     const sel = v ? v.rateId : (preRate||'');
     const opts = DB.d.rates.map(r=>
@@ -656,7 +822,9 @@ const R = {
       pucExpiry: g('v-puc') ? g('v-puc').value : (old?old.pucExpiry:''),
       odo: old ? (old.odo||0) : 0,
     };
-    if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
+    if (window.Cloud && Cloud.ready){
+      Cloud.put('vehicles', id || Cloud.nid('v'), rec);
+    } else if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
     DB.save(); closeSheet(); this.render(); toast(id?'Bike updated':'Bike added');
   },
@@ -664,9 +832,11 @@ const R = {
   delVehicle(id){
     if (DB.d.rentals.some(r=>r.vehicleId===id && r.status==='open'))
       return toast('This vehicle is out — check it in first');
-    if (!confirm('Remove this vehicle? Past rentals stay in your records.')) return;
+    if (!confirm('Remove this bike? Past rentals stay in your records.')) return;
+    /* soft delete only — nothing is ever destroyed */
+    if (window.Cloud && Cloud.ready) Cloud.softDelete('vehicles', id);
     DB.d.vehicles = DB.d.vehicles.filter(x=>x.id!==id);
-    DB.save(); closeSheet(); this.render(); toast('Vehicle removed');
+    DB.save(); closeSheet(); this.render(); toast('Bike removed');
   },
 
   /* ── RATE CARDS ─────────────────────────────────────────────────── */
@@ -697,6 +867,7 @@ const R = {
   },
 
   editRate(id){
+    if (!this.isOwner()) return toast('Only the owner can change prices');
     const r = id ? DB.d.rates.find(x=>x.id===id) : null;
     openSheet(`
       <div class="sheet-hd"><h2>${r?'Edit rate card':'New rate card'}</h2>
@@ -726,7 +897,10 @@ const R = {
       model, deposit: Number(document.getElementById('r-dep').value)||0,
       ot: Number(document.getElementById('r-ot').value)||0, tiers
     };
-    if (id){
+    if (window.Cloud && Cloud.ready){
+      Cloud.put('rates', id || Cloud.nid('rc'), rec);
+      if (id) DB.d.vehicles.forEach(v=>{ if (v.rateId===id) Cloud.put('vehicles', v.id, { model }); });
+    } else if (id){
       Object.assign(DB.d.rates.find(x=>x.id===id), rec);
       DB.d.vehicles.forEach(v=>{ if (v.rateId===id) v.model = model; });
     } else DB.d.rates.push(Object.assign({ id: DB.id('rc') }, rec));
@@ -735,6 +909,7 @@ const R = {
 
   /* ── CHECK-OUT ──────────────────────────────────────────────────── */
   checkoutStart(){
+    if (!this.canRentOut()) return toast('Trial ended — returns still work. Tap "Talk to us" to continue.');
     const avail = DB.d.vehicles.filter(v=>v.status==='available');
     if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a bike first — rates are only prices, not bikes'); }
     if (!avail.length) return toast('No vehicles available — everything is out');
@@ -848,7 +1023,7 @@ const R = {
                          : 'Blocked — ' + blocked + ' expired';
   },
 
-  checkoutSave(){
+  async checkoutSave(){
     const vid  = document.getElementById('c-veh').value;
     const name = document.getElementById('c-name').value.trim();
     const ph   = document.getElementById('c-phone').value.replace(/\D/g,'').slice(-10);
@@ -877,14 +1052,33 @@ const R = {
       fuelOut: (document.getElementById('c-fuel')||{value:''}).value,
       docOverride: !!(ovEl && ovEl.checked) ? this.docBlocked(v) : '',
     };
-    DB.d.rentals.push(rental);
-    v.status = 'rented';
-    if (rental.odoOut) v.odo = rental.odoOut;
+    rental.dayKey = new Date(now).toISOString().slice(0,10);
 
-    let c = DB.d.customers.find(x=>x.phone===ph);
-    if (!c) DB.d.customers.push({ id: DB.id('c'), name, phone: ph, kyc: rental.customerKyc });
-
-    DB.save(); closeSheet(); this.nav('out');
+    if (window.Cloud && Cloud.ready){
+      /* Allocating a specific bike is the one write that must reach the
+         server: two staff must never hand out the same one. If there is no
+         signal we hold it and finish automatically rather than refusing. */
+      rental.id = Cloud.nid('r');
+      rental.createdBy = Cloud.uid;
+      const res = await Cloud.checkout(rental, vid);
+      if (!res.ok){
+        if (res.reason === 'taken')
+          return toast(vLabel(v) + ' was just rented by someone else — pick another bike');
+        if (res.reason === 'cancelled') return toast('Check-out cancelled');
+        return toast('Could not rent out — try again');
+      }
+      if (ph) Cloud.put('customers', 'ph_'+ph, { name, phone: ph, kyc: rental.customerKyc });
+      Cloud.audit('rental.out', rental.id, null,
+        { vehicleId: vid, tier: rental.tier, deposit: rental.depositHeld, advance: rental.advancePaid });
+    } else {
+      DB.d.rentals.push(rental);
+      v.status = 'rented';
+      if (rental.odoOut) v.odo = rental.odoOut;
+      if (!DB.d.customers.find(x=>x.phone===ph))
+        DB.d.customers.push({ id: DB.id('c'), name, phone: ph, kyc: rental.customerKyc });
+      DB.save();
+    }
+    closeSheet(); this.nav('out');
     toast('Rented out · ' + vLabel(v));
     if (ph) setTimeout(()=>this.waAgreement(rental.id), 500);
   },
@@ -1012,7 +1206,7 @@ Please return on time to get your full deposit back.`;
     `;
   },
 
-  checkinSave(){
+  async checkinSave(){
     this.ciCalc();
     const { id, hrs, q, inAt } = this._ci;
     const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
@@ -1025,7 +1219,7 @@ Please return on time to get your full deposit back.`;
     const due = charges - (Number(r.advancePaid)||0);
     const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
 
-    Object.assign(r, {
+    const patch = {
       status: 'closed', returnedAt: inAt, settledAt: Date.now(),
       hoursUsed: Math.round(hrs*100)/100, extraHours: q.hoursOver||0,
       odoIn: g('i-odo'),
@@ -1037,9 +1231,30 @@ Please return on time to get your full deposit back.`;
       depositRefunded: Math.max(0, refund),
       depositForfeited: refund < 0 ? 0 : (Number(r.depositHeld)||0) - Math.max(0, refund),
       balanceCollected: Math.max(0, due),
-    });
-    if (v){ v.status = 'available'; if (r.odoIn) v.odo = r.odoIn; }
-    DB.save(); closeSheet(); this.nav('out');
+    };
+    const vpatch = { status: 'available' };
+    if (patch.odoIn) vpatch.odo = patch.odoIn;
+
+    if (window.Cloud && Cloud.ready){
+      /* Safe offline: the bike is physically back, so nobody else can be
+         returning it. Queued and replayed by Firestore if there is no signal. */
+      const res = await Cloud.checkin(r.id, r.vehicleId, patch, vpatch);
+      if (!res.ok){
+        if (res.reason === 'settled') return toast('This rental was already settled on another device');
+        return toast('Could not settle — try again');
+      }
+      Cloud.audit('rental.in', r.id, { status:'open', deposit:r.depositHeld }, {
+        revenue: patch.revenue, refund: patch.depositRefunded,
+        collected: patch.balanceCollected, extraHours: patch.extraHours });
+      Cloud.rollup(new Date(patch.settledAt).toISOString().slice(0,10),
+                   patch.revenue, patch.depositRefunded);
+      Object.assign(r, patch);
+    } else {
+      Object.assign(r, patch);
+      if (v){ v.status = 'available'; if (patch.odoIn) v.odo = patch.odoIn; }
+      DB.save();
+    }
+    closeSheet(); this.nav('out');
     toast(refund >= 0 ? 'Closed · refund ' + money(refund)
                       : 'Closed · collect ' + money(Math.abs(refund)));
   },
@@ -1087,6 +1302,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <div class="muted" style="margin-top:4px">It is ${open.length} customer deposit${open.length===1?'':'s'}
         waiting to be refunded. Revenue above excludes it — that is deliberate.</div>
       </div>
+      <button class="btn ghost" style="margin-bottom:4px" onclick="R.history(true)">Past rentals</button>
       <div class="sec-hd">Which bikes earn</div>
       ${!per.length ? '<div class="muted" style="margin:0 2px">No vehicles yet.</div>' :
         per.map(p=>`<div class="card">
@@ -1109,6 +1325,441 @@ R.boot();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', ()=>navigator.serviceWorker.register('rentalnow-sw.js').catch(()=>{}));
 }
+</script>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════════
+   CLOUD LAYER  (Tier 0)
+   Auth · multi-shop · scoped realtime sync · transactional check-out
+
+   Design notes that matter:
+
+   1. LISTENERS ARE SCOPED. We never listen to the whole rentals
+      collection — at 70k rentals a year that grows without bound. Live
+      listeners cover the hot set only (vehicles, rates, members, and
+      rentals where status == 'open'), which stays ~350 docs forever.
+      History is a paged query, not a listener.
+
+   2. CHECK-OUT IS A SERVER TRANSACTION. Renting a specific bike
+      allocates a scarce thing: two staff must not both get it. The
+      transaction flips available -> rented and aborts otherwise. With
+      no signal we do NOT refuse — we hold the rental and complete it
+      the moment the connection returns.
+
+   3. CHECK-IN DOES NOT NEED THE SERVER. The bike is physically back;
+      nobody else can be returning it. That write queues offline and
+      replays, which is what Firestore's persistence is for.
+   ═══════════════════════════════════════════════════════════════════ */
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeAppCheck, ReCaptchaV3Provider }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
+import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, collection, query, where, orderBy, limit, startAfter,
+  onSnapshot, getDoc, getDocs, setDoc, updateDoc, runTransaction,
+  serverTimestamp, writeBatch, onSnapshotsInSync, increment, collectionGroup
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const cfg = {
+  apiKey: "AIzaSyB8v9gYxCg4qBfLl2J08D9TeUVygKVAqC8",
+  authDomain: "panshopmanager.firebaseapp.com",
+  projectId: "panshopmanager",
+  storageBucket: "panshopmanager.firebasestorage.app",
+  messagingSenderId: "448042777087",
+  appId: "1:448042777087:web:9b4c4a0bd4dbc425bccfca"
+};
+const app = initializeApp(cfg);
+try {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LfZQcYsAAAAAL9TGObuIHv-SllzTi_aHkmNdlnH'),
+    isTokenAutoRefreshEnabled: true
+  });
+} catch(e){ console.warn('appcheck', e); }
+
+const auth = getAuth(app);
+/* Durable offline mirror + cross-tab coherence. This is the piece that
+   makes "never lost" true for work done without a connection. */
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const Cloud = {
+  uid:null, shopId:null, role:null, shopName:'', ready:false,
+  pending:0, online:navigator.onLine, _unsub:[], _conf:null,
+
+  /* ── boot ─────────────────────────────────────────────────────── */
+  boot(){
+    window.addEventListener('online',  ()=>{ this.online=true;  this.chip(); });
+    window.addEventListener('offline', ()=>{ this.online=false; this.chip(); });
+    onSnapshotsInSync(db, ()=>{ this.pending=0; this.chip(); });
+    onAuthStateChanged(auth, async u => {
+      if (!u) { this.uid=null; this.showGate(); return; }
+      this.uid = u.uid;
+      await this.afterLogin();
+    });
+  },
+
+  /* ── auth ─────────────────────────────────────────────────────── */
+  showGate(html){
+    $('gate').style.display='flex';
+    $('gate-body').innerHTML = html || `
+      <div class="fld"><label class="lbl" style="color:rgba(255,255,255,.8)">Mobile number</label>
+        <input class="in" id="g-phone" type="tel" inputmode="numeric" maxlength="10"
+          placeholder="10 digits" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff"></div>
+      <button class="btn y" onclick="Cloud.sendOtp()">Send OTP</button>
+      <div id="recap"></div>
+      <p style="opacity:.6;font-size:11.5px;margin-top:16px">
+        Your data is saved to your account and syncs to every device you sign in on.</p>`;
+  },
+  hideGate(){ $('gate').style.display='none'; },
+
+  async sendOtp(){
+    const ph = ($('g-phone').value||'').replace(/\D/g,'').slice(-10);
+    if (ph.length!==10) return window.toast('Enter a 10-digit number');
+    try {
+      if (!this._verifier)
+        this._verifier = new RecaptchaVerifier(auth, 'recap', { size:'invisible' });
+      this._conf = await signInWithPhoneNumber(auth, '+91'+ph, this._verifier);
+      this.showGate(`
+        <p style="opacity:.8;font-size:14px;margin:0 0 16px">OTP sent to +91 ${esc(ph)}</p>
+        <div class="fld"><input class="in" id="g-otp" type="tel" inputmode="numeric" maxlength="6"
+          placeholder="6-digit OTP" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff"></div>
+        <button class="btn y" onclick="Cloud.verifyOtp()">Verify &amp; continue</button>
+        <button class="btn ghost" style="margin-top:9px;background:transparent;color:#fff;border-color:rgba(255,255,255,.3)"
+          onclick="Cloud.showGate()">Change number</button>`);
+    } catch(e){
+      console.error(e);
+      window.toast('Could not send OTP — ' + (e.code||e.message||'try again'));
+      try { if (this._verifier) { this._verifier.clear(); this._verifier=null; } } catch(_){}
+    }
+  },
+
+  async verifyOtp(){
+    const code = ($('g-otp').value||'').replace(/\D/g,'');
+    if (code.length<6) return window.toast('Enter the 6-digit OTP');
+    try { await this._conf.confirm(code); }
+    catch(e){ window.toast('Wrong OTP — try again'); }
+  },
+
+  async afterLogin(){
+    const mref = doc(db, 'rn_members', this.uid);
+    let m = null;
+    try { const snap = await getDoc(mref); m = snap.exists() ? snap.data() : null; } catch(e){}
+    await this.claimInvites();
+    try { const snap2 = await getDoc(mref); m = snap2.exists() ? snap2.data() : m; } catch(e){}
+    const shops = (m && m.shops) ? Object.keys(m.shops) : [];
+    if (!shops.length) return this.askShop();
+    const pick = (m.lastShopId && shops.includes(m.lastShopId)) ? m.lastShopId : shops[0];
+    this.role = m.shops[pick];
+    await this.open(pick);
+  },
+
+  askShop(){
+    this.showGate(`
+      <p style="opacity:.8;font-size:14px;margin:0 0 18px">Set up your rental business.</p>
+      <div class="fld"><label class="lbl" style="color:rgba(255,255,255,.8)">Business name</label>
+        <input class="in" id="g-shop" placeholder="Rapid Rent Services"
+          style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff"></div>
+      <div class="fld"><label class="lbl" style="color:rgba(255,255,255,.8)">City</label>
+        <input class="in" id="g-city" placeholder="Bhopal"
+          style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff"></div>
+      <button class="btn y" onclick="Cloud.createShop()">Create business</button>`);
+  },
+
+  async createShop(){
+    const name = ($('g-shop').value||'').trim();
+    if (!name) return window.toast('Business name is required');
+    const shopId = 'rs_' + this.uid.slice(0,6) + '_' + Date.now().toString(36);
+    try {
+      const b = writeBatch(db);
+      b.set(doc(db,'rn_shops',shopId), {
+        name, city: ($('g-city').value||'').trim(), ownerUid: this.uid,
+        orgId: null, createdAt: serverTimestamp(),
+        openRentals: 0, depositsHeld: 0
+      });
+      b.set(doc(db,'rn_shops',shopId,'members',this.uid), {
+        role:'owner', phone: (auth.currentUser.phoneNumber||''), addedAt: serverTimestamp()
+      });
+      b.set(doc(db,'rn_members',this.uid), {
+        shops: { [shopId]: 'owner' }, lastShopId: shopId,
+        phone: (auth.currentUser.phoneNumber||'')
+      }, { merge:true });
+      await b.commit();
+      this.role='owner';
+      await this.open(shopId);
+    } catch(e){ console.error(e); window.toast('Could not create business — '+(e.code||e.message)); }
+  },
+
+  /* ── open a shop: scoped listeners ────────────────────────────── */
+  async open(shopId){
+    this.shopId = shopId;
+    this._unsub.forEach(f=>{ try{f();}catch(e){} }); this._unsub=[];
+    const S = p => collection(db,'rn_shops',shopId,p);
+
+    const bind = (q, key, after) => onSnapshot(q, snap => {
+      window.DB.d[key] = snap.docs.map(d => Object.assign({ id:d.id }, d.data()))
+                              .filter(x => !x.deletedAt);
+      this.pending = snap.metadata.hasPendingWrites ? this.pending : 0;
+      this.chip();
+      if (after) after();
+      if (this.ready && window.R) window.R.render();
+    }, err => { console.error(key, err); window.toast('Sync error on '+key); });
+
+    this._unsub.push(bind(S('vehicles'), 'vehicles'));
+    this._unsub.push(bind(S('rates'), 'rates'));
+    /* HOT SET ONLY: open rentals. Closed history is paged on demand so
+       this listener never grows with the age of the business. */
+    this._unsub.push(bind(query(S('rentals'), where('status','==','open')), 'rentals'));
+
+    this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
+      this.shop = sd.exists() ? sd.data() : null;
+      this.shopName = this.shop ? (this.shop.name||'') : '';
+      if (this.ready && window.R) window.R.render();
+    }));
+    this._unsub.push(bind(collection(db,'rn_shops',shopId,'members'), 'members'));
+    try { await setDoc(doc(db,'rn_members',this.uid), { lastShopId: shopId }, { merge:true }); } catch(e){}
+
+    this.ready = true;
+    this.hideGate();
+    $('syncchip').style.display='';
+    this.chip();
+    await this.maybeMigrate();
+    if (window.R) window.R.render();
+  },
+
+  /* ── local -> cloud migration, once, never destructive ─────────── */
+  async maybeMigrate(){
+    let blob = null;
+    try { blob = localStorage.getItem('rn_data_v1'); } catch(e){}
+    if (!blob) return;
+    let d; try { d = JSON.parse(blob); } catch(e){ return; }
+    const n = (d.vehicles||[]).length + (d.rentals||[]).length;
+    if (!n) { this.stashLocal(); return; }
+    if (!confirm('This device has '+n+' records saved offline.\n\nUpload them to your account?\n\n(Your local copy is kept either way.)')) {
+      this.stashLocal(); return;
+    }
+    try {
+      const b = writeBatch(db);
+      const map = {};
+      (d.rates||[]).forEach(r=>{ const id='mg_'+r.id; map[r.id]=id;
+        b.set(doc(db,'rn_shops',this.shopId,'rates',id), { model:r.model, deposit:r.deposit, tiers:r.tiers, ot:r.ot }); });
+      (d.vehicles||[]).forEach(v=>{ const id='mg_'+v.id; map[v.id]=id;
+        b.set(doc(db,'rn_shops',this.shopId,'vehicles',id), {
+          name:v.name||v.regNo||'', regNo:v.regNo||'', rateId:map[v.rateId]||v.rateId||'',
+          model:v.model||'', status:v.status||'available', cost:v.cost||0,
+          insExpiry:v.insExpiry||'', pucExpiry:v.pucExpiry||'', odo:v.odo||0 }); });
+      (d.rentals||[]).forEach(r=>{ const id='mg_'+r.id;
+        b.set(doc(db,'rn_shops',this.shopId,'rentals',id), Object.assign({}, r, {
+          vehicleId: map[r.vehicleId]||r.vehicleId,
+          dayKey: new Date(r.outAt||Date.now()).toISOString().slice(0,10),
+          migrated:true })); });
+      await b.commit();
+      this.stashLocal();
+      window.toast('Uploaded '+n+' records to your account');
+    } catch(e){ console.error(e); window.toast('Upload failed — your local copy is safe'); }
+  },
+  /* Rename rather than delete: an unrecoverable migration is far more
+     expensive than a few KB of stale storage. */
+  stashLocal(){
+    try {
+      const v = localStorage.getItem('rn_data_v1');
+      if (v){ localStorage.setItem('rn_data_v1_migrated_'+Date.now(), v);
+              localStorage.removeItem('rn_data_v1'); }
+    } catch(e){}
+  },
+
+  /* ── writes ───────────────────────────────────────────────────── */
+  p(coll, id){ return doc(db,'rn_shops',this.shopId,coll,id); },
+  nid(pre){ return pre+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); },
+
+  /* ── trial / entitlement ──────────────────────────────────────
+     Trial is derived from the shop's createdAt rather than a separate
+     writable field: one less thing a client could reset, and it cannot
+     drift out of step with the shop record. subscriptionExpiry stays
+     Cloud-Function-only, so a shop can never grant itself a licence. */
+  TRIAL_DAYS: 14,
+  trialInfo(){
+    const c = this.shop && this.shop.createdAt;
+    const created = c && c.toMillis ? c.toMillis() : (c || Date.now());
+    const ends = created + this.TRIAL_DAYS * 86400000;
+    const sub  = this.shop && this.shop.subscriptionExpiry;
+    const subMs = sub && sub.toMillis ? sub.toMillis() : (sub || 0);
+    const paid = subMs > Date.now();
+    return { paid, ends, daysLeft: Math.ceil((ends - Date.now())/86400000),
+             active: paid || Date.now() < ends };
+  },
+
+  /* ── audit: append-only, created on every mutation ─────────────
+     The one record that stays trustworthy after a bad build or a bad
+     actor, because the rules deny update and delete on it. */
+  audit(action, target, before, after){
+    try {
+      const id = this.nid('a');
+      setDoc(this.p('audit', id), {
+        action, target: target||'', actor: this.uid, role: this.role||'',
+        before: before||null, after: after||null, at: Date.now()
+      });
+    } catch(e){ /* never block a user action on logging */ }
+  },
+
+  /* ── daily rollup: keeps reports O(days) not O(rentals) ────────── */
+  rollup(dayKey, revenue, deposits){
+    try {
+      setDoc(this.p('daily', dayKey), {
+        rentals: increment(1), revenue: increment(Number(revenue)||0),
+        depositsOut: increment(Number(deposits)||0), updatedAt: Date.now()
+      }, { merge:true });
+    } catch(e){}
+  },
+
+  /* ── staff ─────────────────────────────────────────────────────── */
+  async addStaff(phone, role){
+    const ph = String(phone||'').replace(/\D/g,'').slice(-10);
+    if (ph.length!==10) return { ok:false, msg:'Enter a 10-digit number' };
+    /* We cannot resolve a phone to a uid from the client, so the invite is
+       keyed on the number and claimed when that person signs in. */
+    try {
+      await setDoc(this.p('invites', 'ph_'+ph), { phone: ph, role, invitedBy: this.uid, at: Date.now() });
+      this.audit('staff.invite', ph, null, { role });
+      return { ok:true };
+    } catch(e){ return { ok:false, msg: e.code||e.message }; }
+  },
+  async claimInvites(){
+    const ph = (auth.currentUser && auth.currentUser.phoneNumber || '').replace(/\D/g,'').slice(-10);
+    if (!ph) return;
+    try {
+      const snap = await getDocs(query(collectionGroup(db,'invites'), where('phone','==',ph)));
+      for (const d of snap.docs){
+        const shopId = d.ref.parent.parent.id;
+        const role = d.data().role || 'counter';
+        await setDoc(doc(db,'rn_shops',shopId,'members',this.uid),
+          { role, phone: ph, addedAt: serverTimestamp() });
+        await setDoc(doc(db,'rn_members',this.uid),
+          { shops: { [shopId]: role } }, { merge:true });
+      }
+    } catch(e){ console.warn('claimInvites', e); }
+  },
+
+  async put(coll, id, data){
+    this.pending++; this.chip();
+    try { await setDoc(this.p(coll, id), data, { merge:true }); }
+    catch(e){ console.error(e); window.toast('Save failed'); }
+  },
+  async softDelete(coll, id){
+    await this.put(coll, id, { deletedAt: Date.now(), deletedBy: this.uid });
+  },
+
+  /* CHECK-OUT — transactional, and waits for signal rather than refusing */
+  async checkout(rental, vehicleId){
+    const attempt = async () => runTransaction(db, async tx => {
+      const vRef = this.p('vehicles', vehicleId);
+      const v = await tx.get(vRef);
+      if (!v.exists()) throw new Error('missing');
+      if (v.data().status !== 'available') throw new Error('taken');
+      tx.update(vRef, { status:'rented', currentRentalId: rental.id });
+      tx.set(this.p('rentals', rental.id), rental);
+    });
+    try { await attempt(); return { ok:true }; }
+    catch(e){
+      if (e && e.message === 'taken')   return { ok:false, reason:'taken' };
+      if (e && e.message === 'missing') return { ok:false, reason:'missing' };
+      /* Almost certainly no connection. Hold it and finish automatically. */
+      return await this.waitAndRetry(attempt);
+    }
+  },
+
+  waitAndRetry(attempt){
+    return new Promise(resolve => {
+      let done = false;
+      const box = document.createElement('div');
+      box.style.cssText='position:fixed;inset:0;z-index:800;background:rgba(10,10,10,.55);display:flex;align-items:center;justify-content:center;padding:24px';
+      box.innerHTML = `<div style="background:#fff;border-radius:16px;padding:22px;max-width:330px;text-align:center">
+        <div style="font-size:30px">📡</div>
+        <b style="display:block;font-size:16px;margin:8px 0 4px">Waiting for signal…</b>
+        <div style="font-size:13px;color:#6B6B6B;line-height:1.5">
+          Renting out needs a moment of internet so two staff can never hand out the same bike.
+          This will finish on its own the second you are back online.</div>
+        <button id="wr-cancel" style="margin-top:16px;width:100%;padding:12px;border:1.5px solid #E4E0D8;background:#fff;border-radius:11px;font-weight:700;cursor:pointer">Cancel</button>
+      </div>`;
+      document.body.appendChild(box);
+      const finish = (res) => { if (done) return; done=true;
+        try{ document.body.removeChild(box); }catch(e){}
+        clearInterval(t); resolve(res); };
+      box.querySelector('#wr-cancel').onclick = ()=>finish({ ok:false, reason:'cancelled' });
+      const t = setInterval(async ()=>{
+        if (!navigator.onLine) return;
+        try { await attempt(); finish({ ok:true }); }
+        catch(e){
+          if (e && e.message==='taken')   finish({ ok:false, reason:'taken' });
+          if (e && e.message==='missing') finish({ ok:false, reason:'missing' });
+        }
+      }, 2000);
+    });
+  },
+
+  /* CHECK-IN — safe offline: the bike is physically back */
+  async checkin(rentalId, vehicleId, patch, vpatch){
+    this.pending++; this.chip();
+    try {
+      if (navigator.onLine) {
+        await runTransaction(db, async tx => {
+          const rRef = this.p('rentals', rentalId);
+          const r = await tx.get(rRef);
+          if (r.exists() && r.data().status !== 'open') throw new Error('settled');
+          tx.update(rRef, patch);
+          tx.update(this.p('vehicles', vehicleId), vpatch);
+        });
+      } else {
+        const b = writeBatch(db);
+        b.set(this.p('rentals', rentalId), patch, { merge:true });
+        b.set(this.p('vehicles', vehicleId), vpatch, { merge:true });
+        await b.commit();
+      }
+      return { ok:true };
+    } catch(e){
+      if (e && e.message==='settled') return { ok:false, reason:'settled' };
+      console.error(e); return { ok:false, reason:'error' };
+    }
+  },
+
+  /* ── history: paged, never a listener ─────────────────────────── */
+  async history(cursor, n){
+    const parts = [ collection(db,'rn_shops',this.shopId,'rentals'),
+                    where('status','==','closed'), orderBy('settledAt','desc'), limit(n||25) ];
+    if (cursor) parts.splice(3, 0, startAfter(cursor));
+    const snap = await getDocs(query.apply(null, parts));
+    return { rows: snap.docs.map(d=>Object.assign({id:d.id}, d.data())),
+             cursor: snap.docs.length ? snap.docs[snap.docs.length-1] : null };
+  },
+
+  /* ── sync status ──────────────────────────────────────────────── */
+  chip(){
+    const el = $('syncchip'); if (!el) return;
+    if (!this.online) { el.textContent = '⚠ Offline'; el.style.background='rgba(225,25,0,.85)'; return; }
+    if (this.pending > 0) { el.textContent = '↑ Saving'; el.style.background='rgba(245,166,35,.9)'; el.style.color='#0A0A0A'; return; }
+    el.textContent = '✓ Saved'; el.style.background='rgba(255,255,255,.16)'; el.style.color='#fff';
+  },
+  explain(){
+    window.alert(!this.online
+      ? 'You are offline.\n\nReturns and edits are saved on this device and upload automatically.\nRenting out waits for signal, so the same bike is never given to two customers.'
+      : (this.pending>0 ? 'Saving your changes…' : 'Everything is saved to your account.'));
+  },
+
+  async logout(){
+    if (!confirm('Sign out of RentalNow?')) return;
+    this._unsub.forEach(f=>{try{f();}catch(e){}}); this._unsub=[];
+    this.ready=false; await signOut(auth); location.reload();
+  }
+};
+
+window.Cloud = Cloud;
+Cloud.boot();
 </script>
 </body>
 </html>
