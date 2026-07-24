@@ -231,7 +231,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v1_1_0</div>
+<div class="wm" id="wm">rn_v1_2_0</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -245,18 +245,37 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v1_1_0';
+const BUILD = 'rn_v1_2_0';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
   k: 'rn_data_v1',
-  d: { vehicles: [], rates: [], rentals: [], customers: [], seeded: 0 },
+  d: { vehicles: [], rates: [], rentals: [], customers: [], seeded: 0, seededFleet: 0 },
   load(){
     try {
       const raw = localStorage.getItem(this.k);
       if (raw) this.d = Object.assign(this.d, JSON.parse(raw));
     } catch(e){ console.warn('load failed', e); }
     if (!this.d.seeded) { seed(); this.d.seeded = 1; this.save(); }
+    /* (v1.2) The rate card the shop handed over already names every vehicle,
+       so making them re-type the same ten names as "bikes" was pure friction —
+       and it left a brand-new install unable to rent anything until they did.
+       One bike is created per rate-card row, so the app is usable on open.
+       A shop with two Activas just adds a second; a shop with plates fills the
+       optional number in. Runs once, and never touches a fleet that already
+       has entries. */
+    if (!this.d.seededFleet) {
+      if (!this.d.vehicles.length) {
+        this.d.rates.forEach(rc => {
+          this.d.vehicles.push({
+            id: this.id('v'), name: rc.model, regNo: '', rateId: rc.id,
+            model: rc.model, status: 'available', cost: 0,
+            insExpiry: '', pucExpiry: '', odo: 0
+          });
+        });
+      }
+      this.d.seededFleet = 1; this.save();
+    }
     return this.d;
   },
   save(){
@@ -505,6 +524,9 @@ const R = {
   /* ── FLEET ──────────────────────────────────────────────────────── */
   renderFleet(){
     const box = document.getElementById('fleet-list');
+    const hdr = `<div class="muted" style="margin:0 2px 12px">
+      One bike per row. Created from your rate card — rename, add a vehicle
+      number, or add a second bike of the same model from Rates.</div>`;
     if (!DB.d.vehicles.length){
       box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
         <b>No bikes yet</b><span>Rates are set for ${DB.d.rates.length} models. Add the actual
@@ -515,7 +537,7 @@ const R = {
     const order = { available:0, rented:1, maintenance:2, retired:3 };
     const vs = [...DB.d.vehicles].sort((a,b)=>
       (order[a.status]-order[b.status]) || String(vLabel(a)).localeCompare(String(vLabel(b))));
-    box.innerHTML = vs.map(v => {
+    box.innerHTML = hdr + vs.map(v => {
       const rc = DB.d.rates.find(r=>r.id===v.rateId);
       const r  = DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
       const docs = this.docWarn(v);
@@ -667,9 +689,9 @@ const R = {
           <div class="muted" style="margin-top:8px">
             Deposit ${money(r.deposit)} · overtime ${money(r.ot)}/hr
           </div>
-          ${n===0 ? `<button class="btn ghost sm" style="margin-top:10px;width:100%"
+          <button class="btn ghost sm" style="margin-top:10px;width:100%"
             onclick="event.stopPropagation();R.editVehicle(null,'${r.id}')">
-            + Add a ${esc(r.model)} to your fleet</button>` : ''}
+            + Add another ${esc(r.model)}</button>
         </div>`;
       }).join('');
   },
