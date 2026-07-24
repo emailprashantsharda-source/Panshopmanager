@@ -173,7 +173,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .toast{
   position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(10px);
   background:#0A0A0A;color:#fff;padding:11px 17px;border-radius:11px;
-  font-size:13.5px;font-weight:700;z-index:400;opacity:0;pointer-events:none;
+  font-size:13.5px;font-weight:700;z-index:1000;opacity:0;pointer-events:none;
   transition:all .22s;max-width:88vw;text-align:center;
 }
 .toast.show{opacity:1;transform:translateX(-50%)}
@@ -248,7 +248,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_1_0_tier0</div>
+<div class="wm" id="wm">rn_v2_1_1_login</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -262,7 +262,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_1_0_tier0';
+const BUILD = 'rn_v2_1_1_login';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1376,7 +1376,11 @@ try {
     provider: new ReCaptchaV3Provider('6LfZQcYsAAAAAL9TGObuIHv-SllzTi_aHkmNdlnH'),
     isTokenAutoRefreshEnabled: true
   });
-} catch(e){ console.warn('appcheck', e); }
+} catch(e){
+  /* App Check is defence in depth, not a login requirement. If the site key
+     is not registered for this path it must not take phone auth down with it. */
+  console.warn('appcheck init failed (continuing without it)', e);
+}
 
 const auth = getAuth(app);
 /* Durable offline mirror + cross-tab coherence. This is the piece that
@@ -1412,20 +1416,36 @@ const Cloud = {
       <div class="fld"><label class="lbl" style="color:rgba(255,255,255,.8)">Mobile number</label>
         <input class="in" id="g-phone" type="tel" inputmode="numeric" maxlength="10"
           placeholder="10 digits" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff"></div>
-      <button class="btn y" onclick="Cloud.sendOtp()">Send OTP</button>
+      <button class="btn y" id="g-send" onclick="Cloud.sendOtp()">Send OTP</button>
+      <div id="g-err" style="display:none;margin-top:12px;background:rgba(225,25,0,.18);
+        border:1px solid rgba(255,255,255,.25);border-radius:11px;padding:11px 13px;
+        font-size:12.5px;line-height:1.5"></div>
       <div id="recap"></div>
       <p style="opacity:.6;font-size:11.5px;margin-top:16px">
         Your data is saved to your account and syncs to every device you sign in on.</p>`;
   },
   hideGate(){ $('gate').style.display='none'; },
+  /* The gate covers the whole screen at z-index 900, so anything reported
+     only through a toast is invisible here. Errors go inline. */
+  gateErr(msg){
+    const el = $('g-err'); if (!el) { window.toast(msg); return; }
+    el.style.display=''; el.innerHTML = esc(msg);
+  },
+  gateBusy(on, label){
+    const b = $('g-send'); if (!b) return;
+    b.disabled = !!on; b.textContent = on ? (label||'Please wait…') : 'Send OTP';
+  },
 
   async sendOtp(){
     const ph = ($('g-phone').value||'').replace(/\D/g,'').slice(-10);
-    if (ph.length!==10) return window.toast('Enter a 10-digit number');
+    if (ph.length!==10) return this.gateErr('Enter a 10-digit mobile number');
+    this.gateErr(''); $('g-err').style.display='none';
+    this.gateBusy(true, 'Sending OTP…');
     try {
       if (!this._verifier)
         this._verifier = new RecaptchaVerifier(auth, 'recap', { size:'invisible' });
       this._conf = await signInWithPhoneNumber(auth, '+91'+ph, this._verifier);
+      this.gateBusy(false);
       this.showGate(`
         <p style="opacity:.8;font-size:14px;margin:0 0 16px">OTP sent to +91 ${esc(ph)}</p>
         <div class="fld"><input class="in" id="g-otp" type="tel" inputmode="numeric" maxlength="6"
@@ -1434,17 +1454,38 @@ const Cloud = {
         <button class="btn ghost" style="margin-top:9px;background:transparent;color:#fff;border-color:rgba(255,255,255,.3)"
           onclick="Cloud.showGate()">Change number</button>`);
     } catch(e){
-      console.error(e);
-      window.toast('Could not send OTP — ' + (e.code||e.message||'try again'));
+      console.error('sendOtp', e);
+      this.gateBusy(false);
+      const code = (e && e.code) || '';
+      const map = {
+        'auth/invalid-app-credential':
+          'Phone sign-in is blocked for this site. In Firebase Console → Authentication → Settings → Authorised domains, make sure this exact domain is listed.',
+        'auth/too-many-requests':
+          'Too many attempts from this device. Wait a few minutes and try again.',
+        'auth/invalid-phone-number': 'That number is not valid.',
+        'auth/quota-exceeded': 'Daily SMS limit reached on this project.',
+        'auth/operation-not-allowed':
+          'Phone sign-in is switched off. Firebase Console → Authentication → Sign-in method → enable Phone.',
+        'auth/network-request-failed': 'No internet connection.'
+      };
+      this.gateErr((map[code] || 'Could not send OTP.') + (code ? ' [' + code + ']' : ''));
+      /* Rebuild the verifier: a burned reCAPTCHA cannot be reused. */
       try { if (this._verifier) { this._verifier.clear(); this._verifier=null; } } catch(_){}
+      const c = $('recap'); if (c) c.innerHTML='';
     }
   },
 
   async verifyOtp(){
     const code = ($('g-otp').value||'').replace(/\D/g,'');
     if (code.length<6) return window.toast('Enter the 6-digit OTP');
-    try { await this._conf.confirm(code); }
-    catch(e){ window.toast('Wrong OTP — try again'); }
+    try { this.gateBusy(true,'Checking…'); await this._conf.confirm(code); }
+    catch(e){
+      console.error('verifyOtp', e);
+      this.gateBusy(false);
+      this.gateErr((e && e.code === 'auth/invalid-verification-code')
+        ? 'That OTP is wrong. Check the SMS and try again.'
+        : 'Could not verify — ' + ((e && e.code) || 'try again'));
+    }
   },
 
   async afterLogin(){
