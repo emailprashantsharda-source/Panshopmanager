@@ -179,6 +179,49 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .empty .e{font-size:38px;margin-bottom:10px}
 .empty b{display:block;font-size:15px;color:var(--t1);margin-bottom:4px}
 
+
+/* ── MONEY ────────────────────────────────────────────────────────── */
+.mn-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 12px;-webkit-overflow-scrolling:touch}
+.mn-chips::-webkit-scrollbar{display:none}
+.mn-chip{flex:0 0 auto;border:1.5px solid var(--bd);background:var(--card);color:var(--t2);
+  border-radius:99px;padding:8px 15px;font-size:12.5px;font-weight:750;cursor:pointer;
+  transition:transform .09s,background .15s,color .15s,border-color .15s;white-space:nowrap}
+.mn-chip:active{transform:scale(.95)}
+.mn-chip.on{background:var(--p);border-color:var(--p);color:#fff;box-shadow:0 4px 12px -5px rgba(15,61,92,.7)}
+.mn-hero{background:linear-gradient(150deg,#0F3D5C 0%,#164F76 55%,#1C6291 100%);
+  color:#fff;border-radius:18px;padding:20px 18px;margin-bottom:12px;
+  box-shadow:0 12px 28px -14px rgba(15,61,92,.85);position:relative;overflow:hidden}
+.mn-hero:after{content:'';position:absolute;right:-40px;top:-40px;width:150px;height:150px;
+  border-radius:50%;background:rgba(255,255,255,.06)}
+.mn-hero-l{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
+.mn-hero-v{font-size:38px;font-weight:850;letter-spacing:-.035em;line-height:1.1;margin:4px 0 3px;
+  font-variant-numeric:tabular-nums}
+.mn-hero-s{font-size:12.5px;opacity:.85;font-weight:600}
+.mn-track{background:#EFEBE3;border-radius:6px;height:7px;overflow:hidden}
+.mn-track>div{height:100%;border-radius:6px;transition:width .35s cubic-bezier(.2,.8,.3,1)}
+.mn-liab{background:var(--y-tint);border-color:var(--y-bd)}
+.mn-liab-l{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#95610A}
+.mn-liab-v{font-size:26px;font-weight:850;letter-spacing:-.03em;color:#7A4E08;
+  font-variant-numeric:tabular-nums;margin-top:2px}
+
+/* ── BILL ─────────────────────────────────────────────────────────── */
+.bill{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:18px 16px;
+  box-shadow:var(--shadow-sm)}
+.bill-top{display:flex;align-items:baseline;justify-content:space-between;
+  padding-bottom:12px;border-bottom:2px solid var(--p)}
+.bill-shop{font-size:16.5px;font-weight:850;letter-spacing:-.02em;color:var(--p)}
+.bill-no{font-size:11.5px;font-weight:800;color:var(--t3);font-family:ui-monospace,monospace}
+.bill-veh{display:flex;align-items:center;justify-content:space-between;padding:13px 0 11px;
+  border-bottom:1px dashed var(--bd)}
+.bill-veh-n{font-size:17px;font-weight:850;letter-spacing:-.02em}
+.bill-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 12px;padding:13px 0}
+.bill-grid>div span{display:block;font-size:10.5px;font-weight:800;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.05em}
+.bill-grid>div b{display:block;font-size:13.5px;font-weight:700;margin-top:2px}
+.bill-sec{font-size:10.5px;font-weight:800;color:var(--t3);text-transform:uppercase;
+  letter-spacing:.07em;margin:12px 0 2px;padding-top:11px;border-top:1px dashed var(--bd)}
+.bill-foot{margin-top:14px;padding-top:11px;border-top:1px dashed var(--bd);
+  font-size:11px;color:var(--t3);text-align:center}
 .toast{
   position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(10px);
   background:#0A0A0A;color:#fff;padding:11px 17px;border-radius:11px;
@@ -259,7 +302,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_8_0_income</div>
+<div class="wm" id="wm">rn_v2_9_0_money</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -273,7 +316,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_8_0_income';
+const BUILD = 'rn_v2_9_0_money';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -670,13 +713,14 @@ const R = {
       ${!st.rows.length ? '<div class="empty"><b>No closed rentals yet</b></div>' :
         st.rows.map(r=>{
           const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
-          return `<div class="card"><div class="row">
+          return `<div class="card tap" onclick="R.bill('${esc(r.id)}')"><div class="row">
             <div class="grow"><b class="ell">${esc(v?vLabel(v):(r.vehicleId||'—'))}</b>
               <div class="muted" style="margin-top:2px">${esc(r.customerName||'')} ${esc(r.customerPhone||'')}</div>
               <div class="muted" style="margin-top:3px">${r.outAt?fmtDT(r.outAt):''} → ${r.returnedAt?fmtDT(r.returnedAt):''}
                 ${r.extraHours?' · '+r.extraHours+'h extra':''}</div></div>
             <div style="text-align:right"><b>${money(r.revenue)}</b>
-              <div class="muted" style="font-size:11px">refund ${money(r.depositRefunded)}</div></div>
+              <div class="muted" style="font-size:11px">refund ${money(r.depositRefunded)}</div>
+              <div style="font-size:10.5px;font-weight:800;color:var(--p);margin-top:3px">VIEW BILL ›</div></div>
           </div></div>`;
         }).join('')}
       ${st.done ? '<div class="muted" style="text-align:center;padding:8px">That\'s everything.</div>'
@@ -1515,8 +1559,14 @@ Please return on time to get your full deposit back.`;
       Cloud.audit('rental.in', r.id, { status:'open', deposit:r.depositHeld }, {
         revenue: patch.revenue, refund: patch.depositRefunded,
         collected: patch.balanceCollected, extraHours: patch.extraHours });
-      Cloud.rollup(new Date(patch.settledAt).toISOString().slice(0,10),
-                   patch.revenue, patch.depositRefunded);
+      Cloud.rollup(new Date(patch.settledAt).toISOString().slice(0,10), {
+        revenue:     patch.revenue,
+        collected:   (Number(r.advancePaid)||0) + (Number(patch.balanceCollected)||0),
+        depositsIn:  Number(r.depositHeld)||0,
+        depositsOut: Number(patch.depositRefunded)||0,
+        outstanding: Math.max(0, (Number(patch.revenue)||0)
+                       - ((Number(r.advancePaid)||0) + (Number(patch.balanceCollected)||0))),
+      });
       Object.assign(r, patch);
     } else {
       Object.assign(r, patch);
@@ -1543,56 +1593,204 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
   },
 
   /* ── MONEY ──────────────────────────────────────────────────────── */
-  renderMoney(){
-    const open  = DB.d.rentals.filter(r=>r.status==='open');
-    const days  = DB.d.daily || [];
-    const rev   = days.reduce((s,d)=>s+(Number(d.revenue)||0),0);
-    const refd  = days.reduce((s,d)=>s+(Number(d.depositsOut)||0),0);
-    const held  = open.reduce((s,r)=>s+(Number(r.depositHeld)||0),0);
-    const forf  = 0;
-    /* Loaded once per visit; the panel redraws when it arrives. */
-    const closed = this._closed || [];
-    if (!this._closed && window.Cloud && Cloud.ready) {
-      this._closed = [];
-      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.renderMoney(); });
-    }
+  /* ══════════════════════════════════════════════════════════════════
+     MONEY
+     Three numbers a rental shop actually needs, kept apart on purpose:
 
-    /* utilisation + payback per vehicle — the number a spreadsheet cannot give him */
+       EARNED     rent + overtime + recoveries on rentals settled in the period
+       COLLECTED  cash that actually reached the drawer
+       HELD       customer deposits — never revenue, always owed back
+
+     The old screen showed one all-time revenue figure and nothing else, so a
+     shop could not tell a good week from a bad one, nor whether the cash in
+     the box was theirs. Everything below is period-scoped except HELD, which
+     is a live liability and belongs to right now.
+     ══════════════════════════════════════════════════════════════════ */
+  PERIODS: [
+    { k:'today', label:'Today',     days:1 },
+    { k:'yest',  label:'Yesterday', days:1 },
+    { k:'d7',    label:'7 days',    days:7 },
+    { k:'d15',   label:'15 days',   days:15 },
+    { k:'d30',   label:'Month',     days:30 },
+    { k:'all',   label:'All',       days:9999 },
+  ],
+  _period: 'd7',
+
+  _range(){
+    const p = this.PERIODS.find(x=>x.k===this._period) || this.PERIODS[2];
+    const end = new Date(); end.setHours(23,59,59,999);
+    const start = new Date(); start.setHours(0,0,0,0);
+    if (p.k === 'yest'){ start.setDate(start.getDate()-1); end.setTime(start.getTime()+86399999); }
+    else if (p.k !== 'today') start.setDate(start.getDate() - (p.days - 1));
+    if (p.k === 'all') start.setTime(0);
+    return { start: start.getTime(), end: end.getTime(), label: p.label };
+  },
+  _dayKeys(){
+    const { start, end } = this._range();
+    const out = new Set();
+    for (let t = start; t <= end; t += 86400000){
+      const d = new Date(t);
+      out.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    }
+    return out;
+  },
+  setPeriod(k){ this._period = k; this._closed = null; Haptic.tap(); this.render(); },
+
+  renderMoney(){
+    const rng = this._range();
+    const keys = this._dayKeys();
+    const days = (DB.d.daily||[]).filter(d => this._period==='all' || keys.has(d.id));
+    const sum = f => days.reduce((a,d)=>a+(Number(d[f])||0),0);
+
+    const earned = sum('revenue'), got = sum('collected');
+    const depIn = sum('depositsIn'), depOut = sum('depositsOut');
+    const owed = sum('outstanding'), rentals = sum('rentals');
+
+    const open = DB.d.rentals.filter(x=>x.status==='open');
+    const held = open.reduce((a,x)=>a+(Number(x.depositHeld)||0),0);
+    const netCash = got + depIn - depOut;
+
+    const closed = this._closed || [];
+    if (!this._closed && window.Cloud && Cloud.ready){
+      this._closed = [];
+      Cloud.recentClosed(400).then(rows => { this._closed = rows; if (this.page==='money') this.renderMoney(); });
+    }
+    const inRange = closed.filter(x => this._period==='all'
+      || (x.settledAt >= rng.start && x.settledAt <= rng.end));
+
     const per = DB.d.vehicles.map(v=>{
-      const rs = closed.filter(r=>r.vehicleId===v.id);
-      const earned = rs.reduce((s,r)=>s+(Number(r.revenue)||0),0);
-      const hours  = rs.reduce((s,r)=>s+(Number(r.hoursUsed)||0),0);
-      return { v, earned, hours, trips: rs.length,
-               payback: v.cost ? Math.min(999, Math.round(earned/v.cost*100)) : null };
-    }).sort((a,b)=>b.earned-a.earned);
+      const rs = inRange.filter(x=>x.vehicleId===v.id);
+      const all = closed.filter(x=>x.vehicleId===v.id);
+      return { v, earned: rs.reduce((a,x)=>a+(Number(x.revenue)||0),0),
+               hours: rs.reduce((a,x)=>a+(Number(x.hoursUsed)||0),0), trips: rs.length,
+               payback: v.cost ? Math.min(999, Math.round(
+                 all.reduce((a,x)=>a+(Number(x.revenue)||0),0)/v.cost*100)) : null };
+    }).filter(x=>x.trips>0).sort((a,b)=>b.earned-a.earned);
+
+    const peak = Math.max(earned, got, depIn, depOut, 1);
+    const bar = (l,val,col) => `
+      <div style="margin-bottom:10px">
+        <div class="row" style="margin-bottom:4px">
+          <span class="grow" style="font-size:12.5px;font-weight:650;color:var(--t2)">${l}</span>
+          <b style="font-size:13.5px;font-variant-numeric:tabular-nums">${money(val)}</b></div>
+        <div class="mn-track"><div style="background:${col};width:${Math.min(100,(val/peak)*100)}%"></div></div>
+      </div>`;
 
     document.getElementById('money-body').innerHTML = `
+      <div class="mn-chips">${this.PERIODS.map(p=>`<button class="mn-chip ${this._period===p.k?'on':''}"
+        onclick="R.setPeriod('${p.k}')">${p.label}</button>`).join('')}</div>
+
+      <div class="mn-hero">
+        <div class="mn-hero-l">Earned · ${esc(rng.label)}</div>
+        <div class="mn-hero-v">${money(earned)}</div>
+        <div class="mn-hero-s">${rentals} rental${rentals===1?'':'s'} settled${
+          owed>0?' · <b style="color:#FFD9A0">'+money(owed)+' still to collect</b>':''}</div>
+      </div>
+
       <div class="card">
-        <div class="line"><span>Rental revenue <span class="muted">all time</span></span><b>${money(rev)}</b></div>
-        <div class="line"><span>Deposits refunded</span><b>${money(refd)}</b></div>
-        <div class="line"><span>Days with income</span><b>${days.length}</b></div>
-        <div class="line tot"><span>Deposits held now</span><b>${money(held)}</b></div>
+        <div class="sec-hd" style="margin:0 0 12px">Where the cash went</div>
+        ${bar('Rent earned', earned, 'linear-gradient(90deg,#0F3D5C,#2E6D96)')}
+        ${bar('Collected from customers', got, 'linear-gradient(90deg,#06C167,#048A45)')}
+        ${bar('Deposits taken in', depIn, 'linear-gradient(90deg,#F5A623,#D98B0F)')}
+        ${bar('Deposits returned', depOut, 'linear-gradient(90deg,#BDB9B0,#94908A)')}
+        <div class="line tot"><span>Net cash in drawer</span><b>${money(netCash)}</b></div>
       </div>
-      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
-        <b style="font-size:13.5px">${money(held)} of the cash you are holding is not yours</b>
-        <div class="muted" style="margin-top:4px">It is ${open.length} customer deposit${open.length===1?'':'s'}
-        waiting to be refunded. Revenue above excludes it — that is deliberate.</div>
+
+      <div class="card mn-liab">
+        <div class="row"><div class="grow">
+          <div class="mn-liab-l">Deposits held right now</div>
+          <div class="mn-liab-v">${money(held)}</div></div>
+          <div style="font-size:28px">🤝</div></div>
+        <div class="muted" style="margin-top:6px">${open.length} open rental${open.length===1?'':'s'} —
+        the customers' money, deliberately excluded from Earned above.</div>
       </div>
-      <button class="btn ghost" style="margin-bottom:4px" onclick="R.history(true)">Past rentals</button>
-      <div class="sec-hd">Which bikes earn <span class="muted" style="text-transform:none;letter-spacing:0">
-        · last ${closed.length} settled</span></div>
-      ${!per.length ? '<div class="muted" style="margin:0 2px">No vehicles yet.</div>' :
-        per.map(p=>`<div class="card">
-          <div class="row"><b class="grow ell">${esc(vLabel(p.v))} <span class="muted">${esc(p.v.regNo||p.v.model)}</span></b>
-            <b>${money(p.earned)}</b></div>
-          <div class="muted" style="margin-top:4px">
-            ${p.trips} rental${p.trips===1?'':'s'} · ${Math.round(p.hours)} hrs on rent
-            ${p.payback!==null ? ' · <b style="color:'+(p.payback>=100?'var(--success-d)':'var(--t2)')+'">'
-              + p.payback + '% of cost recovered</b>' : ' · set purchase cost to track payback'}
-          </div>
-        </div>`).join('')}
+
+      <button class="btn ghost" style="margin-bottom:4px" onclick="R.history(true)">
+        📄 Past rentals &amp; bills</button>
+
+      <div class="sec-hd">Which bikes earned · ${esc(rng.label)}</div>
+      ${!per.length ? '<div class="card"><div class="muted">No settled rentals in this period.</div></div>'
+        : per.map(p=>`<div class="card">
+            <div class="row"><b class="grow ell">${esc(vLabel(p.v))}
+              ${p.v.regNo?'<span class="muted"> '+esc(p.v.regNo)+'</span>':''}</b>
+              <b>${money(p.earned)}</b></div>
+            <div class="mn-track" style="margin:8px 0 6px"><div style="background:linear-gradient(90deg,#0F3D5C,#3E7FA8);width:${(p.earned/(per[0].earned||1))*100}%"></div></div>
+            <div class="muted">${p.trips} rental${p.trips===1?'':'s'} · ${Math.round(p.hours)} hrs on rent${
+              p.payback!==null?' · <b style="color:'+(p.payback>=100?'var(--success-d)':'var(--t2)')+'">'+p.payback+'% of cost recovered</b>':''}</div>
+          </div>`).join('')}
     `;
   },
+
+  /* ── the bill ─────────────────────────────────────────────────────
+     A settled rental is a document the shop may need to hand over or
+     defend in an argument, so it reads as an invoice: what was taken,
+     what was charged, what came back. */
+  bill(id){
+    const r = ((this._closed||[]).concat((this._h&&this._h.rows)||[])).find(x=>x.id===id);
+    if (!r) return toast('Bill not found');
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
+    const c = r.charges || {};
+    const shop = (window.Cloud && Cloud.shopName) || 'Rental';
+    const line = (l,a,cls) => a ? `<div class="line"><span>${l}</span><b class="${cls||''}">${money(a)}</b></div>` : '';
+    const applied = (Number(r.depositHeld)||0) - (Number(r.depositRefunded)||0);
+    openSheet(`
+      <div class="sheet-hd"><h2>Bill</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="bill">
+        <div class="bill-top">
+          <div class="bill-shop">${esc(shop)}</div>
+          <div class="bill-no">#${esc(String(r.id||'').slice(-6).toUpperCase())}</div></div>
+        <div class="bill-veh">
+          <div><div class="bill-veh-n">${esc(v?vLabel(v):((r.rateSnapshot&&r.rateSnapshot.model)||'Vehicle'))}</div>
+          ${v&&v.regNo?`<div class="muted">${esc(v.regNo)}</div>`:''}</div>
+          <div style="font-size:30px">🛵</div></div>
+        <div class="bill-grid">
+          <div><span>Customer</span><b>${esc(r.customerName||'—')}</b></div>
+          <div><span>Phone</span><b>${esc(r.customerPhone||'—')}</b></div>
+          <div><span>Out</span><b>${r.outAt?fmtDT(r.outAt):'—'}</b></div>
+          <div><span>Returned</span><b>${r.returnedAt?fmtDT(r.returnedAt):'—'}</b></div>
+          <div><span>Package</span><b>${r.tier?tierOf(r.tier).label:'—'}</b></div>
+          <div><span>Time used</span><b>${r.hoursUsed!=null?fmtDur(r.hoursUsed):'—'}</b></div>
+        </div>
+        <div class="bill-sec">Charges</div>
+        ${line('Rent · '+(r.tier?tierOf(r.tier).label:''), c.rent)}
+        ${line('Overtime · '+(r.extraHours||0)+' hr', c.overtime, 'neg')}
+        ${line('Damage', c.damage, 'neg')}
+        ${line('Fuel', c.fuel, 'neg')}
+        ${line('Other / fine', c.other, 'neg')}
+        <div class="line tot"><span>Total</span><b>${money(r.revenue)}</b></div>
+        <div class="bill-sec">Payment</div>
+        ${line('Paid at pickup', r.advancePaid, 'pos')}
+        ${line('Collected on return', r.balanceCollected, 'pos')}
+        <div class="line"><span>Deposit taken</span><b>${money(r.depositHeld)}</b></div>
+        ${line('Deposit returned', r.depositRefunded, 'pos')}
+        ${applied>0?`<div class="line"><span>Deposit applied to bill</span><b class="neg">${money(applied)}</b></div>`:''}
+        <div class="bill-foot">Settled ${r.settledAt?fmtDT(r.settledAt):''}</div>
+      </div>
+      ${r.customerPhone?`<button class="btn g" style="margin-top:12px" onclick="R.billWa('${esc(id)}')">
+        Send this bill on WhatsApp</button>`:''}`);
+  },
+
+  billWa(id){
+    const r = ((this._closed||[]).concat((this._h&&this._h.rows)||[])).find(x=>x.id===id);
+    if (!r || !r.customerPhone) return;
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
+    const c = r.charges || {};
+    const L = ['*'+((window.Cloud&&Cloud.shopName)||'Rental')+'*',
+      'Bill #'+String(r.id||'').slice(-6).toUpperCase(), '',
+      'Vehicle: '+(v?vLabel(v):'')+(v&&v.regNo?' ('+v.regNo+')':''),
+      'Out: '+fmtDT(r.outAt), 'Back: '+fmtDT(r.returnedAt),
+      'Used: '+fmtDur(r.hoursUsed||0), '', 'Rent: '+money(c.rent||0)];
+    if (c.overtime) L.push('Overtime ('+(r.extraHours||0)+' hr): '+money(c.overtime));
+    if (c.damage) L.push('Damage: '+money(c.damage));
+    if (c.fuel) L.push('Fuel: '+money(c.fuel));
+    if (c.other) L.push('Other: '+money(c.other));
+    L.push('*Total: '+money(r.revenue)+'*', '',
+      'Deposit taken: '+money(r.depositHeld),
+      'Deposit returned: '+money(r.depositRefunded), '', 'Thank you!');
+    window.open('https://wa.me/91'+r.customerPhone+'?text='+encodeURIComponent(L.join('\n')), '_blank');
+  },
+
 };
 
 /* `const DB` at the top level of a CLASSIC script is script-scoped — it never
@@ -1885,7 +2083,11 @@ const Cloud = {
        that grows without bound. But revenue still has to be visible, so the
        daily rollups written at settle carry it: one small document per day,
        which is all the dashboard and the Money tab actually need. */
-    this._unsub.push(bind(query(S('daily'), orderBy('__name__','desc'), limit(400)), 'daily'));
+    /* orderBy('__name__') is a REST-level field path; the JS SDK wants
+       documentId(). It threw on every load — hence "Sync error on daily".
+       The collection is one small document per day, so no ordering is needed
+       here at all: the whole thing is cheap to hold and the UI sorts it. */
+    this._unsub.push(bind(query(S('daily'), limit(800)), 'daily'));
 
     this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
       this.shop = sd.exists() ? sd.data() : null;
@@ -2031,11 +2233,20 @@ const Cloud = {
   },
 
   /* ── daily rollup: keeps reports O(days) not O(rentals) ────────── */
-  rollup(dayKey, revenue, deposits){
+  /* Revenue and cash are different questions and a shopkeeper needs both:
+     what he EARNED this week, and what actually came into the drawer. A
+     deposit swallowed by an unpaid rent is earned but never refunded, and
+     showing only one of those numbers makes the till look wrong. */
+  rollup(dayKey, o){
     try {
       setDoc(this.p('daily', dayKey), {
-        rentals: increment(1), revenue: increment(Number(revenue)||0),
-        depositsOut: increment(Number(deposits)||0), updatedAt: Date.now()
+        rentals:     increment(1),
+        revenue:     increment(Number(o.revenue)||0),
+        collected:   increment(Number(o.collected)||0),
+        depositsIn:  increment(Number(o.depositsIn)||0),
+        depositsOut: increment(Number(o.depositsOut)||0),
+        outstanding: increment(Number(o.outstanding)||0),
+        updatedAt: Date.now()
       }, { merge:true });
     } catch(e){}
   },
