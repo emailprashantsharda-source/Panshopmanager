@@ -231,7 +231,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v1_0_0</div>
+<div class="wm" id="wm">rn_v1_1_0</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -245,7 +245,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v1_0_0';
+const BUILD = 'rn_v1_1_0';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -353,7 +353,22 @@ function fmtDur(h){
   if (d > 0) return d + 'd ' + r + 'h';
   return Math.floor(h) + 'h ' + Math.round((h%1)*60) + 'm';
 }
+/* <input type="datetime-local"> wants local wall-clock, not UTC */
+function dtLocal(ms){
+  const d=new Date(ms - d0offset(ms));
+  return d.toISOString().slice(0,16);
+}
+function d0offset(ms){ return new Date(ms).getTimezoneOffset()*60000; }
+function dtParse(v, fallback){
+  if(!v) return fallback;
+  const t = new Date(v).getTime();
+  return isFinite(t) ? t : fallback;
+}
 const money = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+/* Vehicle no. is optional, so a bike is shown by NAME with the plate as a
+   secondary detail when it exists. */
+const vLabel = v => (v && (v.name || v.regNo)) || '—';
+const vSub   = v => [v && v.regNo, v && v.model].filter(Boolean).join(' · ');
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -441,9 +456,22 @@ const R = {
 
     const box = document.getElementById('out-list');
     if (!open.length){
-      box.innerHTML = `<div class="empty"><div class="e">🛵</div>
-        <b>Nothing is out right now</b>
-        <span>Tap <b>+ Rent out</b> to start a rental.</span></div>`;
+      /* Rate cards ship pre-seeded, so a brand-new shop sees 10 models under
+         Rates and reasonably assumes it is set up — then "+ Rent out" dead-ends
+         on a toast. A rate card is a PRICE for a model; a vehicle is an actual
+         bike with a number plate. Until at least one bike exists there is
+         nothing to rent, so say that here instead of pointing at a button that
+         cannot work yet. */
+      box.innerHTML = DB.d.vehicles.length
+        ? `<div class="empty"><div class="e">🛵</div>
+             <b>Nothing is out right now</b>
+             <span>Tap <b>+ Rent out</b> to start a rental.</span></div>`
+        : `<div class="empty"><div class="e">🏍️</div>
+             <b>Add your bikes first</b>
+             <span>Rates are ready for ${DB.d.rates.length} models. Now add the actual
+             bikes you own — each one with its number plate.</span>
+             <div style="margin-top:18px"><button class="btn" onclick="R.nav('fleet')">
+               Go to Fleet</button></div></div>`;
       return;
     }
     open.sort((a,b)=> a.dueAt - b.dueAt);
@@ -455,11 +483,11 @@ const R = {
         <div class="row">
           <div class="grow">
             <div class="row" style="gap:7px">
-              <b class="ell" style="font-size:15.5px">${esc(v.regNo||'—')}</b>
+              <b class="ell" style="font-size:15.5px">${esc(vLabel(v))}</b>
               <span class="pill ${isLate?'late':'out'}">${isLate?'OVERDUE '+fmtDur(overH):'OUT'}</span>
             </div>
             <div class="muted ell" style="margin-top:2px">
-              ${esc(v.model||'')} · ${esc(r.customerName||'—')} · ${esc(r.customerPhone||'')}
+              ${[esc(v.regNo||''), esc(r.customerName||'—'), esc(r.customerPhone||'')].filter(Boolean).join(' · ')}
             </div>
             <div class="muted" style="margin-top:4px">
               Due ${fmtDT(r.dueAt)} · ${tierOf(r.tier).label} · deposit ${money(r.depositHeld)}
@@ -479,13 +507,14 @@ const R = {
     const box = document.getElementById('fleet-list');
     if (!DB.d.vehicles.length){
       box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
-        <b>No vehicles yet</b><span>Add your bikes to start renting.</span>
+        <b>No bikes yet</b><span>Rates are set for ${DB.d.rates.length} models. Add the actual
+        bikes you own — one entry per number plate.</span>
         <div style="margin-top:16px"><button class="btn" onclick="R.editVehicle()">+ Add first vehicle</button></div></div>`;
       return;
     }
     const order = { available:0, rented:1, maintenance:2, retired:3 };
     const vs = [...DB.d.vehicles].sort((a,b)=>
-      (order[a.status]-order[b.status]) || String(a.regNo).localeCompare(String(b.regNo)));
+      (order[a.status]-order[b.status]) || String(vLabel(a)).localeCompare(String(vLabel(b))));
     box.innerHTML = vs.map(v => {
       const rc = DB.d.rates.find(r=>r.id===v.rateId);
       const r  = DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
@@ -497,12 +526,12 @@ const R = {
         <div class="row">
           <div class="grow">
             <div class="row" style="gap:7px">
-              <b class="ell" style="font-size:15.5px">${esc(v.regNo)}</b>
+              <b class="ell" style="font-size:15.5px">${esc(vLabel(v))}</b>
               <span class="pill ${pill}">${v.status.toUpperCase()}</span>
               ${docs ? `<span class="pill warn">${esc(docs)}</span>` : ''}
             </div>
             <div class="muted ell" style="margin-top:2px">
-              ${esc(v.model)}${rc?' · deposit '+money(rc.deposit):' · no rate card'}
+              ${esc(vSub(v))||esc(v.model)}${rc?' · deposit '+money(rc.deposit):' · no rate card'}
             </div>
             <div class="muted" style="margin-top:4px">
               Earned ${money(earned)}${v.cost?' of '+money(v.cost)+' cost':''}
@@ -530,58 +559,84 @@ const R = {
     return '';
   },
 
-  editVehicle(id){
+  editVehicle(id, preRate){
     const v = id ? DB.d.vehicles.find(x=>x.id===id) : null;
+    const sel = v ? v.rateId : (preRate||'');
     const opts = DB.d.rates.map(r=>
-      `<option value="${r.id}" ${v&&v.rateId===r.id?'selected':''}>${esc(r.model)} · dep ${money(r.deposit)}</option>`).join('');
+      `<option value="${r.id}" ${sel===r.id?'selected':''}>${esc(r.model)} · dep ${money(r.deposit)}</option>`).join('');
     openSheet(`
-      <div class="sheet-hd"><h2>${v?'Edit vehicle':'Add vehicle'}</h2>
+      <div class="sheet-hd"><h2>${v?'Edit bike':'Add bike'}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
-      <div class="fld"><label class="lbl">Registration no. <span class="req">*</span></label>
-        <input class="in" id="v-reg" value="${esc(v?v.regNo:'')}" placeholder="MP04 AB 1234" autocapitalize="characters"></div>
-      <div class="fld"><label class="lbl">Model / rate card <span class="req">*</span></label>
+      <div class="fld"><label class="lbl">Bike name <span class="req">*</span></label>
+        <input class="in" id="v-name" value="${esc(v?(v.name||v.regNo||''):'')}"
+          placeholder="Activa 3G — red"></div>
+      <div class="fld"><label class="lbl">Vehicle no. <span class="muted">optional</span></label>
+        <input class="in" id="v-reg" value="${esc(v?(v.regNo||''):'')}"
+          placeholder="MP04 AB 1234" autocapitalize="characters"></div>
+      <div class="fld"><label class="lbl">Rate card <span class="req">*</span></label>
         <select class="in" id="v-rate"><option value="">— choose —</option>${opts}</select></div>
-      <div class="two">
-        <div class="fld"><label class="lbl">Status</label>
-          <select class="in" id="v-status">
-            ${['available','rented','maintenance','retired'].map(s=>
-              `<option value="${s}" ${v&&v.status===s?'selected':''}>${s}</option>`).join('')}
-          </select></div>
-        <div class="fld"><label class="lbl">Odometer</label>
-          <input class="in" id="v-odo" type="number" inputmode="numeric" value="${v?(v.odo||''):''}" placeholder="km"></div>
+
+      <button type="button" class="btn ghost" style="margin:4px 0 12px"
+        onclick="R.more('v-more',this)">More details <span class="muted">— optional</span></button>
+      <div id="v-more" style="display:none">
+        <div class="two">
+          <div class="fld"><label class="lbl">Status</label>
+            <select class="in" id="v-status">
+              ${['available','rented','maintenance','retired'].map(s=>
+                `<option value="${s}" ${v&&v.status===s?'selected':''}>${s}</option>`).join('')}
+            </select></div>
+          <div class="fld"><label class="lbl">Purchase cost</label>
+            <input class="in" id="v-cost" type="number" inputmode="numeric" value="${v?(v.cost||''):''}" placeholder="₹"></div>
+        </div>
+        <div class="two">
+          <div class="fld"><label class="lbl">Insurance expiry</label>
+            <input class="in" id="v-ins" type="date" value="${v?(v.insExpiry||''):''}"></div>
+          <div class="fld"><label class="lbl">PUC expiry</label>
+            <input class="in" id="v-puc" type="date" value="${v?(v.pucExpiry||''):''}"></div>
+        </div>
+        <div class="muted" style="margin:-4px 2px 12px;font-size:11.5px">
+          Leave the dates blank if you do not want expiry warnings.</div>
       </div>
-      <div class="fld"><label class="lbl">Purchase cost <span class="muted">— for payback tracking</span></label>
-        <input class="in" id="v-cost" type="number" inputmode="numeric" value="${v?(v.cost||''):''}" placeholder="₹"></div>
-      <div class="two">
-        <div class="fld"><label class="lbl">Insurance expiry</label>
-          <input class="in" id="v-ins" type="date" value="${v?(v.insExpiry||''):''}"></div>
-        <div class="fld"><label class="lbl">PUC expiry</label>
-          <input class="in" id="v-puc" type="date" value="${v?(v.pucExpiry||''):''}"></div>
-      </div>
-      <button class="btn" onclick="R.saveVehicle('${id||''}')">${v?'Save changes':'Add vehicle'}</button>
-      ${v?`<button class="btn ghost" style="margin-top:9px" onclick="R.delVehicle('${id}')">Remove vehicle</button>`:''}
+      <button class="btn" onclick="R.saveVehicle('${id||''}')">${v?'Save changes':'Add bike'}</button>
+      ${v?`<button class="btn ghost" style="margin-top:9px" onclick="R.delVehicle('${id}')">Remove bike</button>`:''}
     `);
   },
 
+  /* collapsible "more details" — keeps the counter path to the fields the
+     shop actually asked for, without deleting the ones that protect them */
+  more(id, btn){
+    const el = document.getElementById(id);
+    const open = el.style.display !== 'none';
+    el.style.display = open ? 'none' : '';
+    btn.innerHTML = (open ? 'More details' : 'Hide details') + ' <span class="muted">— optional</span>';
+  },
+
   saveVehicle(id){
-    const reg = document.getElementById('v-reg').value.trim().toUpperCase();
+    const name = document.getElementById('v-name').value.trim();
+    const reg  = document.getElementById('v-reg').value.trim().toUpperCase();
     const rateId = document.getElementById('v-rate').value;
-    if (!reg) return toast('Registration number is required');
-    if (!rateId) return toast('Choose a model / rate card');
-    const dup = DB.d.vehicles.find(x=>x.regNo===reg && x.id!==id);
-    if (dup) return toast('That registration already exists');
+    if (!name) return toast('Bike name is required');
+    if (!rateId) return toast('Choose a rate card');
+    /* Reg is optional now, so NAME is the identity. Only guard duplicates on
+       whichever one the shop actually filled in. */
+    if (reg && DB.d.vehicles.some(x=>x.regNo===reg && x.id!==id))
+      return toast('That vehicle number already exists');
+    if (!reg && DB.d.vehicles.some(x=>x.name===name && x.id!==id))
+      return toast('A bike with that name already exists — add a number or change the name');
     const rc = DB.d.rates.find(r=>r.id===rateId);
+    const g = i => document.getElementById(i);
+    const old = id ? DB.d.vehicles.find(x=>x.id===id) : null;
     const rec = {
-      regNo: reg, rateId, model: rc?rc.model:'',
-      status: document.getElementById('v-status').value,
-      odo: Number(document.getElementById('v-odo').value)||0,
-      cost: Number(document.getElementById('v-cost').value)||0,
-      insExpiry: document.getElementById('v-ins').value||'',
-      pucExpiry: document.getElementById('v-puc').value||'',
+      name, regNo: reg, rateId, model: rc?rc.model:'',
+      status: g('v-status') ? g('v-status').value : (old?old.status:'available'),
+      cost: g('v-cost') ? (Number(g('v-cost').value)||0) : (old?old.cost:0),
+      insExpiry: g('v-ins') ? g('v-ins').value : (old?old.insExpiry:''),
+      pucExpiry: g('v-puc') ? g('v-puc').value : (old?old.pucExpiry:''),
+      odo: old ? (old.odo||0) : 0,
     };
     if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
-    DB.save(); closeSheet(); this.render(); toast(id?'Vehicle updated':'Vehicle added');
+    DB.save(); closeSheet(); this.render(); toast(id?'Bike updated':'Bike added');
   },
 
   delVehicle(id){
@@ -612,6 +667,9 @@ const R = {
           <div class="muted" style="margin-top:8px">
             Deposit ${money(r.deposit)} · overtime ${money(r.ot)}/hr
           </div>
+          ${n===0 ? `<button class="btn ghost sm" style="margin-top:10px;width:100%"
+            onclick="event.stopPropagation();R.editVehicle(null,'${r.id}')">
+            + Add a ${esc(r.model)} to your fleet</button>` : ''}
         </div>`;
       }).join('');
   },
@@ -656,7 +714,7 @@ const R = {
   /* ── CHECK-OUT ──────────────────────────────────────────────────── */
   checkoutStart(){
     const avail = DB.d.vehicles.filter(v=>v.status==='available');
-    if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a vehicle first'); }
+    if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a bike first — rates are only prices, not bikes'); }
     if (!avail.length) return toast('No vehicles available — everything is out');
     openSheet(`
       <div class="sheet-hd"><h2>Rent out</h2>
@@ -664,27 +722,32 @@ const R = {
       <div class="fld"><label class="lbl">Vehicle <span class="req">*</span></label>
         <select class="in" id="c-veh" onchange="R.coTiers()">
           <option value="">— choose —</option>
-          ${avail.map(v=>`<option value="${v.id}">${esc(v.regNo)} · ${esc(v.model)}</option>`).join('')}
+          ${avail.map(v=>`<option value="${v.id}">${esc(vLabel(v))}${v.regNo?' · '+esc(v.regNo):''}</option>`).join('')}
         </select></div>
       <div id="c-rateblock"></div>
       <div class="fld"><label class="lbl">Customer name <span class="req">*</span></label>
         <input class="in" id="c-name" placeholder="Full name"></div>
-      <div class="two">
-        <div class="fld"><label class="lbl">Phone <span class="req">*</span></label>
-          <input class="in" id="c-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits"></div>
+      <div class="fld"><label class="lbl">Phone <span class="muted">optional — needed for WhatsApp</span></label>
+        <input class="in" id="c-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits"></div>
+      <div class="fld"><label class="lbl">Date &amp; time out</label>
+        <input class="in" id="c-out" type="datetime-local" value="${dtLocal(Date.now())}" onchange="R.coSummary()"></div>
+
+      <button type="button" class="btn ghost" style="margin:4px 0 12px"
+        onclick="R.more('c-more',this)">More details <span class="muted">— optional</span></button>
+      <div id="c-more" style="display:none">
         <div class="fld"><label class="lbl">DL / Aadhaar no.</label>
           <input class="in" id="c-kyc" placeholder="ID number"></div>
-      </div>
-      <div class="muted" style="margin:-6px 2px 14px;font-size:11.5px">
-        Record the ID number only. Do not keep photos of Aadhaar or DL on the phone.</div>
-      <div class="two">
-        <div class="fld"><label class="lbl">Odometer out</label>
-          <input class="in" id="c-odo" type="number" inputmode="numeric" placeholder="km"></div>
-        <div class="fld"><label class="lbl">Fuel out</label>
-          <select class="in" id="c-fuel">
-            <option value="E">Empty</option><option value="1/4">1/4</option>
-            <option value="1/2" selected>1/2</option><option value="3/4">3/4</option>
-            <option value="F">Full</option></select></div>
+        <div class="muted" style="margin:-6px 2px 12px;font-size:11.5px">
+          Record the number only. Do not keep photos of Aadhaar or DL on the phone.</div>
+        <div class="two">
+          <div class="fld"><label class="lbl">Odometer out</label>
+            <input class="in" id="c-odo" type="number" inputmode="numeric" placeholder="km"></div>
+          <div class="fld"><label class="lbl">Fuel out</label>
+            <select class="in" id="c-fuel">
+              <option value="E">Empty</option><option value="1/4">1/4</option>
+              <option value="1/2" selected>1/2</option><option value="3/4">3/4</option>
+              <option value="F">Full</option></select></div>
+        </div>
       </div>
       <div id="c-summary"></div>
       <button class="btn g" id="c-go" onclick="R.checkoutSave()" disabled>Choose a vehicle and duration</button>
@@ -740,7 +803,9 @@ const R = {
     const v = DB.d.vehicles.find(x=>x.id===vid);
     const r = DB.d.rates.find(x=>x.id===v.rateId);
     const t = tierOf(this._tier);
-    const due = Date.now() + t.hours*HOUR;
+    const outEl = document.getElementById('c-out');
+    const outAt = dtParse(outEl && outEl.value, Date.now());
+    const due = outAt + t.hours*HOUR;
     const dep = Number(document.getElementById('c-dep').value)||0;
     const adv = Number(document.getElementById('c-adv').value)||0;
 
@@ -765,28 +830,29 @@ const R = {
     const vid  = document.getElementById('c-veh').value;
     const name = document.getElementById('c-name').value.trim();
     const ph   = document.getElementById('c-phone').value.replace(/\D/g,'').slice(-10);
-    if (!vid || !this._tier) return toast('Choose vehicle and duration');
+    if (!vid || !this._tier) return toast('Choose bike and duration');
     if (!name) return toast('Customer name is required');
-    if (ph.length !== 10) return toast('Enter a 10-digit phone number');
+    if (ph && ph.length !== 10) return toast('Phone must be 10 digits, or leave it blank');
 
     const v = DB.d.vehicles.find(x=>x.id===vid);
     const r = DB.d.rates.find(x=>x.id===v.rateId);
     const t = tierOf(this._tier);
     const ovEl = document.getElementById('c-override');
-    const now = Date.now();
+    const outEl = document.getElementById('c-out');
+    const now = dtParse(outEl && outEl.value, Date.now());
 
     const rental = {
       id: DB.id('r'), vehicleId: vid, status: 'open',
       customerName: name, customerPhone: ph,
-      customerKyc: document.getElementById('c-kyc').value.trim(),
+      customerKyc: (document.getElementById('c-kyc')||{value:''}).value.trim(),
       outAt: now, dueAt: now + t.hours*HOUR, tier: this._tier,
       /* Snapshot, never a live lookup: a price change tomorrow must not
          re-price a bike that is already on the road. */
       rateSnapshot: { model: r.model, deposit: r.deposit, ot: r.ot, tiers: Object.assign({}, r.tiers) },
       depositHeld: Number(document.getElementById('c-dep').value)||0,
       advancePaid: Number(document.getElementById('c-adv').value)||0,
-      odoOut: Number(document.getElementById('c-odo').value)||0,
-      fuelOut: document.getElementById('c-fuel').value,
+      odoOut: Number((document.getElementById('c-odo')||{value:0}).value)||0,
+      fuelOut: (document.getElementById('c-fuel')||{value:''}).value,
       docOverride: !!(ovEl && ovEl.checked) ? this.docBlocked(v) : '',
     };
     DB.d.rentals.push(rental);
@@ -797,8 +863,8 @@ const R = {
     if (!c) DB.d.customers.push({ id: DB.id('c'), name, phone: ph, kyc: rental.customerKyc });
 
     DB.save(); closeSheet(); this.nav('out');
-    toast('Rented out · ' + v.regNo);
-    setTimeout(()=>this.waAgreement(rental.id), 500);
+    toast('Rented out · ' + vLabel(v));
+    if (ph) setTimeout(()=>this.waAgreement(rental.id), 500);
   },
 
   waAgreement(id){
@@ -807,7 +873,7 @@ const R = {
     const t = tierOf(r.tier);
     const msg =
 `*Rental confirmed*
-Vehicle: ${v.regNo} (${v.model})
+Vehicle: ${vLabel(v)}${v.regNo?' ('+v.regNo+')':''}
 Out: ${fmtDT(r.outAt)}
 Due back: *${fmtDT(r.dueAt)}*
 Package: ${t.label} — ${money(r.rateSnapshot.tiers[r.tier])}
@@ -823,39 +889,41 @@ Please return on time to get your full deposit back.`;
     const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
     const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
     const now = Date.now();
-    const hrs = hoursBetween(r.outAt, now);
-    const q = quote(r.rateSnapshot, r.tier, hrs);
-    this._ci = { id, hrs, q };
+    this._ci = { id, inAt: now };
 
     openSheet(`
       <div class="sheet-hd"><h2>Check in</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
       <div class="card" style="margin-bottom:12px">
-        <div class="row"><b class="grow" style="font-size:16px">${esc(v.regNo)}</b>
+        <div class="row"><b class="grow" style="font-size:16px">${esc(vLabel(v))}</b>
           <span class="pill ${now>r.dueAt?'late':'ok'}">${now>r.dueAt?'LATE':'ON TIME'}</span></div>
         <div class="muted" style="margin-top:3px">${esc(r.customerName)} · ${esc(r.customerPhone)}</div>
-        <div class="muted" style="margin-top:5px">
-          Out ${fmtDT(r.outAt)}<br>Back ${fmtDT(now)} · used <b>${fmtDur(hrs)}</b>
-          (booked ${tierOf(r.tier).label})</div>
+        <div class="muted" style="margin-top:5px">Out ${fmtDT(r.outAt)} · booked ${tierOf(r.tier).label}</div>
       </div>
-      <div class="two">
-        <div class="fld"><label class="lbl">Odometer in</label>
-          <input class="in" id="i-odo" type="number" inputmode="numeric" placeholder="${r.odoOut||'km'}"></div>
-        <div class="fld"><label class="lbl">Fuel in</label>
-          <select class="in" id="i-fuel">
-            ${['E','1/4','1/2','3/4','F'].map(f=>`<option ${f===r.fuelOut?'selected':''}>${f}</option>`).join('')}
-          </select></div>
-      </div>
-      <div class="sec-hd">Extra charges</div>
-      <div class="two">
-        <div class="fld"><label class="lbl">Damage</label>
-          <input class="in" id="i-dmg" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
-        <div class="fld"><label class="lbl">Fuel shortfall</label>
-          <input class="in" id="i-fuelc" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
-      </div>
-      <div class="fld"><label class="lbl">Other / fine</label>
-        <input class="in" id="i-other" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+      <div class="fld"><label class="lbl">Date &amp; time in</label>
+        <input class="in" id="i-in" type="datetime-local" value="${dtLocal(now)}" onchange="R.ciCalc()"></div>
       <div id="i-settle"></div>
+
+      <button type="button" class="btn ghost" style="margin:4px 0 12px"
+        onclick="R.more('i-more',this)">Other charges <span class="muted">— optional</span></button>
+      <div id="i-more" style="display:none">
+        <div class="two">
+          <div class="fld"><label class="lbl">Damage</label>
+            <input class="in" id="i-dmg" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+          <div class="fld"><label class="lbl">Fuel shortfall</label>
+            <input class="in" id="i-fuelc" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+        </div>
+        <div class="fld"><label class="lbl">Other / fine</label>
+          <input class="in" id="i-other" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+        <div class="two">
+          <div class="fld"><label class="lbl">Odometer in</label>
+            <input class="in" id="i-odo" type="number" inputmode="numeric" placeholder="${r.odoOut||'km'}"></div>
+          <div class="fld"><label class="lbl">Fuel in</label>
+            <select class="in" id="i-fuel">
+              ${['E','1/4','1/2','3/4','F'].map(f=>`<option ${f===r.fuelOut?'selected':''}>${f}</option>`).join('')}
+            </select></div>
+        </div>
+      </div>
       <button class="btn g" onclick="R.checkinSave()">Settle & return deposit</button>
       <button class="btn ghost" style="margin-top:9px" onclick="R.waOverdue('${id}')">Send WhatsApp reminder</button>
     `);
@@ -870,11 +938,17 @@ Please return on time to get your full deposit back.`;
   },
 
   ciCalc(){
-    const { id, hrs, q } = this._ci;
+    const { id } = this._ci;
     const r = DB.d.rentals.find(x=>x.id===id);
-    const dmg   = Number(document.getElementById('i-dmg').value)||0;
-    const fuelc = Number(document.getElementById('i-fuelc').value)||0;
-    const other = Number(document.getElementById('i-other').value)||0;
+    /* Return time is editable, so hours and overtime are recomputed on every
+       change rather than frozen when the sheet opened. */
+    const inEl = document.getElementById('i-in');
+    const inAt = dtParse(inEl && inEl.value, Date.now());
+    const hrs  = Math.max(0, hoursBetween(r.outAt, inAt));
+    const q    = quote(r.rateSnapshot, r.tier, hrs);
+    this._ci.inAt = inAt; this._ci.hrs = hrs; this._ci.q = q;
+    const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
+    const dmg = g('i-dmg'), fuelc = g('i-fuelc'), other = g('i-other');
 
     const useAlt = this._ci.useAlt && q.alt;
     const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
@@ -884,6 +958,9 @@ Please return on time to get your full deposit back.`;
 
     document.getElementById('i-settle').innerHTML = `
       <div class="card" style="background:var(--p-50);border-color:#D9E2EA">
+        <div class="line"><span>Time used</span><b>${fmtDur(hrs)}</b></div>
+        <div class="line"><span>Extra hours</span>
+          <b class="${q.hoursOver?'neg':''}">${q.hoursOver||0}</b></div>
         <div class="line"><span>Rent · ${tierOf(r.tier).label}</span><b>${money(q.rent)}</b></div>
         ${q.overtime>0 && !useAlt ? `<div class="line"><span>Overtime · ${q.hoursOver} hr × ${money(r.rateSnapshot.ot)}</span>
           <b class="neg">${money(q.overtime)}</b></div>`:''}
@@ -897,7 +974,7 @@ Please return on time to get your full deposit back.`;
         <div class="line" style="border-top:1px dashed var(--bd);margin-top:6px;padding-top:10px">
           <span>Deposit held</span><b>${money(r.depositHeld)}</b></div>
         <div class="line tot" style="border:0;padding-top:4px">
-          <span>${refund>=0?'Refund to customer':'Still to collect'}</span>
+          <span>${refund>=0?'Refundable deposit':'Still to collect'}</span>
           <b class="${refund>=0?'pos':'neg'}">${money(Math.abs(refund))}</b></div>
       </div>
       ${q.alt ? `<div class="card tap" style="background:var(--y-tint);border-color:var(--y-bd)"
@@ -914,12 +991,12 @@ Please return on time to get your full deposit back.`;
   },
 
   checkinSave(){
-    const { id, hrs, q } = this._ci;
+    this.ciCalc();
+    const { id, hrs, q, inAt } = this._ci;
     const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
     const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
-    const dmg   = Number(document.getElementById('i-dmg').value)||0;
-    const fuelc = Number(document.getElementById('i-fuelc').value)||0;
-    const other = Number(document.getElementById('i-other').value)||0;
+    const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
+    const dmg = g('i-dmg'), fuelc = g('i-fuelc'), other = g('i-other');
     const useAlt = this._ci.useAlt && q.alt;
     const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
     const charges = rentTotal + dmg + fuelc + other;
@@ -927,10 +1004,10 @@ Please return on time to get your full deposit back.`;
     const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
 
     Object.assign(r, {
-      status: 'closed', returnedAt: Date.now(), settledAt: Date.now(),
-      hoursUsed: Math.round(hrs*100)/100,
-      odoIn: Number(document.getElementById('i-odo').value)||0,
-      fuelIn: document.getElementById('i-fuel').value,
+      status: 'closed', returnedAt: inAt, settledAt: Date.now(),
+      hoursUsed: Math.round(hrs*100)/100, extraHours: q.hoursOver||0,
+      odoIn: g('i-odo'),
+      fuelIn: (document.getElementById('i-fuel')||{value:''}).value,
       charges: { rent: rentTotal, overtime: useAlt?0:q.overtime, damage: dmg, fuel: fuelc, other },
       /* Revenue is rent + recoveries ONLY. The deposit never enters this
          number; it is refunded, or forfeited into `forfeited` below. */
@@ -950,10 +1027,10 @@ Please return on time to get your full deposit back.`;
     const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
     const late = Date.now() > r.dueAt;
     const msg = late
-      ? `Hello ${r.customerName}, your rental of ${v.regNo} was due back at ${fmtDT(r.dueAt)}.
+      ? `Hello ${r.customerName}, your rental of ${vLabel(v)} was due back at ${fmtDT(r.dueAt)}.
 Overtime is running at ${money(r.rateSnapshot.ot)} per hour and comes out of your ${money(r.depositHeld)} deposit.
 Please return the vehicle as soon as you can.`
-      : `Hello ${r.customerName}, a reminder that ${v.regNo} is due back at ${fmtDT(r.dueAt)}.
+      : `Hello ${r.customerName}, a reminder that ${vLabel(v)} is due back at ${fmtDT(r.dueAt)}.
 Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     window.open('https://wa.me/91' + r.customerPhone + '?text=' + encodeURIComponent(msg), '_blank');
   },
@@ -991,7 +1068,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       <div class="sec-hd">Which bikes earn</div>
       ${!per.length ? '<div class="muted" style="margin:0 2px">No vehicles yet.</div>' :
         per.map(p=>`<div class="card">
-          <div class="row"><b class="grow ell">${esc(p.v.regNo)} <span class="muted">${esc(p.v.model)}</span></b>
+          <div class="row"><b class="grow ell">${esc(vLabel(p.v))} <span class="muted">${esc(p.v.regNo||p.v.model)}</span></b>
             <b>${money(p.earned)}</b></div>
           <div class="muted" style="margin-top:4px">
             ${p.trips} rental${p.trips===1?'':'s'} · ${Math.round(p.hours)} hrs on rent
