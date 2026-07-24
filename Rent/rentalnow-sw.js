@@ -3,7 +3,7 @@
  * shell must never outlive a new build. Cache is the offline fallback
  * only, after NAV_TIMEOUT.
  */
-const SW_VERSION = 'rn_v3_6_1_payguard';
+const SW_VERSION = 'rn_v3_6_2_gatefix';
 const CACHE = 'rentalnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000;
 const SHELL = ['./rentalnow.html'];
