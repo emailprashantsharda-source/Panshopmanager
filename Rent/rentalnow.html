@@ -259,7 +259,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_6_1_createfix</div>
+<div class="wm" id="wm">rn_v2_7_0_selfheal</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -273,7 +273,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_6_1_createfix';
+const BUILD = 'rn_v2_7_0_selfheal';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -938,7 +938,9 @@ const R = {
       odo: old ? (old.odo||0) : 0,
     };
     if (window.Cloud && Cloud.ready){
-      Cloud.put('vehicles', id || Cloud.nid('v'), rec);
+      Cloud.put('vehicles', id || Cloud.nid('v'), rec).then(w => {
+        if (!w.ok) toast(Cloud.explainWrite(w.code));
+      });
     } else if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
     DB.save(); closeSheet(); this.render(); toast(id?'Bike updated':'Bike added');
@@ -1091,7 +1093,7 @@ const R = {
   async scanApply(){
     const rows = (this._scan||[]).filter(r => String(r.model||'').trim());
     if (!rows.length) return toast('Nothing to save');
-    let made = 0;
+    let made = 0, failed = null;
     for (const r of rows){
       const existing = (DB.d.rates||[]).find(x =>
         String(x.model||'').toLowerCase().trim() === String(r.model).toLowerCase().trim());
@@ -1101,13 +1103,20 @@ const R = {
                              h24:Number(r.h24)||0, d7:Number(r.d7)||0 } };
       const rid = existing ? existing.id
                            : ('rc_' + rec.model.toLowerCase().replace(/[^a-z0-9]+/g,'_'));
-      await Cloud.put('rates', rid, rec);
+      const w = await Cloud.put('rates', rid, rec);
+      if (!w.ok){ failed = w; break; }
       /* a model with no bike cannot be rented, so make one alongside */
-      if (!(DB.d.vehicles||[]).some(v => v.rateId === rid))
-        await Cloud.put('vehicles', 'v_'+rid, {
+      if (!(DB.d.vehicles||[]).some(v => v.rateId === rid)){
+        const wv = await Cloud.put('vehicles', 'v_'+rid, {
           name: rec.model, regNo:'', rateId: rid, model: rec.model,
           status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 });
+        if (!wv.ok){ failed = wv; break; }
+      }
       made++;
+    }
+    if (failed){
+      Haptic.error();
+      return toast((made ? 'Saved ' + made + ', then stopped: ' : '') + Cloud.explainWrite(failed.code));
     }
     Haptic.success(); closeSheet(); this.nav('rates');
     toast('Saved ' + made + ' rate card' + (made===1?'':'s'));
@@ -1145,7 +1154,9 @@ const R = {
       ot: Number(document.getElementById('r-ot').value)||0, tiers
     };
     if (window.Cloud && Cloud.ready){
-      Cloud.put('rates', id || Cloud.nid('rc'), rec);
+      Cloud.put('rates', id || Cloud.nid('rc'), rec).then(w => {
+        if (!w.ok) toast(Cloud.explainWrite(w.code));
+      });
       if (id) DB.d.vehicles.forEach(v=>{ if (v.rateId===id) Cloud.put('vehicles', v.id, { model }); });
     } else if (id){
       Object.assign(DB.d.rates.find(x=>x.id===id), rec);
@@ -1864,18 +1875,58 @@ const Cloud = {
     this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
       this.shop = sd.exists() ? sd.data() : null;
       this.shopName = this.shop ? (this.shop.name||'') : '';
+      /* The shop document is the authority on who owns the business, so a
+         missing membership record can no longer strip the owner of their
+         own account. */
+      if (this.shop && this.shop.ownerUid === this.uid) this.role = 'owner';
       if (this.ready && window.R) window.R.render();
     }));
+
+    /* Self-heal. If the membership record never landed — a dropped batch, a
+       first-signup race — write it now rather than leaving the account in a
+       state only a support call could explain. Rules permit a user to create
+       their own membership doc, so this needs nothing from the shopkeeper. */
+    this.healMembership(shopId).catch(e => console.warn('heal', e));
     this._unsub.push(bind(collection(db,'rn_shops',shopId,'members'), 'members'));
     try { await setDoc(doc(db,'rn_members',this.uid), { lastShopId: shopId }, { merge:true }); } catch(e){}
 
     this.ready = true;
     this.hap('success');
     this.hideGate();
+    /* A business with no models cannot rent anything out, which reads as a
+       broken app rather than an empty one. Fill it silently. */
+    setTimeout(() => {
+      try {
+        if (this.ready && this.role === 'owner'
+            && !((window.DB && window.DB.d && window.DB.d.rates) || []).length) {
+          this.seedCatalogue(true);
+        }
+      } catch(e){}
+    }, 2500);
     $('syncchip').style.display='';
     this.chip();
     await this.maybeMigrate();
     if (window.R) window.R.render();
+  },
+
+  async healMembership(shopId){
+    try {
+      const mref = doc(db,'rn_shops',shopId,'members',this.uid);
+      const m = await getDoc(mref);
+      if (m.exists()) { this.role = m.data().role || this.role; return; }
+      const sd = await getDoc(doc(db,'rn_shops',shopId));
+      if (!sd.exists()) return;
+      const isOwner = sd.data().ownerUid === this.uid;
+      await setDoc(mref, {
+        role: isOwner ? 'owner' : 'counter',
+        phone: (auth.currentUser && auth.currentUser.phoneNumber) || '',
+        addedAt: serverTimestamp(), healed: true
+      }, { merge:true });
+      await setDoc(doc(db,'rn_members',this.uid),
+        { shops: { [shopId]: isOwner ? 'owner' : 'counter' } }, { merge:true });
+      this.role = isOwner ? 'owner' : 'counter';
+      console.info('membership repaired', shopId, this.role);
+    } catch(e){ console.warn('healMembership', e); }
   },
 
   /* ── local -> cloud migration, once, never destructive ─────────── */
@@ -1977,8 +2028,8 @@ const Cloud = {
   /* Repair for shops created before seeding moved server-side: their
      catalogue only ever existed on one device. Safe to run any time — it
      writes only what is missing. */
-  async seedCatalogue(){
-    if (!this.shopId) { window.toast('Sign in first'); return; }
+  async seedCatalogue(quiet){
+    if (!this.shopId) { if (!quiet) window.toast('Sign in first'); return; }
     try {
       const D = window.DB && window.DB.d;
       if (!D) { window.toast('App not ready — reload and try again'); return; }
@@ -2004,8 +2055,11 @@ const Cloud = {
         }
       });
       await b.commit();
-      window.toast(made ? ('Restored ' + made + ' rate cards and bikes') : 'Catalogue already complete');
-    } catch(e){ console.error(e); window.toast('Could not restore — '+(e.code||e.message)); }
+      if (!quiet) window.toast(made ? ('Added ' + made + ' models') : 'Catalogue already complete');
+    } catch(e){
+      console.error('seedCatalogue', e);
+      if (!quiet) window.toast('Could not add models — '+(e.code||e.message));
+    }
   },
 
   /* Photo -> rows. Returns data only; nothing is saved until the user
@@ -2049,10 +2103,29 @@ const Cloud = {
     } catch(e){ console.warn('claimInvites', e); }
   },
 
+  /* Returns a result instead of swallowing the failure. A bare "Save failed"
+     tells the shop nothing and tells me nothing — the Firestore code is the
+     whole diagnosis: permission-denied, unavailable and invalid-argument are
+     three different problems with three different fixes. */
   async put(coll, id, data){
     this.pending++; this.chip();
-    try { await setDoc(this.p(coll, id), data, { merge:true }); }
-    catch(e){ console.error(e); window.toast('Save failed'); }
+    try {
+      await setDoc(this.p(coll, id), data, { merge:true });
+      return { ok:true };
+    } catch(e){
+      console.error('put ' + coll + '/' + id, e);
+      return { ok:false, code: (e && e.code) || 'unknown', msg: (e && e.message) || '' };
+    }
+  },
+  explainWrite(code){
+    return ({
+      'permission-denied':
+        'Not allowed to change this. If you just created the business, sign out and back in.',
+      'unavailable': 'No connection — it will save when you are back online.',
+      'invalid-argument': 'A value was rejected.',
+      'not-found': 'That record no longer exists.',
+      'resource-exhausted': 'Too many writes at once — try again in a moment.'
+    })[code] || ('Save failed [' + code + ']');
   },
   async softDelete(coll, id){
     await this.put(coll, id, { deletedAt: Date.now(), deletedBy: this.uid });
