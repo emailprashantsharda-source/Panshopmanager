@@ -3,7 +3,7 @@
  * shell must never outlive a new build. Cache is the offline fallback
  * only, after NAV_TIMEOUT.
  */
-const SW_VERSION = 'rn_v2_3_0_haptic';
+const SW_VERSION = 'rn_v3_3_0_fastboot';
 const CACHE = 'rentalnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000;
 const SHELL = ['./rentalnow.html'];
@@ -47,13 +47,35 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  /* Cache cross-origin assets too.
+     The Firebase SDK is five ES modules served from gstatic — roughly half a
+     megabyte. The old check only cached res.type === 'basic', which means
+     SAME-ORIGIN, so every one of those modules was re-fetched from Google on
+     every single load. On a shop's connection that is most of the wait before
+     anything appears on screen. They are version-pinned URLs, so caching them
+     forever is safe: a new SDK version is a different URL. */
+  const cacheable = (res) =>
+    res && (res.status === 200 || res.type === 'opaque') &&
+    (res.type === 'basic' || res.type === 'cors' || res.type === 'opaque');
+
   e.respondWith(
-    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-      if (res && res.status === 200 && res.type === 'basic') {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+    caches.match(req).then((hit) => {
+      if (hit) {
+        /* Serve instantly, refresh quietly in the background. */
+        if (/gstatic\.com|googleapis\.com/.test(req.url) === false) {
+          fetch(req).then((res) => {
+            if (cacheable(res)) caches.open(CACHE).then((c) => c.put(req, res.clone())).catch(() => {});
+          }).catch(() => {});
+        }
+        return hit;
       }
-      return res;
-    }).catch(() => hit))
+      return fetch(req).then((res) => {
+        if (cacheable(res)) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      });
+    })
   );
 });
