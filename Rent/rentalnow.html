@@ -459,7 +459,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_6_0_payu</div>
+<div class="wm" id="wm">rn_v3_6_1_payguard</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -473,7 +473,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_6_0_payu';
+const BUILD = 'rn_v3_6_1_payguard';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -944,8 +944,11 @@ const R = {
       Haptic.error();
       openSheet(`<div class="sheet-hd"><h2>Could not start payment</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
-        <div class="card"><div class="muted">${esc(res.msg||'Please try again.')}</div></div>
-        <button class="btn ghost" onclick="R.payHelp('${esc(id)}')">Pay another way</button>`);
+        <div class="card" style="${res.wrongProduct?'background:var(--y-tint);border-color:var(--y-bd)':''}">
+          <div class="muted">${esc(res.msg||'Please try again.')}</div>
+          ${res.wrongProduct?'<div class="muted" style="margin-top:6px">No payment was started, so nothing could be charged to the wrong plan.</div>':''}
+        </div>
+        <button class="btn" onclick="R.payHelp('${esc(id)}')">Pay on WhatsApp instead</button>`);
     }
   },
 
@@ -3105,6 +3108,19 @@ const Cloud = {
       const res = await fn({ product:'rentalnow', tier, cycle, shopId:this.shopId });
       const d = (res && res.data) || {};
       if (!d.paymentUrl || !d.params) return { ok:false, msg:'Could not start payment' };
+
+      /* Refuse to submit an order that is not unmistakably for this product.
+         The two apps share one PayU module, and HisaabNow's plan table has a
+         'pro' tier too — so an older deployed function that ignores `product`
+         would happily price a RentalNow "Pro" order as HisaabNow Pro Annual
+         and take real money for the wrong thing. The server names the plan in
+         productinfo; if that name is not ours, nothing gets posted. */
+      const info = String(d.params.productinfo || '');
+      if (!/rentalnow/i.test(info)) {
+        console.error('checkout product mismatch', info);
+        return { ok:false, wrongProduct:true,
+                 msg:'Payments are not set up for RentalNow yet. Nothing has been charged.' };
+      }
 
       /* PayU's hosted page expects a form POST, not a redirect. */
       const form = document.createElement('form');
