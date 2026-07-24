@@ -210,6 +210,11 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .gate-card .in{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.22);color:#fff}
 .gate-card .in::placeholder{color:rgba(255,255,255,.42)}
 .gate-card .in:focus{border-color:var(--y);box-shadow:0 0 0 3px rgba(245,166,35,.22)}
+.gate-load{display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:22px 0;font-size:13.5px;font-weight:650;color:rgba(255,255,255,.8)}
+.gate-spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.2);
+  border-top-color:var(--y);animation:gspin .8s linear infinite}
+@keyframes gspin{to{transform:rotate(360deg)}}
 .gate-tr{display:flex;gap:9px;margin-top:16px}
 .gate-tr>div{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
   border-radius:12px;padding:10px 9px;font-size:11.5px;font-weight:650;
@@ -374,7 +379,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_2_0_brand</div>
+<div class="wm" id="wm">rn_v3_3_0_fastboot</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -388,7 +393,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_2_0_brand';
+const BUILD = 'rn_v3_3_0_fastboot';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2361,6 +2366,16 @@ const Cloud = {
 
   /* ── boot ─────────────────────────────────────────────────────── */
   boot(){
+    /* Something honest on screen while Firebase initialises, instead of a
+       blank blue wall that reads as a hang. */
+    try {
+      const g = $('gate');
+      if (g && g.style.display !== 'none') {
+        this.showGate('<div class="gate-load"><div class="gate-spin"></div>'
+          + '<div>Opening your shop\u2026</div></div>');
+        g.style.display = 'flex';
+      }
+    } catch(e){}
     window.addEventListener('online',  ()=>{ this.online=true;  this.chip(); });
     window.addEventListener('offline', ()=>{ this.online=false; this.chip(); });
     onSnapshotsInSync(db, ()=>{ this.pending=0; this.chip(); });
@@ -2455,17 +2470,59 @@ const Cloud = {
     }
   },
 
+  /* Boot used to be six sequential round trips before a single pixel of the
+     app appeared: read rn_members, run the invite query, read rn_members
+     again, read the shop, write lastShopId, then render. On a shop's
+     connection that is the ten seconds.
+
+     Firestore already keeps a local mirror, so if we know which shop to open
+     we can attach the listeners immediately and they answer from IndexedDB
+     while the network catches up. The shop id is remembered on this device
+     for exactly that reason. Everything that is not needed to draw the first
+     screen — claiming staff invites, repairing membership — happens after. */
   async afterLogin(){
+    let last = null;
+    try { last = localStorage.getItem('rn_last_shop_' + this.uid); } catch(e){}
+    if (last) {
+      let role = null;
+      try { role = localStorage.getItem('rn_last_role_' + this.uid); } catch(e){}
+      this.role = role || 'owner';
+      this.open(last);                       /* not awaited — draws from cache */
+      this.afterLoginSlow();                 /* verify + invites in the background */
+      return;
+    }
     const mref = doc(db, 'rn_members', this.uid);
     let m = null;
     try { const snap = await getDoc(mref); m = snap.exists() ? snap.data() : null; } catch(e){}
-    await this.claimInvites();
-    try { const snap2 = await getDoc(mref); m = snap2.exists() ? snap2.data() : m; } catch(e){}
-    const shops = (m && m.shops) ? Object.keys(m.shops) : [];
+    let shops = (m && m.shops) ? Object.keys(m.shops) : [];
+    if (!shops.length) {
+      /* Only pay for the invite query when there is nothing else to open. */
+      await this.claimInvites();
+      try { const s2 = await getDoc(mref); m = s2.exists() ? s2.data() : m; } catch(e){}
+      shops = (m && m.shops) ? Object.keys(m.shops) : [];
+    }
     if (!shops.length) return this.askShop();
     const pick = (m.lastShopId && shops.includes(m.lastShopId)) ? m.lastShopId : shops[0];
     this.role = m.shops[pick];
     await this.open(pick);
+  },
+
+  /* Runs after the app is on screen. Nothing here blocks the first paint. */
+  async afterLoginSlow(){
+    try {
+      await this.claimInvites();
+      const snap = await getDoc(doc(db, 'rn_members', this.uid));
+      const m = snap.exists() ? snap.data() : null;
+      const shops = (m && m.shops) ? Object.keys(m.shops) : [];
+      if (this.shopId && shops.length && !shops.includes(this.shopId)) {
+        /* The remembered shop is gone or access was removed — recover quietly. */
+        try { localStorage.removeItem('rn_last_shop_' + this.uid); } catch(e){}
+        location.reload();
+      } else if (m && m.shops && m.shops[this.shopId]) {
+        this.role = m.shops[this.shopId];
+        try { localStorage.setItem('rn_last_role_' + this.uid, this.role); } catch(e){}
+      }
+    } catch(e){ console.warn('afterLoginSlow', e); }
   },
 
   askShop(){
@@ -2577,9 +2634,16 @@ const Cloud = {
        first-signup race — write it now rather than leaving the account in a
        state only a support call could explain. Rules permit a user to create
        their own membership doc, so this needs nothing from the shopkeeper. */
-    this.healMembership(shopId).catch(e => console.warn('heal', e));
+    setTimeout(() => { this.healMembership(shopId).catch(e => console.warn('heal', e)); }, 1200);
     this._unsub.push(bind(collection(db,'rn_shops',shopId,'members'), 'members'));
-    try { await setDoc(doc(db,'rn_members',this.uid), { lastShopId: shopId }, { merge:true }); } catch(e){}
+    /* Remembered so the next launch can attach listeners before any network
+       round trip completes. */
+    try {
+      localStorage.setItem('rn_last_shop_' + this.uid, shopId);
+      if (this.role) localStorage.setItem('rn_last_role_' + this.uid, this.role);
+    } catch(e){}
+    /* Not awaited: nothing on screen depends on it. */
+    setDoc(doc(db,'rn_members',this.uid), { lastShopId: shopId }, { merge:true }).catch(()=>{});
 
     this.ready = true;
     this.hap('success');
@@ -2985,6 +3049,10 @@ const Cloud = {
   /* Sign-out without the confirmation prompt, for flows that have already
      confirmed something more serious. */
   async hardSignOut(){
+    try {
+      localStorage.removeItem('rn_last_shop_' + this.uid);
+      localStorage.removeItem('rn_last_role_' + this.uid);
+    } catch(e){}
     this._unsub.forEach(f=>{try{f();}catch(e){}}); this._unsub=[];
     this.ready=false; this.shopId=null; this.role=null;
     try { await signOut(auth); } catch(e){}
@@ -2992,6 +3060,10 @@ const Cloud = {
 
   async logout(){
     if (!confirm('Sign out of RentalNow?')) return;
+    try {
+      localStorage.removeItem('rn_last_shop_' + this.uid);
+      localStorage.removeItem('rn_last_role_' + this.uid);
+    } catch(e){}
     this._unsub.forEach(f=>{try{f();}catch(e){}}); this._unsub=[];
     this.ready=false; await signOut(auth); location.reload();
   }
