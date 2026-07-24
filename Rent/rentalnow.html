@@ -106,7 +106,16 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   letter-spacing:-.015em;cursor:pointer;background:var(--p);color:#fff;
   box-shadow:0 8px 20px -10px rgba(15,61,92,.8);transition:transform .1s;
 }
-.btn:active:not(:disabled){transform:scale(.99)}
+.btn:active:not(:disabled){transform:scale(.97);filter:brightness(.94)}
+.btn{transition:transform .09s ease,box-shadow .15s,filter .09s}
+.top-btn{transition:transform .09s ease,background .12s}
+.top-btn:active{transform:scale(.94);background:rgba(255,255,255,.28)}
+.nav button{transition:transform .09s ease}
+.nav button:active{transform:scale(.9)}
+.tier{transition:transform .09s ease,background .15s,border-color .15s}
+.tier:active{transform:scale(.95)}
+.card.tap:active{transform:scale(.985);border-color:var(--p)}
+.in{transition:border-color .15s,box-shadow .15s,transform .09s}
 .btn:disabled{background:#EDEAE4;color:var(--t4);box-shadow:none;cursor:not-allowed}
 .btn.y{background:var(--y);color:#0A0A0A;box-shadow:0 8px 20px -10px rgba(245,166,35,.85)}
 .btn.g{background:var(--success);box-shadow:0 8px 20px -10px rgba(6,193,103,.8)}
@@ -187,6 +196,11 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <h1 id="top-title">Out Now</h1>
     <div class="sub" id="top-sub">—</div>
   </div>
+  <!-- (v2.2) The sync chip used to float at top-right and sat directly on top
+       of "+ Rent out". In the header row it can never cover a control. -->
+  <span id="syncchip" onclick="Cloud.explain()" style="display:none;
+     background:rgba(255,255,255,.16);color:#fff;border-radius:99px;padding:4px 9px;
+     font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap">…</span>
   <button class="top-btn" onclick="R.account()" style="padding:7px 9px" title="Account">☰</button>
   <button class="top-btn" id="top-action" onclick="R.topAction()">+ Rent out</button>
 </div>
@@ -241,14 +255,11 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   </div>
 </div>
 
-<div id="syncchip" onclick="Cloud.explain()" style="display:none;position:fixed;
-     right:10px;top:calc(10px + env(safe-area-inset-top));z-index:70;
-     background:rgba(255,255,255,.16);color:#fff;border-radius:99px;padding:5px 11px;
-     font-size:11px;font-weight:800;cursor:pointer;backdrop-filter:blur(6px)">…</div>
+
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_1_1_login</div>
+<div class="wm" id="wm">rn_v2_3_0_haptic</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -262,7 +273,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_1_1_login';
+const BUILD = 'rn_v2_3_0_haptic';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -273,29 +284,16 @@ const DB = {
       const raw = localStorage.getItem(this.k);
       if (raw) this.d = Object.assign(this.d, JSON.parse(raw));
     } catch(e){ console.warn('load failed', e); }
-    if (window.Cloud && Cloud.ready) return this.d;   /* cloud owns the data */
-    if (!this.d.seeded) { seed(); this.d.seeded = 1; this.save(); }
-    /* (v1.2) The rate card the shop handed over already names every vehicle,
-       so making them re-type the same ten names as "bikes" was pure friction —
-       and it left a brand-new install unable to rent anything until they did.
-       One bike is created per rate-card row, so the app is usable on open.
-       A shop with two Activas just adds a second; a shop with plates fills the
-       optional number in. Runs once, and never touches a fleet that already
-       has entries. */
-    if (!this.d.seededFleet) {
-      if (!this.d.vehicles.length) {
-        this.d.rates.forEach(rc => {
-          this.d.vehicles.push({
-            id: this.id('v'), name: rc.model, regNo: '', rateId: rc.id,
-            model: rc.model, status: 'available', cost: 0,
-            insExpiry: '', pucExpiry: '', odo: 0
-          });
-        });
-      }
-      this.d.seededFleet = 1; this.save();
-    }
+    /* (v2.2) Seeding used to happen here. It could not: this runs BEFORE the
+       Firebase module (module scripts are deferred), so Cloud.ready was always
+       false and every page load re-created ten rate cards and ten bikes in
+       localStorage — which the cloud layer then offered to upload, on every
+       single visit. Worse, that fleet existed only on the device, so renting
+       out failed: the transaction looked for a vehicle Firestore had never
+       seen. Seeding now happens once, server-side, in Cloud.createShop(). */
     return this.d;
   },
+
   save(){
     /* Once signed in, Firestore is the source of truth and listeners own
        DB.d — writing the local blob back would resurrect stale rows on the
@@ -415,6 +413,40 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ── toast / sheet ────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   HAPTICS
+   navigator.vibrate is Android-only — iOS Safari does not implement it
+   at all, and there is no web API that reaches the Taptic Engine. So
+   every control also carries a visible press state above; the buzz is
+   an enhancement on the devices that can do it, never the only signal
+   that a tap registered.
+
+   Fired on pointerdown rather than click: it lands at the instant the
+   finger touches, which is what makes a button feel physical. On click
+   it arrives ~80ms late and feels like a delayed rattle.
+   ══════════════════════════════════════════════════════════════════ */
+const Haptic = {
+  on: true,
+  buzz(p){ try { if (this.on && navigator.vibrate) navigator.vibrate(p); } catch(e){} },
+  tap(){     this.buzz(10); },        /* any control */
+  primary(){ this.buzz(16); },        /* a real commitment */
+  success(){ this.buzz([12, 45, 25]); },
+  error(){   this.buzz([28, 55, 28]); },
+};
+try { Haptic.on = localStorage.getItem('rn_haptic') !== '0'; } catch(e){}
+window.Haptic = Haptic;
+
+/* One delegated listener, so controls rendered later — sheets, the login
+   gate, dynamically built rows — are covered without wiring each one. */
+document.addEventListener('pointerdown', function(e){
+  const t = e.target && e.target.closest
+    ? e.target.closest('button, .tier, .card.tap, .nav button, select.in')
+    : null;
+  if (!t || t.disabled) return;
+  if (t.classList.contains('btn') && !t.classList.contains('ghost')) Haptic.primary();
+  else Haptic.tap();
+}, { passive: true });
+
 let _tt;
 function toast(m){
   const el = document.getElementById('toast');
@@ -502,8 +534,19 @@ const R = {
         <div class="line"><span>Sync</span><b>${Cloud.online?'Connected':'Offline'}</b></div></div>
       <div class="muted" style="margin:0 2px 14px">Your data is saved to your account and appears
         on every device you sign in on.</div>
-      ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>`:''}
+      <button class="btn ghost" style="margin-bottom:9px" onclick="R.toggleHaptic(this)">
+        Vibration on tap: ${window.Haptic && Haptic.on ? 'On' : 'Off'}</button>
+      ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>
+      <button class="btn ghost" style="margin-bottom:9px" onclick="Cloud.seedCatalogue()">Restore rate cards &amp; bikes</button>`:''}
       <button class="btn ghost" onclick="Cloud.logout()">Sign out</button>`);
+  },
+
+  toggleHaptic(btn){
+    if (!window.Haptic) return;
+    Haptic.on = !Haptic.on;
+    try { localStorage.setItem('rn_haptic', Haptic.on ? '1' : '0'); } catch(e){}
+    if (Haptic.on) Haptic.primary();
+    btn.textContent = 'Vibration on tap: ' + (Haptic.on ? 'On' : 'Off');
   },
 
   /* ── staff ──────────────────────────────────────────────────────── */
@@ -1062,10 +1105,13 @@ const R = {
       rental.createdBy = Cloud.uid;
       const res = await Cloud.checkout(rental, vid);
       if (!res.ok){
+        Haptic.error();
         if (res.reason === 'taken')
           return toast(vLabel(v) + ' was just rented by someone else — pick another bike');
         if (res.reason === 'cancelled') return toast('Check-out cancelled');
-        return toast('Could not rent out — try again');
+        if (res.reason === 'missing')
+          return toast('That bike is not in your account yet — open Fleet and add it');
+        return toast('Could not rent out — check your connection and try again');
       }
       if (ph) Cloud.put('customers', 'ph_'+ph, { name, phone: ph, kyc: rental.customerKyc });
       Cloud.audit('rental.out', rental.id, null,
@@ -1078,6 +1124,7 @@ const R = {
         DB.d.customers.push({ id: DB.id('c'), name, phone: ph, kyc: rental.customerKyc });
       DB.save();
     }
+    Haptic.success();
     closeSheet(); this.nav('out');
     toast('Rented out · ' + vLabel(v));
     if (ph) setTimeout(()=>this.waAgreement(rental.id), 500);
@@ -1254,6 +1301,7 @@ Please return on time to get your full deposit back.`;
       if (v){ v.status = 'available'; if (patch.odoIn) v.odo = patch.odoIn; }
       DB.save();
     }
+    Haptic.success();
     closeSheet(); this.nav('out');
     toast(refund >= 0 ? 'Closed · refund ' + money(refund)
                       : 'Closed · collect ' + money(Math.abs(refund)));
@@ -1436,7 +1484,10 @@ const Cloud = {
     b.disabled = !!on; b.textContent = on ? (label||'Please wait…') : 'Send OTP';
   },
 
+  hap(kind){ try { if (window.Haptic) window.Haptic[kind||'primary'](); } catch(e){} },
+
   async sendOtp(){
+    this.hap('primary');
     const ph = ($('g-phone').value||'').replace(/\D/g,'').slice(-10);
     if (ph.length!==10) return this.gateErr('Enter a 10-digit mobile number');
     this.gateErr(''); $('g-err').style.display='none';
@@ -1468,6 +1519,7 @@ const Cloud = {
           'Phone sign-in is switched off. Firebase Console → Authentication → Sign-in method → enable Phone.',
         'auth/network-request-failed': 'No internet connection.'
       };
+      this.hap('error');
       this.gateErr((map[code] || 'Could not send OTP.') + (code ? ' [' + code + ']' : ''));
       /* Rebuild the verifier: a burned reCAPTCHA cannot be reused. */
       try { if (this._verifier) { this._verifier.clear(); this._verifier=null; } } catch(_){}
@@ -1476,6 +1528,7 @@ const Cloud = {
   },
 
   async verifyOtp(){
+    this.hap('primary');
     const code = ($('g-otp').value||'').replace(/\D/g,'');
     if (code.length<6) return window.toast('Enter the 6-digit OTP');
     try { this.gateBusy(true,'Checking…'); await this._conf.confirm(code); }
@@ -1514,6 +1567,7 @@ const Cloud = {
   },
 
   async createShop(){
+    this.hap('primary');
     const name = ($('g-shop').value||'').trim();
     if (!name) return window.toast('Business name is required');
     const shopId = 'rs_' + this.uid.slice(0,6) + '_' + Date.now().toString(36);
@@ -1531,6 +1585,19 @@ const Cloud = {
         shops: { [shopId]: 'owner' }, lastShopId: shopId,
         phone: (auth.currentUser.phoneNumber||'')
       }, { merge:true });
+      /* Seed the catalogue server-side so it exists for every device from
+         the first second, rather than on whichever phone happened to open
+         the app first. */
+      seed();
+      DB.d.rates.forEach(rc => {
+        const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+        b.set(doc(db,'rn_shops',shopId,'rates',rid),
+          { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
+        b.set(doc(db,'rn_shops',shopId,'vehicles','v_'+rid), {
+          name: rc.model, regNo: '', rateId: rid, model: rc.model,
+          status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0
+        });
+      });
       await b.commit();
       this.role='owner';
       await this.open(shopId);
@@ -1567,6 +1634,7 @@ const Cloud = {
     try { await setDoc(doc(db,'rn_members',this.uid), { lastShopId: shopId }, { merge:true }); } catch(e){}
 
     this.ready = true;
+    this.hap('success');
     this.hideGate();
     $('syncchip').style.display='';
     this.chip();
@@ -1580,9 +1648,13 @@ const Cloud = {
     try { blob = localStorage.getItem('rn_data_v1'); } catch(e){}
     if (!blob) return;
     let d; try { d = JSON.parse(blob); } catch(e){ return; }
-    const n = (d.vehicles||[]).length + (d.rentals||[]).length;
+    /* Only offer to upload REAL work. Seeded catalogue rows are not the
+       user's data, and asking about them once was noise; asking every load
+       was a bug. Rentals are the signal that this device did real business
+       before the account existed. */
+    const n = (d.rentals||[]).length;
     if (!n) { this.stashLocal(); return; }
-    if (!confirm('This device has '+n+' records saved offline.\n\nUpload them to your account?\n\n(Your local copy is kept either way.)')) {
+    if (!confirm('This device has '+n+' rental'+(n===1?'':'s')+' saved offline.\n\nUpload to your account?\n\n(Your local copy is kept either way.)')) {
       this.stashLocal(); return;
     }
     try {
@@ -1603,7 +1675,14 @@ const Cloud = {
       await b.commit();
       this.stashLocal();
       window.toast('Uploaded '+n+' records to your account');
-    } catch(e){ console.error(e); window.toast('Upload failed — your local copy is safe'); }
+    } catch(e){
+      console.error('migrate', e);
+      window.toast('Upload failed — your local copy is safe');
+    } finally {
+      /* Stash regardless. Leaving the blob in place after a failure meant the
+         prompt returned on every load with no way to dismiss it. */
+      this.stashLocal();
+    }
   },
   /* Rename rather than delete: an unrecoverable migration is far more
      expensive than a few KB of stale storage. */
@@ -1657,6 +1736,31 @@ const Cloud = {
         depositsOut: increment(Number(deposits)||0), updatedAt: Date.now()
       }, { merge:true });
     } catch(e){}
+  },
+
+  /* Repair for shops created before seeding moved server-side: their
+     catalogue only ever existed on one device. Safe to run any time — it
+     writes only what is missing. */
+  async seedCatalogue(){
+    try {
+      seed();
+      const b = writeBatch(db);
+      let made = 0;
+      DB.d.rates.forEach(rc => {
+        const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+        if (!(window.DB.d.rates||[]).some(x => x.id === rid)) {
+          b.set(this.p('rates', rid), { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
+          made++;
+        }
+        if (!(window.DB.d.vehicles||[]).some(x => x.id === 'v_'+rid)) {
+          b.set(this.p('vehicles', 'v_'+rid), {
+            name: rc.model, regNo: '', rateId: rid, model: rc.model,
+            status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0 });
+        }
+      });
+      await b.commit();
+      window.toast(made ? 'Catalogue restored to your account' : 'Catalogue already complete');
+    } catch(e){ console.error(e); window.toast('Could not restore — '+(e.code||e.message)); }
   },
 
   /* ── staff ─────────────────────────────────────────────────────── */
