@@ -259,7 +259,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_3_0_haptic</div>
+<div class="wm" id="wm">rn_v2_6_0_delete</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -273,7 +273,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_3_0_haptic';
+const BUILD = 'rn_v2_6_0_delete';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -307,25 +307,29 @@ const DB = {
 };
 
 /* ── seed: Rapid Rent Services, Bhopal ────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   STARTER CATALOGUE
+
+   Models only — every price is zero on purpose.
+
+   The first build shipped Rapid Rent's actual Bhopal rate card as the
+   seed. That is right for exactly one company and wrong for the other
+   ten, and wrong SILENTLY: a shop would rent an Activa for 120/3hr
+   because that number was already sitting there, never realising it was
+   somebody else's price. A blank forces a decision; a wrong default
+   just quietly loses money.
+
+   These model names are near-universal across Indian two-wheeler
+   rental, so the list saves typing without assuming anything about
+   what a given shop charges. Renting out is blocked until the rate is
+   set — see R.rateReady().
+   ══════════════════════════════════════════════════════════════════ */
 function seed(){
-  /* Rates transcribed from the client's own price list. Entered as one
-     card per model rather than shared classes: B/B2/B3 differ only at
-     6h/12h/24h, and a "nearly identical" inheritance tree is exactly the
-     kind of thing that silently drifts later. */
-  const R_ = (model, deposit, h3, h6, h12, h24, d7, ot) =>
-    ({ id: DB.id('rc'), model, deposit, tiers:{h3,h6,h12,h24,d7}, ot });
-  DB.d.rates = [
-    R_('Activa 3G',      500, 120, 220, 350, 550, 2100, 50),
-    R_('Pleasure',       500, 120, 220, 350, 550, 2100, 50),
-    R_('Maestro',        800, 150, 280, 450, 620, 2450, 60),
-    R_('Jupiter',        800, 150, 280, 450, 620, 2450, 60),
-    R_('Avaitor',        800, 150, 280, 450, 620, 2450, 60),
-    R_('Activa 5G',      800, 150, 270, 420, 600, 2450, 60),
-    R_('TVS Sports',     800, 150, 270, 420, 600, 2450, 60),
-    R_('Discover',       800, 150, 270, 450, 620, 2450, 60),
-    R_('Suzuki Hayate',  800, 150, 270, 450, 620, 2450, 60),
-    R_('NS Pulsar',     1200, 200, 360, 560, 860, 3450, 70),
-  ];
+  const M = (model) => ({ id: DB.id('rc'), model, deposit: 0,
+                          tiers:{h3:0,h6:0,h12:0,h24:0,d7:0}, ot: 0 });
+  DB.d.rates = ['Activa 3G','Activa 5G','Pleasure','Maestro','Jupiter',
+                'Aviator','TVS Sports','Discover','Suzuki Hayate','NS Pulsar'
+               ].map(M);
 }
 
 /* ── tiers ────────────────────────────────────────────────────────── */
@@ -497,11 +501,36 @@ const R = {
   role(){ return (window.Cloud && Cloud.ready) ? (Cloud.role||'counter') : 'owner'; },
   isOwner(){ return this.role()==='owner'; },
   isManager(){ return ['owner','manager'].includes(this.role()); },
+  /* A rate card still at zero has not been filled in. Renting against it
+     would bill nothing and look like the app lost the money. */
+  rateReady(rc){
+    if (!rc) return false;
+    const t = rc.tiers || {};
+    return (Number(t.h3)||0) + (Number(t.h6)||0) + (Number(t.h12)||0)
+         + (Number(t.h24)||0) + (Number(t.d7)||0) > 0;
+  },
+  ratesPending(){
+    return (DB.d.rates||[]).filter(r => !this.rateReady(r)).length;
+  },
+
   canRentOut(){
     if (!window.Cloud || !Cloud.ready) return true;
     const t = Cloud.trialInfo();
     return t.active;
   },
+  ratesBanner(){
+    const n = this.ratesPending();
+    if (!n || !(DB.d.rates||[]).length) return '';
+    return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+      <b style="font-size:13.5px">Set your prices before you rent out</b>
+      <div class="muted" style="margin-top:3px">${n} of ${(DB.d.rates||[]).length} models
+      still have no rate. We list the models — the prices have to be yours.</div>
+      <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.scanRates()">
+        📷 Read my price list from a photo</button>
+      <button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="R.nav('rates')">
+        Enter them by hand</button></div>`;
+  },
+
   trialBanner(){
     if (!window.Cloud || !Cloud.ready) return '';
     const t = Cloud.trialInfo();
@@ -537,8 +566,44 @@ const R = {
       <button class="btn ghost" style="margin-bottom:9px" onclick="R.toggleHaptic(this)">
         Vibration on tap: ${window.Haptic && Haptic.on ? 'On' : 'Off'}</button>
       ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>
-      <button class="btn ghost" style="margin-bottom:9px" onclick="Cloud.seedCatalogue()">Restore rate cards &amp; bikes</button>`:''}
-      <button class="btn ghost" onclick="Cloud.logout()">Sign out</button>`);
+`:''}
+      <button class="btn ghost" onclick="Cloud.logout()">Sign out</button>
+      ${this.isOwner()?`
+        <div class="sec-hd" style="color:var(--danger)">Danger zone</div>
+        <button class="btn ghost" style="color:var(--danger);border-color:var(--danger)"
+          onclick="R.deleteShop()">Delete this business permanently</button>`:''}`);
+  },
+
+  /* Deliberately awkward: typing the business name is the only thing standing
+     between a mis-tap and a year of rentals. Nothing here is recoverable. */
+  deleteShop(){
+    if (!this.isOwner()) return toast('Only the owner can do this');
+    const name = (window.Cloud && Cloud.shopName) || '';
+    openSheet(`<div class="sheet-hd"><h2 style="color:var(--danger)">Delete business</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Cancel</button></div>
+      <div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+        <b style="font-size:13.5px;color:var(--danger)">This cannot be undone</b>
+        <div class="muted" style="margin-top:4px">Every bike, rate card, rental, customer
+        and deposit record for <b>${esc(name)}</b> is erased, on every device, for everyone
+        signed in to it. There is no recovery from inside the app.</div></div>
+      <div class="fld"><label class="lbl">Type <b>${esc(name)}</b> to confirm</label>
+        <input class="in" id="del-name" placeholder="${esc(name)}" autocapitalize="off"></div>
+      <button class="btn d" onclick="R.deleteShopGo()">Delete permanently</button>`);
+  },
+  async deleteShopGo(){
+    const typed = (document.getElementById('del-name')||{value:''}).value.trim();
+    const name = (window.Cloud && Cloud.shopName) || '';
+    if (typed !== name.trim()) { Haptic.error(); return toast('Name does not match'); }
+    openSheet(`<div class="sheet-hd"><h2>Deleting…</h2></div>
+      <div class="empty"><div class="e">🗑️</div><b>Erasing everything</b>
+      <span>This can take a few seconds.</span></div>`);
+    const res = await Cloud.deleteShop(typed);
+    if (!res.ok){ Haptic.error(); closeSheet(); return toast('Could not delete — ' + (res.msg||'')); }
+    try { localStorage.removeItem('rn_data_v1'); } catch(e){}
+    Haptic.success();
+    alert('Business deleted. You will now be signed out — sign in again to start fresh.');
+    Cloud._unsub.forEach(f=>{try{f();}catch(e){}});
+    location.reload();
   },
 
   toggleHaptic(btn){
@@ -653,7 +718,7 @@ const R = {
       open.length + ' open rental' + (open.length===1?'':'s') + ' · refundable';
 
     const box = document.getElementById('out-list');
-    const banner = this.trialBanner();
+    const banner = this.ratesBanner() + this.trialBanner();
     if (!open.length){
       /* Rate cards ship pre-seeded, so a brand-new shop sees 10 models under
          Rates and reasonably assumes it is set up — then "+ Rent out" dead-ends
@@ -886,6 +951,8 @@ const R = {
   renderRates(){
     const box = document.getElementById('rates-list');
     box.innerHTML =
+      (this.isOwner() ? `<button class="btn" style="margin-bottom:12px" onclick="R.scanRates()">
+          📷 Read my price list from a photo</button>` : '') +
       `<div class="muted" style="margin:0 2px 12px">Tap a card to edit. Rates are copied onto each
         rental at check-out, so changing a price never re-prices a bike that is already out.</div>` +
       DB.d.rates.map(r=>{
@@ -893,7 +960,8 @@ const R = {
         return `<div class="card tap" onclick="R.editRate('${r.id}')">
           <div class="row" style="margin-bottom:8px">
             <b class="grow" style="font-size:15.5px">${esc(r.model)}</b>
-            <span class="pill ok">${n} bike${n===1?'':'s'}</span>
+            ${this.rateReady(r) ? `<span class="pill ok">${n} bike${n===1?'':'s'}</span>`
+                                : `<span class="pill late">SET PRICE</span>`}
           </div>
           <div class="row" style="gap:6px;flex-wrap:wrap">
             ${TIERS.map(t=>`<span class="pill" style="background:var(--p-50);color:var(--t2)">
@@ -907,6 +975,135 @@ const R = {
             + Add another ${esc(r.model)}</button>
         </div>`;
       }).join('');
+  },
+
+  /* ── read a rate card from a photo ────────────────────────────────
+     The shop hands over a printed price list; typing 10 models x 7 numbers
+     is the single most tedious part of onboarding and the easiest place to
+     fat-finger a price. Photograph it instead — then CONFIRM every figure,
+     because a misread 620 as 820 costs money on every rental until someone
+     notices. Nothing is saved from this screen without a second tap. */
+  scanRates(){
+    if (!this.isOwner()) return toast('Only the owner can set prices');
+    if (!window.Cloud || !Cloud.ready) return toast('Sign in first');
+    const inp = document.createElement('input');
+    inp.type='file'; inp.accept='image/*'; inp.style.display='none';
+    inp.onchange = async () => {
+      const file = inp.files && inp.files[0];
+      try { document.body.removeChild(inp); } catch(e){}
+      if (!file) return;
+      openSheet(`<div class="sheet-hd"><h2>Reading price list…</h2></div>
+        <div class="empty"><div class="e">📄</div><b>Working on it</b>
+        <span>Usually 5–15 seconds.</span></div>`);
+      try {
+        const b64 = await this._shrink(file);
+        const res = await Cloud.readRateCard(b64, 'image/jpeg');
+        if (!res || !res.ok || !res.rows || !res.rows.length){
+          Haptic.error();
+          return openSheet(`<div class="sheet-hd"><h2>Could not read it</h2>
+            <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+            <div class="card"><div class="muted">
+            Try again with the sheet flat, filling the frame, in good light.
+            ${res && res.msg ? '<br><br>' + esc(res.msg) : ''}</div></div>
+            <button class="btn" onclick="R.scanRates()">Take another photo</button>`);
+        }
+        Haptic.success();
+        this._scan = res.rows;
+        this.scanReview();
+      } catch(e){
+        console.error(e); Haptic.error();
+        openSheet(`<div class="sheet-hd"><h2>Could not read it</h2>
+          <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+          <div class="card"><div class="muted">${esc(e.message||'Please try again')}</div></div>`);
+      }
+    };
+    document.body.appendChild(inp); inp.click();
+  },
+
+  /* Phone photos are 3–8 MB; the callable has a hard request limit and a
+     big upload on shop wifi is its own failure mode. 1600px wide is more
+     than enough for a printed table. */
+  _shrink(file){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const max = 1600;
+          const sc = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+        } catch(e){ reject(e); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not open that image')); };
+      img.src = url;
+    });
+  },
+
+  scanReview(){
+    const rows = this._scan || [];
+    openSheet(`<div class="sheet-hd"><h2>Check these prices</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Cancel</button></div>
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">Read from your photo — check every number</b>
+        <div class="muted" style="margin-top:3px">Tap any figure to correct it. These become
+        your live prices, so a wrong digit here is money lost on every rental.</div></div>
+      ${rows.map((r,i)=>`
+        <div class="card">
+          <input class="in" value="${esc(r.model)}" oninput="R._scanSet(${i},'model',this.value)"
+            style="font-weight:800;margin-bottom:9px">
+          <div class="two" style="margin-bottom:8px">
+            <div><label class="lbl">Deposit</label>
+              <input class="in" type="number" inputmode="numeric" value="${r.deposit}"
+                oninput="R._scanSet(${i},'deposit',this.value)"></div>
+            <div><label class="lbl">Overtime /hr</label>
+              <input class="in" type="number" inputmode="numeric" value="${r.ot}"
+                oninput="R._scanSet(${i},'ot',this.value)"></div>
+          </div>
+          <div class="two" style="margin-bottom:8px">
+            ${['h3','h6','h12','h24'].map(k=>`
+              <div><label class="lbl">${k.slice(1)} hr</label>
+                <input class="in" type="number" inputmode="numeric" value="${r[k]}"
+                  oninput="R._scanSet(${i},'${k}',this.value)"></div>`).join('')}
+          </div>
+          <div><label class="lbl">7 days</label>
+            <input class="in" type="number" inputmode="numeric" value="${r.d7}"
+              oninput="R._scanSet(${i},'d7',this.value)"></div>
+        </div>`).join('')}
+      <button class="btn g" onclick="R.scanApply()">Save these ${rows.length} rate cards</button>
+      <button class="btn ghost" style="margin-top:9px" onclick="R.scanRates()">Retake photo</button>`);
+  },
+  _scanSet(i, k, v){
+    if (!this._scan || !this._scan[i]) return;
+    this._scan[i][k] = (k === 'model') ? v : (Number(v)||0);
+  },
+
+  async scanApply(){
+    const rows = (this._scan||[]).filter(r => String(r.model||'').trim());
+    if (!rows.length) return toast('Nothing to save');
+    let made = 0;
+    for (const r of rows){
+      const existing = (DB.d.rates||[]).find(x =>
+        String(x.model||'').toLowerCase().trim() === String(r.model).toLowerCase().trim());
+      const rec = { model: String(r.model).trim(), deposit: Number(r.deposit)||0,
+                    ot: Number(r.ot)||0,
+                    tiers: { h3:Number(r.h3)||0, h6:Number(r.h6)||0, h12:Number(r.h12)||0,
+                             h24:Number(r.h24)||0, d7:Number(r.d7)||0 } };
+      const rid = existing ? existing.id
+                           : ('rc_' + rec.model.toLowerCase().replace(/[^a-z0-9]+/g,'_'));
+      await Cloud.put('rates', rid, rec);
+      /* a model with no bike cannot be rented, so make one alongside */
+      if (!(DB.d.vehicles||[]).some(v => v.rateId === rid))
+        await Cloud.put('vehicles', 'v_'+rid, {
+          name: rec.model, regNo:'', rateId: rid, model: rec.model,
+          status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 });
+      made++;
+    }
+    Haptic.success(); closeSheet(); this.nav('rates');
+    toast('Saved ' + made + ' rate card' + (made===1?'':'s'));
   },
 
   editRate(id){
@@ -1076,6 +1273,10 @@ const R = {
 
     const v = DB.d.vehicles.find(x=>x.id===vid);
     const r = DB.d.rates.find(x=>x.id===v.rateId);
+    if (!this.rateReady(r)) {
+      Haptic.error();
+      return toast('Set a price for ' + (r?r.model:'this model') + ' under Rates first');
+    }
     const t = tierOf(this._tier);
     const ovEl = document.getElementById('c-override');
     const outEl = document.getElementById('c-out');
@@ -1366,6 +1567,14 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
   },
 };
 
+/* `const DB` at the top level of a CLASSIC script is script-scoped — it never
+   becomes a window property, unlike a function declaration. The Firebase code
+   lives in an ES module block, which is a separate scope, so every window.DB
+   reference there was undefined: snapshots could not write into DB.d and the
+   UI stayed empty while Firestore quietly held the data. Anything the module
+   needs has to be handed across explicitly. */
+window.DB = DB;
+window.seed = seed;
 window.R = R;
 window.closeSheet = closeSheet;
 R.boot();
@@ -1403,6 +1612,8 @@ import { initializeAppCheck, ReCaptchaV3Provider }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
 import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFunctions, httpsCallable }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   doc, collection, query, where, orderBy, limit, startAfter,
@@ -1431,6 +1642,7 @@ try {
 }
 
 const auth = getAuth(app);
+const fns = getFunctions(app);
 /* Durable offline mirror + cross-tab coherence. This is the piece that
    makes "never lost" true for work done without a connection. */
 const db = initializeFirestore(app, {
@@ -1588,8 +1800,8 @@ const Cloud = {
       /* Seed the catalogue server-side so it exists for every device from
          the first second, rather than on whichever phone happened to open
          the app first. */
-      seed();
-      DB.d.rates.forEach(rc => {
+      window.seed();
+      ((window.DB && window.DB.d && window.DB.d.rates) || []).forEach(rc => {
         const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
         b.set(doc(db,'rn_shops',shopId,'rates',rid),
           { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
@@ -1611,6 +1823,7 @@ const Cloud = {
     const S = p => collection(db,'rn_shops',shopId,p);
 
     const bind = (q, key, after) => onSnapshot(q, snap => {
+      if (!window.DB || !window.DB.d) { console.error('DB not exposed to module'); return; }
       window.DB.d[key] = snap.docs.map(d => Object.assign({ id:d.id }, d.data()))
                               .filter(x => !x.deletedAt);
       this.pending = snap.metadata.hasPendingWrites ? this.pending : 0;
@@ -1742,25 +1955,47 @@ const Cloud = {
      catalogue only ever existed on one device. Safe to run any time — it
      writes only what is missing. */
   async seedCatalogue(){
+    if (!this.shopId) { window.toast('Sign in first'); return; }
     try {
-      seed();
+      const D = window.DB && window.DB.d;
+      if (!D) { window.toast('App not ready — reload and try again'); return; }
+      /* seed() fills DB.d.rates with the catalogue template. The live lists
+         are whatever the listeners have already delivered from Firestore. */
+      const liveRates = (D.rates || []).slice();
+      const liveVeh   = (D.vehicles || []).slice();
+      window.seed();
+      const tpl = (D.rates || []).slice();
+      D.rates = liveRates;                    /* put the live view back */
       const b = writeBatch(db);
       let made = 0;
-      DB.d.rates.forEach(rc => {
+      tpl.forEach(rc => {
         const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
-        if (!(window.DB.d.rates||[]).some(x => x.id === rid)) {
+        if (!liveRates.some(x => x.id === rid)) {
           b.set(this.p('rates', rid), { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
           made++;
         }
-        if (!(window.DB.d.vehicles||[]).some(x => x.id === 'v_'+rid)) {
+        if (!liveVeh.some(x => x.id === 'v_'+rid)) {
           b.set(this.p('vehicles', 'v_'+rid), {
             name: rc.model, regNo: '', rateId: rid, model: rc.model,
             status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0 });
         }
       });
       await b.commit();
-      window.toast(made ? 'Catalogue restored to your account' : 'Catalogue already complete');
+      window.toast(made ? ('Restored ' + made + ' rate cards and bikes') : 'Catalogue already complete');
     } catch(e){ console.error(e); window.toast('Could not restore — '+(e.code||e.message)); }
+  },
+
+  /* Photo -> rows. Returns data only; nothing is saved until the user
+     confirms every figure on screen. */
+  async readRateCard(b64, mime){
+    try {
+      const fn = httpsCallable(fns, 'parseRateCard');
+      const res = await fn({ imageB64: b64, mime });
+      return (res && res.data) || { ok:false };
+    } catch(e){
+      console.error('readRateCard', e);
+      return { ok:false, msg: (e && (e.message || e.code)) || 'failed' };
+    }
   },
 
   /* ── staff ─────────────────────────────────────────────────────── */
@@ -1894,6 +2129,20 @@ const Cloud = {
     window.alert(!this.online
       ? 'You are offline.\n\nReturns and edits are saved on this device and upload automatically.\nRenting out waits for signal, so the same bike is never given to two customers.'
       : (this.pending>0 ? 'Saving your changes…' : 'Everything is saved to your account.'));
+  },
+
+  /* Hard delete, server-side. The rules deny client deletes on purpose, so
+     this is the only route — and the function re-checks ownership itself
+     rather than trusting whatever the phone claims. */
+  async deleteShop(confirmName){
+    try {
+      const fn = httpsCallable(fns, 'deleteRentalShop');
+      await fn({ shopId: this.shopId, confirmName });
+      return { ok:true };
+    } catch(e){
+      console.error('deleteShop', e);
+      return { ok:false, msg: (e && (e.message || e.code)) || 'failed' };
+    }
   },
 
   async logout(){
