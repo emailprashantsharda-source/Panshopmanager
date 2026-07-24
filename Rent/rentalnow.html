@@ -254,14 +254,31 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    one puts the form on a card, states plainly what the account is for,
    and carries the HisaabNow mark so the trust already earned there
    comes with it. */
+/* Two separate causes of the drift, both here:
+
+   SIDEWAYS — the decorative circles below sit at right:-90px and left:-70px,
+   deliberately bleeding past the edge. But overflow-y:auto with overflow-x
+   unset makes the browser compute overflow-x as AUTO, not visible, so those
+   overhangs became a horizontal scroll area the whole screen could slide in.
+   Clipping at this level fixes it and keeps the circles.
+
+   UP AND DOWN — justify-content:center on a SCROLLING container re-centres
+   every time the content height changes: an error appearing, the OTP step
+   swapping in, and worst of all the keyboard opening, which shrinks the
+   viewport on every focus. Centring now happens with margin:auto on an inner
+   wrapper, which settles when it fits and simply scrolls from the top when it
+   does not — no recalculation, no jump. */
 #gate{position:fixed;inset:0;z-index:900;display:none;flex-direction:column;
-  justify-content:center;overflow-y:auto;padding:28px 20px;color:#fff;
+  overflow:hidden;color:#fff;
   background:radial-gradient(120% 90% at 15% 0%,#1C6291 0%,#12466A 45%,#0A2C43 100%)}
+.gate-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  display:flex;flex-direction:column;padding:28px 20px}
 #gate:before{content:'';position:absolute;right:-90px;top:-70px;width:280px;height:280px;
   border-radius:50%;background:rgba(255,255,255,.05)}
 #gate:after{content:'';position:absolute;left:-70px;bottom:-90px;width:230px;height:230px;
   border-radius:50%;background:rgba(245,166,35,.10)}
-.gate-wrap{max-width:410px;margin:0 auto;width:100%;position:relative;z-index:1}
+.gate-wrap{max-width:410px;margin:auto;width:100%;position:relative;z-index:1}
 .gate-mark{width:62px;height:62px;border-radius:19px;background:rgba(255,255,255,.13);
   display:flex;align-items:center;justify-content:center;font-size:32px;
   border:1px solid rgba(255,255,255,.2);margin-bottom:14px}
@@ -278,6 +295,14 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .gate-spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.2);
   border-top-color:var(--y);animation:gspin .8s linear infinite}
 @keyframes gspin{to{transform:rotate(360deg)}}
+/* Always in the layout, just empty — an error must not push the button it
+   relates to somewhere else on the screen as it appears. */
+.gate-err{min-height:0;margin-top:0;background:rgba(225,25,0,.18);
+  border:1px solid rgba(255,255,255,.25);border-radius:11px;
+  font-size:12.5px;line-height:1.5;padding:0 13px;
+  max-height:0;opacity:0;overflow:hidden;border-width:0;
+  transition:max-height .18s,opacity .18s,padding .18s,margin .18s}
+.gate-err.on{max-height:180px;opacity:1;padding:11px 13px;margin-top:12px;border-width:1px}
 .gate-tr{display:flex;gap:9px;margin-top:16px}
 .gate-tr>div{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
   border-radius:12px;padding:10px 9px;font-size:11.5px;font-weight:650;
@@ -436,6 +461,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <!-- ═══ AUTH GATE ═══ -->
 <div id="gate">
+  <div class="gate-scroll">
   <div class="gate-wrap">
     <div class="gate-mark">🛵</div>
     <h1 class="gate-h1">RentalNow</h1>
@@ -453,13 +479,14 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
       <span class="gate-by-b">Hisaab<span>Now</span></span>
     </div>
   </div>
+  </div>
 </div>
 
 
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_6_1_payguard</div>
+<div class="wm" id="wm">rn_v3_6_2_gatefix</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -473,7 +500,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_6_1_payguard';
+const BUILD = 'rn_v3_6_2_gatefix';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2628,9 +2655,7 @@ const Cloud = {
         <input class="in" id="g-phone" type="tel" inputmode="numeric" maxlength="10"
           placeholder="10 digits"></div>
       <button class="btn y" id="g-send" onclick="Cloud.sendOtp()">Send OTP</button>
-      <div id="g-err" style="display:none;margin-top:12px;background:rgba(225,25,0,.18);
-        border:1px solid rgba(255,255,255,.25);border-radius:11px;padding:11px 13px;
-        font-size:12.5px;line-height:1.5"></div>
+      <div id="g-err" class="gate-err"></div>
       <div id="recap"></div>
       <p style="opacity:.65;font-size:11.5px;margin:14px 0 0;line-height:1.5">
         We send a one-time code by SMS. No password to remember.</p>`;
@@ -2640,7 +2665,8 @@ const Cloud = {
      only through a toast is invisible here. Errors go inline. */
   gateErr(msg){
     const el = $('g-err'); if (!el) { window.toast(msg); return; }
-    el.style.display=''; el.innerHTML = esc(msg);
+    if (!msg){ el.classList.remove('on'); el.innerHTML=''; return; }
+    el.innerHTML = esc(msg); el.classList.add('on');
   },
   gateBusy(on, label){
     const b = $('g-send'); if (!b) return;
@@ -2653,7 +2679,7 @@ const Cloud = {
     this.hap('primary');
     const ph = ($('g-phone').value||'').replace(/\D/g,'').slice(-10);
     if (ph.length!==10) return this.gateErr('Enter a 10-digit mobile number');
-    this.gateErr(''); $('g-err').style.display='none';
+    this.gateErr('');
     this.gateBusy(true, 'Sending OTP…');
     try {
       if (!this._verifier)
