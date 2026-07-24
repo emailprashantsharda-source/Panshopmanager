@@ -181,6 +181,18 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 
 /* ── MONEY ────────────────────────────────────────────────────────── */
+/* ── PAY MODE ──────────────────────────────────────────────────────
+   Two taps at a counter, so it has to be a single glance: a segmented
+   control, never a dropdown. */
+.pm{display:flex;gap:6px;background:var(--p-50);border:1px solid var(--bd);
+  border-radius:12px;padding:4px}
+.pm button{flex:1;border:0;background:none;border-radius:9px;padding:9px 4px;
+  font-size:12.5px;font-weight:750;color:var(--t3);cursor:pointer;
+  transition:background .15s,color .15s,transform .09s;font-family:inherit}
+.pm button:active{transform:scale(.96)}
+.pm button.on{background:var(--card);color:var(--t1);box-shadow:var(--shadow-sm)}
+.pm button.on.cash{color:var(--success-d)}
+.pm button.on.upi{color:#3730A3}
 .mn-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 12px;-webkit-overflow-scrolling:touch}
 .mn-chips::-webkit-scrollbar{display:none}
 .mn-chip{flex:0 0 auto;border:1.5px solid var(--bd);background:var(--card);color:var(--t2);
@@ -199,6 +211,16 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .mn-hero-s{font-size:12.5px;opacity:.85;font-weight:600}
 .mn-track{background:#EFEBE3;border-radius:6px;height:7px;overflow:hidden}
 .mn-track>div{height:100%;border-radius:6px;transition:width .35s cubic-bezier(.2,.8,.3,1)}
+.pm-split{display:flex;gap:9px}
+.pm-box{flex:1;border-radius:13px;padding:12px 11px;border:1px solid var(--bd)}
+.pm-box.cash{background:var(--success-tint);border-color:#B7ECD1}
+.pm-box.upi{background:#EEF0FB;border-color:#CDD3F4}
+.pm-l{font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+.pm-box.cash .pm-l{color:var(--success-d)}
+.pm-box.upi .pm-l{color:#3730A3}
+.pm-v{font-size:21px;font-weight:850;letter-spacing:-.03em;margin-top:3px;
+  font-variant-numeric:tabular-nums}
+.pm-s{font-size:11px;color:var(--t3);font-weight:650;margin-top:3px}
 .mn-liab{background:var(--y-tint);border-color:var(--y-bd)}
 .mn-liab-l{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#95610A}
 .mn-liab-v{font-size:26px;font-weight:850;letter-spacing:-.03em;color:#7A4E08;
@@ -302,7 +324,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_9_0_money</div>
+<div class="wm" id="wm">rn_v3_1_0_paymode</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -316,7 +338,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_9_0_money';
+const BUILD = 'rn_v3_1_0_paymode';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -395,6 +417,25 @@ const tierOf = k => TIERS.find(t => t.k === k);
    counter agreed and the easiest to explain); the app just refuses to
    let the shop overcharge by accident.
    ═══════════════════════════════════════════════════════════════════ */
+/* A rate card may carry a weekend override — the client's own sheet is headed
+   "Monday to Friday", so charging weekday rates seven days a week silently
+   undercharges on the busiest days. The applicable card is resolved ONCE at
+   check-out and frozen into rateSnapshot, so a rental that starts on Saturday
+   stays on Saturday's price even when it comes back on Monday. Rating by the
+   pickup day is what a counter can explain; pro-rating across a weekend is
+   not. */
+function rateFor(rc, whenMs){
+  if (!rc) return rc;
+  const d = new Date(whenMs || Date.now()).getDay();     /* 0 Sun … 6 Sat */
+  const isWeekend = (d === 0 || d === 6);
+  if (!isWeekend || !rc.weekend) return rc;
+  const w = rc.weekend;
+  const has = w.tiers && Object.keys(w.tiers).some(k => Number(w.tiers[k]) > 0);
+  if (!has) return rc;
+  return { model: rc.model, deposit: (Number(w.deposit)||Number(rc.deposit)||0),
+           ot: (Number(w.ot)||Number(rc.ot)||0), tiers: w.tiers, _weekend: true };
+}
+
 function quote(rate, tierKey, hoursActual){
   const t = tierOf(tierKey);
   const base = rate.tiers[tierKey];
@@ -713,9 +754,12 @@ const R = {
       ${!st.rows.length ? '<div class="empty"><b>No closed rentals yet</b></div>' :
         st.rows.map(r=>{
           const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
-          return `<div class="card tap" onclick="R.bill('${esc(r.id)}')"><div class="row">
+          const isVoid = !!r.voidedAt || r.status === 'cancelled';
+          return `<div class="card tap" onclick="R.bill('${esc(r.id)}')"
+            style="${isVoid?'opacity:.55':''}"><div class="row">
             <div class="grow"><b class="ell">${esc(v?vLabel(v):(r.vehicleId||'—'))}</b>
-              <div class="muted" style="margin-top:2px">${esc(r.customerName||'')} ${esc(r.customerPhone||'')}</div>
+              <div class="muted" style="margin-top:2px">${esc(r.customerName||'')} ${esc(r.customerPhone||'')}
+                ${isVoid?`<span class="pill late" style="margin-left:5px">${r.status==='cancelled'?'CANCELLED':'VOID'}</span>`:''}</div>
               <div class="muted" style="margin-top:3px">${r.outAt?fmtDT(r.outAt):''} → ${r.returnedAt?fmtDT(r.returnedAt):''}
                 ${r.extraHours?' · '+r.extraHours+'h extra':''}</div></div>
             <div style="text-align:right"><b>${money(r.revenue)}</b>
@@ -1023,7 +1067,8 @@ const R = {
               ${t.label} ${money(r.tiers[t.k])}</span>`).join('')}
           </div>
           <div class="muted" style="margin-top:8px">
-            Deposit ${money(r.deposit)} · overtime ${money(r.ot)}/hr
+            Deposit ${money(r.deposit)} · overtime ${money(r.ot)}/hr${
+            r.weekend ? ' · <b>weekend rates set</b>' : ''}
           </div>
           <button class="btn ghost sm" style="margin-top:10px;width:100%"
             onclick="event.stopPropagation();R.editVehicle(null,'${r.id}')">
@@ -1186,6 +1231,24 @@ const R = {
       ${TIERS.map(t=>`<div class="fld"><label class="lbl">${t.label}</label>
         <input class="in" id="r-${t.k}" type="number" inputmode="numeric"
           value="${r?r.tiers[t.k]:''}" placeholder="₹"></div>`).join('')}
+
+      <button type="button" class="btn ghost" style="margin:4px 0 12px"
+        onclick="R.more('r-wk',this)">Weekend prices <span class="muted">— optional</span></button>
+      <div id="r-wk" style="display:none">
+        <div class="muted" style="margin:0 2px 12px">Leave blank to charge the same all week.
+        Used when the bike goes out on Saturday or Sunday, and frozen for that rental.</div>
+        <div class="two">
+          <div class="fld"><label class="lbl">Deposit</label>
+            <input class="in" id="rw-dep" type="number" inputmode="numeric"
+              value="${r&&r.weekend?(r.weekend.deposit||''):''}"></div>
+          <div class="fld"><label class="lbl">Overtime /hr</label>
+            <input class="in" id="rw-ot" type="number" inputmode="numeric"
+              value="${r&&r.weekend?(r.weekend.ot||''):''}"></div>
+        </div>
+        ${TIERS.map(t=>`<div class="fld"><label class="lbl">${t.label} · weekend</label>
+          <input class="in" id="rw-${t.k}" type="number" inputmode="numeric"
+            value="${r&&r.weekend&&r.weekend.tiers?(r.weekend.tiers[t.k]||''):''}" placeholder="₹"></div>`).join('')}
+      </div>
       <button class="btn" onclick="R.saveRate('${id||''}')">${r?'Save changes':'Add rate card'}</button>
     `);
   },
@@ -1195,9 +1258,13 @@ const R = {
     if (!model) return toast('Model name is required');
     const tiers = {};
     for (const t of TIERS) tiers[t.k] = Number(document.getElementById('r-'+t.k).value)||0;
+    const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
+    const wt = {}; TIERS.forEach(t=>{ wt[t.k] = g('rw-'+t.k); });
+    const anyWk = Object.keys(wt).some(k=>wt[k]>0);
     const rec = {
       model, deposit: Number(document.getElementById('r-dep').value)||0,
-      ot: Number(document.getElementById('r-ot').value)||0, tiers
+      ot: Number(document.getElementById('r-ot').value)||0, tiers,
+      weekend: anyWk ? { deposit: g('rw-dep'), ot: g('rw-ot'), tiers: wt } : null
     };
     if (window.Cloud && Cloud.ready){
       Cloud.put('rates', id || Cloud.nid('rc'), rec).then(w => {
@@ -1260,7 +1327,8 @@ const R = {
     const blk = document.getElementById('c-rateblock');
     if (!vid){ blk.innerHTML=''; this.coSummary(); return; }
     const v = DB.d.vehicles.find(x=>x.id===vid);
-    const r = DB.d.rates.find(x=>x.id===v.rateId);
+    const _oe = document.getElementById('c-out');
+    const r = rateFor(DB.d.rates.find(x=>x.id===v.rateId), dtParse(_oe && _oe.value, Date.now()));
     if (!r){ blk.innerHTML = `<div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
       <b>No rate card for ${esc(v.model)}</b><div class="muted">Add one under Rates first.</div></div>`; return; }
 
@@ -1284,8 +1352,45 @@ const R = {
           <input class="in" id="c-dep" type="number" inputmode="numeric" value="${r.deposit}" oninput="R.coSummary()"></div>
         <div class="fld"><label class="lbl">Rent paid now</label>
           <input class="in" id="c-adv" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
+      </div>
+      <div class="fld"><label class="lbl">How did it come in?</label>
+        <div class="pm" id="c-pm">
+          <button type="button" class="cash on" data-m="cash" onclick="R.pmPick('c-pm','cash')">\u{1F4B5} Cash</button>
+          <button type="button" class="upi" data-m="upi" onclick="R.pmPick('c-pm','upi')">\u{1F4F2} UPI</button>
+          <button type="button" data-m="split" onclick="R.pmPick('c-pm','split')">Split</button>
+        </div></div>
+      <div id="c-split" style="display:none">
+        <div class="fld"><label class="lbl">Of that, how much in cash?</label>
+          <input class="in" id="c-cash" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
       </div>`;
     this._tier = null; this.coSummary();
+  },
+
+  /* Cash and UPI have to be separable or "net cash in drawer" is a guess.
+     A deposit taken by UPI and refunded in cash moves real money OUT of the
+     drawer with nothing having come in — that is the case that quietly
+     breaks a reconciliation, so split is a first-class option, not an
+     afterthought. */
+  pmPick(box, m){
+    const el = document.getElementById(box); if (!el) return;
+    el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    const sp = document.getElementById(box === 'c-pm' ? 'c-split' : (box === 'i-pm' ? 'i-split' : null));
+    if (sp) sp.style.display = (m === 'split') ? '' : 'none';
+    Haptic.tap();
+    if (box === 'c-pm') this.coSummary(); else this.ciCalc(1);
+  },
+  pmGet(box){
+    const el = document.getElementById(box);
+    const on = el && el.querySelector('button.on');
+    return (on && on.dataset.m) || 'cash';
+  },
+  /* Returns how much of `total` was cash under the chosen mode. */
+  pmCash(box, total, splitField){
+    const m = this.pmGet(box);
+    if (m === 'cash') return total;
+    if (m === 'upi') return 0;
+    const el = document.getElementById(splitField);
+    return Math.min(total, Math.max(0, Number((el||{value:0}).value)||0));
   },
 
   coPick(k){
@@ -1302,10 +1407,10 @@ const R = {
     if (!vid || !this._tier){ box.innerHTML=''; btn.disabled = true;
       btn.textContent = 'Choose a vehicle and duration'; return; }
     const v = DB.d.vehicles.find(x=>x.id===vid);
-    const r = DB.d.rates.find(x=>x.id===v.rateId);
-    const t = tierOf(this._tier);
     const outEl = document.getElementById('c-out');
     const outAt = dtParse(outEl && outEl.value, Date.now());
+    const r = rateFor(DB.d.rates.find(x=>x.id===v.rateId), outAt);
+    const t = tierOf(this._tier);
     const due = outAt + t.hours*HOUR;
     const dep = Number(document.getElementById('c-dep').value)||0;
     const adv = Number(document.getElementById('c-adv').value)||0;
@@ -1336,15 +1441,17 @@ const R = {
     if (ph && ph.length !== 10) return toast('Phone must be 10 digits, or leave it blank');
 
     const v = DB.d.vehicles.find(x=>x.id===vid);
-    const r = DB.d.rates.find(x=>x.id===v.rateId);
+    const outEl = document.getElementById('c-out');
+    const now = dtParse(outEl && outEl.value, Date.now());
+    /* Weekend card resolved from the PICKUP time and frozen below, so a
+       Saturday rental keeps Saturday's price when it returns on Monday. */
+    const r = rateFor(DB.d.rates.find(x=>x.id===v.rateId), now);
     if (!this.rateReady(r)) {
       Haptic.error();
       return toast('Set a price for ' + (r?r.model:'this model') + ' under Rates first');
     }
     const t = tierOf(this._tier);
     const ovEl = document.getElementById('c-override');
-    const outEl = document.getElementById('c-out');
-    const now = dtParse(outEl && outEl.value, Date.now());
 
     const rental = {
       id: DB.id('r'), vehicleId: vid, status: 'open',
@@ -1353,9 +1460,14 @@ const R = {
       outAt: now, dueAt: now + t.hours*HOUR, tier: this._tier,
       /* Snapshot, never a live lookup: a price change tomorrow must not
          re-price a bike that is already on the road. */
-      rateSnapshot: { model: r.model, deposit: r.deposit, ot: r.ot, tiers: Object.assign({}, r.tiers) },
+      rateSnapshot: { model: r.model, deposit: r.deposit, ot: r.ot,
+                      tiers: Object.assign({}, r.tiers), weekend: !!r._weekend },
       depositHeld: Number(document.getElementById('c-dep').value)||0,
       advancePaid: Number(document.getElementById('c-adv').value)||0,
+      outPayMode: this.pmGet('c-pm'),
+      outCash: this.pmCash('c-pm',
+        (Number(document.getElementById('c-dep').value)||0) +
+        (Number(document.getElementById('c-adv').value)||0), 'c-cash'),
       odoOut: Number((document.getElementById('c-odo')||{value:0}).value)||0,
       fuelOut: (document.getElementById('c-fuel')||{value:''}).value,
       docOverride: !!(ovEl && ovEl.checked) ? this.docBlocked(v) : '',
@@ -1381,6 +1493,17 @@ const R = {
       if (ph) Cloud.put('customers', 'ph_'+ph, { name, phone: ph, kyc: rental.customerKyc });
       Cloud.audit('rental.out', rental.id, null,
         { vehicleId: vid, tier: rental.tier, deposit: rental.depositHeld, advance: rental.advancePaid });
+      /* Cash is recorded on the day it MOVES, not the day the rental closes.
+         A deposit taken today is in the drawer today — booking it only at
+         check-in meant money you are physically holding showed as ₹0 in, and
+         a rental spanning a week credited the whole float to the wrong day. */
+      const inTotal = (Number(rental.depositHeld)||0) + (Number(rental.advancePaid)||0);
+      Cloud.rollup(rental.dayKey, {
+        depositsIn: Number(rental.depositHeld)||0,
+        collected:  Number(rental.advancePaid)||0,
+        cashIn:     Number(rental.outCash)||0,
+        upiIn:      Math.max(0, inTotal - (Number(rental.outCash)||0)),
+      });
     } else {
       DB.d.rentals.push(rental);
       v.status = 'rented';
@@ -1431,6 +1554,24 @@ Please return on time to get your full deposit back.`;
       <div class="fld"><label class="lbl">Date &amp; time in</label>
         <input class="in" id="i-in" type="datetime-local" value="${dtLocal(now)}" onchange="R.ciCalc()"></div>
       <div id="i-settle"></div>
+      <div class="fld"><label class="lbl">Collecting now
+        <span class="muted">— change if they pay part</span></label>
+        <input class="in" id="i-paid" type="number" inputmode="numeric" oninput="R.ciCalc(1)"></div>
+      <div class="fld"><label class="lbl">Payment in</label>
+        <div class="pm" id="i-pm">
+          <button type="button" class="cash on" data-m="cash" onclick="R.pmPick('i-pm','cash')">\u{1F4B5} Cash</button>
+          <button type="button" class="upi" data-m="upi" onclick="R.pmPick('i-pm','upi')">\u{1F4F2} UPI</button>
+          <button type="button" data-m="split" onclick="R.pmPick('i-pm','split')">Split</button>
+        </div></div>
+      <div id="i-split" style="display:none">
+        <div class="fld"><label class="lbl">Of that, how much in cash?</label>
+          <input class="in" id="i-cash" type="number" inputmode="numeric" value="0" oninput="R.ciCalc(1)"></div>
+      </div>
+      <div class="fld"><label class="lbl">Deposit refunded by</label>
+        <div class="pm" id="i-rm">
+          <button type="button" class="cash on" data-m="cash" onclick="R.pmPick('i-rm','cash')">\u{1F4B5} Cash</button>
+          <button type="button" class="upi" data-m="upi" onclick="R.pmPick('i-rm','upi')">\u{1F4F2} UPI</button>
+        </div></div>
 
       <button type="button" class="btn ghost" style="margin:4px 0 12px"
         onclick="R.more('i-more',this)">Other charges <span class="muted">— optional</span></button>
@@ -1454,6 +1595,11 @@ Please return on time to get your full deposit back.`;
       </div>
       <button class="btn g" onclick="R.checkinSave()">Settle & return deposit</button>
       <button class="btn ghost" style="margin-top:9px" onclick="R.waOverdue('${id}')">Send WhatsApp reminder</button>
+      <div class="two" style="margin-top:9px">
+        <button class="btn ghost sm" style="width:100%" onclick="R.extend('${id}')">Extend</button>
+        ${this.isManager()?`<button class="btn ghost sm" style="width:100%;color:var(--danger);border-color:var(--danger)"
+          onclick="R.cancelRental('${id}')">Cancel</button>`:''}
+      </div>
     `);
     this.ciCalc();
   },
@@ -1465,7 +1611,7 @@ Please return on time to get your full deposit back.`;
     this.ciCalc();
   },
 
-  ciCalc(){
+  ciCalc(manual){
     const { id } = this._ci;
     const r = DB.d.rentals.find(x=>x.id===id);
     /* Return time is editable, so hours and overtime are recomputed on every
@@ -1482,6 +1628,15 @@ Please return on time to get your full deposit back.`;
     const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
     const charges = rentTotal + dmg + fuelc + other;
     const due = charges - (Number(r.advancePaid)||0);
+    /* Part payment is normal at a counter — the customer pays what they have
+       and the rest is chased. Booking the full amount as collected would
+       quietly overstate the day's takings. */
+    const paidEl = document.getElementById('i-paid');
+    if (paidEl && !manual && paidEl.value === '') paidEl.value = Math.max(0, Math.round(due));
+    const collecting = paidEl ? (Number(paidEl.value)||0) : Math.max(0, due);
+    this._ci.collecting = collecting;
+    this._ci.unpaid = Math.max(0, due - collecting);
+    const unpaid = this._ci.unpaid;
     const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
 
     document.getElementById('i-settle').innerHTML = `
@@ -1504,6 +1659,9 @@ Please return on time to get your full deposit back.`;
         <div class="line tot" style="border:0;padding-top:4px">
           <span>${refund>=0?'Refundable deposit':'Still to collect'}</span>
           <b class="${refund>=0?'pos':'neg'}">${money(Math.abs(refund))}</b></div>
+        ${unpaid>0?`<div class="line" style="border-top:1px dashed var(--bd);margin-top:6px;padding-top:9px">
+          <span>Left unpaid <span class="muted">— recorded as due</span></span>
+          <b class="neg">${money(unpaid)}</b></div>`:''}
       </div>
       ${q.alt ? `<div class="card tap" style="background:var(--y-tint);border-color:var(--y-bd)"
           onclick="R.ciUseAlt()">
@@ -1542,7 +1700,11 @@ Please return on time to get your full deposit back.`;
       revenue: charges,
       depositRefunded: Math.max(0, refund),
       depositForfeited: refund < 0 ? 0 : (Number(r.depositHeld)||0) - Math.max(0, refund),
-      balanceCollected: Math.max(0, due),
+      balanceCollected: Math.max(0, this._ci.collecting != null ? this._ci.collecting : due),
+      unpaid: Math.max(0, this._ci.unpaid || 0),
+      inPayMode: this.pmGet('i-pm'),
+      inCash: this.pmCash('i-pm', Math.max(0, this._ci.collecting != null ? this._ci.collecting : due), 'i-cash'),
+      refundMode: this.pmGet('i-rm'),
     };
     const vpatch = { status: 'available' };
     if (patch.odoIn) vpatch.odo = patch.odoIn;
@@ -1559,13 +1721,20 @@ Please return on time to get your full deposit back.`;
       Cloud.audit('rental.in', r.id, { status:'open', deposit:r.depositHeld }, {
         revenue: patch.revenue, refund: patch.depositRefunded,
         collected: patch.balanceCollected, extraHours: patch.extraHours });
+      /* The deposit-in and any pickup payment were already booked on the
+         check-out day, so only what moves TODAY is added here. */
+      const _coll = Number(patch.balanceCollected)||0;
+      const _ref  = Number(patch.depositRefunded)||0;
+      const _refCash = patch.refundMode === 'upi' ? 0 : _ref;
       Cloud.rollup(new Date(patch.settledAt).toISOString().slice(0,10), {
         revenue:     patch.revenue,
-        collected:   (Number(r.advancePaid)||0) + (Number(patch.balanceCollected)||0),
-        depositsIn:  Number(r.depositHeld)||0,
-        depositsOut: Number(patch.depositRefunded)||0,
-        outstanding: Math.max(0, (Number(patch.revenue)||0)
-                       - ((Number(r.advancePaid)||0) + (Number(patch.balanceCollected)||0))),
+        collected:   _coll,
+        depositsOut: _ref,
+        outstanding: Number(patch.unpaid)||0,
+        cashIn:      Number(patch.inCash)||0,
+        upiIn:       Math.max(0, _coll - (Number(patch.inCash)||0)),
+        cashOut:     _refCash,
+        upiOut:      _ref - _refCash,
       });
       Object.assign(r, patch);
     } else {
@@ -1592,6 +1761,198 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     window.open('https://wa.me/91' + r.customerPhone + '?text=' + encodeURIComponent(msg), '_blank');
   },
 
+  /* ══════════════════════════════════════════════════════════════════
+     CORRECTIONS
+     A counter makes mistakes: the wrong bike, the wrong tier, a customer
+     who rings to keep it another day. Without these the only recourse was
+     the browser console, so shops invent workarounds — a fake return, a
+     second rental — and the books stop matching the yard.
+
+     Nothing here deletes. A voided bill keeps its record and reverses its
+     effect on the day's totals, so the history still explains itself.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* Customer rings: keeping it longer. Extends the due time, or moves to a
+     bigger package, on the ORIGINAL rate — a price change since pickup must
+     not reach a bike already on the road. */
+  extend(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
+    const rs = r.rateSnapshot || {};
+    openSheet(`<div class="sheet-hd"><h2>Extend rental</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card"><div class="row"><b class="grow">${esc(v?vLabel(v):'')}</b>
+        <span class="pill out">${esc(r.customerName||'')}</span></div>
+        <div class="muted" style="margin-top:4px">Booked ${tierOf(r.tier).label} ·
+        due ${fmtDT(r.dueAt)}</div></div>
+      <div class="fld"><label class="lbl">Change package to</label>
+        <div class="tiers" id="ex-tiers">
+          ${TIERS.map(t=>`<div class="tier ${t.k===r.tier?'on':''}" data-t="${t.k}"
+            onclick="R.exPick('${t.k}')"><div class="t">${t.label}</div>
+            <div class="p">${money((rs.tiers||{})[t.k]||0)}</div></div>`).join('')}
+        </div></div>
+      <div class="fld"><label class="lbl">Or set a new due time</label>
+        <input class="in" id="ex-due" type="datetime-local" value="${dtLocal(r.dueAt)}"></div>
+      <div class="muted" style="margin:-4px 2px 14px">Overtime still applies after the new due time,
+      at ${money(rs.ot||0)}/hr.</div>
+      <button class="btn" onclick="R.extendSave('${esc(id)}')">Save extension</button>`);
+    this._exTier = r.tier;
+  },
+  exPick(k){
+    this._exTier = k;
+    document.querySelectorAll('#ex-tiers .tier').forEach(el=>el.classList.toggle('on', el.dataset.t===k));
+    const r = DB.d.rentals.find(x=>x.id===this._exId);
+    const due = document.getElementById('ex-due');
+    if (due && this._exBase) due.value = dtLocal(this._exBase + tierOf(k).hours*HOUR);
+  },
+  async extendSave(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const tier = this._exTier || r.tier;
+    const dueEl = document.getElementById('ex-due');
+    let dueAt = dtParse(dueEl && dueEl.value, r.outAt + tierOf(tier).hours*HOUR);
+    if (tier !== r.tier && (!dueEl || !dueEl.value)) dueAt = r.outAt + tierOf(tier).hours*HOUR;
+    if (dueAt <= r.outAt) return toast('New due time must be after pickup');
+    const w = await Cloud.put('rentals', id, { tier, dueAt, extendedAt: Date.now() });
+    if (!w.ok) return toast(Cloud.explainWrite(w.code));
+    Cloud.audit('rental.extend', id, { tier:r.tier, dueAt:r.dueAt }, { tier, dueAt });
+    Object.assign(r, { tier, dueAt });
+    Haptic.success(); closeSheet(); this.render();
+    toast('Extended · due ' + fmtDT(dueAt));
+  },
+
+  /* Wrong bike, wrong customer, tapped twice. Frees the vehicle and returns
+     the deposit; nothing is earned because nothing happened. */
+  cancelRental(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    if (!this.isManager()) return toast('Ask the owner or manager to cancel');
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
+    openSheet(`<div class="sheet-hd"><h2>Cancel rental</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+        <b style="font-size:13.5px;color:var(--danger)">This rental never happened</b>
+        <div class="muted" style="margin-top:4px">${esc(v?vLabel(v):'The bike')} goes back to available
+        and the ${money(r.depositHeld)} deposit is returned in full. No rent is recorded.
+        Use this for a mistaken entry — if the customer actually took the bike, check it in instead.</div></div>
+      <div class="fld"><label class="lbl">Reason <span class="muted">optional</span></label>
+        <input class="in" id="cx-why" placeholder="Wrong bike selected"></div>
+      <button class="btn d" onclick="R.cancelGo('${esc(id)}')">Cancel this rental</button>`);
+  },
+  async cancelGo(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const why = (document.getElementById('cx-why')||{value:''}).value.trim();
+    const w = await Cloud.checkin(id, r.vehicleId, {
+      status:'cancelled', cancelledAt: Date.now(), cancelReason: why,
+      revenue: 0, depositRefunded: Number(r.depositHeld)||0, balanceCollected: 0
+    }, { status:'available' });
+    if (!w.ok) return toast(w.reason==='settled' ? 'Already settled on another device' : 'Could not cancel');
+    Cloud.audit('rental.cancel', id, { deposit:r.depositHeld }, { reason: why });
+    const ck = new Date().toISOString().slice(0,10);
+    const _wasCash = (r.outPayMode || 'cash') !== 'upi';
+    await Cloud.rollup(ck, {
+      depositsOut: Number(r.depositHeld)||0,
+      collected: -(Number(r.advancePaid)||0),
+      cashOut: _wasCash ? (Number(r.outCash)||Number(r.depositHeld)||0) : 0,
+      upiOut:  _wasCash ? 0 : (Number(r.depositHeld)||0) });
+    Haptic.success(); closeSheet(); this.nav('out');
+    toast('Cancelled · ' + money(r.depositHeld) + ' deposit returned');
+  },
+
+  /* ── settled bills: edit and void ─────────────────────────────── */
+  editBill(id){
+    if (!this.isManager()) return toast('Ask the owner or manager to edit a bill');
+    const r = ((this._closed||[]).concat((this._h&&this._h.rows)||[])).find(x=>x.id===id);
+    if (!r) return toast('Bill not found');
+    const c = r.charges || {};
+    openSheet(`<div class="sheet-hd"><h2>Edit bill</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <div class="muted">Changing these figures also corrects the day's totals, so Money stays
+        true. The original values are kept in the audit trail.</div></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Rent</label>
+          <input class="in" id="eb-rent" type="number" inputmode="numeric" value="${Number(c.rent)||0}"></div>
+        <div class="fld"><label class="lbl">Overtime</label>
+          <input class="in" id="eb-ot" type="number" inputmode="numeric" value="${Number(c.overtime)||0}"></div>
+      </div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Damage</label>
+          <input class="in" id="eb-dmg" type="number" inputmode="numeric" value="${Number(c.damage)||0}"></div>
+        <div class="fld"><label class="lbl">Fuel</label>
+          <input class="in" id="eb-fuel" type="number" inputmode="numeric" value="${Number(c.fuel)||0}"></div>
+      </div>
+      <div class="fld"><label class="lbl">Other / fine</label>
+        <input class="in" id="eb-other" type="number" inputmode="numeric" value="${Number(c.other)||0}"></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Collected</label>
+          <input class="in" id="eb-coll" type="number" inputmode="numeric" value="${Number(r.balanceCollected)||0}"></div>
+        <div class="fld"><label class="lbl">Deposit returned</label>
+          <input class="in" id="eb-ref" type="number" inputmode="numeric" value="${Number(r.depositRefunded)||0}"></div>
+      </div>
+      <button class="btn" onclick="R.editBillSave('${esc(id)}')">Save corrected bill</button>
+      <button class="btn ghost" style="margin-top:9px;color:var(--danger);border-color:var(--danger)"
+        onclick="R.voidBill('${esc(id)}')">Void this bill</button>`);
+  },
+
+  async editBillSave(id){
+    const r = ((this._closed||[]).concat((this._h&&this._h.rows)||[])).find(x=>x.id===id);
+    if (!r) return;
+    const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
+    const ch = { rent:g('eb-rent'), overtime:g('eb-ot'), damage:g('eb-dmg'),
+                 fuel:g('eb-fuel'), other:g('eb-other') };
+    const rev = ch.rent+ch.overtime+ch.damage+ch.fuel+ch.other;
+    const coll = g('eb-coll'), ref = g('eb-ref');
+    const oldRev = Number(r.revenue)||0;
+    const oldColl = Number(r.balanceCollected)||0, newColl = coll;
+    const adv = Number(r.advancePaid)||0;
+    const oldOut = Math.max(0, oldRev - (adv + oldColl));
+    const newOut = Math.max(0, rev - (adv + newColl));
+
+    const w = await Cloud.put('rentals', id, {
+      charges: ch, revenue: rev, balanceCollected: coll, depositRefunded: ref,
+      unpaid: newOut, editedAt: Date.now(), editedBy: Cloud.uid });
+    if (!w.ok) return toast(Cloud.explainWrite(w.code));
+
+    /* Correct the day this bill was settled on, by the difference only. */
+    const dk = new Date(r.settledAt||Date.now()).toISOString().slice(0,10);
+    await Cloud.rollupDelta(dk, {
+      revenue: rev - oldRev, collected: newColl - oldColl,
+      depositsOut: ref - (Number(r.depositRefunded)||0), outstanding: newOut - oldOut });
+    Cloud.audit('bill.edit', id,
+      { revenue: oldRev, collected: oldColl, refund: r.depositRefunded },
+      { revenue: rev, collected: newColl, refund: ref });
+
+    Object.assign(r, { charges: ch, revenue: rev, balanceCollected: coll, depositRefunded: ref });
+    this._closed = null;
+    Haptic.success(); closeSheet(); this.render(); toast('Bill corrected');
+  },
+
+  voidBill(id){
+    const r = ((this._closed||[]).concat((this._h&&this._h.rows)||[])).find(x=>x.id===id);
+    if (!r) return;
+    if (!confirm('Void this bill?\n\nIt stays in your records marked VOID, and its amounts are removed from your totals.')) return;
+    (async () => {
+      const w = await Cloud.put('rentals', id, {
+        voidedAt: Date.now(), voidedBy: Cloud.uid, status: 'void' });
+      if (!w.ok) return toast(Cloud.explainWrite(w.code));
+      /* A rental touches two days — the deposit went in on pickup day, the
+         rent and refund landed on settle day. Reverse each where it happened,
+         or one day is left overstated and the other understated. */
+      const dk = new Date(r.settledAt||Date.now()).toISOString().slice(0,10);
+      await Cloud.rollupDelta(dk, {
+        rentals: -1, revenue: -(Number(r.revenue)||0),
+        collected: -(Number(r.balanceCollected)||0),
+        depositsOut: -(Number(r.depositRefunded)||0),
+        outstanding: -(Number(r.unpaid)||0) });
+      const ok2 = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+      await Cloud.rollupDelta(ok2, {
+        depositsIn: -(Number(r.depositHeld)||0),
+        collected: -(Number(r.advancePaid)||0) });
+      Cloud.audit('bill.void', id, { revenue:r.revenue }, null);
+      this._closed = null;
+      Haptic.success(); closeSheet(); this.render(); toast('Bill voided');
+    })();
+  },
+
   /* ── MONEY ──────────────────────────────────────────────────────── */
   /* ══════════════════════════════════════════════════════════════════
      MONEY
@@ -1614,7 +1975,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     { k:'d30',   label:'Month',     days:30 },
     { k:'all',   label:'All',       days:9999 },
   ],
-  _period: 'd7',
+  _period: 'today',
 
   _range(){
     const p = this.PERIODS.find(x=>x.k===this._period) || this.PERIODS[2];
@@ -1648,15 +2009,22 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
 
     const open = DB.d.rentals.filter(x=>x.status==='open');
     const held = open.reduce((a,x)=>a+(Number(x.depositHeld)||0),0);
-    const netCash = got + depIn - depOut;
+    /* Split the drawer from the bank. Before payment mode existed this line
+       added UPI into "net cash", so a counted drawer could never match it —
+       and a reconciliation that is always wrong is one staff learn to ignore. */
+    const cashIn = sum('cashIn'), upiIn = sum('upiIn');
+    const cashOut = sum('cashOut'), upiOut = sum('upiOut');
+    const netCash = cashIn - cashOut;
+    const netUpi  = upiIn - upiOut;
+    const legacy  = (cashIn + upiIn) === 0 && (got + depIn) > 0;
 
     const closed = this._closed || [];
     if (!this._closed && window.Cloud && Cloud.ready){
       this._closed = [];
       Cloud.recentClosed(400).then(rows => { this._closed = rows; if (this.page==='money') this.renderMoney(); });
     }
-    const inRange = closed.filter(x => this._period==='all'
-      || (x.settledAt >= rng.start && x.settledAt <= rng.end));
+    const inRange = closed.filter(x => !x.voidedAt && x.status !== 'cancelled'
+      && (this._period==='all' || (x.settledAt >= rng.start && x.settledAt <= rng.end)));
 
     const per = DB.d.vehicles.map(v=>{
       const rs = inRange.filter(x=>x.vehicleId===v.id);
@@ -1693,7 +2061,26 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         ${bar('Collected from customers', got, 'linear-gradient(90deg,#06C167,#048A45)')}
         ${bar('Deposits taken in', depIn, 'linear-gradient(90deg,#F5A623,#D98B0F)')}
         ${bar('Deposits returned', depOut, 'linear-gradient(90deg,#BDB9B0,#94908A)')}
-        <div class="line tot"><span>Net cash in drawer</span><b>${money(netCash)}</b></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-hd" style="margin:0 0 10px">Cash vs UPI</div>
+        ${legacy ? `<div class="muted" style="margin-bottom:10px">These rentals were recorded before
+          payment mode was tracked, so the split is not known for them.</div>` : ''}
+        <div class="pm-split">
+          <div class="pm-box cash">
+            <div class="pm-l">\u{1F4B5} In the drawer</div>
+            <div class="pm-v">${money(netCash)}</div>
+            <div class="pm-s">${money(cashIn)} in · ${money(cashOut)} out</div>
+          </div>
+          <div class="pm-box upi">
+            <div class="pm-l">\u{1F4F2} To your bank</div>
+            <div class="pm-v">${money(netUpi)}</div>
+            <div class="pm-s">${money(upiIn)} in · ${money(upiOut)} out</div>
+          </div>
+        </div>
+        <div class="line tot" style="margin-top:12px"><span>Total money movement</span>
+          <b>${money(netCash + netUpi)}</b></div>
       </div>
 
       <div class="card mn-liab">
@@ -1749,7 +2136,8 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
           <div><span>Phone</span><b>${esc(r.customerPhone||'—')}</b></div>
           <div><span>Out</span><b>${r.outAt?fmtDT(r.outAt):'—'}</b></div>
           <div><span>Returned</span><b>${r.returnedAt?fmtDT(r.returnedAt):'—'}</b></div>
-          <div><span>Package</span><b>${r.tier?tierOf(r.tier).label:'—'}</b></div>
+          <div><span>Package</span><b>${r.tier?tierOf(r.tier).label:'—'}${
+            (r.rateSnapshot&&r.rateSnapshot.weekend)?' <span class="muted">· weekend rate</span>':''}</b></div>
           <div><span>Time used</span><b>${r.hoursUsed!=null?fmtDur(r.hoursUsed):'—'}</b></div>
         </div>
         <div class="bill-sec">Charges</div>
@@ -1760,15 +2148,22 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         ${line('Other / fine', c.other, 'neg')}
         <div class="line tot"><span>Total</span><b>${money(r.revenue)}</b></div>
         <div class="bill-sec">Payment</div>
-        ${line('Paid at pickup', r.advancePaid, 'pos')}
-        ${line('Collected on return', r.balanceCollected, 'pos')}
+        ${line('Paid at pickup' + (r.outPayMode?' · '+esc(r.outPayMode):''), r.advancePaid, 'pos')}
+        ${line('Collected on return' + (r.inPayMode?' · '+esc(r.inPayMode):''), r.balanceCollected, 'pos')}
         <div class="line"><span>Deposit taken</span><b>${money(r.depositHeld)}</b></div>
-        ${line('Deposit returned', r.depositRefunded, 'pos')}
+        ${line('Deposit returned' + (r.refundMode?' · '+esc(r.refundMode):''), r.depositRefunded, 'pos')}
         ${applied>0?`<div class="line"><span>Deposit applied to bill</span><b class="neg">${money(applied)}</b></div>`:''}
+        ${Number(r.unpaid)>0?`<div class="line tot"><span>Still owed</span>
+          <b class="neg">${money(r.unpaid)}</b></div>`:''}
         <div class="bill-foot">Settled ${r.settledAt?fmtDT(r.settledAt):''}</div>
       </div>
-      ${r.customerPhone?`<button class="btn g" style="margin-top:12px" onclick="R.billWa('${esc(id)}')">
-        Send this bill on WhatsApp</button>`:''}`);
+      ${r.voidedAt?`<div class="card" style="background:var(--danger-tint);border-color:var(--danger);margin-top:12px">
+        <b style="color:var(--danger)">VOIDED</b>
+        <div class="muted" style="margin-top:3px">Kept for the record; removed from all totals.</div></div>`:''}
+      ${r.customerPhone && !r.voidedAt?`<button class="btn g" style="margin-top:12px" onclick="R.billWa('${esc(id)}')">
+        Send this bill on WhatsApp</button>`:''}
+      ${this.isManager() && !r.voidedAt?`<button class="btn ghost" style="margin-top:9px"
+        onclick="R.editBill('${esc(id)}')">Edit or void this bill</button>`:''}`);
   },
 
   billWa(id){
@@ -2240,12 +2635,16 @@ const Cloud = {
   rollup(dayKey, o){
     try {
       setDoc(this.p('daily', dayKey), {
-        rentals:     increment(1),
+        rentals:     increment(o.rentals != null ? o.rentals : (o.revenue != null ? 1 : 0)),
         revenue:     increment(Number(o.revenue)||0),
         collected:   increment(Number(o.collected)||0),
         depositsIn:  increment(Number(o.depositsIn)||0),
         depositsOut: increment(Number(o.depositsOut)||0),
         outstanding: increment(Number(o.outstanding)||0),
+        cashIn:      increment(Number(o.cashIn)||0),
+        upiIn:       increment(Number(o.upiIn)||0),
+        cashOut:     increment(Number(o.cashOut)||0),
+        upiOut:      increment(Number(o.upiOut)||0),
         updatedAt: Date.now()
       }, { merge:true });
     } catch(e){}
@@ -2299,6 +2698,28 @@ const Cloud = {
       console.error('readRateCard', e);
       return { ok:false, msg: (e && (e.message || e.code)) || 'failed' };
     }
+  },
+
+  /* Editing or voiding a settled bill has to unwind the totals it already
+     fed into. increment() takes negatives, so a correction is just a delta —
+     no recompute of the whole day, and no window where the figures are wrong. */
+  async rollupDelta(dayKey, d){
+    try {
+      await setDoc(this.p('daily', dayKey), {
+        rentals:     increment(Number(d.rentals)||0),
+        revenue:     increment(Number(d.revenue)||0),
+        collected:   increment(Number(d.collected)||0),
+        depositsIn:  increment(Number(d.depositsIn)||0),
+        depositsOut: increment(Number(d.depositsOut)||0),
+        outstanding: increment(Number(d.outstanding)||0),
+        cashIn:      increment(Number(d.cashIn)||0),
+        upiIn:       increment(Number(d.upiIn)||0),
+        cashOut:     increment(Number(d.cashOut)||0),
+        upiOut:      increment(Number(d.upiOut)||0),
+        updatedAt: Date.now()
+      }, { merge:true });
+      return { ok:true };
+    } catch(e){ console.error('rollupDelta', e); return { ok:false, code:(e&&e.code)||'unknown' }; }
   },
 
   /* ── staff ─────────────────────────────────────────────────────── */
