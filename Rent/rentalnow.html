@@ -49,19 +49,43 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .page.active{display:block}
 
 /* ── bottom nav ────────────────────────────────────────── */
+/* ── BOTTOM NAV ────────────────────────────────────────────────────
+   Inactive items were --t4 (#9C9C9C) on a near-white bar — around 2.8:1
+   against the background, below the 4.5:1 needed for small text and
+   genuinely hard to read in daylight at a counter. They are now --t2,
+   which is legible without competing with the active tab.
+
+   The active tab no longer relies on colour alone: it gets a tinted pill
+   and a bar at the top edge, so it still reads at a glance in sunlight,
+   on a cheap screen, or for the ~8% of men with colour-vision deficiency. */
 .nav{
   position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;
-  background:rgba(255,255,255,.97);backdrop-filter:blur(10px);
-  border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom);
-  box-shadow:0 -4px 16px rgba(0,0,0,.05);
+  background:rgba(255,255,255,.98);backdrop-filter:blur(12px);
+  border-top:1px solid var(--bd);padding:4px 4px env(safe-area-inset-bottom);
+  box-shadow:0 -6px 20px rgba(0,0,0,.07);
 }
 .nav button{
-  flex:1;background:none;border:0;padding:9px 2px 8px;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;gap:3px;
-  color:var(--t4);font-size:10.5px;font-weight:700;
+  flex:1;background:none;border:0;padding:8px 2px 7px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--t2);font-size:11px;font-weight:750;letter-spacing:-.01em;
+  position:relative;border-radius:14px;
+  transition:color .15s,transform .09s,background .15s;
 }
-.nav button.on{color:var(--p)}
-.nav svg{width:21px;height:21px}
+.nav button:active{transform:scale(.9)}
+.nav button .ico{
+  width:34px;height:26px;display:flex;align-items:center;justify-content:center;
+  border-radius:9px;transition:background .18s;
+}
+.nav button.on{color:var(--p);font-weight:850}
+.nav button.on .ico{background:rgba(15,61,92,.10)}
+/* second cue, independent of colour */
+.nav button.on:before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:26px;height:3px;border-radius:0 0 3px 3px;background:var(--p);
+}
+.nav svg{width:22px;height:22px;stroke-width:2.4}
+.nav button.on svg{stroke-width:2.7}
+
 
 /* ── cards ─────────────────────────────────────────────── */
 .card{
@@ -341,16 +365,16 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="nav">
   <button id="nv-out" class="on" onclick="R.nav('out')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-9l-2-6h4l2-3h4l1 3"/></svg>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-9l-2-6h4l2-3h4l1 3"/></svg></span>
     <span>Out Now</span></button>
   <button id="nv-fleet" onclick="R.nav('fleet')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg></span>
     <span>Fleet</span></button>
   <button id="nv-rates" onclick="R.nav('rates')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
     <span>Rates</span></button>
   <button id="nv-money" onclick="R.nav('money')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg></span>
     <span>Money</span></button>
 </div>
 
@@ -379,7 +403,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_3_0_fastboot</div>
+<div class="wm" id="wm">rn_v3_3_1_nav</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -393,7 +417,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_3_0_fastboot';
+const BUILD = 'rn_v3_3_1_nav';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
