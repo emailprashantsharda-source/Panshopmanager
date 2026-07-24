@@ -42,9 +42,11 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .top-biz{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
   opacity:.68;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px}
 .top-btn{
-  background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:9px;
-  padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:11px;
+  padding:9px 12px;font-size:15px;font-weight:700;cursor:pointer;line-height:1;
 }
+#syncchip{display:none;background:rgba(255,255,255,.15);color:#fff;border-radius:99px;
+  padding:5px 10px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap}
 .page{display:none;padding:14px 14px 20px}
 .page.active{display:block}
 
@@ -84,6 +86,29 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   width:26px;height:3px;border-radius:0 0 3px 3px;background:var(--p);
 }
 .nav svg{width:22px;height:22px;stroke-width:2.4}
+
+/* ── PRIMARY ACTION ────────────────────────────────────────────────
+   Renting a bike out is the one thing this app exists to do, and it was a
+   small chip in the top-right corner, sharing space with the menu and a
+   status badge — the least reachable part of a phone and the least
+   important-looking. It now sits in the middle of the bottom bar, raised,
+   in the brand colour: unmissable, and under the thumb of whichever hand is
+   holding the phone. Same pattern the HisaabNow bill button uses, so a
+   shopkeeper who has seen one already knows this one. */
+.nav-cta{flex:0 0 auto;width:76px;position:relative}
+.nav-cta:before{display:none !important}
+.nav-cta-btn{
+  width:54px;height:54px;border-radius:50%;margin-top:-22px;
+  background:linear-gradient(160deg,#F5A623,#E08A0B);color:#1A1207;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 20px -6px rgba(224,138,11,.75),0 0 0 5px #FBF7F0;
+  transition:transform .12s,box-shadow .15s;
+}
+.nav-cta:active .nav-cta-btn{transform:scale(.92)}
+.nav-cta svg{width:27px;height:27px;stroke-width:2.8}
+.nav-cta-l{font-size:11px;font-weight:850;color:var(--p);margin-top:3px;letter-spacing:-.01em}
+.nav-cta.off .nav-cta-btn{background:#E4E0D8;color:#9C9C9C;box-shadow:0 0 0 5px #FBF7F0}
+.nav-cta.off .nav-cta-l{color:var(--t4)}
 .nav button.on svg{stroke-width:2.7}
 
 
@@ -330,13 +355,8 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <div class="top-biz" id="top-biz">—</div>
     <h1 id="top-title">Out Now</h1>
   </div>
-  <!-- (v2.2) The sync chip used to float at top-right and sat directly on top
-       of "+ Rent out". In the header row it can never cover a control. -->
-  <span id="syncchip" onclick="Cloud.explain()" style="display:none;
-     background:rgba(255,255,255,.16);color:#fff;border-radius:99px;padding:4px 9px;
-     font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap">…</span>
-  <button class="top-btn" onclick="R.account()" style="padding:7px 9px" title="Account">☰</button>
-  <button class="top-btn" id="top-action" onclick="R.topAction()">+ Rent out</button>
+  <span id="syncchip" onclick="Cloud.explain()" title="Sync">…</span>
+  <button class="top-btn" onclick="R.account()" aria-label="Account">☰</button>
 </div>
 
 <!-- ═══ OUT NOW ═══ -->
@@ -370,6 +390,12 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   <button id="nv-fleet" onclick="R.nav('fleet')">
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg></span>
     <span>Fleet</span></button>
+  <button class="nav-cta" id="nv-cta" onclick="R.topAction()" aria-label="Rent out">
+    <span class="nav-cta-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    </span>
+    <span class="nav-cta-l" id="nv-cta-l">Rent out</span>
+  </button>
   <button id="nv-rates" onclick="R.nav('rates')">
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
     <span>Rates</span></button>
@@ -403,7 +429,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_3_1_nav</div>
+<div class="wm" id="wm">rn_v3_4_0_cta</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -417,7 +443,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_3_1_nav';
+const BUILD = 'rn_v3_4_0_cta';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -855,6 +881,7 @@ const R = {
   },
 
   topAction(){
+    Haptic.primary();
     if (this.page === 'fleet') return this.editVehicle();
     if (this.page === 'rates') return this.editRate();
     return this.checkoutStart();
@@ -862,13 +889,17 @@ const R = {
 
   render(){
     const titles = { out:'Out Now', fleet:'Fleet', rates:'Rate cards', money:'Money' };
-    const acts   = { out:'+ Rent out', fleet:'+ Vehicle', rates:'+ Rate card', money:'' };
+    const acts   = { out:'Rent out', fleet:'Add bike', rates:'Add rate', money:'Rent out' };
     document.getElementById('top-title').textContent = titles[this.page];
     const biz = document.getElementById('top-biz');
     if (biz) biz.textContent = (window.Cloud && Cloud.shopName) || 'RentalNow';
-    const ab = document.getElementById('top-action');
-    ab.textContent = acts[this.page];
-    ab.style.display = acts[this.page] ? '' : 'none';
+    const cl = document.getElementById('nv-cta-l');
+    if (cl) cl.textContent = acts[this.page] || 'Rent out';
+    /* Dim it when there is genuinely nothing to rent, rather than letting a
+       shopkeeper tap the biggest button on screen and be told no. */
+    const cta = document.getElementById('nv-cta');
+    if (cta) cta.classList.toggle('off',
+      this.page==='out' && !(DB.d.vehicles||[]).some(v=>v.status==='available'));
     if (this.page==='out') this.renderOut();
     if (this.page==='fleet') this.renderFleet();
     if (this.page==='rates') this.renderRates();
@@ -908,7 +939,9 @@ const R = {
       box.innerHTML = banner + (DB.d.vehicles.length
         ? `<div class="empty"><div class="e">🛵</div>
              <b>Nothing is out right now</b>
-             <span>Tap <b>+ Rent out</b> to start a rental.</span></div>`
+             <span>Every bike is in the yard.</span>
+             <div style="margin-top:18px"><button class="btn y" onclick="R.checkoutStart()">
+               Rent out a bike</button></div></div>`
         : `<div class="empty"><div class="e">🏍️</div>
              <b>Add your bikes first</b>
              <span>Rates are ready for ${DB.d.rates.length} models. Now add the actual
