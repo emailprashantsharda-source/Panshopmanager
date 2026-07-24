@@ -45,8 +45,22 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:11px;
   padding:9px 12px;font-size:15px;font-weight:700;cursor:pointer;line-height:1;
 }
-#syncchip{display:none;background:rgba(255,255,255,.15);color:#fff;border-radius:99px;
-  padding:5px 10px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+/* ── SYNC STATUS ───────────────────────────────────────────────────
+   Its job is that nobody closes the app wondering whether a rental
+   actually reached the account — a silent write queue is how people
+   stop trusting software.
+
+   But a permanent green "Saved" is noise: it shouts loudest when
+   nothing is wrong. So it speaks only when it has something to say —
+   amber while writing, red while offline, a brief green confirmation
+   after a save, then silence. Absence of the chip IS the good state. */
+#syncchip{
+  opacity:0;transform:translateY(-3px);pointer-events:none;
+  background:rgba(255,255,255,.15);color:#fff;border-radius:99px;
+  padding:5px 10px;font-size:10.5px;font-weight:800;cursor:pointer;
+  white-space:nowrap;transition:opacity .2s,transform .2s,background .2s;
+}
+#syncchip.show{opacity:1;transform:none;pointer-events:auto}
 .page{display:none;padding:14px 14px 20px}
 .page.active{display:block}
 
@@ -429,7 +443,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_4_0_cta</div>
+<div class="wm" id="wm">rn_v3_4_1_sync</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -443,7 +457,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_4_0_cta';
+const BUILD = 'rn_v3_4_1_sync';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -756,7 +770,11 @@ const R = {
     openSheet(`<div class="sheet-hd"><h2>${esc(Cloud.shopName||'Your business')}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
       <div class="card"><div class="line"><span>Signed in as</span><b>${esc(Cloud.role||'')}</b></div>
-        <div class="line"><span>Sync</span><b>${Cloud.online?'Connected':'Offline'}</b></div></div>
+        <div class="line"><span>Sync</span>
+          <b style="color:${Cloud.online?'var(--success-d)':'var(--danger)'}">${
+            Cloud.online ? (Cloud.pending>0 ? 'Saving…' : 'All saved') : 'Offline'}</b></div>
+        ${!Cloud.online?`<div class="muted" style="margin-top:6px">Your work is safe on this phone and
+          uploads by itself when the connection returns.</div>`:''}</div>
       <div class="muted" style="margin:0 2px 14px">Your data is saved to your account and appears
         on every device you sign in on.</div>
       <button class="btn ghost" style="margin-bottom:9px" onclick="R.toggleHaptic(this)">
@@ -2715,7 +2733,6 @@ const Cloud = {
         }
       } catch(e){}
     }, 2500);
-    $('syncchip').style.display='';
     this.chip();
     await this.maybeMigrate();
     if (window.R) window.R.render();
@@ -3079,9 +3096,28 @@ const Cloud = {
   /* ── sync status ──────────────────────────────────────────────── */
   chip(){
     const el = $('syncchip'); if (!el) return;
-    if (!this.online) { el.textContent = '⚠ Offline'; el.style.background='rgba(225,25,0,.85)'; return; }
-    if (this.pending > 0) { el.textContent = '↑ Saving'; el.style.background='rgba(245,166,35,.9)'; el.style.color='#0A0A0A'; return; }
-    el.textContent = '✓ Saved'; el.style.background='rgba(255,255,255,.16)'; el.style.color='#fff';
+    const show = (txt, bg, fg) => {
+      el.textContent = txt; el.style.background = bg; el.style.color = fg || '#fff';
+      el.classList.add('show');
+    };
+    if (!this.online){
+      clearTimeout(this._chipT);
+      return show('⚠ Offline — saved on this phone', 'rgba(225,25,0,.9)');
+    }
+    if (this.pending > 0){
+      clearTimeout(this._chipT);
+      this._wasPending = true;
+      return show('↑ Saving…', 'rgba(245,166,35,.95)', '#1A1207');
+    }
+    /* Confirm once, briefly, then get out of the way. */
+    if (this._wasPending){
+      this._wasPending = false;
+      show('✓ Saved', 'rgba(6,193,103,.9)');
+      clearTimeout(this._chipT);
+      this._chipT = setTimeout(()=>{ try { el.classList.remove('show'); } catch(e){} }, 1800);
+      return;
+    }
+    el.classList.remove('show');
   },
   explain(){
     window.alert(!this.online
