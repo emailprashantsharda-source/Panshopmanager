@@ -259,7 +259,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v2_7_0_selfheal</div>
+<div class="wm" id="wm">rn_v2_8_0_income</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -273,7 +273,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v2_7_0_selfheal';
+const BUILD = 'rn_v2_8_0_income';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -712,10 +712,12 @@ const R = {
     const late = open.filter(r => now > r.dueAt);
     const depHeld = open.reduce((s,r)=> s + (Number(r.depositHeld)||0), 0);
 
-    const t0 = new Date(); t0.setHours(0,0,0,0);
-    const todayRev = DB.d.rentals
-      .filter(r => r.status==='closed' && r.settledAt >= t0.getTime())
-      .reduce((s,r)=> s + (Number(r.revenue)||0), 0);
+    /* From today's rollup, not from the open-rentals array — which by
+       definition never contains a settled rental. */
+    const dk = new Date(); const dayKey = dk.getFullYear() + '-' +
+      String(dk.getMonth()+1).padStart(2,'0') + '-' + String(dk.getDate()).padStart(2,'0');
+    const today = (DB.d.daily||[]).find(d => d.id === dayKey);
+    const todayRev = today ? (Number(today.revenue)||0) : 0;
 
     document.getElementById('k-out').textContent  = open.length;
     document.getElementById('k-late').textContent = late.length;
@@ -1509,6 +1511,7 @@ Please return on time to get your full deposit back.`;
         if (res.reason === 'settled') return toast('This rental was already settled on another device');
         return toast('Could not settle — try again');
       }
+      this._closed = null;   /* force a reload so Money reflects this settlement */
       Cloud.audit('rental.in', r.id, { status:'open', deposit:r.depositHeld }, {
         revenue: patch.revenue, refund: patch.depositRefunded,
         collected: patch.balanceCollected, extraHours: patch.extraHours });
@@ -1541,12 +1544,18 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
 
   /* ── MONEY ──────────────────────────────────────────────────────── */
   renderMoney(){
-    const closed = DB.d.rentals.filter(r=>r.status==='closed');
-    const open   = DB.d.rentals.filter(r=>r.status==='open');
-    const rev    = closed.reduce((s,r)=>s+(Number(r.revenue)||0),0);
-    const held   = open.reduce((s,r)=>s+(Number(r.depositHeld)||0),0);
-    const forf   = closed.reduce((s,r)=>s+(Number(r.depositForfeited)||0),0);
-    const refd   = closed.reduce((s,r)=>s+(Number(r.depositRefunded)||0),0);
+    const open  = DB.d.rentals.filter(r=>r.status==='open');
+    const days  = DB.d.daily || [];
+    const rev   = days.reduce((s,d)=>s+(Number(d.revenue)||0),0);
+    const refd  = days.reduce((s,d)=>s+(Number(d.depositsOut)||0),0);
+    const held  = open.reduce((s,r)=>s+(Number(r.depositHeld)||0),0);
+    const forf  = 0;
+    /* Loaded once per visit; the panel redraws when it arrives. */
+    const closed = this._closed || [];
+    if (!this._closed && window.Cloud && Cloud.ready) {
+      this._closed = [];
+      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.renderMoney(); });
+    }
 
     /* utilisation + payback per vehicle — the number a spreadsheet cannot give him */
     const per = DB.d.vehicles.map(v=>{
@@ -1561,7 +1570,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       <div class="card">
         <div class="line"><span>Rental revenue <span class="muted">all time</span></span><b>${money(rev)}</b></div>
         <div class="line"><span>Deposits refunded</span><b>${money(refd)}</b></div>
-        <div class="line"><span>Deposits forfeited <span class="muted">→ revenue</span></span><b>${money(forf)}</b></div>
+        <div class="line"><span>Days with income</span><b>${days.length}</b></div>
         <div class="line tot"><span>Deposits held now</span><b>${money(held)}</b></div>
       </div>
       <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
@@ -1570,7 +1579,8 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         waiting to be refunded. Revenue above excludes it — that is deliberate.</div>
       </div>
       <button class="btn ghost" style="margin-bottom:4px" onclick="R.history(true)">Past rentals</button>
-      <div class="sec-hd">Which bikes earn</div>
+      <div class="sec-hd">Which bikes earn <span class="muted" style="text-transform:none;letter-spacing:0">
+        · last ${closed.length} settled</span></div>
       ${!per.length ? '<div class="muted" style="margin:0 2px">No vehicles yet.</div>' :
         per.map(p=>`<div class="card">
           <div class="row"><b class="grow ell">${esc(vLabel(p.v))} <span class="muted">${esc(p.v.regNo||p.v.model)}</span></b>
@@ -1871,6 +1881,11 @@ const Cloud = {
     /* HOT SET ONLY: open rentals. Closed history is paged on demand so
        this listener never grows with the age of the business. */
     this._unsub.push(bind(query(S('rentals'), where('status','==','open')), 'rentals'));
+    /* Settled rentals are deliberately NOT in a live listener — at 70k a year
+       that grows without bound. But revenue still has to be visible, so the
+       daily rollups written at settle carry it: one small document per day,
+       which is all the dashboard and the Money tab actually need. */
+    this._unsub.push(bind(query(S('daily'), orderBy('__name__','desc'), limit(400)), 'daily'));
 
     this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
       this.shop = sd.exists() ? sd.data() : null;
@@ -2206,12 +2221,27 @@ const Cloud = {
 
   /* ── history: paged, never a listener ─────────────────────────── */
   async history(cursor, n){
+    /* orderBy('settledAt') alone: Firestore excludes documents that lack the
+       field, and only a settled rental has settledAt — so this returns exactly
+       the closed ones WITHOUT needing a composite index. One less thing that
+       has to be deployed before the screen works. */
     const parts = [ collection(db,'rn_shops',this.shopId,'rentals'),
-                    where('status','==','closed'), orderBy('settledAt','desc'), limit(n||25) ];
+                    orderBy('settledAt','desc'), limit(n||25) ];
     if (cursor) parts.splice(3, 0, startAfter(cursor));
     const snap = await getDocs(query.apply(null, parts));
     return { rows: snap.docs.map(d=>Object.assign({id:d.id}, d.data())),
              cursor: snap.docs.length ? snap.docs[snap.docs.length-1] : null };
+  },
+
+  /* Recent settled rentals, for the "which bikes earn" panel. Bounded and
+     fetched on demand rather than listened to, for the same reason as above. */
+  async recentClosed(n){
+    try {
+      const snap = await getDocs(query(
+        collection(db,'rn_shops',this.shopId,'rentals'),
+        orderBy('settledAt','desc'), limit(n||400)));
+      return snap.docs.map(d => Object.assign({ id:d.id }, d.data()));
+    } catch(e){ console.warn('recentClosed', e); return []; }
   },
 
   /* ── sync status ──────────────────────────────────────────────── */
