@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F3D5C">
+<title>RentalNow</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛵</text></svg>">
+<style>
+:root{
+  --p:#0F3D5C; --p-deep:#0A2C43; --p-50:#F1F5F8;
+  --y:#F5A623; --y-tint:#FFF4E0; --y-bd:#F0D9A8;
+  --success:#06C167; --success-d:#048A45; --success-tint:#E7F9F0;
+  --danger:#E11900; --danger-tint:#FDECEA;
+  --t1:#0A0A0A; --t2:#454545; --t3:#6B6B6B; --t4:#9C9C9C;
+  --bg:#FBF7F0; --card:#FFFFFF; --bd:#E4E0D8;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 14px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{overscroll-behavior-y:contain}
+body{
+  margin:0;background:var(--bg);color:var(--t1);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit}
+h1,h2,h3{margin:0;letter-spacing:-.02em}
+
+/* ── shell ─────────────────────────────────────────────── */
+.top{
+  position:sticky;top:0;z-index:50;background:var(--p);color:#fff;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  display:flex;align-items:center;gap:10px;
+}
+.top h1{font-size:17px;font-weight:800;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .sub{font-size:11.5px;opacity:.75;font-weight:600}
+.top-btn{
+  background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:9px;
+  padding:7px 11px;font-size:12.5px;font-weight:700;cursor:pointer;
+}
+.page{display:none;padding:14px 14px 20px}
+.page.active{display:block}
+
+/* ── bottom nav ────────────────────────────────────────── */
+.nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(10px);
+  border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -4px 16px rgba(0,0,0,.05);
+}
+.nav button{
+  flex:1;background:none;border:0;padding:9px 2px 8px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--t4);font-size:10.5px;font-weight:700;
+}
+.nav button.on{color:var(--p)}
+.nav svg{width:21px;height:21px}
+
+/* ── cards ─────────────────────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--bd);border-radius:14px;
+  padding:14px;margin-bottom:11px;box-shadow:var(--shadow-sm);
+}
+.card.tap{cursor:pointer;transition:border-color .15s,transform .1s}
+.card.tap:active{transform:scale(.995)}
+.sec-hd{
+  font-size:11.5px;font-weight:800;color:var(--t3);text-transform:uppercase;
+  letter-spacing:.06em;margin:18px 2px 9px;
+}
+.sec-hd:first-child{margin-top:2px}
+.row{display:flex;align-items:center;gap:11px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--t3);font-size:12.5px}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── KPI strip ─────────────────────────────────────────── */
+.kpis{display:flex;gap:9px;margin-bottom:12px}
+.kpi{
+  flex:1;background:var(--card);border:1px solid var(--bd);border-radius:13px;
+  padding:11px 10px;text-align:center;box-shadow:var(--shadow-sm);
+}
+.kpi .l{font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font-size:19px;font-weight:850;letter-spacing:-.03em;margin-top:3px;
+  font-variant-numeric:tabular-nums}
+.kpi.warn .v{color:var(--danger)}
+.kpi.liab{background:var(--y-tint);border-color:var(--y-bd)}
+
+/* ── pills / badges ────────────────────────────────────── */
+.pill{
+  display:inline-flex;align-items:center;gap:5px;border-radius:99px;
+  padding:3px 9px;font-size:11px;font-weight:800;letter-spacing:.01em;
+}
+.pill.ok{background:var(--success-tint);color:var(--success-d)}
+.pill.out{background:#E8F0F7;color:var(--p)}
+.pill.late{background:var(--danger-tint);color:var(--danger)}
+.pill.maint{background:#F3F0FA;color:#6B46C1}
+.pill.warn{background:var(--y-tint);color:#95610A}
+
+/* ── buttons ───────────────────────────────────────────── */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  border:0;border-radius:13px;padding:14px;font-size:15px;font-weight:800;
+  letter-spacing:-.015em;cursor:pointer;background:var(--p);color:#fff;
+  box-shadow:0 8px 20px -10px rgba(15,61,92,.8);transition:transform .1s;
+}
+.btn:active:not(:disabled){transform:scale(.99)}
+.btn:disabled{background:#EDEAE4;color:var(--t4);box-shadow:none;cursor:not-allowed}
+.btn.y{background:var(--y);color:#0A0A0A;box-shadow:0 8px 20px -10px rgba(245,166,35,.85)}
+.btn.g{background:var(--success);box-shadow:0 8px 20px -10px rgba(6,193,103,.8)}
+.btn.d{background:var(--danger);box-shadow:none}
+.btn.ghost{background:var(--card);color:var(--t1);border:1.5px solid var(--bd);box-shadow:none}
+.btn.sm{padding:9px 13px;font-size:13px;border-radius:10px;width:auto;box-shadow:none}
+
+/* ── forms ─────────────────────────────────────────────── */
+.fld{margin-bottom:13px}
+.lbl{display:block;font-size:12.5px;font-weight:750;color:var(--t2);margin-bottom:5px}
+.lbl .req{color:var(--danger)}
+.in{
+  width:100%;border:1.5px solid var(--bd);border-radius:11px;padding:12px 13px;
+  background:var(--card);color:var(--t1);font-size:15px;font-weight:600;outline:0;
+  transition:border-color .15s,box-shadow .15s;
+}
+.in:focus{border-color:var(--y);box-shadow:0 0 0 3px rgba(245,166,35,.16)}
+select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;background-size:17px;padding-right:36px}
+.two{display:flex;gap:9px}
+.two>*{flex:1;min-width:0}
+
+/* ── tier chips ────────────────────────────────────────── */
+.tiers{display:flex;gap:7px;flex-wrap:wrap}
+.tier{
+  flex:1;min-width:64px;border:1.5px solid var(--bd);background:var(--card);
+  border-radius:12px;padding:9px 6px;text-align:center;cursor:pointer;
+  transition:all .15s;
+}
+.tier .t{font-size:11.5px;font-weight:800;color:var(--t3)}
+.tier .p{font-size:15px;font-weight:850;margin-top:2px;font-variant-numeric:tabular-nums}
+.tier.on{background:var(--p);border-color:var(--p);color:#fff}
+.tier.on .t{color:rgba(255,255,255,.75)}
+
+/* ── sheet ─────────────────────────────────────────────── */
+.ov{
+  position:fixed;inset:0;z-index:200;background:rgba(10,10,10,.42);
+  display:none;align-items:flex-end;justify-content:center;
+}
+.ov.open{display:flex}
+.sheet{
+  background:var(--bg);width:100%;max-width:520px;max-height:94vh;
+  border-radius:22px 22px 0 0;overflow-y:auto;overscroll-behavior:contain;
+  padding:8px 15px calc(20px + env(safe-area-inset-bottom));
+  animation:up .22s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes up{from{transform:translateY(28px);opacity:.6}to{transform:none;opacity:1}}
+.grab{width:38px;height:4px;border-radius:99px;background:var(--bd);margin:0 auto 13px}
+.sheet-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sheet-hd h2{font-size:18px;font-weight:850;flex:1}
+
+/* ── settlement lines ──────────────────────────────────── */
+.line{display:flex;justify-content:space-between;align-items:baseline;
+  padding:7px 0;font-size:14px;font-variant-numeric:tabular-nums}
+.line.tot{border-top:1.5px solid var(--bd);margin-top:6px;padding-top:11px;
+  font-size:17px;font-weight:850}
+.line .neg{color:var(--danger)}
+.line .pos{color:var(--success-d)}
+
+.empty{text-align:center;padding:40px 18px;color:var(--t3)}
+.empty .e{font-size:38px;margin-bottom:10px}
+.empty b{display:block;font-size:15px;color:var(--t1);margin-bottom:4px}
+
+.toast{
+  position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(10px);
+  background:#0A0A0A;color:#fff;padding:11px 17px;border-radius:11px;
+  font-size:13.5px;font-weight:700;z-index:400;opacity:0;pointer-events:none;
+  transition:all .22s;max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.wm{position:fixed;left:6px;bottom:74px;font-size:9px;color:#C9C4BA;z-index:1;font-family:monospace}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="grow">
+    <h1 id="top-title">Out Now</h1>
+    <div class="sub" id="top-sub">—</div>
+  </div>
+  <button class="top-btn" id="top-action" onclick="R.topAction()">+ Rent out</button>
+</div>
+
+<!-- ═══ OUT NOW ═══ -->
+<div class="page active" id="pg-out">
+  <div class="kpis">
+    <div class="kpi"><div class="l">Out</div><div class="v" id="k-out">0</div></div>
+    <div class="kpi warn"><div class="l">Overdue</div><div class="v" id="k-late">0</div></div>
+    <div class="kpi"><div class="l">Today</div><div class="v" id="k-rev">₹0</div></div>
+  </div>
+  <div class="kpi liab" style="margin-bottom:12px">
+    <div class="l">Deposits held — not your money</div>
+    <div class="v" id="k-dep">₹0</div>
+    <div class="muted" style="font-size:11px;margin-top:2px" id="k-dep-sub">0 open rentals</div>
+  </div>
+  <div id="out-list"></div>
+</div>
+
+<!-- ═══ FLEET ═══ -->
+<div class="page" id="pg-fleet"><div id="fleet-list"></div></div>
+
+<!-- ═══ RATES ═══ -->
+<div class="page" id="pg-rates"><div id="rates-list"></div></div>
+
+<!-- ═══ MONEY ═══ -->
+<div class="page" id="pg-money"><div id="money-body"></div></div>
+
+<div class="nav">
+  <button id="nv-out" class="on" onclick="R.nav('out')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-9l-2-6h4l2-3h4l1 3"/></svg>
+    <span>Out Now</span></button>
+  <button id="nv-fleet" onclick="R.nav('fleet')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg>
+    <span>Fleet</span></button>
+  <button id="nv-rates" onclick="R.nav('rates')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    <span>Rates</span></button>
+  <button id="nv-money" onclick="R.nav('money')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg>
+    <span>Money</span></button>
+</div>
+
+<div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
+<div class="toast" id="toast"></div>
+<div class="wm" id="wm">rn_v1_0_0</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   RentalNow v1.0.0 — two-wheeler rental
+   Phase 1+2 of rentalnow-design.md: fleet, rate cards, check-out,
+   check-in, deposit ledger, Out Now board.
+
+   THE RULE THIS APP IS BUILT AROUND
+   A deposit is not revenue. It is money the shop owes back. It is held
+   in its own ledger, shown on the dashboard as "not your money", and
+   never touches revenue until it is explicitly forfeited. Every other
+   design choice here is downstream of that one.
+   ═══════════════════════════════════════════════════════════════════ */
+const BUILD = 'rn_v1_0_0';
+
+/* ── storage ──────────────────────────────────────────────────────── */
+const DB = {
+  k: 'rn_data_v1',
+  d: { vehicles: [], rates: [], rentals: [], customers: [], seeded: 0 },
+  load(){
+    try {
+      const raw = localStorage.getItem(this.k);
+      if (raw) this.d = Object.assign(this.d, JSON.parse(raw));
+    } catch(e){ console.warn('load failed', e); }
+    if (!this.d.seeded) { seed(); this.d.seeded = 1; this.save(); }
+    return this.d;
+  },
+  save(){
+    try { localStorage.setItem(this.k, JSON.stringify(this.d)); }
+    catch(e){ toast('Could not save — storage full?'); }
+  },
+  id(p){ return p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+};
+
+/* ── seed: Rapid Rent Services, Bhopal ────────────────────────────── */
+function seed(){
+  /* Rates transcribed from the client's own price list. Entered as one
+     card per model rather than shared classes: B/B2/B3 differ only at
+     6h/12h/24h, and a "nearly identical" inheritance tree is exactly the
+     kind of thing that silently drifts later. */
+  const R_ = (model, deposit, h3, h6, h12, h24, d7, ot) =>
+    ({ id: DB.id('rc'), model, deposit, tiers:{h3,h6,h12,h24,d7}, ot });
+  DB.d.rates = [
+    R_('Activa 3G',      500, 120, 220, 350, 550, 2100, 50),
+    R_('Pleasure',       500, 120, 220, 350, 550, 2100, 50),
+    R_('Maestro',        800, 150, 280, 450, 620, 2450, 60),
+    R_('Jupiter',        800, 150, 280, 450, 620, 2450, 60),
+    R_('Avaitor',        800, 150, 280, 450, 620, 2450, 60),
+    R_('Activa 5G',      800, 150, 270, 420, 600, 2450, 60),
+    R_('TVS Sports',     800, 150, 270, 420, 600, 2450, 60),
+    R_('Discover',       800, 150, 270, 450, 620, 2450, 60),
+    R_('Suzuki Hayate',  800, 150, 270, 450, 620, 2450, 60),
+    R_('NS Pulsar',     1200, 200, 360, 560, 860, 3450, 70),
+  ];
+}
+
+/* ── tiers ────────────────────────────────────────────────────────── */
+const TIERS = [
+  { k:'h3',  label:'3 hr',  hours:3   },
+  { k:'h6',  label:'6 hr',  hours:6   },
+  { k:'h12', label:'12 hr', hours:12  },
+  { k:'h24', label:'24 hr', hours:24  },
+  { k:'d7',  label:'7 days',hours:168 },
+];
+const tierOf = k => TIERS.find(t => t.k === k);
+
+/* ═══════════════════════════════════════════════════════════════════
+   PRICING ENGINE
+   Booked tier is charged in full. Beyond it, overtime accrues per
+   started hour. We ALSO compute what the cheaper alternatives would
+   have cost and surface them at settlement, because a customer who
+   works out at the counter that a longer slab was cheaper does not
+   come back. Straight overtime stays the default (it is what the
+   counter agreed and the easiest to explain); the app just refuses to
+   let the shop overcharge by accident.
+   ═══════════════════════════════════════════════════════════════════ */
+function quote(rate, tierKey, hoursActual){
+  const t = tierOf(tierKey);
+  const base = rate.tiers[tierKey];
+  if (hoursActual <= t.hours) {
+    return { rent: base, overtime: 0, hoursOver: 0, basis: 'within', alt: null };
+  }
+  const hoursOver = Math.ceil(hoursActual - t.hours);
+  const straight  = base + hoursOver * rate.ot;
+
+  /* cheapest single slab that would have covered the actual duration */
+  let bestSlab = null;
+  for (const x of TIERS) {
+    if (x.hours >= hoursActual) { bestSlab = { key:x.k, label:x.label, total: rate.tiers[x.k] }; break; }
+  }
+  /* or a bigger slab plus overtime past it */
+  let ladder = null;
+  for (const x of TIERS) {
+    if (x.hours <= t.hours || x.hours >= hoursActual) continue;
+    const over = Math.ceil(hoursActual - x.hours);
+    const tot  = rate.tiers[x.k] + over * rate.ot;
+    if (!ladder || tot < ladder.total) ladder = { key:x.k, label:x.label, total:tot };
+  }
+  const cands = [bestSlab, ladder].filter(Boolean).filter(c => c.total < straight);
+  cands.sort((a,b) => a.total - b.total);
+
+  return {
+    rent: base, overtime: hoursOver * rate.ot, hoursOver,
+    basis: 'overtime', straight,
+    alt: cands.length ? cands[0] : null
+  };
+}
+
+/* ── time helpers ─────────────────────────────────────────────────── */
+const HOUR = 3600000;
+function hoursBetween(a, b){ return (b - a) / HOUR; }
+function fmtDT(ms){
+  const d = new Date(ms);
+  return d.toLocaleString('en-IN', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit', hour12:true });
+}
+function fmtDur(h){
+  if (h < 1) return Math.max(1, Math.round(h*60)) + ' min';
+  const d = Math.floor(h/24), r = Math.floor(h%24);
+  if (d > 0) return d + 'd ' + r + 'h';
+  return Math.floor(h) + 'h ' + Math.round((h%1)*60) + 'm';
+}
+const money = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ── toast / sheet ────────────────────────────────────────────────── */
+let _tt;
+function toast(m){
+  const el = document.getElementById('toast');
+  el.textContent = m; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+function openSheet(html){
+  document.getElementById('sheet').innerHTML = '<div class="grab"></div>' + html;
+  document.getElementById('ov').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(){
+  document.getElementById('ov').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.getElementById('ov').addEventListener('click', closeSheet);
+
+/* ═══════════════════════════════════════════════════════════════════
+   APP
+   ═══════════════════════════════════════════════════════════════════ */
+const R = {
+  page: 'out',
+
+  boot(){
+    DB.load();
+    document.getElementById('wm').textContent = BUILD;
+    this.render();
+    setInterval(()=>{ if (this.page==='out') this.renderOut(); }, 60000);
+  },
+
+  nav(p){
+    this.page = p;
+    document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+    document.getElementById('pg-'+p).classList.add('active');
+    document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));
+    document.getElementById('nv-'+p).classList.add('on');
+    window.scrollTo(0,0);
+    this.render();
+  },
+
+  topAction(){
+    if (this.page === 'fleet') return this.editVehicle();
+    if (this.page === 'rates') return this.editRate();
+    return this.checkoutStart();
+  },
+
+  render(){
+    const titles = { out:['Out Now','Live rentals'], fleet:['Fleet','Your vehicles'],
+                     rates:['Rate cards','Price per model'], money:['Money','Revenue vs deposits'] };
+    const acts   = { out:'+ Rent out', fleet:'+ Vehicle', rates:'+ Rate card', money:'' };
+    const [t,s] = titles[this.page];
+    document.getElementById('top-title').textContent = t;
+    document.getElementById('top-sub').textContent = s;
+    const ab = document.getElementById('top-action');
+    ab.textContent = acts[this.page];
+    ab.style.display = acts[this.page] ? '' : 'none';
+    if (this.page==='out') this.renderOut();
+    if (this.page==='fleet') this.renderFleet();
+    if (this.page==='rates') this.renderRates();
+    if (this.page==='money') this.renderMoney();
+  },
+
+  /* ── OUT NOW ────────────────────────────────────────────────────── */
+  renderOut(){
+    const open = DB.d.rentals.filter(r => r.status === 'open');
+    const now = Date.now();
+    const late = open.filter(r => now > r.dueAt);
+    const depHeld = open.reduce((s,r)=> s + (Number(r.depositHeld)||0), 0);
+
+    const t0 = new Date(); t0.setHours(0,0,0,0);
+    const todayRev = DB.d.rentals
+      .filter(r => r.status==='closed' && r.settledAt >= t0.getTime())
+      .reduce((s,r)=> s + (Number(r.revenue)||0), 0);
+
+    document.getElementById('k-out').textContent  = open.length;
+    document.getElementById('k-late').textContent = late.length;
+    document.getElementById('k-rev').textContent  = money(todayRev);
+    document.getElementById('k-dep').textContent  = money(depHeld);
+    document.getElementById('k-dep-sub').textContent =
+      open.length + ' open rental' + (open.length===1?'':'s') + ' · refundable';
+
+    const box = document.getElementById('out-list');
+    if (!open.length){
+      box.innerHTML = `<div class="empty"><div class="e">🛵</div>
+        <b>Nothing is out right now</b>
+        <span>Tap <b>+ Rent out</b> to start a rental.</span></div>`;
+      return;
+    }
+    open.sort((a,b)=> a.dueAt - b.dueAt);
+    box.innerHTML = open.map(r => {
+      const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
+      const isLate = now > r.dueAt;
+      const overH = isLate ? hoursBetween(r.dueAt, now) : 0;
+      return `<div class="card tap" onclick="R.checkinStart('${r.id}')">
+        <div class="row">
+          <div class="grow">
+            <div class="row" style="gap:7px">
+              <b class="ell" style="font-size:15.5px">${esc(v.regNo||'—')}</b>
+              <span class="pill ${isLate?'late':'out'}">${isLate?'OVERDUE '+fmtDur(overH):'OUT'}</span>
+            </div>
+            <div class="muted ell" style="margin-top:2px">
+              ${esc(v.model||'')} · ${esc(r.customerName||'—')} · ${esc(r.customerPhone||'')}
+            </div>
+            <div class="muted" style="margin-top:4px">
+              Due ${fmtDT(r.dueAt)} · ${tierOf(r.tier).label} · deposit ${money(r.depositHeld)}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;font-weight:800;color:var(--t3)">CHECK IN</div>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--p)" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  /* ── FLEET ──────────────────────────────────────────────────────── */
+  renderFleet(){
+    const box = document.getElementById('fleet-list');
+    if (!DB.d.vehicles.length){
+      box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
+        <b>No vehicles yet</b><span>Add your bikes to start renting.</span>
+        <div style="margin-top:16px"><button class="btn" onclick="R.editVehicle()">+ Add first vehicle</button></div></div>`;
+      return;
+    }
+    const order = { available:0, rented:1, maintenance:2, retired:3 };
+    const vs = [...DB.d.vehicles].sort((a,b)=>
+      (order[a.status]-order[b.status]) || String(a.regNo).localeCompare(String(b.regNo)));
+    box.innerHTML = vs.map(v => {
+      const rc = DB.d.rates.find(r=>r.id===v.rateId);
+      const r  = DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
+      const docs = this.docWarn(v);
+      const pill = { available:'ok', rented:'out', maintenance:'maint', retired:'late' }[v.status]||'ok';
+      const earned = DB.d.rentals.filter(x=>x.vehicleId===v.id && x.status==='closed')
+                      .reduce((s,x)=>s+(Number(x.revenue)||0),0);
+      return `<div class="card tap" onclick="R.editVehicle('${v.id}')">
+        <div class="row">
+          <div class="grow">
+            <div class="row" style="gap:7px">
+              <b class="ell" style="font-size:15.5px">${esc(v.regNo)}</b>
+              <span class="pill ${pill}">${v.status.toUpperCase()}</span>
+              ${docs ? `<span class="pill warn">${esc(docs)}</span>` : ''}
+            </div>
+            <div class="muted ell" style="margin-top:2px">
+              ${esc(v.model)}${rc?' · deposit '+money(rc.deposit):' · no rate card'}
+            </div>
+            <div class="muted" style="margin-top:4px">
+              Earned ${money(earned)}${v.cost?' of '+money(v.cost)+' cost':''}
+              ${r?' · out, due '+fmtDT(r.dueAt):''}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  docWarn(v){
+    const soon = Date.now() + 30*24*HOUR;
+    const bad = [];
+    if (v.insExpiry && new Date(v.insExpiry).getTime() < Date.now()) bad.push('INSURANCE EXPIRED');
+    else if (v.insExpiry && new Date(v.insExpiry).getTime() < soon) bad.push('INSURANCE DUE');
+    if (v.pucExpiry && new Date(v.pucExpiry).getTime() < Date.now()) bad.push('PUC EXPIRED');
+    else if (v.pucExpiry && new Date(v.pucExpiry).getTime() < soon) bad.push('PUC DUE');
+    return bad[0] || '';
+  },
+  docBlocked(v){
+    const now = Date.now();
+    if (v.insExpiry && new Date(v.insExpiry).getTime() < now) return 'insurance';
+    if (v.pucExpiry && new Date(v.pucExpiry).getTime() < now) return 'PUC';
+    return '';
+  },
+
+  editVehicle(id){
+    const v = id ? DB.d.vehicles.find(x=>x.id===id) : null;
+    const opts = DB.d.rates.map(r=>
+      `<option value="${r.id}" ${v&&v.rateId===r.id?'selected':''}>${esc(r.model)} · dep ${money(r.deposit)}</option>`).join('');
+    openSheet(`
+      <div class="sheet-hd"><h2>${v?'Edit vehicle':'Add vehicle'}</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="fld"><label class="lbl">Registration no. <span class="req">*</span></label>
+        <input class="in" id="v-reg" value="${esc(v?v.regNo:'')}" placeholder="MP04 AB 1234" autocapitalize="characters"></div>
+      <div class="fld"><label class="lbl">Model / rate card <span class="req">*</span></label>
+        <select class="in" id="v-rate"><option value="">— choose —</option>${opts}</select></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Status</label>
+          <select class="in" id="v-status">
+            ${['available','rented','maintenance','retired'].map(s=>
+              `<option value="${s}" ${v&&v.status===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        <div class="fld"><label class="lbl">Odometer</label>
+          <input class="in" id="v-odo" type="number" inputmode="numeric" value="${v?(v.odo||''):''}" placeholder="km"></div>
+      </div>
+      <div class="fld"><label class="lbl">Purchase cost <span class="muted">— for payback tracking</span></label>
+        <input class="in" id="v-cost" type="number" inputmode="numeric" value="${v?(v.cost||''):''}" placeholder="₹"></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Insurance expiry</label>
+          <input class="in" id="v-ins" type="date" value="${v?(v.insExpiry||''):''}"></div>
+        <div class="fld"><label class="lbl">PUC expiry</label>
+          <input class="in" id="v-puc" type="date" value="${v?(v.pucExpiry||''):''}"></div>
+      </div>
+      <button class="btn" onclick="R.saveVehicle('${id||''}')">${v?'Save changes':'Add vehicle'}</button>
+      ${v?`<button class="btn ghost" style="margin-top:9px" onclick="R.delVehicle('${id}')">Remove vehicle</button>`:''}
+    `);
+  },
+
+  saveVehicle(id){
+    const reg = document.getElementById('v-reg').value.trim().toUpperCase();
+    const rateId = document.getElementById('v-rate').value;
+    if (!reg) return toast('Registration number is required');
+    if (!rateId) return toast('Choose a model / rate card');
+    const dup = DB.d.vehicles.find(x=>x.regNo===reg && x.id!==id);
+    if (dup) return toast('That registration already exists');
+    const rc = DB.d.rates.find(r=>r.id===rateId);
+    const rec = {
+      regNo: reg, rateId, model: rc?rc.model:'',
+      status: document.getElementById('v-status').value,
+      odo: Number(document.getElementById('v-odo').value)||0,
+      cost: Number(document.getElementById('v-cost').value)||0,
+      insExpiry: document.getElementById('v-ins').value||'',
+      pucExpiry: document.getElementById('v-puc').value||'',
+    };
+    if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
+    else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
+    DB.save(); closeSheet(); this.render(); toast(id?'Vehicle updated':'Vehicle added');
+  },
+
+  delVehicle(id){
+    if (DB.d.rentals.some(r=>r.vehicleId===id && r.status==='open'))
+      return toast('This vehicle is out — check it in first');
+    if (!confirm('Remove this vehicle? Past rentals stay in your records.')) return;
+    DB.d.vehicles = DB.d.vehicles.filter(x=>x.id!==id);
+    DB.save(); closeSheet(); this.render(); toast('Vehicle removed');
+  },
+
+  /* ── RATE CARDS ─────────────────────────────────────────────────── */
+  renderRates(){
+    const box = document.getElementById('rates-list');
+    box.innerHTML =
+      `<div class="muted" style="margin:0 2px 12px">Tap a card to edit. Rates are copied onto each
+        rental at check-out, so changing a price never re-prices a bike that is already out.</div>` +
+      DB.d.rates.map(r=>{
+        const n = DB.d.vehicles.filter(v=>v.rateId===r.id).length;
+        return `<div class="card tap" onclick="R.editRate('${r.id}')">
+          <div class="row" style="margin-bottom:8px">
+            <b class="grow" style="font-size:15.5px">${esc(r.model)}</b>
+            <span class="pill ok">${n} bike${n===1?'':'s'}</span>
+          </div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            ${TIERS.map(t=>`<span class="pill" style="background:var(--p-50);color:var(--t2)">
+              ${t.label} ${money(r.tiers[t.k])}</span>`).join('')}
+          </div>
+          <div class="muted" style="margin-top:8px">
+            Deposit ${money(r.deposit)} · overtime ${money(r.ot)}/hr
+          </div>
+        </div>`;
+      }).join('');
+  },
+
+  editRate(id){
+    const r = id ? DB.d.rates.find(x=>x.id===id) : null;
+    openSheet(`
+      <div class="sheet-hd"><h2>${r?'Edit rate card':'New rate card'}</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="fld"><label class="lbl">Model <span class="req">*</span></label>
+        <input class="in" id="r-model" value="${esc(r?r.model:'')}" placeholder="Activa 3G"></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Deposit <span class="req">*</span></label>
+          <input class="in" id="r-dep" type="number" inputmode="numeric" value="${r?r.deposit:''}" placeholder="₹"></div>
+        <div class="fld"><label class="lbl">Overtime / hr <span class="req">*</span></label>
+          <input class="in" id="r-ot" type="number" inputmode="numeric" value="${r?r.ot:''}" placeholder="₹"></div>
+      </div>
+      <div class="sec-hd" style="margin-top:6px">Duration prices</div>
+      ${TIERS.map(t=>`<div class="fld"><label class="lbl">${t.label}</label>
+        <input class="in" id="r-${t.k}" type="number" inputmode="numeric"
+          value="${r?r.tiers[t.k]:''}" placeholder="₹"></div>`).join('')}
+      <button class="btn" onclick="R.saveRate('${id||''}')">${r?'Save changes':'Add rate card'}</button>
+    `);
+  },
+
+  saveRate(id){
+    const model = document.getElementById('r-model').value.trim();
+    if (!model) return toast('Model name is required');
+    const tiers = {};
+    for (const t of TIERS) tiers[t.k] = Number(document.getElementById('r-'+t.k).value)||0;
+    const rec = {
+      model, deposit: Number(document.getElementById('r-dep').value)||0,
+      ot: Number(document.getElementById('r-ot').value)||0, tiers
+    };
+    if (id){
+      Object.assign(DB.d.rates.find(x=>x.id===id), rec);
+      DB.d.vehicles.forEach(v=>{ if (v.rateId===id) v.model = model; });
+    } else DB.d.rates.push(Object.assign({ id: DB.id('rc') }, rec));
+    DB.save(); closeSheet(); this.render(); toast('Rate card saved');
+  },
+
+  /* ── CHECK-OUT ──────────────────────────────────────────────────── */
+  checkoutStart(){
+    const avail = DB.d.vehicles.filter(v=>v.status==='available');
+    if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a vehicle first'); }
+    if (!avail.length) return toast('No vehicles available — everything is out');
+    openSheet(`
+      <div class="sheet-hd"><h2>Rent out</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="fld"><label class="lbl">Vehicle <span class="req">*</span></label>
+        <select class="in" id="c-veh" onchange="R.coTiers()">
+          <option value="">— choose —</option>
+          ${avail.map(v=>`<option value="${v.id}">${esc(v.regNo)} · ${esc(v.model)}</option>`).join('')}
+        </select></div>
+      <div id="c-rateblock"></div>
+      <div class="fld"><label class="lbl">Customer name <span class="req">*</span></label>
+        <input class="in" id="c-name" placeholder="Full name"></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Phone <span class="req">*</span></label>
+          <input class="in" id="c-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits"></div>
+        <div class="fld"><label class="lbl">DL / Aadhaar no.</label>
+          <input class="in" id="c-kyc" placeholder="ID number"></div>
+      </div>
+      <div class="muted" style="margin:-6px 2px 14px;font-size:11.5px">
+        Record the ID number only. Do not keep photos of Aadhaar or DL on the phone.</div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Odometer out</label>
+          <input class="in" id="c-odo" type="number" inputmode="numeric" placeholder="km"></div>
+        <div class="fld"><label class="lbl">Fuel out</label>
+          <select class="in" id="c-fuel">
+            <option value="E">Empty</option><option value="1/4">1/4</option>
+            <option value="1/2" selected>1/2</option><option value="3/4">3/4</option>
+            <option value="F">Full</option></select></div>
+      </div>
+      <div id="c-summary"></div>
+      <button class="btn g" id="c-go" onclick="R.checkoutSave()" disabled>Choose a vehicle and duration</button>
+    `);
+  },
+
+  coTiers(){
+    const vid = document.getElementById('c-veh').value;
+    const blk = document.getElementById('c-rateblock');
+    if (!vid){ blk.innerHTML=''; this.coSummary(); return; }
+    const v = DB.d.vehicles.find(x=>x.id===vid);
+    const r = DB.d.rates.find(x=>x.id===v.rateId);
+    if (!r){ blk.innerHTML = `<div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+      <b>No rate card for ${esc(v.model)}</b><div class="muted">Add one under Rates first.</div></div>`; return; }
+
+    const blocked = this.docBlocked(v);
+    blk.innerHTML =
+      (blocked ? `<div class="card" style="background:var(--danger-tint);border-color:var(--danger);margin-bottom:11px">
+          <b style="color:var(--danger)">${blocked.toUpperCase()} HAS EXPIRED</b>
+          <div class="muted" style="margin-top:3px">Renting this out is a legal risk to you, not just the rider.
+          Renew it, or tick below to override — the override is recorded on the rental.</div>
+          <label class="row" style="margin-top:9px;gap:8px;cursor:pointer">
+            <input type="checkbox" id="c-override" onchange="R.coSummary()" style="width:19px;height:19px">
+            <span style="font-size:13px;font-weight:700">Rent out anyway</span></label>
+        </div>` : '') +
+      `<div class="fld"><label class="lbl">Duration <span class="req">*</span></label>
+        <div class="tiers" id="c-tiers">
+          ${TIERS.map(t=>`<div class="tier" data-t="${t.k}" onclick="R.coPick('${t.k}')">
+            <div class="t">${t.label}</div><div class="p">${money(r.tiers[t.k])}</div></div>`).join('')}
+        </div></div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Deposit taken</label>
+          <input class="in" id="c-dep" type="number" inputmode="numeric" value="${r.deposit}" oninput="R.coSummary()"></div>
+        <div class="fld"><label class="lbl">Rent paid now</label>
+          <input class="in" id="c-adv" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
+      </div>`;
+    this._tier = null; this.coSummary();
+  },
+
+  coPick(k){
+    this._tier = k;
+    document.querySelectorAll('#c-tiers .tier').forEach(el=>
+      el.classList.toggle('on', el.dataset.t===k));
+    this.coSummary();
+  },
+
+  coSummary(){
+    const vid = document.getElementById('c-veh') ? document.getElementById('c-veh').value : '';
+    const box = document.getElementById('c-summary');
+    const btn = document.getElementById('c-go');
+    if (!vid || !this._tier){ box.innerHTML=''; btn.disabled = true;
+      btn.textContent = 'Choose a vehicle and duration'; return; }
+    const v = DB.d.vehicles.find(x=>x.id===vid);
+    const r = DB.d.rates.find(x=>x.id===v.rateId);
+    const t = tierOf(this._tier);
+    const due = Date.now() + t.hours*HOUR;
+    const dep = Number(document.getElementById('c-dep').value)||0;
+    const adv = Number(document.getElementById('c-adv').value)||0;
+
+    const ovEl = document.getElementById('c-override');
+    const blocked = this.docBlocked(v);
+    const ok = !blocked || (ovEl && ovEl.checked);
+
+    box.innerHTML = `<div class="card" style="background:var(--p-50);border-color:#D9E2EA">
+      <div class="line"><span>Due back</span><b>${fmtDT(due)}</b></div>
+      <div class="line"><span>Rent for ${t.label}</span><b>${money(r.tiers[this._tier])}</b></div>
+      <div class="line"><span>Overtime after that</span><b>${money(r.ot)}/hr</b></div>
+      <div class="line"><span>Deposit held <span class="muted">(refundable)</span></span><b>${money(dep)}</b></div>
+      <div class="line tot"><span>Collect now</span><b>${money(dep + adv)}</b></div>
+      <div class="muted" style="margin-top:6px">Of this, ${money(dep)} is not your money — it goes to Deposits held.</div>
+    </div>`;
+    btn.disabled = !ok;
+    btn.textContent = ok ? 'Rent out · collect ' + money(dep + adv)
+                         : 'Blocked — ' + blocked + ' expired';
+  },
+
+  checkoutSave(){
+    const vid  = document.getElementById('c-veh').value;
+    const name = document.getElementById('c-name').value.trim();
+    const ph   = document.getElementById('c-phone').value.replace(/\D/g,'').slice(-10);
+    if (!vid || !this._tier) return toast('Choose vehicle and duration');
+    if (!name) return toast('Customer name is required');
+    if (ph.length !== 10) return toast('Enter a 10-digit phone number');
+
+    const v = DB.d.vehicles.find(x=>x.id===vid);
+    const r = DB.d.rates.find(x=>x.id===v.rateId);
+    const t = tierOf(this._tier);
+    const ovEl = document.getElementById('c-override');
+    const now = Date.now();
+
+    const rental = {
+      id: DB.id('r'), vehicleId: vid, status: 'open',
+      customerName: name, customerPhone: ph,
+      customerKyc: document.getElementById('c-kyc').value.trim(),
+      outAt: now, dueAt: now + t.hours*HOUR, tier: this._tier,
+      /* Snapshot, never a live lookup: a price change tomorrow must not
+         re-price a bike that is already on the road. */
+      rateSnapshot: { model: r.model, deposit: r.deposit, ot: r.ot, tiers: Object.assign({}, r.tiers) },
+      depositHeld: Number(document.getElementById('c-dep').value)||0,
+      advancePaid: Number(document.getElementById('c-adv').value)||0,
+      odoOut: Number(document.getElementById('c-odo').value)||0,
+      fuelOut: document.getElementById('c-fuel').value,
+      docOverride: !!(ovEl && ovEl.checked) ? this.docBlocked(v) : '',
+    };
+    DB.d.rentals.push(rental);
+    v.status = 'rented';
+    if (rental.odoOut) v.odo = rental.odoOut;
+
+    let c = DB.d.customers.find(x=>x.phone===ph);
+    if (!c) DB.d.customers.push({ id: DB.id('c'), name, phone: ph, kyc: rental.customerKyc });
+
+    DB.save(); closeSheet(); this.nav('out');
+    toast('Rented out · ' + v.regNo);
+    setTimeout(()=>this.waAgreement(rental.id), 500);
+  },
+
+  waAgreement(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
+    const t = tierOf(r.tier);
+    const msg =
+`*Rental confirmed*
+Vehicle: ${v.regNo} (${v.model})
+Out: ${fmtDT(r.outAt)}
+Due back: *${fmtDT(r.dueAt)}*
+Package: ${t.label} — ${money(r.rateSnapshot.tiers[r.tier])}
+Deposit held: ${money(r.depositHeld)} (refundable)
+Late return: ${money(r.rateSnapshot.ot)} per hour
+
+Please return on time to get your full deposit back.`;
+    window.open('https://wa.me/91' + r.customerPhone + '?text=' + encodeURIComponent(msg), '_blank');
+  },
+
+  /* ── CHECK-IN ───────────────────────────────────────────────────── */
+  checkinStart(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
+    const now = Date.now();
+    const hrs = hoursBetween(r.outAt, now);
+    const q = quote(r.rateSnapshot, r.tier, hrs);
+    this._ci = { id, hrs, q };
+
+    openSheet(`
+      <div class="sheet-hd"><h2>Check in</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="row"><b class="grow" style="font-size:16px">${esc(v.regNo)}</b>
+          <span class="pill ${now>r.dueAt?'late':'ok'}">${now>r.dueAt?'LATE':'ON TIME'}</span></div>
+        <div class="muted" style="margin-top:3px">${esc(r.customerName)} · ${esc(r.customerPhone)}</div>
+        <div class="muted" style="margin-top:5px">
+          Out ${fmtDT(r.outAt)}<br>Back ${fmtDT(now)} · used <b>${fmtDur(hrs)}</b>
+          (booked ${tierOf(r.tier).label})</div>
+      </div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Odometer in</label>
+          <input class="in" id="i-odo" type="number" inputmode="numeric" placeholder="${r.odoOut||'km'}"></div>
+        <div class="fld"><label class="lbl">Fuel in</label>
+          <select class="in" id="i-fuel">
+            ${['E','1/4','1/2','3/4','F'].map(f=>`<option ${f===r.fuelOut?'selected':''}>${f}</option>`).join('')}
+          </select></div>
+      </div>
+      <div class="sec-hd">Extra charges</div>
+      <div class="two">
+        <div class="fld"><label class="lbl">Damage</label>
+          <input class="in" id="i-dmg" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+        <div class="fld"><label class="lbl">Fuel shortfall</label>
+          <input class="in" id="i-fuelc" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+      </div>
+      <div class="fld"><label class="lbl">Other / fine</label>
+        <input class="in" id="i-other" type="number" inputmode="numeric" value="0" oninput="R.ciCalc()"></div>
+      <div id="i-settle"></div>
+      <button class="btn g" onclick="R.checkinSave()">Settle & return deposit</button>
+      <button class="btn ghost" style="margin-top:9px" onclick="R.waOverdue('${id}')">Send WhatsApp reminder</button>
+    `);
+    this.ciCalc();
+  },
+
+  ciUseAlt(){
+    const q = this._ci.q;
+    if (!q.alt) return;
+    this._ci.useAlt = !this._ci.useAlt;
+    this.ciCalc();
+  },
+
+  ciCalc(){
+    const { id, hrs, q } = this._ci;
+    const r = DB.d.rentals.find(x=>x.id===id);
+    const dmg   = Number(document.getElementById('i-dmg').value)||0;
+    const fuelc = Number(document.getElementById('i-fuelc').value)||0;
+    const other = Number(document.getElementById('i-other').value)||0;
+
+    const useAlt = this._ci.useAlt && q.alt;
+    const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
+    const charges = rentTotal + dmg + fuelc + other;
+    const due = charges - (Number(r.advancePaid)||0);
+    const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
+
+    document.getElementById('i-settle').innerHTML = `
+      <div class="card" style="background:var(--p-50);border-color:#D9E2EA">
+        <div class="line"><span>Rent · ${tierOf(r.tier).label}</span><b>${money(q.rent)}</b></div>
+        ${q.overtime>0 && !useAlt ? `<div class="line"><span>Overtime · ${q.hoursOver} hr × ${money(r.rateSnapshot.ot)}</span>
+          <b class="neg">${money(q.overtime)}</b></div>`:''}
+        ${useAlt ? `<div class="line"><span>Switched to ${q.alt.label} package</span>
+          <b class="pos">${money(q.alt.total - q.rent)}</b></div>`:''}
+        ${dmg?`<div class="line"><span>Damage</span><b class="neg">${money(dmg)}</b></div>`:''}
+        ${fuelc?`<div class="line"><span>Fuel</span><b class="neg">${money(fuelc)}</b></div>`:''}
+        ${other?`<div class="line"><span>Other / fine</span><b class="neg">${money(other)}</b></div>`:''}
+        ${r.advancePaid?`<div class="line"><span>Already paid</span><b class="pos">−${money(r.advancePaid)}</b></div>`:''}
+        <div class="line tot"><span>Customer owes</span><b>${money(Math.max(0,due))}</b></div>
+        <div class="line" style="border-top:1px dashed var(--bd);margin-top:6px;padding-top:10px">
+          <span>Deposit held</span><b>${money(r.depositHeld)}</b></div>
+        <div class="line tot" style="border:0;padding-top:4px">
+          <span>${refund>=0?'Refund to customer':'Still to collect'}</span>
+          <b class="${refund>=0?'pos':'neg'}">${money(Math.abs(refund))}</b></div>
+      </div>
+      ${q.alt ? `<div class="card tap" style="background:var(--y-tint);border-color:var(--y-bd)"
+          onclick="R.ciUseAlt()">
+          <div class="row"><div class="grow">
+            <b style="font-size:13.5px">${useAlt?'Using':'Cheaper for the customer:'} ${esc(q.alt.label)} package — ${money(q.alt.total)}</b>
+            <div class="muted" style="margin-top:3px;font-size:12px">
+              ${useAlt ? 'Tap to go back to straight overtime ('+money(q.straight)+').'
+                       : 'Straight overtime comes to '+money(q.straight)+'. Tap to charge the cheaper one instead.'}
+            </div></div>
+            <input type="checkbox" ${useAlt?'checked':''} style="width:19px;height:19px;pointer-events:none">
+          </div></div>` : ''}
+    `;
+  },
+
+  checkinSave(){
+    const { id, hrs, q } = this._ci;
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
+    const dmg   = Number(document.getElementById('i-dmg').value)||0;
+    const fuelc = Number(document.getElementById('i-fuelc').value)||0;
+    const other = Number(document.getElementById('i-other').value)||0;
+    const useAlt = this._ci.useAlt && q.alt;
+    const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
+    const charges = rentTotal + dmg + fuelc + other;
+    const due = charges - (Number(r.advancePaid)||0);
+    const refund = (Number(r.depositHeld)||0) - Math.max(0, due);
+
+    Object.assign(r, {
+      status: 'closed', returnedAt: Date.now(), settledAt: Date.now(),
+      hoursUsed: Math.round(hrs*100)/100,
+      odoIn: Number(document.getElementById('i-odo').value)||0,
+      fuelIn: document.getElementById('i-fuel').value,
+      charges: { rent: rentTotal, overtime: useAlt?0:q.overtime, damage: dmg, fuel: fuelc, other },
+      /* Revenue is rent + recoveries ONLY. The deposit never enters this
+         number; it is refunded, or forfeited into `forfeited` below. */
+      revenue: charges,
+      depositRefunded: Math.max(0, refund),
+      depositForfeited: refund < 0 ? 0 : (Number(r.depositHeld)||0) - Math.max(0, refund),
+      balanceCollected: Math.max(0, due),
+    });
+    if (v){ v.status = 'available'; if (r.odoIn) v.odo = r.odoIn; }
+    DB.save(); closeSheet(); this.nav('out');
+    toast(refund >= 0 ? 'Closed · refund ' + money(refund)
+                      : 'Closed · collect ' + money(Math.abs(refund)));
+  },
+
+  waOverdue(id){
+    const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
+    const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
+    const late = Date.now() > r.dueAt;
+    const msg = late
+      ? `Hello ${r.customerName}, your rental of ${v.regNo} was due back at ${fmtDT(r.dueAt)}.
+Overtime is running at ${money(r.rateSnapshot.ot)} per hour and comes out of your ${money(r.depositHeld)} deposit.
+Please return the vehicle as soon as you can.`
+      : `Hello ${r.customerName}, a reminder that ${v.regNo} is due back at ${fmtDT(r.dueAt)}.
+Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
+    window.open('https://wa.me/91' + r.customerPhone + '?text=' + encodeURIComponent(msg), '_blank');
+  },
+
+  /* ── MONEY ──────────────────────────────────────────────────────── */
+  renderMoney(){
+    const closed = DB.d.rentals.filter(r=>r.status==='closed');
+    const open   = DB.d.rentals.filter(r=>r.status==='open');
+    const rev    = closed.reduce((s,r)=>s+(Number(r.revenue)||0),0);
+    const held   = open.reduce((s,r)=>s+(Number(r.depositHeld)||0),0);
+    const forf   = closed.reduce((s,r)=>s+(Number(r.depositForfeited)||0),0);
+    const refd   = closed.reduce((s,r)=>s+(Number(r.depositRefunded)||0),0);
+
+    /* utilisation + payback per vehicle — the number a spreadsheet cannot give him */
+    const per = DB.d.vehicles.map(v=>{
+      const rs = closed.filter(r=>r.vehicleId===v.id);
+      const earned = rs.reduce((s,r)=>s+(Number(r.revenue)||0),0);
+      const hours  = rs.reduce((s,r)=>s+(Number(r.hoursUsed)||0),0);
+      return { v, earned, hours, trips: rs.length,
+               payback: v.cost ? Math.min(999, Math.round(earned/v.cost*100)) : null };
+    }).sort((a,b)=>b.earned-a.earned);
+
+    document.getElementById('money-body').innerHTML = `
+      <div class="card">
+        <div class="line"><span>Rental revenue <span class="muted">all time</span></span><b>${money(rev)}</b></div>
+        <div class="line"><span>Deposits refunded</span><b>${money(refd)}</b></div>
+        <div class="line"><span>Deposits forfeited <span class="muted">→ revenue</span></span><b>${money(forf)}</b></div>
+        <div class="line tot"><span>Deposits held now</span><b>${money(held)}</b></div>
+      </div>
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">${money(held)} of the cash you are holding is not yours</b>
+        <div class="muted" style="margin-top:4px">It is ${open.length} customer deposit${open.length===1?'':'s'}
+        waiting to be refunded. Revenue above excludes it — that is deliberate.</div>
+      </div>
+      <div class="sec-hd">Which bikes earn</div>
+      ${!per.length ? '<div class="muted" style="margin:0 2px">No vehicles yet.</div>' :
+        per.map(p=>`<div class="card">
+          <div class="row"><b class="grow ell">${esc(p.v.regNo)} <span class="muted">${esc(p.v.model)}</span></b>
+            <b>${money(p.earned)}</b></div>
+          <div class="muted" style="margin-top:4px">
+            ${p.trips} rental${p.trips===1?'':'s'} · ${Math.round(p.hours)} hrs on rent
+            ${p.payback!==null ? ' · <b style="color:'+(p.payback>=100?'var(--success-d)':'var(--t2)')+'">'
+              + p.payback + '% of cost recovered</b>' : ' · set purchase cost to track payback'}
+          </div>
+        </div>`).join('')}
+    `;
+  },
+};
+
+window.R = R;
+window.closeSheet = closeSheet;
+R.boot();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>navigator.serviceWorker.register('rentalnow-sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
