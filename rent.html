@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install RentalNow</title>
+<!-- A SHORT LINK, NOT AN INSTALL PAGE.
+
+     This file sits at the root of app.hisaabnow.com purely so the link you
+     paste into WhatsApp is short. It must not try to install anything itself.
+
+     A PWA's identity comes from the manifest that covers the page. At this
+     origin's root, that manifest is HisaabNow's — so an install button here
+     would install HisaabNow, under HisaabNow's name and icon, no matter what
+     the page said. And pointing this page at /Rent/manifest.webmanifest would
+     not help: Chrome requires the page to sit inside the manifest's scope, and
+     "/" is outside "/Rent/". beforeinstallprompt would simply never fire.
+
+     So this redirects into /Rent/ and lets the install happen there, in the
+     scope that actually belongs to RentalNow.
+
+     replace() rather than href, so the back button does not bounce the client
+     straight back here. -->
+<meta http-equiv="refresh" content="0; url=/Rent/install.html">
+<link rel="canonical" href="/Rent/install.html">
+<meta property="og:title" content="RentalNow — run your bike rental from your phone">
+<meta property="og:description" content="Rent out, take back, deposits, daily earnings. Works without signal.">
+<meta property="og:image" content="/Rent/icon-512.png">
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:24px;
+    background:radial-gradient(120% 90% at 15% 0%,#1C6291,#12466A 45%,#0A2C43);color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  a{color:#F5A623;font-weight:800}
+</style>
+</head>
+<body>
+  <p>Opening RentalNow…<br><a href="/Rent/install.html">Tap here if nothing happens</a></p>
+  <script>location.replace('/Rent/install.html');</script>
+</body>
+</html>
