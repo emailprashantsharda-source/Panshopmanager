@@ -3,7 +3,7 @@
  * shell must never outlive a new build. Cache is the offline fallback
  * only, after NAV_TIMEOUT.
  */
-const SW_VERSION = 'rn_v3_10_4_contact';
+const SW_VERSION = 'rn_v3_11_0_promo';
 const CACHE = 'rentalnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000;
 /* The document is listed twice on purpose: './' is what the manifest's
