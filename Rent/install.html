@@ -8,6 +8,20 @@
 <meta name="theme-color" content="#0F3D5C">
 
 <link rel="manifest" href="./manifest.webmanifest">
+
+<script>
+/* Chrome fires beforeinstallprompt once and does not replay it. If it lands
+   before the main script at the end of <body> has attached its listener, the
+   event is gone and no button can ever be shown. So it is caught here, in
+   <head>, before the page has parsed anything else, and parked on window for
+   whoever wants it. */
+window.__bip = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  window.__bip = e;
+  window.dispatchEvent(new Event('bip-ready'));
+});
+</script>
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
 
@@ -163,7 +177,7 @@ body{margin:0;background:var(--bg);color:var(--t1);line-height:1.5;
   var inApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp/i.test(ua) || /; wv\)/i.test(ua);
   var standalone = window.matchMedia('(display-mode: standalone)').matches ||
                    window.navigator.standalone === true;
-  var evt = null;
+  var evt = window.__bip || null;
 
   /* THE FIX FOR THE MISSING BUTTON.
      Chrome will not offer to install a page that has no service worker
@@ -193,17 +207,18 @@ body{margin:0;background:var(--bg);color:var(--t1);line-height:1.5;
     show('s-and', true);
   }
 
-  window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault();          /* hold it, so our own button can fire it */
-    evt = e;
+  /* Fired by the <head> stub, whether the event arrived before or after this
+     script ran. The menu steps deliberately stay put when the button appears —
+     yanking them away would strand anyone who taps Cancel. */
+  window.addEventListener('bip-ready', function(){
+    evt = window.__bip;
     show('go', true);
-    /* The menu steps deliberately stay put. Yanking them away the instant the
-       button appears would strand anyone who taps Cancel. */
   });
+  if (evt) show('go', true);
 
   document.getElementById('go').addEventListener('click', function(){
     if (!evt) return;
-    var e = evt; evt = null;      /* single use, by spec */
+    var e = evt; evt = null; window.__bip = null;   /* single use, by spec */
     show('go', false);
     e.prompt();
     e.userChoice.then(function(c){
@@ -233,6 +248,70 @@ body{margin:0;background:var(--bg);color:var(--t1);line-height:1.5;
     encodeURIComponent('RentalNow \u2014 I need help installing the app');
 
   route();
+
+  /* ── ?debug=1 ─────────────────────────────────────────────────────
+     Installability failures are silent by design: the browser simply
+     declines to fire an event. Remote-debugging a phone over USB to find
+     out why is not a thing anyone does on a Sunday, so the page can just
+     say what it knows. Not shown to clients — query param only. */
+  if (/[?&]debug=1/.test(location.search)) {
+    var lines = [];
+    var add = function(k, v){ lines.push([k, v]); };
+    add('URL', location.href);
+    add('install event', evt ? 'RECEIVED' : 'not received');
+    add('display-mode standalone', standalone ? 'yes (already installed)' : 'no');
+    add('iOS', isIOS ? 'yes' : 'no');
+    add('in-app browser', inApp ? 'YES — cannot install' : 'no');
+    add('serviceWorker API', ('serviceWorker' in navigator) ? 'yes' : 'NO');
+    add('SW controller', (navigator.serviceWorker && navigator.serviceWorker.controller)
+        ? 'yes' : 'NOT YET — reload once');
+    add('secure context', window.isSecureContext ? 'yes' : 'NO — needs https');
+
+    var box = document.createElement('div');
+    box.style.cssText = 'margin:18px 0;padding:14px 15px;border-radius:12px;' +
+      'background:#0A2C43;color:#fff;font:12px/1.6 ui-monospace,monospace;' +
+      'white-space:pre-wrap;word-break:break-all';
+    function paint(){
+      box.textContent = 'INSTALL DIAGNOSTIC\n\n' +
+        lines.map(function(l){ return l[0] + ': ' + l[1]; }).join('\n');
+    }
+    paint();
+    document.querySelector('.wrap').appendChild(box);
+
+    /* The manifest is the usual culprit: a 404, or served as something the
+       browser refuses to parse. Both are invisible without checking. */
+    fetch('./manifest.webmanifest', { cache: 'no-store' }).then(function(r){
+      add('manifest HTTP', r.status + ' ' + r.statusText);
+      add('manifest type', r.headers.get('content-type') || '(none)');
+      return r.text();
+    }).then(function(t){
+      try {
+        var m = JSON.parse(t);
+        add('manifest parsed', 'yes');
+        add('  name', m.name || '(missing)');
+        add('  start_url', m.start_url || '(missing)');
+        add('  display', m.display || '(missing)');
+        add('  icons', (m.icons || []).length + ' declared');
+      } catch(e){ add('manifest parsed', 'NO — not valid JSON'); }
+      paint();
+    }).catch(function(e){
+      add('manifest HTTP', 'FETCH FAILED — ' + e.message); paint();
+    });
+
+    /* Each icon has to actually exist. One 404 on the 192 or 512 and Chrome
+       silently drops the whole install offer. */
+    ['icon-192.png','icon-512.png','icon-192-maskable.png','icon-512-maskable.png']
+      .forEach(function(f){
+        fetch('./' + f, { method:'HEAD', cache:'no-store' })
+          .then(function(r){ add(f, r.ok ? 'ok ' + r.status : 'MISSING ' + r.status); paint(); })
+          .catch(function(){ add(f, 'FETCH FAILED'); paint(); });
+      });
+
+    setTimeout(function(){
+      add('install event after 12s', window.__bip ? 'RECEIVED' : 'still not received');
+      paint();
+    }, 12000);
+  }
 })();
 </script>
 </body>
