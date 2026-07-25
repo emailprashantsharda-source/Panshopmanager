@@ -542,7 +542,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_11_1_promo';
+const BUILD = 'rn_v3_12_0_promoplans';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1100,6 +1100,10 @@ const R = {
       ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>
 `:''}
       <button class="btn ghost" onclick="Cloud.logout()">Sign out</button>
+      <!-- Readable on the phone, because Android Chrome has no console and
+           "is my deploy live?" should not need a USB cable to answer. -->
+      <div class="muted" style="text-align:center;margin-top:14px;font-size:11.5px">
+        Build ${esc(typeof BUILD === 'string' ? BUILD : '?')}</div>
       ${this.isOwner()?`
         <div class="sec-hd" style="color:var(--danger)">Danger zone</div>
         <button class="btn ghost" style="color:var(--danger);border-color:var(--danger)"
@@ -1238,8 +1242,24 @@ const R = {
 
       <div class="muted" style="margin:0 2px 12px">You have <b>${fleet}</b> bike${fleet===1?'':'s'}.</div>
 
+      <div style="margin:0 2px 14px">
+        <div class="row" style="gap:8px">
+          <input class="in" id="pl-code" placeholder="Promo code" autocomplete="off"
+            value="${this._promo?esc(this._promo.code):''}" ${this._promo?'disabled':''}
+            onkeydown="if(event.key==='Enter'){R.applyPromo();}"
+            style="flex:1;border-style:dashed;border-color:var(--y);text-transform:uppercase;letter-spacing:.04em">
+          <button class="btn sm" style="background:var(--p-deep)" onclick="R.applyPromo()">Apply</button>
+        </div>
+        <div class="muted" id="pl-msg" style="margin-top:8px;display:${this._promoMsgPending?'block':'none'};
+          color:${this._promoMsgOk===true?'var(--success-d)':(this._promoMsgOk===false?'var(--danger)':'var(--t3)')}"
+          >${this._promoMsgPending||''}</div>
+      </div>
+
       ${this.PLANS.map(p=>{
-        const price = yearly ? p.y : p.m;
+        const list = yearly ? p.y : p.m;
+        const cut  = (this._promo && this._promo.prices && typeof this._promo.prices[p.id] === 'number')
+                     ? this._promo.prices[p.id] : null;
+        const price = cut === null ? list : cut;
         const rank  = this.planRank(p.id);
         const isCur = curRank >= 0 && rank === curRank;
         /* A plan that cannot hold the bikes he already owns is not a choice,
@@ -1269,9 +1289,12 @@ const R = {
               <div class="muted">${p.bikes ? 'Up to '+p.bikes+' bikes' : 'Unlimited · multiple branches'}</div>
             </div>
             <div style="text-align:right">
-              <div class="pl-p">${money(price)}</div>
+              ${cut!==null?`<div class="muted" style="font-size:12px;text-decoration:line-through">${money(list)}</div>`:''}
+              <div class="pl-p" style="${cut!==null?'color:var(--success-d)':''}">${money(price)}</div>
               <div class="muted" style="font-size:11px">${yearly?'per year':'per month'}</div>
-              ${yearly?`<div class="pl-save">save ${money(p.m*12 - p.y)}</div>`:''}
+              ${cut!==null
+                ? `<div class="pl-save">${esc(this._promo.code)}</div>`
+                : (yearly?`<div class="pl-save">save ${money(p.m*12 - p.y)}</div>`:'')}
             </div>
           </div>
           <button class="btn ${cls}" style="margin-top:11px" ${dis}
@@ -1284,7 +1307,18 @@ const R = {
         Prices exclude GST.</div>
     `);
   },
-  setBilling(b){ this._billing = b; Haptic.tap(); this.plans(); },
+  setBilling(b){
+    this._billing = b; Haptic.tap();
+    /* A code can be valid yearly and not monthly. Dropping it on a cycle
+       switch is the honest move — silently carrying a yearly-only discount
+       onto monthly prices would show a number PayU refuses to honour. */
+    if (this._promo && this._promo.cycle !== (b === 'y' ? 'annual' : 'monthly')){
+      this._promo = null;
+      this._promoMsgPending = 'Promo code cleared \u2014 re-apply it for this billing period.';
+      this._promoMsgOk = null;
+    }
+    this.plans();
+  },
 
   async choosePlan(id){
     const p = this.PLANS.find(x=>x.id===id); if (!p) return;
@@ -1309,111 +1343,18 @@ const R = {
     if (p.bikes !== null && fleet > p.bikes)
       return toast(p.name + ' covers ' + p.bikes + ' bikes — you have ' + fleet);
     Haptic.primary();
-    /* A review step, rather than going straight to PayU. It exists because a
-       promo code needs somewhere to be typed, and it earns its place anyway:
-       the last screen before money leaves should say what is being bought and
-       what it costs. */
-    this.review(p.id);
-  },
-
-  /* ── review & pay ────────────────────────────────────────────────────
-     Mirrors the HisaabNow checkout: plan, price, a dashed promo field, and a
-     Pay button carrying the amount. _promo holds the previewed discount for
-     this sheet only and is cleared whenever the sheet is reopened, so a code
-     applied to Growth cannot follow the shopkeeper to Pro. */
-  _promo: null,
-  review(id){
-    const p = this.planById(id); if (!p) return;
     const yearly = this._billing === 'y';
-    const base = yearly ? p.y : p.m;
-    this._promo = null;
-    this._reviewId = id;
-    openSheet(`<div class="sheet-hd"><h2>Confirm &amp; pay</h2>
-        <button class="btn ghost sm" onclick="R.plans()">Back</button></div>
-
-      <div class="card">
-        <div class="row" style="margin-bottom:2px">
-          <b class="grow" style="font-size:16px;letter-spacing:-.02em">${esc(p.name)}</b>
-          <span class="pill out">${yearly?'YEARLY':'MONTHLY'}</span></div>
-        <div class="muted">${p.bikes ? 'Up to '+p.bikes+' bikes' : 'Any number of bikes \u00b7 many branches'}</div>
-        <div class="line" style="margin-top:9px"><span>Plan price</span><b id="rv-base">${money(base)}</b></div>
-        <div class="line" id="rv-disc-row" style="display:none">
-          <span>Discount</span><b class="pos" id="rv-disc"></b></div>
-        <div class="line tot"><span>To pay</span><b id="rv-total">${money(base)}</b></div>
-      </div>
-
-      <div style="margin:0 2px 14px">
-        <div class="row" style="gap:8px">
-          <input class="in" id="rv-code" placeholder="Promo code" autocomplete="off"
-            onkeydown="if(event.key==='Enter'){R.applyPromo();}"
-            style="flex:1;border-style:dashed;border-color:var(--y);text-transform:uppercase;letter-spacing:.04em">
-          <button class="btn sm" style="background:var(--p-deep)" onclick="R.applyPromo()">Apply</button>
-        </div>
-        <div class="muted" id="rv-msg" style="margin-top:8px;display:none"></div>
-      </div>
-
-      <button class="btn" id="rv-pay" onclick="R.payNow()">Pay ${money(base)}</button>
-      <div class="muted" style="text-align:center;margin-top:10px">Prices exclude GST</div>`);
-  },
-
-  _rvMsg(html, state){
-    const el = document.getElementById('rv-msg'); if (!el) return;
-    el.style.display = 'block';
-    el.style.color = state === true ? 'var(--success-d)'
-                   : (state === false ? 'var(--danger)' : 'var(--t3)');
-    el.innerHTML = html;
-  },
-
-  async applyPromo(){
-    const inp = document.getElementById('rv-code');
-    const code = ((inp && inp.value) || '').trim().toUpperCase();
-    if (!code) return this._rvMsg('Enter a promo code', false);
-    const p = this.planById(this._reviewId); if (!p) return;
-    const yearly = this._billing === 'y';
-    const base = yearly ? p.y : p.m;
-    this._rvMsg('Checking\u2026', null);
-    const d = await Cloud.checkPromo(p.id, yearly ? 'annual' : 'monthly', code);
-    if (!(d && d.valid && typeof d.finalPrice === 'number')){
-      this._promo = null;
-      Haptic.error();
-      return this._rvMsg(esc((d && d.reason) || 'Invalid or expired code'), false);
-    }
-    this._promo = { code: code, finalPrice: d.finalPrice };
-    Haptic.success();
-    const saved = Math.max(0, base - d.finalPrice);
-    const dr = document.getElementById('rv-disc-row');
-    if (dr) dr.style.display = '';
-    const dd = document.getElementById('rv-disc');
-    if (dd) dd.textContent = '\u2212 ' + money(saved);
-    const tt = document.getElementById('rv-total'); if (tt) tt.textContent = money(d.finalPrice);
-    const pb = document.getElementById('rv-pay');  if (pb) pb.textContent = 'Pay ' + money(d.finalPrice);
-    if (inp) inp.setAttribute('disabled','disabled');
-    this._rvMsg('\u2713 <b>' + esc(code) + '</b> applied \u2014 you save ' + money(saved) +
-      '. <span style="color:var(--danger);font-weight:800;text-decoration:underline;cursor:pointer" onclick="R.clearPromo()">Remove</span>', true);
-  },
-
-  clearPromo(){
-    this._promo = null;
-    const p = this.planById(this._reviewId); if (!p) return;
-    const base = this._billing === 'y' ? p.y : p.m;
-    const dr = document.getElementById('rv-disc-row'); if (dr) dr.style.display = 'none';
-    const tt = document.getElementById('rv-total'); if (tt) tt.textContent = money(base);
-    const pb = document.getElementById('rv-pay');  if (pb) pb.textContent = 'Pay ' + money(base);
-    const inp = document.getElementById('rv-code');
-    if (inp){ inp.value = ''; inp.removeAttribute('disabled'); }
-    const m = document.getElementById('rv-msg'); if (m) m.style.display = 'none';
-  },
-
-  async payNow(){
-    const p = this.planById(this._reviewId); if (!p) return;
-    const yearly = this._billing === 'y';
-    const shown = this._promo ? this._promo.finalPrice : (yearly ? p.y : p.m);
-    Haptic.primary();
+    /* Straight to PayU. The code, if one is applied and valid for THIS tier,
+       rides along as a string — the server re-prices it and decides the
+       amount. A promo that does not cover this plan is simply not sent. */
+    const promo = (this._promo && this._promo.prices &&
+                   typeof this._promo.prices[p.id] === 'number') ? this._promo.code : null;
+    const shown = promo ? this._promo.prices[p.id] : (yearly ? p.y : p.m);
     openSheet(`<div class="sheet-hd"><h2>Opening payment\u2026</h2></div>
       <div class="empty"><div class="e">\u{1F4B3}</div><b>Taking you to PayU</b>
-      <span>${esc(p.name)} \u00b7 ${money(shown)} ${yearly?'per year':'per month'}</span></div>`);
-    const res = await Cloud.startCheckout(p.id, yearly ? 'annual' : 'monthly',
-                                          this._promo ? this._promo.code : null);
+      <span>${esc(p.name)} \u00b7 ${money(shown)} ${yearly?'per year':'per month'}${
+        promo?' \u00b7 '+esc(promo):''}</span></div>`);
+    const res = await Cloud.startCheckout(p.id, yearly ? 'annual' : 'monthly', promo);
     if (!res.ok){
       Haptic.error();
       openSheet(`<div class="sheet-hd"><h2>Could not start payment</h2>
@@ -1422,41 +1363,64 @@ const R = {
           <div class="muted">${esc(res.msg||'Please try again.')}</div>
           ${res.wrongProduct?'<div class="muted" style="margin-top:6px">No payment was started, so nothing could be charged to the wrong plan.</div>':''}
         </div>
-        <button class="btn" onclick="R.payHelp('${esc(p.id)}')">Pay on WhatsApp instead</button>`);
+        <button class="btn" onclick="R.payHelp('${esc(id)}')">Pay on WhatsApp instead</button>`);
     }
   },
 
-  /* Deliberately a conversation, not a checkout. Says out loud what the
-     shop stands to lose so the offer to handle it by hand reads as a
-     protection rather than an obstacle. */
-  planChangeHelp(id){
-    const t = Cloud.trialInfo();
-    const from = this.planById(t.tier), to = this.planById(id);
-    if (!to) return this.plans();
-    const up = from && this.planRank(id) > this.planRank(from.id);
-    openSheet(`<div class="sheet-hd"><h2>${up?'Upgrade':'Change'} to ${esc(to.name)}</h2>
-        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
-      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
-        <b style="font-size:13.5px">You have ${t.subDaysLeft} day${t.subDaysLeft===1?'':'s'} left on
-          ${esc(from?from.name:'your plan')}</b>
-        <div class="muted" style="margin-top:3px">If you pay for ${esc(to.name)} through the app
-        right now, those days do not carry over. We would rather set this up by hand and credit
-        what you have already paid for.</div></div>
-      <div class="muted" style="margin:0 2px 14px;line-height:1.55">Message us and we will move you to
-        ${esc(to.name)}, work out the difference, and send you a payment link for that amount only.</div>
-      <button class="btn" onclick="R.planChangeWhatsApp('${esc(id)}')">Message us to ${up?'upgrade':'change'}</button>
-      <button class="btn ghost" style="margin-top:9px" onclick="R.plans()">Back to plans</button>`);
+  /* ── promo codes, on the plans list ──────────────────────────────────
+     One field above the four cards rather than one per card. A code is
+     checked against every plan at once, so the list itself re-prices and a
+     shopkeeper can see which plans the code actually covers instead of
+     discovering it after picking one.
+
+     _promo.prices is a map of tier -> discounted price, holding only the
+     tiers the code is valid for. A tier missing from that map keeps its list
+     price and buys at list price. */
+  _promo: null,
+
+  async applyPromo(){
+    const inp = document.getElementById('pl-code');
+    const code = ((inp && inp.value) || '').trim().toUpperCase();
+    if (!code) return this._plMsg('Enter a promo code', false);
+    const cycle = this._billing === 'y' ? 'annual' : 'monthly';
+    this._plMsg('Checking\u2026', null);
+    /* Four checks in parallel, because the answer differs per plan and the
+       shopkeeper should not have to tap four times to find that out. */
+    const res = await Promise.all(this.PLANS.map(p =>
+      Cloud.checkPromo(p.id, cycle, code).then(d => ({ id:p.id, d }))));
+    const prices = {}; let anyReason = '';
+    res.forEach(r => {
+      if (r.d && r.d.valid && typeof r.d.finalPrice === 'number') prices[r.id] = r.d.finalPrice;
+      else if (!anyReason && r.d && r.d.reason) anyReason = r.d.reason;
+    });
+    const hits = Object.keys(prices);
+    if (!hits.length){
+      this._promo = null; Haptic.error();
+      this._promoMsgPending = esc(anyReason || 'Invalid or expired code');
+      this._promoMsgOk = false;
+      return this._plMsg(this._promoMsgPending, false);
+    }
+    this._promo = { code, prices, cycle };
+    Haptic.success();
+    const names = hits.map(h => (this.planById(h)||{}).name).filter(Boolean).join(', ');
+    this._promoMsgPending = '\u2713 <b>' + esc(code) + '</b> applied to ' + esc(names) +
+      '. <span style="color:var(--danger);font-weight:800;text-decoration:underline" onclick="R.clearPromo()">Remove</span>';
+    this._promoMsgOk = true;
+    this.plans();          /* re-render so the cards show the new prices */
   },
-  planChangeWhatsApp(id){
-    const t = Cloud.trialInfo();
-    const from = this.planById(t.tier), to = this.planById(id);
-    const L = ['RentalNow — I want to change my plan',
-      'From: ' + (from?from.name:'(unknown)') + (t.cycle?' ('+t.cycle+')':''),
-      'To: ' + (to?to.name:id),
-      'Days left: ' + t.subDaysLeft,
-      'Business: ' + (Cloud.shopName||''),
-      'Shop ID: ' + (Cloud.shopId||'')];
-    window.open('https://wa.me/919289792666?text=' + encodeURIComponent(L.join('\n')), '_blank');
+
+  clearPromo(){
+    this._promo = null;
+    this._promoMsgPending = ''; this._promoMsgOk = null;
+    this.plans();
+  },
+
+  _plMsg(html, ok){
+    const el = document.getElementById('pl-msg'); if (!el) return;
+    el.style.display = 'block';
+    el.style.color = ok === true ? 'var(--success-d)'
+                   : (ok === false ? 'var(--danger)' : 'var(--t3)');
+    el.innerHTML = html;
   },
 
   /* If checkout fails there still has to be a way to give you money. */
