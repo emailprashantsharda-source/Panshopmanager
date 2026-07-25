@@ -98,27 +98,32 @@ h3{font-size:17px;font-weight:850;letter-spacing:-.02em}
   border:1px solid rgba(255,255,255,.16);transform:translateY(14px)}
 .ph-top{background:var(--navy);color:#fff;border-radius:18px 18px 6px 6px;padding:11px 13px;
   display:flex;align-items:center;gap:9px}
-.ph-top .t{flex:1}
-.ph-top .t b{display:block;font-size:13.5px;font-weight:875;letter-spacing:-.02em}
-.ph-top .t span{font-size:10px;color:#BFD4E2}
-.ph-top .av{width:26px;height:26px;border-radius:99px;background:rgba(255,255,255,.2)}
-.ph-body{padding:9px 4px 4px}
-.kpis{display:flex;gap:6px;margin-bottom:9px}
-.kpi{flex:1;background:#fff;border:1px solid var(--bd);border-radius:11px;padding:8px 5px;
-  text-align:center}
-.kpi .l{font-size:8px;font-weight:850;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
-.kpi .v{font-size:15px;font-weight:875;letter-spacing:-.03em;margin-top:1px}
-.kpi.warn .v{color:var(--danger)}
-.kpi.dep{background:#FFF4E0;border-color:#F0D9A8}
-.rcard{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:10px 11px;
-  margin-bottom:7px}
-.rcard .r1{display:flex;align-items:center;gap:6px}
-.rcard .r1 b{font-size:13px;font-weight:875;letter-spacing:-.02em}
-.pill{font-size:8.5px;font-weight:850;padding:2px 7px;border-radius:99px;letter-spacing:.02em}
-.pill.late{background:var(--danger-t);color:var(--danger)}
-.pill.out{background:#E8F0F7;color:var(--navy)}
-.rcard .m{font-size:10.5px;color:var(--t3);margin-top:2px}
-.rcard .d{font-size:10.5px;color:var(--t2);margin-top:3px;font-weight:650}
+.ph-top .ph-t{flex:1}
+.ph-top .ph-t b{display:block;font-size:13.5px;font-weight:875;letter-spacing:-.02em}
+.ph-top .ph-t span{font-size:10px;color:#BFD4E2}
+.ph-top .ph-av{width:26px;height:26px;border-radius:99px;background:rgba(255,255,255,.2)}
+.ph-body{padding:9px 4px 4px;
+  /* The hero sets color:#fff for its own copy. Everything inside the phone
+     body sits on white or cream cards, so it has to opt back into dark text —
+     otherwise the numbers and bike names render white on white and simply are
+     not there. Set once here rather than on nine child rules. */
+  color:var(--t1)}
+.ph-kpis{display:flex;gap:6px;margin-bottom:9px}
+.ph-kpi{flex:1;background:#fff;border:1px solid var(--bd);border-radius:11px;padding:8px 5px;
+  text-align:center;color:var(--t1)}
+.ph-kpi .ph-l{font-size:8px;font-weight:850;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.ph-kpi .ph-v{font-size:15px;font-weight:875;letter-spacing:-.03em;margin-top:1px}
+.ph-kpi.warn .ph-v{color:var(--danger)}
+.ph-kpi.dep{background:#FFF4E0;border-color:#F0D9A8}
+.ph-card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:10px 11px;
+  margin-bottom:7px;color:var(--t1)}
+.ph-card .ph-r1{display:flex;align-items:center;gap:6px}
+.ph-card .ph-r1 b{font-size:13px;font-weight:875;letter-spacing:-.02em}
+.ph-pill{font-size:8.5px;font-weight:850;padding:2px 7px;border-radius:99px;letter-spacing:.02em}
+.ph-pill.late{background:var(--danger-t);color:var(--danger)}
+.ph-pill.out{background:#E8F0F7;color:var(--navy)}
+.ph-card .ph-m{font-size:10.5px;color:var(--t3);margin-top:2px}
+.ph-card .ph-d{font-size:10.5px;color:var(--t2);margin-top:3px;font-weight:650}
 
 /* ── problem strip ── */
 .pain{background:var(--ink);color:#fff;padding:44px 0}
@@ -148,11 +153,6 @@ h3{font-size:17px;font-weight:850;letter-spacing:-.02em}
 .f p{font-size:13.8px;color:var(--t2)}
 
 /* ── testimonials ── */
-.t{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px;
-  position:relative}
-.t .who i{width:34px;height:34px;border-radius:99px;background:#E8F0F7;flex:0 0 auto}
-.t .who b{display:block;font-size:13.5px;font-weight:850}
-.t .who span{font-size:12px;color:var(--t3)}
 
 /* ── pricing ── */
 /* The toggle carries a sliding indicator rather than just recolouring the
@@ -272,31 +272,31 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
       <div>
         <div class="phone" aria-hidden="true">
           <div class="ph-top">
-            <div class="av"></div>
-            <div class="t"><b>Sharma Bike Rentals</b><span>Out Now</span></div>
+            <div class="ph-av"></div>
+            <div class="ph-t"><b>Sharma Bike Rentals</b><span>Out Now</span></div>
           </div>
           <div class="ph-body">
-            <div class="kpis">
-              <div class="kpi"><div class="l">Out</div><div class="v">7</div></div>
-              <div class="kpi warn"><div class="l">Late</div><div class="v">1</div></div>
-              <div class="kpi"><div class="l">Today</div><div class="v">4,150</div></div>
+            <div class="ph-kpis">
+              <div class="ph-kpi"><div class="ph-l">Out</div><div class="ph-v">7</div></div>
+              <div class="ph-kpi warn"><div class="ph-l">Late</div><div class="ph-v">1</div></div>
+              <div class="ph-kpi"><div class="ph-l">Today</div><div class="ph-v">₹4,150</div></div>
             </div>
-            <div class="kpis"><div class="kpi dep" style="text-align:left;padding:9px 11px">
-              <div class="l">Deposits held</div><div class="v">₹14,000</div></div></div>
-            <div class="rcard">
-              <div class="r1"><b>Activa 6G</b><span class="pill late">OVERDUE 2h 15m</span></div>
-              <div class="m">DL 3S AB 1234 · Rohit Verma</div>
-              <div class="d">Due 1:30 pm · 12 hr · deposit ₹2,000</div>
+            <div class="ph-kpis"><div class="ph-kpi dep" style="text-align:left;padding:9px 11px">
+              <div class="ph-l">Deposits held</div><div class="ph-v">₹14,000</div></div></div>
+            <div class="ph-card">
+              <div class="ph-r1"><b>Activa 6G</b><span class="ph-pill late">OVERDUE 2h 15m</span></div>
+              <div class="ph-m">DL 3S AB 1234 · Rohit Verma</div>
+              <div class="ph-d">Due 1:30 pm · 12 hr · deposit ₹2,000</div>
             </div>
-            <div class="rcard">
-              <div class="r1"><b>Jupiter 125</b><span class="pill out">OUT</span></div>
-              <div class="m">DL 8S CX 4471 · Meena K.</div>
-              <div class="d">Due 7:00 pm · 6 hr · deposit ₹1,500</div>
+            <div class="ph-card">
+              <div class="ph-r1"><b>Jupiter 125</b><span class="ph-pill out">OUT</span></div>
+              <div class="ph-m">DL 8S CX 4471 · Meena K.</div>
+              <div class="ph-d">Due 7:00 pm · 6 hr · deposit ₹1,500</div>
             </div>
-            <div class="rcard" style="margin-bottom:2px">
-              <div class="r1"><b>Pulsar 150</b><span class="pill out">OUT</span></div>
-              <div class="m">DL 1S PQ 9032 · Aman S.</div>
-              <div class="d">Due tomorrow 9:00 am · 24 hr · deposit ₹3,000</div>
+            <div class="ph-card" style="margin-bottom:2px">
+              <div class="ph-r1"><b>Pulsar 150</b><span class="ph-pill out">OUT</span></div>
+              <div class="ph-m">DL 1S PQ 9032 · Aman S.</div>
+              <div class="ph-d">Due tomorrow 9:00 am · 24 hr · deposit ₹3,000</div>
             </div>
           </div>
         </div>
