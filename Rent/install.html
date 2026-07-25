@@ -3,315 +3,616 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Install RentalNow</title>
-<meta name="description" content="Put RentalNow on your phone. Rent out bikes, take them back, track deposits and daily earnings. Works without signal.">
-<meta name="theme-color" content="#0F3D5C">
-
+<title>RentalNow — run your bike rental from your phone</title>
+<meta name="description" content="Rent out bikes, take them back, settle deposits and see today's earnings. Built for Indian bike and scooter rental shops. Works without signal.">
+<meta name="theme-color" content="#0A2C43">
 <link rel="manifest" href="./manifest.webmanifest">
-
-<script>
-/* Chrome fires beforeinstallprompt once and does not replay it. If it lands
-   before the main script at the end of <body> has attached its listener, the
-   event is gone and no button can ever be shown. So it is caught here, in
-   <head>, before the page has parsed anything else, and parked on window for
-   whoever wants it. */
-window.__bip = null;
-window.addEventListener('beforeinstallprompt', function(e){
-  e.preventDefault();
-  window.__bip = e;
-  window.dispatchEvent(new Event('bip-ready'));
-});
-</script>
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
-
 <meta property="og:title" content="RentalNow — run your bike rental from your phone">
 <meta property="og:description" content="Rent out, take back, deposits, daily earnings. Works without signal.">
 <meta property="og:image" content="./icon-512.png">
 <meta property="og:type" content="website">
-
+<script>
+/* Caught in <head> because Chrome fires this once and never replays it. */
+window.__bip=null;
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;
+  window.dispatchEvent(new Event('bip-ready'));});
+</script>
 <style>
 :root{
-  --p:#0F3D5C; --p-deep:#0A2C43; --y:#F5A623;
-  --bg:#FBF7F0; --card:#fff; --bd:#E4E0D8;
-  --t1:#0A0A0A; --t2:#454545; --t3:#6B6B6B; --plate:#F2EFE8;
+  --navy:#0F3D5C; --deep:#0A2C43; --ink:#061C2C;
+  --amber:#F5A623; --amber-d:#D98B05;
+  --cream:#FBF7F0; --card:#fff; --bd:#E4E0D8;
+  --t1:#0A0A0A; --t2:#454545; --t3:#6B6B6B; --t4:#9C9C9C;
+  --ok:#048A45; --ok-t:#E7F9F0; --danger:#E11900; --danger-t:#FDECEA;
+  --max:1080px;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--t1);line-height:1.5;
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif}
-.wrap{max-width:430px;margin:0 auto;padding:22px 18px 44px}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--t1);line-height:1.55;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  font-size:16px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+section{padding:56px 0}
+h1,h2,h3{letter-spacing:-.03em;line-height:1.14}
+h1{font-size:clamp(30px,7.4vw,50px);font-weight:900}
+h2{font-size:clamp(23px,4.6vw,34px);font-weight:875;margin-bottom:10px}
+h3{font-size:17px;font-weight:850;letter-spacing:-.02em}
+.eyebrow{font-size:11.5px;font-weight:850;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--amber-d);margin-bottom:12px}
+.lede{font-size:clamp(15px,2.2vw,18px);color:var(--t2);max-width:56ch}
 
-.mark{display:block;margin:0 auto 18px;border-radius:21px;
-  box-shadow:0 12px 30px -14px rgba(10,44,67,.7)}
-
-.plate{background:var(--plate);border:3px solid var(--p-deep);border-radius:9px;
-  display:flex;align-items:stretch;overflow:hidden;position:relative;
-  box-shadow:0 10px 26px -14px rgba(10,44,67,.6)}
-.plate .ind{background:var(--p-deep);color:#fff;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;padding:0 8px;gap:3px}
-.plate .ind span{font-size:9px;font-weight:800;letter-spacing:.14em}
-.plate .ind i{display:block;width:11px;height:11px;border-radius:2px;background:var(--y)}
-.plate .txt{flex:1;text-align:center;padding:13px 6px 11px;
-  font-size:clamp(25px,8vw,36px);font-weight:900;letter-spacing:-.02em;color:#101010}
-.plate .rivet{position:absolute;top:50%;width:6px;height:6px;border-radius:99px;
-  background:#C9C3B6;transform:translateY(-50%)}
-.plate .rivet.l{left:7px} .plate .rivet.r{right:7px}
-
-.tag{text-align:center;font-size:14.5px;color:var(--t2);margin:15px 6px 20px}
-.tag b{color:var(--t1)}
-
-.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
-  border:0;border-radius:13px;padding:16px;font-size:16px;font-weight:800;
-  letter-spacing:-.015em;cursor:pointer;background:var(--p);color:#fff;
-  text-decoration:none;font-family:inherit;
-  box-shadow:0 10px 24px -12px rgba(15,61,92,.9);transition:transform .09s ease,filter .09s}
+/* ── buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  border:0;border-radius:13px;padding:17px 26px;font-size:16.5px;font-weight:850;
+  letter-spacing:-.015em;cursor:pointer;text-decoration:none;font-family:inherit;
+  background:var(--amber);color:#0A0A0A;transition:transform .09s ease,filter .1s;
+  box-shadow:0 12px 26px -12px rgba(245,166,35,.85)}
 .btn:active{transform:scale(.975);filter:brightness(.95)}
-.btn.y{background:var(--y);color:#0A0A0A;box-shadow:0 10px 24px -12px rgba(245,166,35,.9)}
-.btn.ghost{background:var(--card);color:var(--t1);border:1.5px solid var(--bd);box-shadow:none}
-.btn + .btn{margin-top:10px}
+.btn.dark{background:var(--navy);color:#fff;box-shadow:0 12px 26px -12px rgba(15,61,92,.9)}
+.btn.line{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.34);box-shadow:none}
+.btn.line.ink{color:var(--navy);border-color:var(--bd)}
+.btn.wide{width:100%}
+.cta-row{display:flex;gap:11px;flex-wrap:wrap;margin-top:26px}
+.cta-note{font-size:13px;color:var(--t3);margin-top:13px}
 
-/* Instructions sit ABOVE the feature list. When the browser will not hand us
-   an install event, the menu route is the only thing on this page that
-   actually installs anything — it must never be below the fold. */
-.steps{background:var(--card);border:1px solid var(--bd);border-radius:14px;
-  padding:15px 16px;margin-top:18px}
-.steps h2{font-size:13px;font-weight:850;margin:0 0 9px;text-transform:uppercase;
-  letter-spacing:.06em;color:var(--t3)}
-.steps ol{margin:0;padding-left:19px;font-size:14.5px;color:var(--t2)}
-.steps li{margin-bottom:6px}
-.steps li b{color:var(--t1)}
-.steps .note{font-size:12.5px;color:var(--t3);margin-top:10px}
-.kbd{display:inline-block;padding:1px 7px;background:#F1EFE9;border:1px solid var(--bd);
-  border-radius:6px;font-weight:800;font-size:13px}
+/* ── hero ── */
+.hero{background:radial-gradient(120% 90% at 12% 0%,#1C6291 0%,#12466A 45%,#0A2C43 100%);
+  color:#fff;padding:26px 0 0;overflow:hidden;position:relative}
+.hero:before{content:'';position:absolute;right:-120px;top:-90px;width:340px;height:340px;
+  border-radius:50%;background:rgba(255,255,255,.045)}
+.hero:after{content:'';position:absolute;left:-90px;bottom:120px;width:260px;height:260px;
+  border-radius:50%;background:rgba(245,166,35,.07)}
+.nav{display:flex;align-items:center;gap:11px;position:relative;z-index:2}
+.nav img{width:38px;height:38px;border-radius:11px}
+.nav b{font-size:17px;font-weight:875;letter-spacing:-.03em;flex:1}
+.nav a{color:#BFD4E2;font-size:14px;font-weight:700;text-decoration:none}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:end;
+  padding:44px 0 0;position:relative;z-index:2}
+.hero .lede{color:#CBDCE8}
+.hero h1 em{font-style:normal;color:var(--amber)}
+.hero .cta-note{color:#9FBACD}
 
-.does{margin:24px 0 4px;border-top:1px solid var(--bd)}
-.does div{display:flex;gap:12px;align-items:baseline;padding:13px 2px;
-  border-bottom:1px solid var(--bd);font-size:14.5px}
-.does b{flex:0 0 auto;color:var(--p);font-weight:850}
-.does span{color:var(--t2)}
+/* signature: the number plate */
+.plate{display:inline-flex;align-items:stretch;overflow:hidden;position:relative;
+  background:#F2EFE8;border:3px solid #061C2C;border-radius:8px;margin-bottom:20px;
+  box-shadow:0 10px 24px -12px rgba(0,0,0,.55)}
+.plate .ind{background:#061C2C;color:#fff;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:0 7px;gap:3px}
+.plate .ind span{font-size:8px;font-weight:800;letter-spacing:.14em}
+.plate .ind i{width:9px;height:9px;border-radius:2px;background:var(--amber)}
+.plate .txt{padding:7px 16px;font-size:15px;font-weight:900;color:#101010;letter-spacing:.02em}
+/* A plate is more convincing holding something plate-shaped than holding a
+   marketing label, so it carries a registration and the audience line moves
+   out to text where labels belong. */
+.plate .txt.reg{font-size:17px;letter-spacing:.07em;padding:6px 17px}
+.plate .rivet{position:absolute;top:50%;right:6px;width:5px;height:5px;border-radius:99px;
+  background:#C9C3B6;transform:translateY(-50%)}
+.audience{font-size:12px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:11px}
 
-.foot{text-align:center;font-size:12.5px;color:var(--t3);margin-top:26px;line-height:1.7}
-.foot a{color:var(--p);font-weight:700}
-[hidden]{display:none !important}
-:focus-visible{outline:2.5px solid var(--y);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){ .btn{transition:none} }
+/* ── phone mock: the app's real Out Now screen ── */
+.phone{width:100%;max-width:310px;margin:0 auto;background:var(--cream);
+  border-radius:26px;padding:9px;box-shadow:0 30px 60px -24px rgba(0,0,0,.6);
+  border:1px solid rgba(255,255,255,.16);transform:translateY(14px)}
+.ph-top{background:var(--navy);color:#fff;border-radius:18px 18px 6px 6px;padding:11px 13px;
+  display:flex;align-items:center;gap:9px}
+.ph-top .t{flex:1}
+.ph-top .t b{display:block;font-size:13.5px;font-weight:875;letter-spacing:-.02em}
+.ph-top .t span{font-size:10px;color:#BFD4E2}
+.ph-top .av{width:26px;height:26px;border-radius:99px;background:rgba(255,255,255,.2)}
+.ph-body{padding:9px 4px 4px}
+.kpis{display:flex;gap:6px;margin-bottom:9px}
+.kpi{flex:1;background:#fff;border:1px solid var(--bd);border-radius:11px;padding:8px 5px;
+  text-align:center}
+.kpi .l{font-size:8px;font-weight:850;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font-size:15px;font-weight:875;letter-spacing:-.03em;margin-top:1px}
+.kpi.warn .v{color:var(--danger)}
+.kpi.dep{background:#FFF4E0;border-color:#F0D9A8}
+.rcard{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:10px 11px;
+  margin-bottom:7px}
+.rcard .r1{display:flex;align-items:center;gap:6px}
+.rcard .r1 b{font-size:13px;font-weight:875;letter-spacing:-.02em}
+.pill{font-size:8.5px;font-weight:850;padding:2px 7px;border-radius:99px;letter-spacing:.02em}
+.pill.late{background:var(--danger-t);color:var(--danger)}
+.pill.out{background:#E8F0F7;color:var(--navy)}
+.rcard .m{font-size:10.5px;color:var(--t3);margin-top:2px}
+.rcard .d{font-size:10.5px;color:var(--t2);margin-top:3px;font-weight:650}
+
+/* ── problem strip ── */
+.pain{background:var(--ink);color:#fff;padding:44px 0}
+.pain h2{color:#fff}
+.pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
+.pain-c{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.11);
+  border-radius:15px;padding:19px}
+.pain-c .q{font-size:15.5px;font-weight:800;color:var(--amber);margin-bottom:7px;letter-spacing:-.02em}
+.pain-c p{font-size:14px;color:#B9CCDA}
+
+/* ── steps ── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+.step{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:22px 20px;
+  position:relative}
+.step .n{position:absolute;top:-13px;left:20px;width:28px;height:28px;border-radius:9px;
+  background:var(--navy);color:#fff;font-size:13px;font-weight:875;
+  display:flex;align-items:center;justify-content:center}
+.step h3{margin:8px 0 6px}
+.step p{font-size:14.5px;color:var(--t2)}
+
+/* ── features ── */
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:30px}
+.f{background:var(--card);border:1px solid var(--bd);border-radius:15px;padding:19px}
+.f .ic{width:34px;height:34px;border-radius:10px;background:#F1F5F8;display:flex;
+  align-items:center;justify-content:center;margin-bottom:11px;font-size:17px}
+.f h3{font-size:15.5px;margin-bottom:5px}
+.f p{font-size:13.8px;color:var(--t2)}
+
+/* ── testimonials ── */
+.t{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px;
+  position:relative}
+.t .who i{width:34px;height:34px;border-radius:99px;background:#E8F0F7;flex:0 0 auto}
+.t .who b{display:block;font-size:13.5px;font-weight:850}
+.t .who span{font-size:12px;color:var(--t3)}
+
+/* ── pricing ── */
+/* The toggle carries a sliding indicator rather than just recolouring the
+   active tab: the movement is what tells you the two are alternatives to each
+   other, before you have read either word. */
+.pl-toggle{position:relative;display:inline-flex;gap:0;background:#fff;
+  border:1px solid var(--bd);border-radius:14px;padding:5px;margin-top:24px}
+.pl-ind{position:absolute;top:5px;bottom:5px;left:5px;border-radius:10px;
+  background:var(--navy);box-shadow:0 8px 18px -10px rgba(15,61,92,.9);
+  transition:transform .32s cubic-bezier(.34,1.4,.5,1),width .32s cubic-bezier(.34,1.4,.5,1)}
+.pl-tab{position:relative;z-index:1;border:0;background:none;cursor:pointer;
+  font-family:inherit;font-size:14.5px;font-weight:850;letter-spacing:-.01em;
+  color:var(--t3);padding:11px 18px;border-radius:10px;
+  display:inline-flex;align-items:center;gap:9px;transition:color .22s}
+.pl-tab.on{color:#fff}
+.save-pill{font-size:10.5px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--amber);color:#0A0A0A;padding:3px 8px;border-radius:99px;white-space:nowrap;
+  position:relative;overflow:hidden}
+/* A slow sheen across the pill, so the discount reads as the live offer it is
+   without a badge that blinks at you. */
+.save-pill:after{content:'';position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.85) 50%,transparent 65%);
+  transform:translateX(-130%);animation:sheen 3.4s ease-in-out 1.2s infinite}
+@keyframes sheen{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}
+
+.price{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
+.p{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px 17px;
+  position:relative;display:flex;flex-direction:column}
+.p.hot{border:2px solid var(--navy);box-shadow:0 16px 34px -20px rgba(15,61,92,.5)}
+.p .tag{position:absolute;top:-11px;left:15px;background:var(--navy);color:#fff;font-size:9.5px;
+  font-weight:900;letter-spacing:.06em;padding:4px 10px;border-radius:99px;white-space:nowrap}
+/* Fleet size first and in the accent colour: it is the only line a shopkeeper
+   needs to read to know which card is his. */
+.p .bikes{font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--amber-d)}
+.p .nm{font-size:16px;font-weight:875;margin-top:4px}
+.p .amt{margin-top:12px;line-height:1;display:flex;align-items:baseline;gap:5px}
+.p .amt b{font-size:31px;font-weight:900;letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums;display:inline-block}
+.p .amt .per{font-size:14px;font-weight:800;color:var(--t3);letter-spacing:-.01em}
+/* The number is what changed, so the number is what moves. */
+.p .amt.flip b,.p .amt.flip .per{animation:swap .34s cubic-bezier(.2,.9,.3,1)}
+@keyframes swap{0%{opacity:0;transform:translateY(9px)}100%{opacity:1;transform:none}}
+.p .yr{font-size:13px;color:var(--t2);margin-top:11px;padding-top:11px;
+  border-top:1px solid var(--bd);line-height:1.55;min-height:58px}
+.p .yr b{color:var(--t1);font-weight:850}
+.p .free{display:inline-block;margin-top:7px;font-size:10.5px;font-weight:900;
+  letter-spacing:.05em;text-transform:uppercase;background:#E7F9F0;color:var(--ok);
+  padding:3px 9px;border-radius:99px;animation:pop .34s cubic-bezier(.34,1.5,.5,1)}
+@keyframes pop{0%{opacity:0;transform:scale(.72)}100%{opacity:1;transform:none}}
+.price-note{background:#fff;border:1px solid var(--bd);border-radius:13px;padding:15px 17px;
+  font-size:14px;color:var(--t2);margin-top:18px}
+.price-note b{color:var(--t1)}
+
+/* ── faq ── */
+.faq{margin-top:24px;border-top:1px solid var(--bd)}
+details{border-bottom:1px solid var(--bd);padding:15px 2px}
+summary{font-size:15.5px;font-weight:800;cursor:pointer;list-style:none;
+  display:flex;justify-content:space-between;gap:12px;letter-spacing:-.02em}
+summary::-webkit-details-marker{display:none}
+summary:after{content:'+';font-weight:800;color:var(--t3);font-size:19px;line-height:1}
+details[open] summary:after{content:'\2212'}
+details p{font-size:14.5px;color:var(--t2);margin-top:9px}
+
+/* ── final ── */
+.end{background:radial-gradient(110% 120% at 85% 10%,#1C6291,#0A2C43 70%);color:#fff;
+  text-align:center;padding:60px 0}
+.end h2{color:#fff}
+.end .lede{color:#CBDCE8;margin:0 auto}
+.end .cta-row{justify-content:center}
+footer{background:var(--ink);color:#7E9AAE;font-size:13px;padding:26px 0;text-align:center}
+footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
+
+.hide{display:none !important}
+:focus-visible{outline:2.5px solid var(--amber);outline-offset:3px}
+@media (max-width:900px){
+  .hero-grid{grid-template-columns:1fr;gap:26px}
+  .pain-grid,.steps,.feat{grid-template-columns:1fr}
+  .price{grid-template-columns:repeat(2,1fr)}
+  section{padding:42px 0}
+  .phone{transform:none;margin-bottom:0}
+}
+@media (max-width:420px){ .price{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*:after,*:before{animation:none !important;transition:none !important}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <img class="mark" src="./icon-192.png" width="68" height="68" alt="RentalNow" fetchpriority="high">
+<!-- ══════════ HERO ══════════ -->
+<div class="hero">
+  <div class="wrap">
+    <nav class="nav">
+      <img src="./icon-192.png" alt="">
+      <b>RentalNow</b>
+      <a href="#pricing">Pricing</a>
+    </nav>
 
-  <div class="plate">
-    <span class="rivet l"></span>
-    <div class="ind"><span>IND</span><i></i></div>
-    <div class="txt">RENTALNOW</div>
-    <span class="rivet r"></span>
+    <div class="hero-grid">
+      <div>
+        <div class="plate"><div class="ind"><span>IND</span><i></i></div>
+          <div class="txt reg">DL 3S AB 1234</div><span class="rivet"></span></div>
+        <p class="audience">For bike rental shops</p>
+        <h1>Which bike is out.<br>Whose deposit you're<br><em>still holding.</em></h1>
+        <p class="lede" style="margin-top:16px">Every rental, return, deposit and rupee — on the
+          phone in your pocket. Built for Indian bike and scooter rental shops, not adapted from
+          something else.</p>
+        <div class="cta-row">
+          <button class="btn" id="go">Install app</button>
+          <a class="btn line" href="./">Open in browser</a>
+        </div>
+        <p class="cta-note">Free for 14 days · No card · Works without signal</p>
+      </div>
+
+      <div>
+        <div class="phone" aria-hidden="true">
+          <div class="ph-top">
+            <div class="av"></div>
+            <div class="t"><b>Sharma Bike Rentals</b><span>Out Now</span></div>
+          </div>
+          <div class="ph-body">
+            <div class="kpis">
+              <div class="kpi"><div class="l">Out</div><div class="v">7</div></div>
+              <div class="kpi warn"><div class="l">Late</div><div class="v">1</div></div>
+              <div class="kpi"><div class="l">Today</div><div class="v">4,150</div></div>
+            </div>
+            <div class="kpis"><div class="kpi dep" style="text-align:left;padding:9px 11px">
+              <div class="l">Deposits held</div><div class="v">₹14,000</div></div></div>
+            <div class="rcard">
+              <div class="r1"><b>Activa 6G</b><span class="pill late">OVERDUE 2h 15m</span></div>
+              <div class="m">DL 3S AB 1234 · Rohit Verma</div>
+              <div class="d">Due 1:30 pm · 12 hr · deposit ₹2,000</div>
+            </div>
+            <div class="rcard">
+              <div class="r1"><b>Jupiter 125</b><span class="pill out">OUT</span></div>
+              <div class="m">DL 8S CX 4471 · Meena K.</div>
+              <div class="d">Due 7:00 pm · 6 hr · deposit ₹1,500</div>
+            </div>
+            <div class="rcard" style="margin-bottom:2px">
+              <div class="r1"><b>Pulsar 150</b><span class="pill out">OUT</span></div>
+              <div class="m">DL 1S PQ 9032 · Aman S.</div>
+              <div class="d">Due tomorrow 9:00 am · 24 hr · deposit ₹3,000</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <p class="tag">Run your bike and scooter rental from your phone.<br>
-    <b>Rent out, take back, deposits, daily earnings.</b></p>
-
-  <button class="btn y" id="go" hidden>Add RentalNow to home screen</button>
-  <a class="btn" id="open" href="./">Open RentalNow</a>
-  <button class="btn ghost" id="share">Send this to someone</button>
-
-  <div class="steps" id="s-and" hidden>
-    <h2>Add it to your home screen</h2>
-    <ol>
-      <li>Tap the <span class="kbd">&#8942;</span> menu, top right of Chrome</li>
-      <li>Tap <b>Add to Home screen</b> &mdash; or <b>Install app</b></li>
-      <li>Tap <b>Install</b></li>
-    </ol>
-    <div class="note">An amber button also appears above on its own after a few seconds.
-      The menu works right away either way.</div>
-  </div>
-
-  <div class="steps" id="s-ios" hidden>
-    <h2>On iPhone and iPad</h2>
-    <ol>
-      <li>Open this page in <b>Safari</b></li>
-      <li>Tap <b>Share</b> at the bottom</li>
-      <li>Scroll down, tap <b>Add to Home Screen</b></li>
-      <li>Tap <b>Add</b></li>
-    </ol>
-    <div class="note">Safari only. Chrome on iPhone cannot add apps to the home screen.</div>
-  </div>
-
-  <div class="steps" id="s-inapp" hidden>
-    <h2>Open in Chrome first</h2>
-    <ol>
-      <li>Tap the <b>menu</b> in the corner of this screen</li>
-      <li>Choose <b>Open in Chrome</b> or <b>Open in browser</b></li>
-      <li>Come back here and add it</li>
-    </ol>
-    <div class="note">Pages opened inside WhatsApp cannot install apps. This is the most
-      common reason it does not work.</div>
-  </div>
-
-  <div class="steps" id="s-done" hidden>
-    <h2>Already on this phone</h2>
-    <div class="note" style="margin-top:0">RentalNow is installed. Open it from your home
-      screen or app drawer.</div>
-  </div>
-
-  <div class="does">
-    <div><b>Out</b><span>Pick a bike, set the hours, take the deposit. One screen.</span></div>
-    <div><b>Back</b><span>Overtime, damage and fuel worked out for you. Deposit settled on the spot.</span></div>
-    <div><b>Money</b><span>What the yard earned today, and what deposits you are still holding.</span></div>
-    <div><b>Offline</b><span>No signal in the yard is fine. Everything uploads by itself later.</span></div>
-  </div>
-
-  <p class="foot">
-    Trouble installing? <a id="wa" href="#">Message us on WhatsApp</a><br>
-    Free for 14 days. No card needed.
-  </p>
 </div>
+
+<!-- ══════════ THE PROBLEM ══════════ -->
+<div class="pain">
+  <div class="wrap">
+    <div class="eyebrow">The register can't answer these</div>
+    <h2>Three questions that cost you money every week</h2>
+    <div class="pain-grid">
+      <div class="pain-c">
+        <div class="q">"Deposit kitna tha?"</div>
+        <p>The customer says ₹1,500. Your notebook says ₹2,000, in handwriting from four days ago.
+          Whoever argues louder wins, and it is usually not you.</p>
+      </div>
+      <div class="pain-c">
+        <div class="q">"Bas thoda late hua"</div>
+        <p>Three hours late is overtime you are owed. Nobody at the counter does that maths while
+          a customer is standing there in a hurry.</p>
+      </div>
+      <div class="pain-c">
+        <div class="q">"Aaj ka kitna bana?"</div>
+        <p>You cannot tell, because ₹40,000 of deposits is sitting in the same drawer as the
+          rent. Deposit is not income. It is money you owe back.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ HOW IT WORKS ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Three screens, that's the whole app</div>
+    <h2>Rent out. Take back. See the money.</h2>
+    <p class="lede">A counter boy learns it in one afternoon. That is the actual design brief.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div>
+        <h3>Out</h3>
+        <p>Pick the bike, pick the hours, take the deposit. Rate comes off your own price
+          card — 3, 6, 12, 24 hours or a week. One screen, one tap to confirm.</p></div>
+      <div class="step"><div class="n">2</div>
+        <h3>Back</h3>
+        <p>Overtime, damage and fuel worked out for you. Deposit settled on the spot and the
+          bill goes to the customer on WhatsApp before he rides away.</p></div>
+      <div class="step"><div class="n">3</div>
+        <h3>Money</h3>
+        <p>Today's earnings and the deposits you are still holding, kept apart — because one
+          is yours and the other is not.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FEATURES ══════════ -->
+<section style="background:#F5F1E9">
+  <div class="wrap">
+    <div class="eyebrow">What's inside</div>
+    <h2>Everything a rental shop actually needs</h2>
+    <div class="feat">
+      <div class="f"><div class="ic">📵</div><h3>Works with no signal</h3>
+        <p>Rent out and take back with zero bars. Everything uploads by itself when the network
+          comes back.</p></div>
+      <div class="f"><div class="ic">🧾</div><h3>Deposit ledger</h3>
+        <p>Every rupee taken and returned, per bike, per customer. Deposit is never counted as
+          revenue.</p></div>
+      <div class="f"><div class="ic">⏱</div><h3>Overtime, automatic</h3>
+        <p>Per-hour overtime off your own rate card, applied the moment a bike is late. No mental
+          arithmetic at the counter.</p></div>
+      <div class="f"><div class="ic">🛡</div><h3>Insurance &amp; PUC alerts</h3>
+        <p>A bike with expired insurance or PUC cannot be rented out. The app blocks it before it
+          reaches the road.</p></div>
+      <div class="f"><div class="ic">📷</div><h3>Rates from a photo</h3>
+        <p>Photograph your printed price list and it reads the rates in. No typing forty models by
+          hand.</p></div>
+      <div class="f"><div class="ic">👥</div><h3>Staff with limits</h3>
+        <p>Counter staff rent out and take back. Only you see the money and the settings. Every
+          action is logged.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ PRICING ══════════ -->
+<section id="pricing" style="background:#F5F1E9">
+  <div class="wrap">
+    <div class="eyebrow">What it costs</div>
+    <h2>Pick by how many bikes you have</h2>
+    <p class="lede">That is the only thing that changes the price. Every plan has every feature,
+      unlimited staff and unlimited rentals.</p>
+
+    <div class="pl-toggle" role="group" aria-label="Billing period">
+      <span class="pl-ind" aria-hidden="true"></span>
+      <button class="pl-tab" data-cycle="m" aria-pressed="false">Monthly</button>
+      <button class="pl-tab on" data-cycle="y" aria-pressed="true">Yearly
+        <span class="save-pill">2 months free</span></button>
+    </div>
+
+    <div class="price">
+      <div class="p" data-m="499" data-y="4990">
+        <div class="bikes">Up to 15 bikes</div>
+        <div class="nm">Starter</div>
+        <div class="amt"><b class="v">₹4,990</b><span class="per">/year</span></div>
+        <div class="yr"></div>
+      </div>
+      <div class="p hot" data-m="1299" data-y="12990">
+        <div class="tag">MOST SHOPS PICK THIS</div><div class="bikes">Up to 50 bikes</div>
+        <div class="nm">Growth</div>
+        <div class="amt"><b class="v">₹12,990</b><span class="per">/year</span></div>
+        <div class="yr"></div>
+      </div>
+      <div class="p" data-m="2499" data-y="24990">
+        <div class="bikes">Up to 150 bikes</div>
+        <div class="nm">Pro</div>
+        <div class="amt"><b class="v">₹24,990</b><span class="per">/year</span></div>
+        <div class="yr"></div>
+      </div>
+      <div class="p" data-m="4999" data-y="49990">
+        <div class="bikes">Any number of bikes</div>
+        <div class="nm">Multi-branch</div>
+        <div class="amt"><b class="v">₹49,990</b><span class="per">/year</span></div>
+        <div class="yr"></div>
+      </div>
+    </div>
+    <div class="price-note">
+      <b>First 14 days are free and we do not ask for a card.</b>
+      Pay only if you decide to keep using it. Prices do not include GST.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FAQ ══════════ -->
+<section>
+  <div class="wrap" style="max-width:760px">
+    <div class="eyebrow">Before you ask</div>
+    <h2>Fair questions</h2>
+    <div class="faq">
+      <details open><summary>What if there is no internet at my shop?</summary>
+        <p>You keep working. Rentals and returns are saved on the phone and upload themselves when
+          the signal returns. This is the normal case, not a fallback.</p></details>
+      <details><summary>What happens when the free trial ends?</summary>
+        <p>Renting out pauses. Taking bikes back, settling bills and refunding deposits keep
+          working — because bikes already on the road are your customer's problem otherwise, and
+          that is not a fair way to ask for money.</p></details>
+      <details><summary>Do I have to type in all my rates?</summary>
+        <p>No. Photograph your printed price list and the app reads the models and rates in. Fix
+          anything it got wrong and you are done.</p></details>
+      <details><summary>Can my counter staff see my earnings?</summary>
+        <p>No. Staff can rent out and take back. Money, pricing and settings are owner-only, and
+          every action carries a name and a timestamp.</p></details>
+      <details><summary>Is my data only on this one phone?</summary>
+        <p>No. It is on your account and appears on every device you sign in on. Change phones and
+          nothing is lost.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FINAL CTA ══════════ -->
+<div class="end">
+  <div class="wrap">
+    <h2>Put it on your phone tonight.<br>Use it at tomorrow's first rental.</h2>
+    <p class="lede">Fourteen days free. No card. Add your bikes, photograph your rate card, and
+      you are running.</p>
+    <div class="cta-row">
+      <button class="btn" id="go2">Install app</button>
+      <a class="btn line" id="wa" href="#">Talk to us on WhatsApp</a>
+    </div>
+    <p class="cta-note" id="hint"></p>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">RentalNow · <a href="./">Open the app</a> ·
+    <a id="wa2" href="#">+91 92897 92666</a></div>
+</footer>
 
 <script>
 (function(){
-  var WA = '917838361200';
-  var ua = navigator.userAgent;
-  var isIOS = /iphone|ipad|ipod/i.test(ua) ||
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  var inApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp/i.test(ua) || /; wv\)/i.test(ua);
-  var standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                   window.navigator.standalone === true;
-  var evt = window.__bip || null;
+  var WA='919289792666';
+  var ua=navigator.userAgent;
+  var isIOS=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var inApp=/FBAN|FBAV|Instagram|Line\/|WhatsApp/i.test(ua)||/; wv\)/i.test(ua);
+  var standalone=window.matchMedia('(display-mode: standalone)').matches||
+                 window.navigator.standalone===true;
+  var evt=window.__bip||null;
+  var btns=[document.getElementById('go'),document.getElementById('go2')];
+  var hint=document.getElementById('hint');
 
-  /* THE FIX FOR THE MISSING BUTTON.
-     Chrome will not offer to install a page that has no service worker
-     controlling it. This page linked the manifest but registered nothing, so
-     beforeinstallprompt never fired, the amber button stayed hidden forever,
-     and the page read as an ordinary website with an Open link.
-
-     Same worker the app uses; its scope is this folder, so one registration
-     covers this page and the app both. */
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('rentalnow-sw.js')
-      .catch(function(e){ console.warn('sw register failed', e); });
+  function sheet(title,steps,note){
+    var w=document.createElement('div');
+    w.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(6,28,44,.72);'+
+      'display:flex;align-items:flex-end;justify-content:center;padding:16px';
+    var body=steps.map(function(s,i){return '<li style="margin-bottom:7px">'+s+'</li>';}).join('');
+    w.innerHTML='<div style="background:#fff;border-radius:18px;padding:22px 20px;max-width:420px;'+
+      'width:100%;font:15px/1.6 inherit">'+
+      '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">'+
+      '<b style="flex:1;font-size:18px;letter-spacing:-.02em">'+title+'</b>'+
+      '<button id="x" style="border:0;background:#F1EFE9;width:30px;height:30px;border-radius:99px;'+
+      'font-size:17px;cursor:pointer;font-family:inherit">&times;</button></div>'+
+      '<ol style="margin:0;padding-left:20px;color:#454545">'+body+'</ol>'+
+      (note?'<p style="font-size:13px;color:#6B6B6B;margin-top:12px">'+note+'</p>':'')+'</div>';
+    document.body.appendChild(w);
+    var close=function(){ w.remove(); };
+    w.querySelector('#x').onclick=close;
+    w.onclick=function(e){ if(e.target===w) close(); };
   }
 
-  function show(id, on){ var el = document.getElementById(id); if (el) el.hidden = !on; }
-
-  /* One set of instructions, never four. A page listing every platform's steps
-     makes the reader do the triage the page should have done. */
-  function route(){
-    ['s-ios','s-and','s-inapp','s-done'].forEach(function(id){ show(id, false); });
-    if (standalone) return show('s-done', true);
-    if (inApp)      return show('s-inapp', true);
-    if (isIOS)      return show('s-ios', true);
-    /* Android always gets the menu route. It works immediately and with no
-       preconditions, unlike the button, which Chrome gates behind an
-       engagement heuristic and may withhold for many seconds or entirely. */
-    show('s-and', true);
+  function help(){
+    if (standalone) return sheet('Already installed',
+      ['Open RentalNow from your home screen or app drawer.'],'');
+    if (inApp) return sheet('Open in Chrome first',
+      ['Tap the menu in the corner of this screen',
+       'Choose <b>Open in Chrome</b>',
+       'Come back here and tap Install app'],
+      'Links opened inside WhatsApp cannot install apps. This is the most common reason it does not work.');
+    if (isIOS) return sheet('On iPhone and iPad',
+      ['Open this page in <b>Safari</b>','Tap <b>Share</b> at the bottom',
+       'Scroll down, tap <b>Add to Home Screen</b>','Tap <b>Add</b>'],
+      'Safari only. Chrome on iPhone cannot add apps to the home screen.');
+    return sheet('Add it from the Chrome menu',
+      ['Tap the <b>&#8942;</b> menu, top right of Chrome',
+       'Tap <b>Add to Home screen</b> or <b>Install app</b>','Tap <b>Install</b>'],
+      'If neither appears, another app may already claim this website on your phone. Message us and we will sort it.');
   }
 
-  /* Fired by the <head> stub, whether the event arrived before or after this
-     script ran. The menu steps deliberately stay put when the button appears —
-     yanking them away would strand anyone who taps Cancel. */
-  window.addEventListener('bip-ready', function(){
-    evt = window.__bip;
-    show('go', true);
-  });
-  if (evt) show('go', true);
-
-  document.getElementById('go').addEventListener('click', function(){
-    if (!evt) return;
-    var e = evt; evt = null; window.__bip = null;   /* single use, by spec */
-    show('go', false);
+  function fire(){
+    if (!evt) return help();
+    var e=evt; evt=null; window.__bip=null;
     e.prompt();
     e.userChoice.then(function(c){
-      if (c && c.outcome === 'accepted') standalone = true;
-      route();
-    }).catch(route);
-  });
-
-  window.addEventListener('appinstalled', function(){
-    show('go', false); standalone = true; route();
-  });
-
-  try {
-    window.matchMedia('(display-mode: standalone)').addEventListener('change', function(m){
-      standalone = m.matches; route();
-    });
-  } catch(e){}
-
-  document.getElementById('share').addEventListener('click', function(){
-    var url = location.href;
-    var text = 'RentalNow \u2014 apna bike rental phone se chalao. Install: ' + url;
-    if (navigator.share) navigator.share({ title:'RentalNow', text:text, url:url }).catch(function(){});
-    else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
-  });
-
-  document.getElementById('wa').href = 'https://wa.me/' + WA + '?text=' +
-    encodeURIComponent('RentalNow \u2014 I need help installing the app');
-
-  route();
-
-  /* ── ?debug=1 ─────────────────────────────────────────────────────
-     Installability failures are silent by design: the browser simply
-     declines to fire an event. Remote-debugging a phone over USB to find
-     out why is not a thing anyone does on a Sunday, so the page can just
-     say what it knows. Not shown to clients — query param only. */
-  if (/[?&]debug=1/.test(location.search)) {
-    var lines = [];
-    var add = function(k, v){ lines.push([k, v]); };
-    add('URL', location.href);
-    add('install event', evt ? 'RECEIVED' : 'not received');
-    add('display-mode standalone', standalone ? 'yes (already installed)' : 'no');
-    add('iOS', isIOS ? 'yes' : 'no');
-    add('in-app browser', inApp ? 'YES — cannot install' : 'no');
-    add('serviceWorker API', ('serviceWorker' in navigator) ? 'yes' : 'NO');
-    add('SW controller', (navigator.serviceWorker && navigator.serviceWorker.controller)
-        ? 'yes' : 'NOT YET — reload once');
-    add('secure context', window.isSecureContext ? 'yes' : 'NO — needs https');
-
-    var box = document.createElement('div');
-    box.style.cssText = 'margin:18px 0;padding:14px 15px;border-radius:12px;' +
-      'background:#0A2C43;color:#fff;font:12px/1.6 ui-monospace,monospace;' +
-      'white-space:pre-wrap;word-break:break-all';
-    function paint(){
-      box.textContent = 'INSTALL DIAGNOSTIC\n\n' +
-        lines.map(function(l){ return l[0] + ': ' + l[1]; }).join('\n');
-    }
-    paint();
-    document.querySelector('.wrap').appendChild(box);
-
-    /* The manifest is the usual culprit: a 404, or served as something the
-       browser refuses to parse. Both are invisible without checking. */
-    fetch('./manifest.webmanifest', { cache: 'no-store' }).then(function(r){
-      add('manifest HTTP', r.status + ' ' + r.statusText);
-      add('manifest type', r.headers.get('content-type') || '(none)');
-      return r.text();
-    }).then(function(t){
-      try {
-        var m = JSON.parse(t);
-        add('manifest parsed', 'yes');
-        add('  name', m.name || '(missing)');
-        add('  start_url', m.start_url || '(missing)');
-        add('  display', m.display || '(missing)');
-        add('  icons', (m.icons || []).length + ' declared');
-      } catch(e){ add('manifest parsed', 'NO — not valid JSON'); }
-      paint();
-    }).catch(function(e){
-      add('manifest HTTP', 'FETCH FAILED — ' + e.message); paint();
-    });
-
-    /* Each icon has to actually exist. One 404 on the 192 or 512 and Chrome
-       silently drops the whole install offer. */
-    ['icon-192.png','icon-512.png','icon-192-maskable.png','icon-512-maskable.png']
-      .forEach(function(f){
-        fetch('./' + f, { method:'HEAD', cache:'no-store' })
-          .then(function(r){ add(f, r.ok ? 'ok ' + r.status : 'MISSING ' + r.status); paint(); })
-          .catch(function(){ add(f, 'FETCH FAILED'); paint(); });
-      });
-
-    setTimeout(function(){
-      add('install event after 12s', window.__bip ? 'RECEIVED' : 'still not received');
-      paint();
-    }, 12000);
+      if (c&&c.outcome==='accepted'){ standalone=true; paint(); }
+    }).catch(function(){});
   }
+
+  function paint(){
+    if (standalone){
+      btns.forEach(function(b){ if(b){ b.textContent='Open RentalNow';
+        b.onclick=function(){ location.href='./'; }; } });
+      if (hint) hint.textContent='Already installed on this phone.';
+    } else {
+      btns.forEach(function(b){ if(b){ b.textContent='Install app'; b.onclick=fire; } });
+      if (hint) hint.textContent = isIOS
+        ? 'iPhone: opens Safari instructions.' : '';
+    }
+  }
+
+  window.addEventListener('bip-ready',function(){ evt=window.__bip; paint(); });
+  window.addEventListener('appinstalled',function(){ standalone=true; paint(); });
+  try{ window.matchMedia('(display-mode: standalone)').addEventListener('change',function(m){
+    standalone=m.matches; paint(); }); }catch(e){}
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('rentalnow-sw.js')
+    .catch(function(){});
+
+  var t='RentalNow — I want to know more about the bike rental app';
+  document.getElementById('wa').href='https://wa.me/'+WA+'?text='+encodeURIComponent(t);
+  document.getElementById('wa2').href='https://wa.me/'+WA+'?text='+encodeURIComponent(t);
+  paint();
+})();
+</script>
+
+<script>
+/* Pricing toggle. Yearly is the default because it is the better deal and the
+   one the business wants; monthly is one tap away rather than hidden. */
+(function(){
+  var inr=function(n){ return '\u20B9'+Math.round(n).toLocaleString('en-IN'); };
+  var wrap=document.querySelector('.price');
+  if(!wrap) return;
+  var cards=[].slice.call(wrap.querySelectorAll('.p'));
+  var tabs=[].slice.call(document.querySelectorAll('.pl-tab'));
+  var ind=document.querySelector('.pl-ind');
+
+  function slide(){
+    var on=document.querySelector('.pl-tab.on'); if(!on||!ind) return;
+    ind.style.width=on.offsetWidth+'px';
+    ind.style.transform='translateX('+(on.offsetLeft-5)+'px)';
+  }
+
+  function paint(cycle){
+    tabs.forEach(function(t){
+      var on=t.dataset.cycle===cycle;
+      t.classList.toggle('on',on);
+      t.setAttribute('aria-pressed',on?'true':'false');
+    });
+    slide();
+
+    cards.forEach(function(c){
+      var m=+c.dataset.m, y=+c.dataset.y;
+      var amt=c.querySelector('.amt'), v=c.querySelector('.v'),
+          per=c.querySelector('.per'), yr=c.querySelector('.yr');
+
+      if(cycle==='y'){
+        v.textContent=inr(y); per.textContent='/year';
+        /* The yearly figure is a big number a shopkeeper does not think in, so
+           it is immediately translated back into his monthly unit. */
+        yr.innerHTML='Works out to <b>'+inr(y/12)+' a month</b><br>'+
+          '<span class="free">2 months free</span>';
+      } else {
+        v.textContent=inr(m); per.textContent='/month';
+        yr.innerHTML='<b>'+inr(m*12)+'</b> a year this way.<br>'+
+          'Pay yearly instead and save <b>'+inr(m*12-y)+'</b>.';
+      }
+
+      /* Re-trigger the swap animation: remove, force a reflow, add back. */
+      amt.classList.remove('flip'); void amt.offsetWidth; amt.classList.add('flip');
+    });
+  }
+
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){ paint(t.dataset.cycle); });
+  });
+  window.addEventListener('resize',slide);
+  /* Fonts can land after first paint and change the tab width. */
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(slide);
+  paint('y');
 })();
 </script>
 </body>
