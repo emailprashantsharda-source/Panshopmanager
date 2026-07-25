@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Install RentalNow</title>
+<meta name="description" content="Put RentalNow on your phone. Rent out bikes, take them back, track deposits and daily earnings. Works without signal.">
+<meta name="theme-color" content="#0F3D5C">
+
+<!-- Same manifest as the app, so Chrome can offer a real install from this
+     page. start_url comes from the manifest, not from here, so an install
+     started on this page still opens the app itself. -->
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+
+<meta property="og:title" content="RentalNow — run your bike rental from your phone">
+<meta property="og:description" content="Rent out, take back, deposits, daily earnings. Works without signal.">
+<meta property="og:image" content="./icon-512.png">
+<meta property="og:type" content="website">
+
+<style>
+:root{
+  --p:#0F3D5C; --p-deep:#0A2C43; --y:#F5A623;
+  --bg:#FBF7F0; --card:#fff; --bd:#E4E0D8;
+  --t1:#0A0A0A; --t2:#454545; --t3:#6B6B6B;
+  --plate:#F2EFE8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0;background:var(--bg);color:var(--t1);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  line-height:1.5;
+}
+.wrap{max-width:430px;margin:0 auto;padding:26px 18px 46px}
+
+/* The actual app icon, so what they see here is what appears on the
+   home screen. Same artwork as the login screen, same file. */
+.mark{display:block;margin:0 auto 20px;border-radius:21px;
+  box-shadow:0 12px 30px -14px rgba(10,44,67,.7)}
+
+/* ── signature: the number plate ─────────────────────────────────
+   A rental yard's most recognisable object is a number plate, so the
+   name is set as one. It is the only loud thing on the page. */
+.plate{
+  background:var(--plate);border:3px solid var(--p-deep);border-radius:9px;
+  display:flex;align-items:stretch;overflow:hidden;position:relative;
+  box-shadow:0 10px 26px -14px rgba(10,44,67,.6);
+}
+.plate .ind{
+  background:var(--p-deep);color:#fff;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:0 8px;gap:3px;
+}
+.plate .ind span{font-size:9px;font-weight:800;letter-spacing:.14em}
+.plate .ind i{display:block;width:11px;height:11px;border-radius:2px;background:var(--y)}
+.plate .txt{
+  flex:1;text-align:center;padding:14px 6px 12px;
+  font-size:clamp(26px,8.4vw,38px);font-weight:900;letter-spacing:-.02em;
+  color:#101010;font-stretch:condensed;
+}
+.plate .rivet{
+  position:absolute;top:50%;width:6px;height:6px;border-radius:99px;
+  background:#C9C3B6;transform:translateY(-50%);
+}
+.plate .rivet.l{left:7px} .plate .rivet.r{right:7px}
+
+.tag{
+  text-align:center;font-size:14.5px;color:var(--t2);
+  margin:16px 6px 24px;
+}
+.tag b{color:var(--t1)}
+
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
+  border:0;border-radius:13px;padding:16px;font-size:16px;font-weight:800;
+  letter-spacing:-.015em;cursor:pointer;background:var(--p);color:#fff;
+  text-decoration:none;font-family:inherit;
+  box-shadow:0 10px 24px -12px rgba(15,61,92,.9);
+  transition:transform .09s ease,filter .09s;
+}
+.btn:active{transform:scale(.975);filter:brightness(.95)}
+.btn.y{background:var(--y);color:#0A0A0A;box-shadow:0 10px 24px -12px rgba(245,166,35,.9)}
+.btn.ghost{background:var(--card);color:var(--t1);border:1.5px solid var(--bd);box-shadow:none}
+.btn + .btn{margin-top:10px}
+
+.does{margin:26px 0 4px;border-top:1px solid var(--bd)}
+.does div{
+  display:flex;gap:12px;align-items:baseline;
+  padding:13px 2px;border-bottom:1px solid var(--bd);font-size:14.5px;
+}
+.does b{flex:0 0 auto;color:var(--p);font-weight:850}
+.does span{color:var(--t2)}
+
+.steps{
+  background:var(--card);border:1px solid var(--bd);border-radius:14px;
+  padding:15px 16px;margin-top:22px;
+}
+.steps h2{font-size:13px;font-weight:850;margin:0 0 9px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
+.steps ol{margin:0;padding-left:19px;font-size:14px;color:var(--t2)}
+.steps li{margin-bottom:5px}
+.steps li b{color:var(--t1)}
+.note{font-size:12.5px;color:var(--t3);margin-top:10px}
+
+.foot{text-align:center;font-size:12.5px;color:var(--t3);margin-top:30px;line-height:1.7}
+.foot a{color:var(--p);font-weight:700}
+[hidden]{display:none !important}
+:focus-visible{outline:2.5px solid var(--y);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){ .btn{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <img class="mark" src="./icon-192.png" width="68" height="68"
+       alt="RentalNow" fetchpriority="high">
+
+  <div class="plate">
+    <span class="rivet l"></span>
+    <div class="ind"><span>IND</span><i></i></div>
+    <div class="txt">RENTALNOW</div>
+    <span class="rivet r"></span>
+  </div>
+
+  <p class="tag">Run your bike and scooter rental from your phone.<br>
+    <b>Rent out, take back, deposits, daily earnings.</b></p>
+
+  <!-- Android with a live install event -->
+  <button class="btn y" id="go" hidden>Install RentalNow</button>
+
+  <!-- Everyone else: open the app, install from inside it -->
+  <a class="btn" id="open" href="./">Open RentalNow</a>
+
+  <button class="btn ghost" id="share">Send this to someone</button>
+
+  <div class="does">
+    <div><b>Out</b><span>Pick a bike, set the hours, take the deposit. One screen.</span></div>
+    <div><b>Back</b><span>Overtime, damage and fuel worked out for you. Deposit settled on the spot.</span></div>
+    <div><b>Money</b><span>What the yard earned today, and what deposits you are still holding.</span></div>
+    <div><b>Offline</b><span>No signal in the yard is fine. Everything uploads by itself later.</span></div>
+  </div>
+
+  <div class="steps" id="s-ios" hidden>
+    <h2>On iPhone and iPad</h2>
+    <ol>
+      <li>Open this page in <b>Safari</b></li>
+      <li>Tap the <b>Share</b> button at the bottom</li>
+      <li>Scroll down, tap <b>Add to Home Screen</b></li>
+      <li>Tap <b>Add</b></li>
+    </ol>
+    <div class="note">Safari only. Chrome on iPhone cannot add apps to the home screen.</div>
+  </div>
+
+  <div class="steps" id="s-and" hidden>
+    <h2>On Android</h2>
+    <ol>
+      <li>Tap the <b>three-dot menu</b> in Chrome</li>
+      <li>Tap <b>Install app</b>, or <b>Add to Home screen</b></li>
+    </ol>
+    <div class="note">If neither appears, update Chrome and reload this page.</div>
+  </div>
+
+  <div class="steps" id="s-inapp" hidden>
+    <h2>Open in your browser first</h2>
+    <ol>
+      <li>Tap the <b>menu</b> in the corner of this screen</li>
+      <li>Choose <b>Open in Chrome</b> or <b>Open in Safari</b></li>
+      <li>Come back to this page and install</li>
+    </ol>
+    <div class="note">Links opened inside WhatsApp or Instagram cannot install apps.</div>
+  </div>
+
+  <div class="steps" id="s-done" hidden>
+    <h2>Already installed</h2>
+    <div class="note" style="margin-top:0">RentalNow is on this phone. Open it from your home screen
+      or app drawer.</div>
+  </div>
+
+  <p class="foot">
+    Trouble installing? <a id="wa" href="#">Message us on WhatsApp</a><br>
+    Free for 14 days. No card needed.
+  </p>
+</div>
+
+<script>
+(function(){
+  var WA = '917838361200';
+  var ua = navigator.userAgent;
+  var isIOS   = /iphone|ipad|ipod/i.test(ua) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var inApp   = /FBAN|FBAV|Instagram|Line\//i.test(ua) || /WhatsApp/i.test(ua);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true;
+  var evt = null;
+
+  function show(id, on){ var el = document.getElementById(id); if (el) el.hidden = !on; }
+
+  /* Only one set of instructions is ever shown. A page that lists every
+     platform's steps makes the reader do the triage the page should do. */
+  function route(){
+    show('s-ios', false); show('s-and', false); show('s-inapp', false); show('s-done', false);
+    if (standalone)      return show('s-done', true);
+    if (inApp)           return show('s-inapp', true);
+    if (isIOS)           return show('s-ios', true);
+    if (!evt)            return show('s-and', true);   /* Chrome, but no event yet */
+  }
+
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    evt = e;
+    show('go', true);
+    route();
+  });
+
+  document.getElementById('go').addEventListener('click', function(){
+    if (!evt) return;
+    var e = evt; evt = null;                /* the event is single-use */
+    show('go', false);
+    e.prompt();
+    e.userChoice.then(function(c){
+      if (c && c.outcome === 'accepted') { show('s-done', true); }
+      else { route(); }
+    }).catch(route);
+  });
+
+  window.addEventListener('appinstalled', function(){
+    show('go', false); standalone = true; route();
+  });
+
+  document.getElementById('share').addEventListener('click', function(){
+    var url  = location.href;
+    var text = 'RentalNow — run your bike rental from your phone. Install it here: ' + url;
+    if (navigator.share) {
+      navigator.share({ title:'RentalNow', text:text, url:url }).catch(function(){});
+    } else {
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+  });
+
+  document.getElementById('wa').href =
+    'https://wa.me/' + WA + '?text=' +
+    encodeURIComponent('RentalNow — I need help installing the app');
+
+  route();
+})();
+</script>
+</body>
+</html>
