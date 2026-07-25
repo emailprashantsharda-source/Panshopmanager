@@ -360,6 +360,13 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .pl-n{font-size:16px;font-weight:850;letter-spacing:-.02em}
 .pl-p{font-size:22px;font-weight:850;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .pl-save{font-size:10.5px;font-weight:800;color:var(--success-d);margin-top:2px}
+.pl.cur{border:1.5px solid var(--success);background:var(--success-tint)}
+.pl-tag.cur{background:var(--success-d)}
+/* How much of the billing period is left. A number alone ("354 days") means
+   nothing without the length of the term it came from. */
+.pbar{height:6px;border-radius:99px;background:#E6E1D7;overflow:hidden;margin-top:9px}
+.pbar i{display:block;height:100%;border-radius:99px;background:var(--success)}
+.pbar.warn i{background:var(--y)}
 .pm-split{display:flex;gap:9px}
 .pm-box{flex:1;border-radius:13px;padding:12px 11px;border:1px solid var(--bd)}
 .pm-box.cash{background:var(--success-tint);border-color:#B7ECD1}
@@ -500,7 +507,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_7_0_refundfix';
+const BUILD = 'rn_v3_9_0_billing';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -636,6 +643,11 @@ function hoursBetween(a, b){ return (b - a) / HOUR; }
 function fmtDT(ms){
   const d = new Date(ms);
   return d.toLocaleString('en-IN', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit', hour12:true });
+}
+/* Day-only, for billing dates. A renewal date with a time on it invites the
+   question "what time exactly?", which nobody can answer usefully. */
+function fmtDay(ms){
+  return new Date(ms).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
 }
 function fmtDur(h){
   if (h < 1) return Math.max(1, Math.round(h*60)) + ' min';
@@ -788,7 +800,9 @@ const R = {
   trialBanner(){
     if (!window.Cloud || !Cloud.ready) return '';
     const t = Cloud.trialInfo();
-    if (t.paid) return '';
+    /* Billing belongs to whoever pays. Counter staff used to watch the trial
+       clock run down on a screen with no button they were allowed to press. */
+    if (t.paid) return this.isManager() ? this.planBanner(t) : '';
     if (t.active) {
       if (t.daysLeft > 5) return '';
       return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
@@ -798,13 +812,230 @@ const R = {
     }
     /* Expired: returns MUST keep working. Locking the shop out entirely would
        strand bikes already on the road with no way to refund a deposit —
-       turning a billing event into their customer's problem. */
+       turning a billing event into their customer's problem.
+
+       A shop with a tier on its document is a customer whose subscription
+       lapsed, not a trial that ran out. Telling a man who paid you ₹12,990
+       last year that his "trial ended" is the kind of line that ends the
+       relationship, so the copy follows the record. */
+    /* A tier field with no readable date is not a lapsed subscription — it
+       is an incomplete record, and calling it "your plan ended" would date
+       it to 1 Jan 1970. Both a tier AND a real date are required. */
+    const lapsed = (t.tier && t.subEnds) ? this.planById(t.tier) : null;
     return `<div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
-      <b style="font-size:13.5px;color:var(--danger)">Trial ended — renting out is paused</b>
-      <div class="muted" style="margin-top:3px">Returns, settlements and deposit refunds still work,
-      so no customer is left stranded. Contact us to continue renting out.</div>
-      <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.plans()">See plans</button></div>`;
+      <b style="font-size:13.5px;color:var(--danger)">${lapsed
+        ? esc(lapsed.name) + ' plan ended — renting out is paused'
+        : 'Trial ended — renting out is paused'}</b>
+      <div class="muted" style="margin-top:3px">${t.subEnds && lapsed
+        ? 'Ended ' + esc(fmtDay(t.subEnds)) + '. ' : ''}Returns, settlements and deposit refunds still work,
+      so no customer is left stranded.</div>
+      ${lapsed ? `<button class="btn sm" style="margin-top:10px;width:100%" onclick="R.renewNow()">
+        Renew ${esc(lapsed.name)}</button>`
+      : `<button class="btn sm" style="margin-top:10px;width:100%" onclick="R.plans()">See plans</button>`}</div>`;
   },
+  /* The state a paying shop lives in every day. Quiet and green until the
+     term is nearly up, at which point it starts asking — with the renewal
+     already priced, because the decision is yes or not-yet, not which tier. */
+  planBanner(t){
+    const name = this.planLabel(t);
+    const cyc  = this.cycleLabel(t);
+    const d    = t.subDaysLeft;
+    const ends = t.subEnds ? fmtDay(t.subEnds) : '';
+    /* Falls back to the yearly term when the cycle is unknown: it makes the
+       bar read fuller than it should, which is the harmless direction to be
+       wrong in — it never manufactures false urgency. */
+    const span = cyc === 'monthly' ? 30 : 365;
+    const pct  = Math.max(2, Math.min(100, Math.round(d / span * 100)));
+    const p    = t.tier ? this.planById(t.tier) : null;
+
+    if (t.renewSoon){
+      const price = p ? (/year/.test(cyc) || !cyc ? p.y : p.m) : 0;
+      return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <div class="row">
+          <div class="grow">
+            <b style="font-size:13.5px">${d} day${d===1?'':'s'} left in your ${esc(name)}</b>
+            <div class="muted" style="margin-top:3px">Ends ${esc(ends)}. Renting out pauses after
+            that — taking bikes back and refunding deposits never does.</div>
+          </div>
+          <span class="pill warn">DUE</span>
+        </div>
+        <div class="pbar warn"><i style="width:${pct}%"></i></div>
+        ${p ? `<button class="btn sm" style="margin-top:11px;width:100%" onclick="R.renewNow()">
+            Renew ${esc(p.name)} · ${money(price)}</button>`
+            : `<button class="btn sm" style="margin-top:11px;width:100%" onclick="R.plans()">
+            See plans</button>`}</div>`;
+    }
+    return `<div class="card" style="background:var(--success-tint);border-color:#B7ECD1">
+      <div class="row">
+        <div class="grow">
+          <b style="font-size:13.5px">${esc(name)}${cyc?' · '+cyc:''}</b>
+          <div class="muted" style="margin-top:3px">${ends?'Renews '+esc(ends)+' · ':''}<b>${d} day${d===1?'':'s'} left</b></div>
+        </div>
+        <span class="pill ok">ACTIVE</span>
+      </div>
+      <div class="pbar"><i style="width:${pct}%"></i></div></div>`;
+  },
+
+  /* Renew on the tier and cycle already on the shop document. Making a man
+     re-pick, twelve months later, the plan he is already on is how you get a
+     Growth customer accidentally buying Starter. */
+  renewNow(){
+    const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    if (!t || !t.tier) return this.plans();
+    const p = this.planById(t.tier);
+    if (!p) return this.plans();
+    this._billing = /ann|year/.test(t.cycle||'') || !t.cycle ? 'y' : 'm';
+    this.choosePlan(p.id);
+  },
+
+  /* The billing record, for the account sheet. This is where a shopkeeper
+     looks when he wants evidence that the money left his account for
+     something. Fleet allowance is here because it is the only line that
+     warns him before he outgrows what he bought. */
+  subCard(){
+    if (!window.Cloud || !Cloud.ready || !this.isManager()) return '';
+    const t = Cloud.trialInfo();
+    if (!t.paid){
+      const lapsed = (t.tier && t.subEnds) ? this.planById(t.tier) : null;
+      return `<div class="sec-hd">Subscription</div>
+        <div class="card">
+          <div class="row"><b class="grow" style="font-size:15px;letter-spacing:-.02em">${
+            lapsed ? esc(lapsed.name) : 'Free trial'}</b>
+            <span class="pill ${t.active?'warn':'late'}">${
+              lapsed ? 'LAPSED' : (t.active?'TRIAL':'ENDED')}</span></div>
+          <div class="muted" style="margin-top:4px">${lapsed
+            ? 'Ended ' + esc(fmtDay(t.subEnds)) + ' · renting out is paused'
+            : (t.active
+              ? t.trialDaysLeft + ' day' + (t.trialDaysLeft===1?'':'s') + ' left · ends ' + esc(fmtDay(t.ends))
+              : 'Ended ' + esc(fmtDay(t.ends)) + ' · renting out is paused')}</div></div>`;
+    }
+    const p     = t.tier ? this.planById(t.tier) : null;
+    const cyc   = this.cycleLabel(t);
+    const fleet = this.fleetCount();
+    const price = p ? (/year/.test(cyc) || !cyc ? p.y : p.m) : 0;
+    const over  = !!(p && p.bikes !== null && fleet > p.bikes);
+    return `<div class="sec-hd">Subscription</div>
+      <div class="card" style="border-color:#B7ECD1">
+        <div class="row" style="margin-bottom:4px">
+          <b class="grow" style="font-size:15px;letter-spacing:-.02em">${esc(this.planLabel(t))}</b>
+          <span class="pill ok">ACTIVE</span></div>
+        ${p && cyc ? `<div class="line"><span>Billing</span>
+          <b>${cyc==='yearly'?'Yearly':'Monthly'} · ${money(price)}</b></div>` : ''}
+        <div class="line"><span>Fleet allowance</span>
+          <b class="${over?'neg':''}">${fleet}${p ? (p.bikes===null ? ' bikes · unlimited'
+            : ' of ' + p.bikes + ' bikes') : ' bikes'}</b></div>
+        ${t.subEnds ? `<div class="line"><span>Renews on</span><b>${esc(fmtDay(t.subEnds))}</b></div>` : ''}
+        <div class="line" style="border-top:1.5px solid var(--bd);margin-top:6px;padding-top:11px">
+          <span>Days remaining</span><b style="font-size:16px">${t.subDaysLeft}</b></div>
+        ${over ? `<div class="muted" style="margin-top:8px;color:var(--danger)">You have more bikes
+          than this plan covers (${p.bikes}). Upgrade to stay inside it.</div>` : ''}
+        ${!p ? `<div class="muted" style="margin-top:8px">Your payment is recorded but the plan name
+          did not come through. Message us and we will label it.</div>` : ''}
+      </div>
+      <div class="muted" style="margin:-4px 2px 12px;text-align:right">
+        <span style="text-decoration:underline;cursor:pointer" onclick="R.billingDiag()">Where do these numbers come from?</span>
+      </div>`;
+  },
+
+  /* Because the app works out the billing schema for itself, it has to be
+     able to show its work. When a shop rings up insisting they paid, this
+     screen answers the only question that matters — which field was read,
+     what was in it — in about four seconds, instead of a Firestore console
+     session that nobody is going to do on a Sunday. */
+  billingDiag(){
+    if (!window.Cloud || !Cloud.ready) return;
+    const t = Cloud.trialInfo();
+    const e = t.src || {};
+    const row = (k,v) => `<div class="line"><span>${esc(k)}</span><b style="text-align:right">${esc(v)}</b></div>`;
+    const others = (e.candidates||[]).slice(1);
+    openSheet(`<div class="sheet-hd"><h2>Billing source</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="muted" style="margin:0 2px 12px;line-height:1.55">The app reads your shop record
+        and works out which fields hold your plan. This is what it found.</div>
+      <div class="card">
+        ${row('Verdict', t.paid ? 'PAID' : (t.active ? 'On trial' : 'Not active'))}
+        ${row('Expiry read from', e.expKey || 'nothing found')}
+        ${row('Expiry value', t.subEnds ? fmtDay(t.subEnds) : '—')}
+        ${row('Plan read from', e.tierKey || 'nothing found')}
+        ${row('Plan value', t.tier || '—')}
+        ${row('Cycle read from', e.cycleKey || 'nothing found')}
+        ${row('Cycle value', t.cycle || '—')}
+        ${row('Fields scanned', String(e.scanned||0))}
+      </div>
+      ${others.length ? `<div class="sec-hd">Other date fields seen</div><div class="card">
+        ${others.map(c => row(c.path, fmtDay(c.ms))).join('')}</div>` : ''}
+      <div class="sec-hd">For support</div>
+      <div class="card">
+        ${row('Shop ID', Cloud.shopId || '—')}
+        ${row('Build', typeof BUILD === 'string' ? BUILD : '—')}
+      </div>
+      <button class="btn" onclick="R.diagToWhatsApp()">Send this to support</button>`);
+  },
+  diagToWhatsApp(){
+    const t = Cloud.trialInfo(), e = t.src || {};
+    const L = [
+      'RentalNow — billing check',
+      'Business: ' + (Cloud.shopName || ''),
+      'Shop ID: ' + (Cloud.shopId || ''),
+      'Build: ' + (typeof BUILD === 'string' ? BUILD : ''),
+      'Verdict: ' + (t.paid ? 'PAID' : (t.active ? 'trial' : 'not active')),
+      'Expiry field: ' + (e.expKey || 'none') + ' = ' + (t.subEnds ? fmtDay(t.subEnds) : '—'),
+      'Plan field: ' + (e.tierKey || 'none') + ' = ' + (t.tier || '—'),
+      'Cycle field: ' + (e.cycleKey || 'none') + ' = ' + (t.cycle || '—'),
+      'Fields scanned: ' + (e.scanned || 0)
+    ];
+    window.open('https://wa.me/917838361200?text=' + encodeURIComponent(L.join('\n')), '_blank');
+  },
+
+  /* ── payment history ─────────────────────────────────────────────
+     Reads receipts the webhook writes. Until that function is updated the
+     collection is empty, and the empty state says so plainly rather than
+     implying the shop never paid anything. */
+  async payHistory(){
+    if (!window.Cloud || !Cloud.ready) return;
+    if (!this.isManager()) return toast('Only the owner can see payments');
+    openSheet(`<div class="sheet-hd"><h2>Payments</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="empty"><div class="e">\u{1F9FE}</div><b>Loading\u2026</b></div>`);
+    const res = await Cloud.fetchReceipts();
+    const rows = res.rows || [];
+    let body;
+    if (!res.ok){
+      body = `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">Could not read your payments</b>
+        <div class="muted" style="margin-top:3px">This is a permissions problem on our side, not a
+        missing payment (${esc(res.code||'')}). Your plan is unaffected. Message us and we will fix it.</div></div>`;
+    } else if (!rows.length){
+      body = `<div class="empty"><div class="e">\u{1F9FE}</div><b>No receipts yet</b>
+        <span>Receipts appear here from your next payment onwards. Anything paid before that is
+        still on your plan — it just was not itemised.</span></div>`;
+    } else {
+      body = rows.map(r => {
+        const at   = Cloud._ms(r.at || r.paidAt || r.createdAt);
+        const amt  = Number(r.amount != null ? r.amount : r.amt) || 0;
+        const p    = r.tier ? this.planById(r.tier) : null;
+        const cyc  = /ann|year/.test(String(r.cycle||'')) ? 'yearly'
+                   : (/month/.test(String(r.cycle||'')) ? 'monthly' : '');
+        const okay = !r.status || /success|captur|paid|complete/i.test(String(r.status));
+        return `<div class="card">
+          <div class="row">
+            <div class="grow">
+              <div class="row" style="gap:7px">
+                <b style="font-size:15px">${esc(p ? p.name : (r.tier || 'Payment'))}${cyc?' · '+cyc:''}</b>
+                <span class="pill ${okay?'ok':'late'}">${esc(String(r.status||'PAID').toUpperCase())}</span>
+              </div>
+              <div class="muted" style="margin-top:3px">${at?esc(fmtDay(at)):'Date not recorded'}${
+                r.mode?' · '+esc(r.mode):''}</div>
+              ${r.txnid||r.id ? `<div class="bill-no" style="margin-top:4px">${esc(r.txnid||r.id)}</div>` : ''}
+            </div>
+            <b style="font-size:17px;font-variant-numeric:tabular-nums">${money(amt)}</b>
+          </div></div>`;
+      }).join('');
+    }
+    openSheet(`<div class="sheet-hd"><h2>Payments</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>${body}`);
+  },
+
   contact(){
     window.open('https://wa.me/917838361200?text='+encodeURIComponent('RentalNow — I want to continue my subscription'), '_blank');
   },
@@ -821,8 +1052,12 @@ const R = {
           uploads by itself when the connection returns.</div>`:''}</div>
       <div class="muted" style="margin:0 2px 14px">Your data is saved to your account and appears
         on every device you sign in on.</div>
-      <button class="btn" style="margin-bottom:9px" onclick="R.plans()">
-        \u{1F48E} Plans &amp; pricing</button>
+      ${this.subCard()}
+      <button class="btn${(window.Cloud&&Cloud.ready&&Cloud.trialInfo().paid)?' ghost':''}"
+        style="margin-bottom:9px" onclick="R.plans()">
+        \u{1F48E} ${(window.Cloud&&Cloud.ready&&Cloud.trialInfo().paid)?'Change plan':'Plans &amp; pricing'}</button>
+      ${this.isManager()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.payHistory()">
+        Payments</button>`:''}
       <button class="btn ghost" style="margin-bottom:9px" onclick="R.toggleHaptic(this)">
         Vibration on tap: ${window.Haptic && Haptic.on ? 'On' : 'Off'}</button>
       ${this.isOwner()?`<button class="btn ghost" style="margin-bottom:9px" onclick="R.staff()">Staff &amp; roles</button>
@@ -899,25 +1134,61 @@ const R = {
 
   /* Suggest the plan that actually fits their yard, rather than making a
      shopkeeper work out which bracket he is in. */
+  fleetCount(){ return (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length; },
   suggestedPlan(){
-    const n = (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
+    const n = this.fleetCount();
     return this.PLANS.find(p => p.bikes === null || n <= p.bikes) || this.PLANS[this.PLANS.length-1];
+  },
+  planById(id){
+    const k = String(id||'').toLowerCase();
+    return this.PLANS.find(p => p.id === k) || null;
+  },
+  /* Position in PLANS is the price ladder, so it doubles as upgrade order.
+     -1 means "no tier we recognise" — which the UI must treat as unknown
+     rather than as the cheapest plan. */
+  planRank(id){
+    const k = String(id||'').toLowerCase();
+    return this.PLANS.findIndex(p => p.id === k);
+  },
+  /* Never invents a tier name. If the webhook did not record which plan was
+     bought, the shop is told it is paid and nothing more. */
+  planLabel(t){
+    const p = t && t.tier ? this.planById(t.tier) : null;
+    return p ? p.name + ' plan' : 'Paid plan';
+  },
+  cycleLabel(t){
+    if (!t || !t.cycle) return '';
+    return /ann|year/.test(t.cycle) ? 'yearly' : 'monthly';
   },
 
   plans(){
-    const fleet = (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
+    const fleet = this.fleetCount();
     const sug = this.suggestedPlan();
     const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    /* -1 when unpaid OR when the webhook recorded no tier. Both mean "we do
+       not know what he is on", and in both cases every plan stays buyable —
+       guessing would either hide the plan he needs or offer him his own. */
+    const curRank = (t && t.paid && t.tier) ? this.planRank(t.tier) : -1;
     const yearly = this._billing === 'y';
     openSheet(`
       <div class="sheet-hd"><h2>Plans</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
 
+      ${t && t.paid ? `<div class="card" style="background:${t.renewSoon?'var(--y-tint)':'var(--success-tint)'};
+        border-color:${t.renewSoon?'var(--y-bd)':'#B7ECD1'}">
+        <b style="font-size:13.5px;color:${t.renewSoon?'#95610A':'var(--success-d)'}">${esc(this.planLabel(t))} active
+          · ${t.subDaysLeft} day${t.subDaysLeft===1?'':'s'} left</b>
+        <div class="muted" style="margin-top:3px">Changing plan is done by hand so the days you
+          have already paid for are not lost. Tap any plan and we will set it up.</div>
+      </div>` : ''}
+
       ${t && !t.paid ? `<div class="card" style="background:${t.active?'var(--y-tint)':'var(--danger-tint)'};
         border-color:${t.active?'var(--y-bd)':'var(--danger)'}">
         <b style="font-size:13.5px">${t.active
-          ? t.daysLeft + ' day' + (t.daysLeft===1?'':'s') + ' left in your trial'
-          : 'Your trial has ended'}</b>
+          ? t.trialDaysLeft + ' day' + (t.trialDaysLeft===1?'':'s') + ' left in your trial'
+          : (t.tier && t.subEnds && this.planById(t.tier)
+              ? 'Your ' + esc(this.planById(t.tier).name) + ' plan has ended'
+              : 'Your trial has ended')}</b>
         <div class="muted" style="margin-top:3px">${t.active
           ? 'Everything keeps working. Renting out pauses when it ends — returns never do.'
           : 'Returns and settlements still work, so no customer is left stranded. Renting out is paused.'}</div>
@@ -932,9 +1203,29 @@ const R = {
 
       ${this.PLANS.map(p=>{
         const price = yearly ? p.y : p.m;
-        const isSug = p.id === sug.id;
-        return `<div class="pl ${isSug?'sug':''}">
-          ${isSug?'<div class="pl-tag">Fits your fleet</div>':''}
+        const rank  = this.planRank(p.id);
+        const isCur = curRank >= 0 && rank === curRank;
+        /* A plan that cannot hold the bikes he already owns is not a choice,
+           it is a mis-sale waiting for a refund request. */
+        const tooSmall = p.bikes !== null && fleet > p.bikes;
+        const isSug = !isCur && !tooSmall && p.id === sug.id;
+        let cls = 'ghost', label = 'Choose ' + p.name, dis = '';
+        if (isCur){
+          label = t.subEnds ? 'Active until ' + fmtDay(t.subEnds) : 'Your current plan';
+          dis = 'disabled';
+        } else if (tooSmall){
+          label = 'Too small for ' + fleet + ' bike' + (fleet===1?'':'s');
+          dis = 'disabled';
+        } else if (curRank >= 0 && rank > curRank){
+          cls = ''; label = 'Upgrade to ' + p.name;
+        } else if (curRank >= 0){
+          label = 'Switch to ' + p.name;
+        } else if (isSug){
+          cls = '';
+        }
+        return `<div class="pl ${isCur?'cur':(isSug?'sug':'')}">
+          ${isCur?'<div class="pl-tag cur">YOUR PLAN</div>'
+                 :(isSug?'<div class="pl-tag">Fits your fleet</div>':'')}
           <div class="row">
             <div class="grow">
               <div class="pl-n">${p.name}</div>
@@ -946,8 +1237,8 @@ const R = {
               ${yearly?`<div class="pl-save">save ${money(p.m*12 - p.y)}</div>`:''}
             </div>
           </div>
-          <button class="btn ${isSug?'':'ghost'}" style="margin-top:11px"
-            onclick="R.choosePlan('${p.id}')">Choose ${p.name}</button>
+          <button class="btn ${cls}" style="margin-top:11px" ${dis}
+            onclick="R.choosePlan('${p.id}')">${esc(label)}</button>
         </div>`;
       }).join('')}
 
@@ -961,6 +1252,25 @@ const R = {
   async choosePlan(id){
     const p = this.PLANS.find(x=>x.id===id); if (!p) return;
     if (!this.isManager()) return toast('Ask the owner to pay for the plan');
+    /* Nothing upstream stops this. The server prices whatever tier it is
+       handed and the webhook overwrites the expiry it finds — so a second
+       purchase of the same tier, mid-term, is real money for zero extra
+       days. The disabled button is UX; this is the actual guard. */
+    const ti = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    if (ti && ti.paid && ti.tier === p.id && !ti.renewSoon)  /* lapsed shops fall through: paid is false */
+      return toast('You are already on ' + p.name + ' until ' +
+        (ti.subEnds ? fmtDay(ti.subEnds) : 'later'));
+    /* A tier change mid-term is not something to hand to a payment gateway
+       yet. PayU would take the new plan's full price and the webhook would
+       overwrite the expiry, silently burning whatever the shop had already
+       paid for. Until that is settled server-side, an upgrade goes to a
+       person who can do it properly. Renewing the SAME tier still goes
+       straight through, because it is only offered near the end of the term
+       when there is nothing left to lose. */
+    if (ti && ti.paid && ti.tier && ti.tier !== p.id) return this.planChangeHelp(p.id);
+    const fleet = this.fleetCount();
+    if (p.bikes !== null && fleet > p.bikes)
+      return toast(p.name + ' covers ' + p.bikes + ' bikes — you have ' + fleet);
     const yearly = this._billing === 'y';
     Haptic.primary();
     openSheet(`<div class="sheet-hd"><h2>Opening payment\u2026</h2></div>
@@ -977,6 +1287,39 @@ const R = {
         </div>
         <button class="btn" onclick="R.payHelp('${esc(id)}')">Pay on WhatsApp instead</button>`);
     }
+  },
+
+  /* Deliberately a conversation, not a checkout. Says out loud what the
+     shop stands to lose so the offer to handle it by hand reads as a
+     protection rather than an obstacle. */
+  planChangeHelp(id){
+    const t = Cloud.trialInfo();
+    const from = this.planById(t.tier), to = this.planById(id);
+    if (!to) return this.plans();
+    const up = from && this.planRank(id) > this.planRank(from.id);
+    openSheet(`<div class="sheet-hd"><h2>${up?'Upgrade':'Change'} to ${esc(to.name)}</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">You have ${t.subDaysLeft} day${t.subDaysLeft===1?'':'s'} left on
+          ${esc(from?from.name:'your plan')}</b>
+        <div class="muted" style="margin-top:3px">If you pay for ${esc(to.name)} through the app
+        right now, those days do not carry over. We would rather set this up by hand and credit
+        what you have already paid for.</div></div>
+      <div class="muted" style="margin:0 2px 14px;line-height:1.55">Message us and we will move you to
+        ${esc(to.name)}, work out the difference, and send you a payment link for that amount only.</div>
+      <button class="btn" onclick="R.planChangeWhatsApp('${esc(id)}')">Message us to ${up?'upgrade':'change'}</button>
+      <button class="btn ghost" style="margin-top:9px" onclick="R.plans()">Back to plans</button>`);
+  },
+  planChangeWhatsApp(id){
+    const t = Cloud.trialInfo();
+    const from = this.planById(t.tier), to = this.planById(id);
+    const L = ['RentalNow — I want to change my plan',
+      'From: ' + (from?from.name:'(unknown)') + (t.cycle?' ('+t.cycle+')':''),
+      'To: ' + (to?to.name:id),
+      'Days left: ' + t.subDaysLeft,
+      'Business: ' + (Cloud.shopName||''),
+      'Shop ID: ' + (Cloud.shopId||'')];
+    window.open('https://wa.me/917838361200?text=' + encodeURIComponent(L.join('\n')), '_blank');
   },
 
   /* If checkout fails there still has to be a way to give you money. */
@@ -1008,7 +1351,8 @@ const R = {
             <div class="card" style="background:var(--success-tint);border-color:#B7ECD1">
               <b style="font-size:14px;color:var(--success-d)">You're all set</b>
               <div class="muted" style="margin-top:4px">${t && t.paid
-                ? 'Your plan is active.'
+                ? esc(R.planLabel(t)) + ' is active' +
+                  (t.subEnds ? ' until ' + esc(fmtDay(t.subEnds)) : '') + '.'
                 : 'Activation can take a few seconds. If it has not appeared in a minute, message us and we will sort it.'}</div></div>`);
         }, 1200);
       } else {
@@ -3018,14 +3362,212 @@ const Cloud = {
      drift out of step with the shop record. subscriptionExpiry stays
      Cloud-Function-only, so a shop can never grant itself a licence. */
   TRIAL_DAYS: 14,
+  /* Renewal notice is deliberately wider than the trial's 5 days: a yearly
+     invoice is a bigger decision, often needs someone else's money, and a
+     seasonal shop wants to renew before the season, not after it.
+
+     It has to scale with the term. A flat 30 days on a 30-day plan means a
+     monthly customer opens the app to an amber "renew now" warning every
+     single day he is a customer — which is not a reminder, it is a nag, and
+     it teaches him to ignore the one banner that will eventually matter.
+
+     When the cycle is unknown we use the monthly window. Under-warning a
+     yearly customer by three weeks is recoverable; permanently crying wolf
+     at a monthly one is not. */
+  RENEW_WARN_DAYS: 30,
+  RENEW_WARN_DAYS_MONTHLY: 7,
+  /* Term length, for the progress bar and the warning window. */
+  cycleDays(cycle){ return /ann|year/.test(String(cycle||'')) ? 365 : 30; },
+
+  /* ── entitlement discovery ──────────────────────────────────────
+     The webhook is the only writer of these fields and this app does not
+     get to see its source. So rather than hard-coding a list of field
+     names and hoping, the app reads the shop document and works out for
+     itself which field carries the expiry, which carries the tier and
+     which carries the billing cycle.
+
+     The bias is deliberate and one-directional: where the evidence is
+     ambiguous, resolve in favour of the shop being PAID. Getting that
+     wrong the generous way costs a few free days. Getting it wrong the
+     mean way means a shopkeeper who just sent ₹12,990 opens the app,
+     reads "trial ended", and asks for his money back. Those two errors
+     are not the same size, so they do not get the same treatment. */
+
+  /* Date fields that exist on a shop document but are not entitlements.
+     trial* is on this list on purpose — the trial is already derived from
+     createdAt, and reading a trialEndsAt field as a subscription would
+     hand a free paid plan to every shop that ever signed up. */
+  _DATE_DENY: ['createdat','updatedat','modifiedat','changedat','lastseen','lastactive',
+    'lastsync','lastbill','lastlogin','deletedat','openedat','closedat','dob','doj',
+    'insexpiry','pucexpiry','fitnessexpiry','permitexpiry',
+    'trialend','trialends','trialendsat','trialexpiry','trialexpiresat','trialtill',
+    'trialuntil','trialstart','trialstarted'],
+
+  _norm(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g,''); },
+
+  /* Does this field name read like "when the paid thing stops working"?
+     Returns a confidence, 0 for no. Two words have to agree — a subject
+     (subscription, plan, licence, premium) and an edge (expiry, until,
+     valid till) — before we trust it, which is what keeps `lastBillDate`
+     and a vehicle's `insExpiry` out. */
+  _expiryScore(k){
+    const n = this._norm(k);
+    if (this._DATE_DENY.indexOf(n) >= 0) return 0;
+    const subject = /(subscription|subscri|^sub|plan|licen|billing|premium|paid|member|entitle|pro)/.test(n);
+    const edge    = /(expiry|expires|expire|expiring|end|ends|till|until|upto|uptil|valid|renew|good|active)/.test(n);
+    if (subject && edge) return 3;                 /* subscriptionExpiry, planValidTill */
+    if (subject && /(at|date|on|ms|time|stamp)$/.test(n)) return 2;  /* subscribedUntilDate */
+    if (edge && /(valid|paid|premium|active)/.test(n)) return 2;     /* validTill, paidUntil */
+    if (edge) return 1;                            /* bare expiresAt — weak but read it */
+    return 0;
+  },
+
+  /* Not before this product existed, and not so far out that it can only be
+     a bug. The upper bound is a century rather than a few years on purpose:
+     a support agent granting someone a lifetime licence types 2099, and that
+     must read as paid, not as garbage. */
+  _MIN_ENT_MS: Date.UTC(2024, 0, 1),
+  _MAX_ENT_MS: Date.UTC(2125, 0, 1),
+  _plausibleDate(ms){
+    return ms >= this._MIN_ENT_MS && ms <= this._MAX_ENT_MS;
+  },
+
+  /* Walks the shop document, top level and one level of nesting, so a
+     webhook that writes { subscription: { expiry, tier, cycle } } is read
+     exactly as well as one that writes flat fields. */
+  _scanEntitlement(){
+    const out = { expMs:0, expKey:null, tier:null, tierKey:null,
+                  cycle:null, cycleKey:null, scanned:0, candidates:[] };
+    const sh = this.shop;
+    if (!sh || typeof sh !== 'object') return out;
+    const self = this;
+    const plans = (window.R && window.R.PLANS) ? window.R.PLANS : [];
+    const found = [];
+
+    const isStamp = v => v && typeof v === 'object' &&
+      (typeof v.toMillis === 'function' || v.seconds !== undefined);
+
+    function visit(obj, parentKey, depth){
+      Object.keys(obj).forEach(function(k){
+        const v = obj[k];
+        const path = parentKey ? parentKey + '.' + k : k;
+        /* Nested keys are tested joined to their parent, so { subscription:
+           { expiry } } scores the same as subscriptionExpiry. */
+        const nameForTest = parentKey ? parentKey + k : k;
+        out.scanned++;
+
+        const score = self._expiryScore(nameForTest);
+        if (score){
+          const ms = self._ms(v);
+          if (ms && self._plausibleDate(ms)) found.push({ path, ms, score });
+        }
+
+        if (typeof v === 'string' || typeof v === 'number'){
+          const nk = self._norm(nameForTest);
+          const val = String(v).toLowerCase();
+          /* Tier is only read from tier-ish keys, never from any string in
+             the document — otherwise a shop named "Pro Bikes" buys itself a
+             Pro plan. Matched on a word boundary so "growth" in
+             "rentalnow_growth_annual" is found and "progress" is not. */
+          if (!out.tier && /(tier|plan|package|product|sku|subscription|subscri|sub|level|slab)/.test(nk)){
+            for (let i=0;i<plans.length;i++){
+              if (new RegExp('(^|[^a-z])' + plans[i].id + '([^a-z]|$)').test(val)){
+                out.tier = plans[i].id; out.tierKey = path; break;
+              }
+            }
+          }
+          if (!out.cycle && /(cycle|billing|interval|period|term|duration|plan|product|sku|subscription|subscri|sub)/.test(nk)){
+            if (/(annual|annually|yearly|year|12m|1y)/.test(val)){ out.cycle='annual'; out.cycleKey=path; }
+            else if (/(monthly|month|30d|1m)/.test(val)){ out.cycle='monthly'; out.cycleKey=path; }
+          }
+        }
+
+        if (depth < 1 && v && typeof v === 'object' && !Array.isArray(v) && !isStamp(v)){
+          visit(v, k, depth + 1);
+        }
+      });
+    }
+    try { visit(sh, '', 0); } catch(e){ console.warn('entitlement scan', e); }
+
+    /* Anything still in the future wins over anything already past, whatever
+       the field is called. That is the generous direction, and it is the one
+       that never locks a paying shop out over a naming disagreement. */
+    const now = Date.now();
+    found.sort(function(a,b){
+      const fa = a.ms > now ? 1 : 0, fb = b.ms > now ? 1 : 0;
+      return (fb - fa) || (b.score - a.score) || (b.ms - a.ms);
+    });
+    if (found.length){ out.expMs = found[0].ms; out.expKey = found[0].path; }
+    out.candidates = found;
+    return out;
+  },
+
+  /* onSnapshot hands over a fresh object each time, so identity is a valid
+     cache key and the scan runs once per shop-document change rather than
+     three or four times per render. */
+  _entCache: null,
+  entitlement(){
+    if (this._entCache && this._entCache.doc === this.shop) return this._entCache.val;
+    const val = this._scanEntitlement();
+    this._entCache = { doc: this.shop, val };
+    return val;
+  },
+  /* Firestore Timestamp, {seconds}, epoch millis, epoch seconds, a numeric
+     string, or an ISO string. All six are things a payment webhook writes in
+     the wild, and all six say the same true thing about when a plan ends.
+
+     The unit repair at the bottom matters more than it looks. A function
+     that stored seconds instead of milliseconds has not lied about the
+     date — it has been off by a factor of 1000. Refusing to read it would
+     lock a paying shop out over an arithmetic slip, which is the one
+     outcome this whole module exists to prevent. */
+  _ms(v){
+    if (v === undefined || v === null || v === '') return 0;
+    if (typeof v === 'boolean') return 0;
+    if (typeof v.toMillis === 'function') { try { return v.toMillis(); } catch(e){ return 0; } }
+    if (typeof v === 'object' && v.seconds != null) return Number(v.seconds) * 1000;
+    let n = NaN;
+    if (typeof v === 'number') n = v;
+    else if (typeof v === 'string'){
+      const str = v.trim();
+      if (/^\d{9,19}$/.test(str)) n = Number(str);
+      else { const t = Date.parse(str); return isNaN(t) ? 0 : t; }
+    }
+    if (!isFinite(n) || n <= 0) return 0;
+    /* Scale into milliseconds. Bounded loops, so a duration like 365 still
+       lands somewhere implausible and gets rejected downstream rather than
+       being multiplied into a valid-looking date. */
+    let guard = 0;
+    while (n < 1e11 && guard++ < 6) n *= 1000;   /* seconds → millis */
+    guard = 0;
+    while (n > 1e14 && guard++ < 6) n /= 1000;   /* micro/nanos → millis */
+    return Math.round(n);
+  },
   trialInfo(){
     const c = this.shop && this.shop.createdAt;
     const created = c && c.toMillis ? c.toMillis() : (c || Date.now());
     const ends = created + this.TRIAL_DAYS * 86400000;
-    const sub  = this.shop && this.shop.subscriptionExpiry;
-    const subMs = sub && sub.toMillis ? sub.toMillis() : (sub || 0);
-    const paid = subMs > Date.now();
-    return { paid, ends, daysLeft: Math.ceil((ends - Date.now())/86400000),
+    const ent   = this.entitlement();
+    const subMs = ent.expMs;
+    const paid  = subMs > Date.now();
+    const tier  = ent.tier;
+    const cycle = ent.cycle;
+    /* trialDaysLeft stays separate from subDaysLeft on purpose. One number
+       serving both meant a paying shop's "days left" was silently the count
+       since its trial died — a large negative number one render away from
+       being shown to a customer who had just paid. */
+    const trialDaysLeft = Math.ceil((ends - Date.now())/86400000);
+    const subDaysLeft   = subMs ? Math.ceil((subMs - Date.now())/86400000) : 0;
+    return { paid, ends, subEnds: subMs || 0, tier, cycle,
+             /* daysLeft keeps its old trial meaning so existing callers,
+                all of which are inside !paid branches, are unaffected. */
+             daysLeft: trialDaysLeft, trialDaysLeft, subDaysLeft,
+             renewSoon: paid && subDaysLeft <= (/ann|year/.test(cycle||'')
+               ? this.RENEW_WARN_DAYS : this.RENEW_WARN_DAYS_MONTHLY),
+             /* Carried so the diagnostic sheet can show a support caller
+                exactly which field this shop's billing was read from. */
+             src: ent,
+             expired: !paid && Date.now() >= ends,
              active: paid || Date.now() < ends };
   },
 
@@ -3175,6 +3717,28 @@ const Cloud = {
     } catch(e){
       console.error('startCheckout', e);
       return { ok:false, msg: (e && (e.message || e.code)) || 'Payment could not start' };
+    }
+  },
+
+  /* Receipts are written by the webhook and are read-only here. Fetched on
+     demand rather than kept on a listener: a shop looks at this screen once
+     a year, and a permanent subscription would cost more than it returns.
+
+     An empty result and a permission failure are different things and are
+     reported differently — telling a shop "no payments found" when the read
+     was actually denied sends them hunting for a payment that is right
+     there in the database. */
+  async fetchReceipts(){
+    if (!this.shopId) return { ok:false, code:'nosignin', rows:[] };
+    try {
+      const snap = await getDocs(query(collection(db,'rn_shops',this.shopId,'receipts'),
+        orderBy('at','desc'), limit(50)));
+      return { ok:true, rows: snap.docs.map(d => Object.assign({ id:d.id }, d.data())) };
+    } catch(e){
+      /* An orderBy on a collection with no documents does not throw, so
+         anything landing here is a rules or index problem, not emptiness. */
+      console.warn('fetchReceipts', e);
+      return { ok:false, code:(e && e.code) || 'unknown', rows:[] };
     }
   },
 
