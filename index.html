@@ -88695,9 +88695,14 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-amt {
    Hide scrollbar until user hovers the cart
    ════════════════════════════════════════════════════════════════ */
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-items {
-  scrollbar-width: thin !important;
-  scrollbar-color: transparent transparent !important;
-  transition: scrollbar-color 0.2s !important;
+  /* (v34_121a) was scrollbar-width:thin + scrollbar-color:transparent.
+     Chrome 121+ implements the standard scrollbar properties, and a non-auto
+     value on either one makes the browser ignore every ::-webkit-scrollbar-*
+     rule on the element. So this pair — not the webkit thumb colour — was what
+     kept the cart scrollbar invisible. The webkit block below is the only
+     styling voice now; the Firefox equivalent lives behind an @supports guard
+     in the v34_121 block. */
+  transition: none !important;
 }
 
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-items::-webkit-scrollbar {
@@ -88715,14 +88720,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-items::-webkit-scrollbar-thu
   border-radius: 99px !important;
 }
 
-/* Reveal scrollbar on hover */
-html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r:hover .hnd-pos-items {
-  scrollbar-color: rgba(0,0,0,0.15) transparent !important;
-}
-
-html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r:hover .hnd-pos-items::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15) !important;
-}
+/* (v34_121a) The hover-reveal is gone. A biller needs to see that item 9
+   exists BEFORE deciding to move the mouse over there; a scrollbar you have to
+   hover to discover is a scrollbar that does not exist. Constant visibility,
+   with the hover state now only darkening the thumb (see the v34_121 block). */
 
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r:hover .hnd-pos-items::-webkit-scrollbar-thumb:hover {
   background: rgba(0,0,0,0.30) !important;
@@ -108234,9 +108235,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items{
   min-height: 0 !important;          /* the whole fix in one declaration */
   overflow-y: auto !important;
   overscroll-behavior: contain;
-  scrollbar-width: thin !important;
-  scrollbar-color: #C4BFB0 transparent !important;
+  /* Reserve the bar's width up front. Without this the whole item list shifts
+     sideways the moment the bill crosses ~9 items and the bar appears, which
+     on a counter reads as the screen glitching mid-sale. */
+  scrollbar-gutter: stable;
 }
+/* (v34_121a) scrollbar-width / scrollbar-color are NOT set here on purpose.
+   Chrome 121+ implements the standard properties, and when either is set to a
+   non-auto value the whole ::-webkit-scrollbar-* block below is ignored — so
+   setting both, as the first cut did, silently threw away the 9px grabbable
+   bar and left a thin one. Chromium gets the pseudo-elements; Firefox, which
+   has no pseudo-elements to ignore, gets the standard properties. */
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar{ width: 9px !important; }
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar-track{ background: transparent !important; }
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar-thumb{
@@ -108245,6 +108254,11 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-
 }
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar-thumb:hover{
   background: #9A9584 !important; background-clip: content-box !important;
+}
+@supports not selector(::-webkit-scrollbar){
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items{
+    scrollbar-width: thin; scrollbar-color: #C4BFB0 transparent;
+  }
 }
 
 /* ── BOTTOM ZONE · pinned, and now cheap enough to always fit ───────────── */
@@ -108270,6 +108284,16 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-grand{
   border-top: 0 !important;
   margin: 9px 16px 0 !important; padding: 11px 14px !important;
   align-items: baseline !important; gap: 10px !important;
+  /* 52781 forced this white while 52849 still painted the label #fff, so
+     "Total" has been white-on-white. Restore the intended dark block. */
+  background: var(--hnd-ink, #0A0A0A) !important;
+  border-radius: 9px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-grand .hnd-pos-grand-l{
+  color: #FFFFFF !important; opacity: .62 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-grand .hnd-pos-grand-r{
+  color: var(--hnd-gold, #D4A574) !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-grand-l{ flex-shrink: 0 !important; }
 #hnp-grand-sub{
@@ -108353,8 +108377,9 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-grid > .hnd-pos-tile.hnp-top
 /* Last-resort guard, set by JS only if the footer would still cross the panel
    edge on some screen we have not seen. Better a cramped bill than an
    unreachable Complete button. */
-html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-cust{ display: none !important; }
-html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-actions{ display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-cust{ padding: 6px 16px !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-cust-meta{ display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-act{ padding: 6px !important; font-size: 11px !important; }
 html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r > .hnd-pos-grand{ margin-top: 6px !important; padding: 8px 12px !important; }
 html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complete{ margin: 7px 16px 9px !important; padding: 10px !important; }
 </style>
@@ -108395,7 +108420,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complet
         var i = $('hnd-pos-disc-input');
         if (i) setTimeout(function(){ try{ i.focus(); i.select(); }catch(_){ } }, 60);
       }
-      fit();
+      fit(true);
     });
   }
   function closeDrawer(){ var d = $('hnp-drawer'); if (d) d.classList.remove('open'); }
@@ -108511,24 +108536,41 @@ html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complet
      4 · The guarantee. If the Complete button ever crosses the panel edge
      on a screen we have not accounted for, compact rather than clip.
      ───────────────────────────────────────────────────────────────────── */
-  var warned = false;
-  function fit(){
+  /* v34_121a — the first cut measured (button.bottom + 11) against the panel
+     edge. The 11 was a guess at the button's bottom margin; in compact mode
+     that margin is 9, so the check read +2px of overflow forever, latched
+     hnp-tight on a roomy screen and re-closed the discount drawer every tick.
+
+     Measure the thing we actually care about instead: .hnd-pos-r is
+     overflow:hidden, so scrollHeight > clientHeight is, by definition,
+     content being clipped. No fudge factor to get wrong.
+
+     The class is dropped before every measurement and only re-applied if the
+     relaxed layout genuinely overflows, so the panel un-tightens by itself
+     when the bill shrinks. Both happen in one task, so nothing paints in
+     between. Gated on a change signature to keep it off the 400ms path. */
+  var warned = false, lastSig = '';
+  function sig(){
+    var it = $('hnd-pos-items'), d = $('hnp-drawer');
+    return [ it ? it.querySelectorAll('.hnd-pos-i').length : 0,
+             (d && d.classList.contains('open')) ? 1 : 0,
+             window.innerHeight, window.innerWidth ].join('|');
+  }
+  function fit(force){
     if (!desk() || !onPos()) return;
-    var cart = q1('.hnd-pos-r'), go = $('hnd-pos-complete');
-    if (!cart || !go) return;
-    var over = Math.round(go.getBoundingClientRect().bottom + 11 - cart.getBoundingClientRect().bottom);
-    if (over > 0){
-      if (!D.body.classList.contains('hnp-tight')){
-        D.body.classList.add('hnp-tight');
-        if (!warned){
-          warned = true;
-          try{ console.warn('[HNPos v34_121] bill footer was ' + over + 'px past the panel edge \u2014 compact mode on'); }catch(_){ }
-        }
-        return;
+    var s = sig();
+    if (!force && s === lastSig) return;
+    lastSig = s;
+    var cart = q1('.hnd-pos-r');
+    if (!cart) return;
+    D.body.classList.remove('hnp-tight');
+    var over = cart.scrollHeight - cart.clientHeight;
+    if (over > 1){
+      D.body.classList.add('hnp-tight');
+      if (!warned){
+        warned = true;
+        try{ console.warn('[HNPos v34_121] bill content ' + over + 'px over the panel \u2014 compact mode on'); }catch(_){ }
       }
-      closeDrawer();   /* absolute last resort */
-    } else if (over < -70 && D.body.classList.contains('hnp-tight')){
-      D.body.classList.remove('hnp-tight');
     }
   }
 
@@ -108616,7 +108658,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complet
   setInterval(tick, 400);
   var it0 = $('hnd-pos-items');
   if (it0) it0.addEventListener('scroll', function(){ try{ paint(); }catch(_){ } }, { passive: true });
-  window.addEventListener('resize', function(){ try{ fit(); }catch(_){ } });
+  window.addEventListener('resize', function(){ try{ fit(true); }catch(_){ } });
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', tick); else tick();
 
   try{
