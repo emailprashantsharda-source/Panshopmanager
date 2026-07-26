@@ -550,7 +550,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_12_2_fleetadd';
+const BUILD = 'rn_v3_12_3_fleetadd';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1641,9 +1641,14 @@ const R = {
   renderFleet(){
     const box = document.getElementById('fleet-list');
     const missing = DB.d.rates.filter(rc => !DB.d.vehicles.some(v => v.rateId===rc.id)).length;
+    /* Top of the list, not the bottom. It was at the end and a shop with more
+       bikes than fit on screen never saw it — which is the whole point of the
+       button, since the FAB was already there for anyone who had found it. */
     const hdr = `<div class="muted" style="margin:0 2px 10px">
         One bike per row. Rename it, add a vehicle number, or add a second bike
-        of the same model from Rates.</div>` +
+        of the same model from Rates.</div>
+      <button class="btn" style="margin-bottom:12px" onclick="R.editVehicle()">
+        + Add a bike</button>` +
       (missing ? `<button class="btn ghost" style="margin-bottom:12px" onclick="R.fillFromRates()">
           + Add ${missing} missing bike${missing===1?'':'s'} from your rate card</button>` : '');
     if (!DB.d.vehicles.length){
@@ -1684,11 +1689,8 @@ const R = {
         </div>
       </div>`;
     }).join('') +
-      /* An explicit control at the end of the list, not only the FAB in the
-         nav. The FAB is a 54px circle with no border and a one-word label — on
-         the Fleet tab it is also the thing overlapping the last row, so a
-         shopkeeper looking for "where do I add a bike" scans the list, not the
-         chrome. Costs one button and removes the question. */
+      /* And once more at the end, quieter, for the shop that has just finished
+         reading down its fleet. */
       `<button class="btn ghost" style="margin-top:4px" onclick="R.editVehicle()">
          + Add another bike</button>`;
   },
