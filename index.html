@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_120_purchase_register';
+    window.HISAABNOW_BUILD = 'v34_121_pos_bill_zones';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -53249,6 +53249,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
   }
   HND.setDiscount = setDiscount;
   HND.setNote = setNote;
+  /* (v34_121) the v34_121 bill-panel block drives these after a keyboard add */
+  HND.renderGrid = renderGrid;
+  HND.renderCart = renderCart;
+  HND._qtyMul = 0;
 
   function escHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
   function escAttr(s){ return escHtml(s).replace(/"/g, '&quot;'); }
@@ -53333,7 +53337,13 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
   document.addEventListener('input', function(e){
     if (!e.target) return;
     if (e.target.id === 'hnd-pos-search-input'){
-      searchQ = e.target.value || '';
+      /* (v34_121) "atta*3" / "atta x3" sets the quantity in the same keystroke.
+         The multiplier is stripped before filtering, otherwise the fuzzy
+         matcher looks for a product literally called "atta 3" and finds none. */
+      var _raw = e.target.value || '';
+      var _m = _raw.match(/^\s*(.*?)\s*[*x\u00d7]\s*(\d+(?:\.\d+)?)\s*$/i);
+      HND._qtyMul = _m ? Math.max(1, Math.round(+_m[2])) : 0;
+      searchQ = _m ? _m[1] : _raw;
       renderGrid();
     } else if (e.target.id === 'hnd-pos-disc-input'){
       setDiscount();
@@ -87881,9 +87891,13 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-bill-meta {
 
 /* Items list — scrollable middle zone */
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items {
-  flex: 1 !important;
-  overflow-y: hidden !important;
-  min-height: 80px !important;
+  flex: 1 1 auto !important;
+  /* (v34_121) was overflow-y:hidden + min-height:80px. Both were landmines:
+     the hidden killed the only working scroller in the bill column, and the
+     floor stopped the list shrinking, so the payment row got pushed off the
+     clipped edge. Only 101818 coming later in the file was saving it. */
+  overflow-y: auto !important;
+  min-height: 0 !important;
   padding: 6px 18px !important;
 }
 
@@ -88695,9 +88709,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-items::-webkit-scrollbar-tra
 }
 
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-items::-webkit-scrollbar-thumb {
-  background: transparent !important;
-  border-radius: 3px !important;
-  transition: background 0.2s !important;
+  /* (v34_121) was transparent until the mouse entered the panel — the one
+     scroller that did work looked like it did not exist. See v34_121 block. */
+  background: #C4BFB0 !important;
+  border-radius: 99px !important;
 }
 
 /* Reveal scrollbar on hover */
@@ -101815,7 +101830,7 @@ html[data-shell="desktop"] .hnd-help-btn{display:none !important;}</style>
 
 <style>/* ═══ CART LAYOUT + PANEL X FIX · v33_347 ═══ */
 /* items scroll (override the pre-existing overflow-y:hidden so items 3+ show with a scroller) */
-html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items{ overflow-y:auto !important; min-height:96px !important; flex:1 1 auto !important; }
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items{ overflow-y:auto !important; min-height:0 !important; flex:1 1 auto !important; }
 /* the broken/empty "Served by" dropdown was covering items — hide it in the POS cart */
 html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-staff-section{ display:none !important; }
 /* keep the footer pinned & the Complete button always visible */
@@ -105805,7 +105820,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
 })();
 </script>
 
-<!-- ===== HNRoyalBill v34_120_purchase_register · self-hosted royal WhatsApp bills (offline) ===== -->
+<!-- ===== HNRoyalBill v34_121_pos_bill_zones · self-hosted royal WhatsApp bills (offline) ===== -->
 <script id="hnrb-lib-h2i">/*! html-to-image (MIT) */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).htmlToImage={})}(this,(function(t){"use strict";function e(t,e,n,r){return new(n||(n=Promise))((function(i,o){function u(t){try{a(r.next(t))}catch(t){o(t)}}function c(t){try{a(r.throw(t))}catch(t){o(t)}}function a(t){var e;t.done?i(t.value):(e=t.value,e instanceof n?e:new n((function(t){t(e)}))).then(u,c)}a((r=r.apply(t,e||[])).next())}))}function n(t,e){var n,r,i,o,u={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return o={next:c(0),throw:c(1),return:c(2)},"function"==typeof Symbol&&(o[Symbol.iterator]=function(){return this}),o;function c(c){return function(a){return function(c){if(n)throw new TypeError("Generator is already executing.");for(;o&&(o=0,c[0]&&(u=0)),u;)try{if(n=1,r&&(i=2&c[0]?r.return:c[0]?r.throw||((i=r.return)&&i.call(r),0):r.next)&&!(i=i.call(r,c[1])).done)return i;switch(r=0,i&&(c=[2&c[0],i.value]),c[0]){case 0:case 1:i=c;break;case 4:return u.label++,{value:c[1],done:!1};case 5:u.label++,r=c[1],c=[0];continue;case 7:c=u.ops.pop(),u.trys.pop();continue;default:if(!(i=u.trys,(i=i.length>0&&i[i.length-1])||6!==c[0]&&2!==c[0])){u=0;continue}if(3===c[0]&&(!i||c[1]>i[0]&&c[1]<i[3])){u.label=c[1];break}if(6===c[0]&&u.label<i[1]){u.label=i[1],i=c;break}if(i&&u.label<i[2]){u.label=i[2],u.ops.push(c);break}i[2]&&u.ops.pop(),u.trys.pop();continue}c=e.call(t,u)}catch(t){c=[6,t],r=0}finally{n=i=0}if(5&c[0])throw c[1];return{value:c[0]?c[1]:void 0,done:!0}}([c,a])}}}var r,i=(r=0,function(){return r+=1,"u".concat("0000".concat((Math.random()*Math.pow(36,4)<<0).toString(36)).slice(-4)).concat(r)});function o(t){for(var e=[],n=0,r=t.length;n<r;n++)e.push(t[n]);return e}var u=null;function c(t){return void 0===t&&(t={}),u||(u=t.includeStyleProperties?t.includeStyleProperties:o(window.getComputedStyle(document.documentElement)))}function a(t,e){var n=(t.ownerDocument.defaultView||window).getComputedStyle(t).getPropertyValue(e);return n?parseFloat(n.replace("px","")):0}function s(t,e){void 0===e&&(e={});var n,r,i,o=e.width||(r=a(n=t,"border-left-width"),i=a(n,"border-right-width"),n.clientWidth+r+i),u=e.height||function(t){var e=a(t,"border-top-width"),n=a(t,"border-bottom-width");return t.clientHeight+e+n}(t);return{width:o,height:u}}var l=16384;function f(t,e){return void 0===e&&(e={}),t.toBlob?new Promise((function(n){t.toBlob(n,e.type?e.type:"image/png",e.quality?e.quality:1)})):new Promise((function(n){for(var r=window.atob(t.toDataURL(e.type?e.type:void 0,e.quality?e.quality:void 0).split(",")[1]),i=r.length,o=new Uint8Array(i),u=0;u<i;u+=1)o[u]=r.charCodeAt(u);n(new Blob([o],{type:e.type?e.type:"image/png"}))}))}function h(t){return new Promise((function(e,n){var r=new Image;r.onload=function(){r.decode().then((function(){requestAnimationFrame((function(){return e(r)}))}))},r.onerror=n,r.crossOrigin="anonymous",r.decoding="async",r.src=t}))}function d(t){return e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Promise.resolve().then((function(){return(new XMLSerializer).serializeToString(t)})).then(encodeURIComponent).then((function(t){return"data:image/svg+xml;charset=utf-8,".concat(t)}))]}))}))}function v(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u;return n(this,(function(n){return e="http://www.w3.org/2000/svg",o=document.createElementNS(e,"svg"),u=document.createElementNS(e,"foreignObject"),o.setAttribute("width","".concat(r)),o.setAttribute("height","".concat(i)),o.setAttribute("viewBox","0 0 ".concat(r," ").concat(i)),u.setAttribute("width","100%"),u.setAttribute("height","100%"),u.setAttribute("x","0"),u.setAttribute("y","0"),u.setAttribute("externalResourcesRequired","true"),o.appendChild(u),u.appendChild(t),[2,d(o)]}))}))}var p=function(t,e){if(t instanceof e)return!0;var n=Object.getPrototypeOf(t);return null!==n&&(n.constructor.name===e.name||p(n,e))};function g(t,e,n,r){var i=".".concat(t,":").concat(e),o=n.cssText?function(t){var e=t.getPropertyValue("content");return"".concat(t.cssText," content: '").concat(e.replace(/'|"/g,""),"';")}(n):function(t,e){return c(e).map((function(e){var n=t.getPropertyValue(e),r=t.getPropertyPriority(e);return"".concat(e,": ").concat(n).concat(r?" !important":"",";")})).join(" ")}(n,r);return document.createTextNode("".concat(i,"{").concat(o,"}"))}function m(t,e,n,r){var o=window.getComputedStyle(t,n),u=o.getPropertyValue("content");if(""!==u&&"none"!==u){var c=i();try{e.className="".concat(e.className," ").concat(c)}catch(t){return}var a=document.createElement("style");a.appendChild(g(c,n,o,r)),e.appendChild(a)}}var w="application/font-woff",y="image/jpeg",b={woff:w,woff2:w,ttf:"application/font-truetype",eot:"application/vnd.ms-fontobject",png:"image/png",jpg:y,jpeg:y,gif:"image/gif",tiff:"image/tiff",svg:"image/svg+xml",webp:"image/webp"};function S(t){var e=function(t){var e=/\.([^./]*?)$/g.exec(t);return e?e[1]:""}(t).toLowerCase();return b[e]||""}function E(t){return-1!==t.search(/^(data:)/)}function x(t,e){return"data:".concat(e,";base64,").concat(t)}function C(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){switch(n.label){case 0:return[4,fetch(t,r)];case 1:if(404===(e=n.sent()).status)throw new Error('Resource "'.concat(e.url,'" not found'));return[4,e.blob()];case 2:return o=n.sent(),[2,new Promise((function(t,n){var r=new FileReader;r.onerror=n,r.onloadend=function(){try{t(i({res:e,result:r.result}))}catch(t){n(t)}},r.readAsDataURL(o)}))]}}))}))}var P={};function R(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u,c,a;return n(this,(function(n){switch(n.label){case 0:if(e=function(t,e,n){var r=t.replace(/\?.*/,"");return n&&(r=t),/ttf|otf|eot|woff2?/i.test(r)&&(r=r.replace(/.*\//,"")),e?"[".concat(e,"]").concat(r):r}(t,r,i.includeQueryParams),null!=P[e])return[2,P[e]];i.cacheBust&&(t+=(/\?/.test(t)?"&":"?")+(new Date).getTime()),n.label=1;case 1:return n.trys.push([1,3,,4]),[4,C(t,i.fetchRequestInit,(function(t){var e=t.res,n=t.result;return r||(r=e.headers.get("Content-Type")||""),function(t){return t.split(/,/)[1]}(n)}))];case 2:return u=n.sent(),o=x(u,r),[3,4];case 3:return c=n.sent(),o=i.imagePlaceholder||"",a="Failed to fetch resource: ".concat(t),c&&(a="string"==typeof c?c:c.message),a&&console.warn(a),[3,4];case 4:return P[e]=o,[2,o]}}))}))}function T(t){return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){return"data:,"===(e=t.toDataURL())?[2,t.cloneNode(!1)]:[2,h(e)]}))}))}function A(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return t.currentSrc?(e=document.createElement("canvas"),i=e.getContext("2d"),e.width=t.clientWidth,e.height=t.clientHeight,null==i||i.drawImage(t,0,0,e.width,e.height),[2,h(e.toDataURL())]):(o=t.poster,u=S(o),[4,R(o,u,r)]);case 1:return[2,h(n.sent())]}}))}))}function k(t,r){var i;return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return e.trys.push([0,3,,4]),(null===(i=null==t?void 0:t.contentDocument)||void 0===i?void 0:i.body)?[4,I(t.contentDocument.body,r,!0)]:[3,2];case 1:return[2,e.sent()];case 2:return[3,4];case 3:return e.sent(),[3,4];case 4:return[2,t.cloneNode(!1)]}}))}))}var L=function(t){return null!=t.tagName&&"SVG"===t.tagName.toUpperCase()};function N(t,e,n){return p(e,Element)&&(function(t,e,n){var r=e.style;if(r){var i=window.getComputedStyle(t);i.cssText?(r.cssText=i.cssText,r.transformOrigin=i.transformOrigin):c(n).forEach((function(n){var o=i.getPropertyValue(n);if("font-size"===n&&o.endsWith("px")){var u=Math.floor(parseFloat(o.substring(0,o.length-2)))-.1;o="".concat(u,"px")}p(t,HTMLIFrameElement)&&"display"===n&&"inline"===o&&(o="block"),"d"===n&&e.getAttribute("d")&&(o="path(".concat(e.getAttribute("d"),")")),r.setProperty(n,o,i.getPropertyPriority(n))}))}}(t,e,n),function(t,e,n){m(t,e,":before",n),m(t,e,":after",n)}(t,e,n),function(t,e){p(t,HTMLTextAreaElement)&&(e.innerHTML=t.value),p(t,HTMLInputElement)&&e.setAttribute("value",t.value)}(t,e),function(t,e){if(p(t,HTMLSelectElement)){var n=e,r=Array.from(n.children).find((function(e){return t.value===e.getAttribute("value")}));r&&r.setAttribute("selected","")}}(t,e)),e}function I(t,r,i){return e(this,void 0,void 0,(function(){return n(this,(function(u){return i||!r.filter||r.filter(t)?[2,Promise.resolve(t).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){return p(t,HTMLCanvasElement)?[2,T(t)]:p(t,HTMLVideoElement)?[2,A(t,r)]:p(t,HTMLIFrameElement)?[2,k(t,r)]:[2,t.cloneNode(L(t))]}))}))}(t,r)})).then((function(i){return function(t,r,i){var u,c;return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){switch(n.label){case 0:return L(r)?[2,r]:(e=[],0===(e=null!=(a=t).tagName&&"SLOT"===a.tagName.toUpperCase()&&t.assignedNodes?o(t.assignedNodes()):p(t,HTMLIFrameElement)&&(null===(u=t.contentDocument)||void 0===u?void 0:u.body)?o(t.contentDocument.body.childNodes):o((null!==(c=t.shadowRoot)&&void 0!==c?c:t).childNodes)).length||p(t,HTMLVideoElement)?[2,r]:[4,e.reduce((function(t,e){return t.then((function(){return I(e,i)})).then((function(t){t&&r.appendChild(t)}))}),Promise.resolve())]);case 1:return n.sent(),[2,r]}var a}))}))}(t,i,r)})).then((function(e){return N(t,e,r)})).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c,a,s,l,f,h,d,v,p;return n(this,(function(n){switch(n.label){case 0:if(0===(e=t.querySelectorAll?t.querySelectorAll("use"):[]).length)return[2,t];i={},p=0,n.label=1;case 1:return p<e.length?(o=e[p],(u=o.getAttribute("xlink:href"))?(c=t.querySelector(u),a=document.querySelector(u),c||!a||i[u]?[3,3]:(s=i,l=u,[4,I(a,r,!0)])):[3,3]):[3,4];case 2:s[l]=n.sent(),n.label=3;case 3:return p++,[3,1];case 4:if((f=Object.values(i)).length){for(h="http://www.w3.org/1999/xhtml",(d=document.createElementNS(h,"svg")).setAttribute("xmlns",h),d.style.position="absolute",d.style.width="0",d.style.height="0",d.style.overflow="hidden",d.style.display="none",v=document.createElementNS(h,"defs"),d.appendChild(v),p=0;p<f.length;p++)v.appendChild(f[p]);t.appendChild(d)}return[2,t]}}))}))}(t,r)}))]:[2,null]}))}))}var D=/url\((['"]?)([^'"]+?)\1\)/g,H=/url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g,M=/src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;function F(t,r,i,o,u){return e(this,void 0,void 0,(function(){var e,c,a,s;return n(this,(function(n){switch(n.label){case 0:return n.trys.push([0,5,,6]),e=i?function(t,e){if(t.match(/^[a-z]+:\/\//i))return t;if(t.match(/^\/\//))return window.location.protocol+t;if(t.match(/^[a-z]+:/i))return t;var n=document.implementation.createHTMLDocument(),r=n.createElement("base"),i=n.createElement("a");return n.head.appendChild(r),n.body.appendChild(i),e&&(r.href=e),i.href=t,i.href}(r,i):r,c=S(r),a=void 0,u?[4,u(e)]:[3,2];case 1:return s=n.sent(),a=x(s,c),[3,4];case 2:return[4,R(e,c,o)];case 3:a=n.sent(),n.label=4;case 4:return[2,t.replace((l=r,f=l.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1"),new RegExp("(url\\(['\"]?)(".concat(f,")(['\"]?\\))"),"g")),"$1".concat(a,"$3"))];case 5:return n.sent(),[3,6];case 6:return[2,t]}var l,f}))}))}function V(t){return-1!==t.search(D)}function q(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){return V(t)?(e=function(t,e){var n=e.preferredFontFormat;return n?t.replace(M,(function(t){for(;;){var e=H.exec(t)||[],r=e[0],i=e[2];if(!i)return"";if(i===n)return"src: ".concat(r,";")}})):t}(t,i),o=function(t){var e=[];return t.replace(D,(function(t,n,r){return e.push(r),t})),e.filter((function(t){return!E(t)}))}(e),[2,o.reduce((function(t,e){return t.then((function(t){return F(t,e,r,i)}))}),Promise.resolve(e))]):[2,t]}))}))}function U(t,r,i){var o;return e(this,void 0,void 0,(function(){var e,u;return n(this,(function(n){switch(n.label){case 0:return(e=null===(o=r.style)||void 0===o?void 0:o.getPropertyValue(t))?[4,q(e,null,i)]:[3,2];case 1:return u=n.sent(),r.style.setProperty(t,u,r.style.getPropertyPriority(t)),[2,!0];case 2:return[2,!1]}}))}))}function j(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,U("background",t,r)];case 1:return n.sent()?[3,3]:[4,U("background-image",t,r)];case 2:n.sent(),n.label=3;case 3:return[4,U("mask",t,r)];case 4:return(i=n.sent())?[3,6]:[4,U("-webkit-mask",t,r)];case 5:i=n.sent(),n.label=6;case 6:return(e=i)?[3,8]:[4,U("mask-image",t,r)];case 7:e=n.sent(),n.label=8;case 8:return e?[3,10]:[4,U("-webkit-mask-image",t,r)];case 9:n.sent(),n.label=10;case 10:return[2]}}))}))}function O(t,r){return e(this,void 0,void 0,(function(){var e,i,o;return n(this,(function(n){switch(n.label){case 0:return(e=p(t,HTMLImageElement))&&!E(t.src)||p(t,SVGImageElement)&&!E(t.href.baseVal)?[4,R(i=e?t.src:t.href.baseVal,S(i),r)]:[2];case 1:return o=n.sent(),[4,new Promise((function(n,i){t.onload=n,t.onerror=r.onImageErrorHandler?function(){for(var t=[],e=0;e<arguments.length;e++)t[e]=arguments[e];try{n(r.onImageErrorHandler.apply(r,t))}catch(t){i(t)}}:i;var u=t;u.decode&&(u.decode=n),"lazy"===u.loading&&(u.loading="eager"),e?(t.srcset="",t.src=o):t.href.baseVal=o}))];case 2:return n.sent(),[2]}}))}))}function B(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return e=o(t.childNodes),i=e.map((function(t){return z(t,r)})),[4,Promise.all(i).then((function(){return t}))];case 1:return n.sent(),[2]}}))}))}function z(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return p(t,Element)?[4,j(t,r)]:[3,4];case 1:return e.sent(),[4,O(t,r)];case 2:return e.sent(),[4,B(t,r)];case 3:e.sent(),e.label=4;case 4:return[2]}}))}))}var W={};function $(t){return e(this,void 0,void 0,(function(){var e,r;return n(this,(function(n){switch(n.label){case 0:return null!=(e=W[t])?[2,e]:[4,fetch(t)];case 1:return[4,n.sent().text()];case 2:return r=n.sent(),e={url:t,cssText:r},W[t]=e,[2,e]}}))}))}function G(t,r){return e(this,void 0,void 0,(function(){var i,o,u,c,a=this;return n(this,(function(s){return i=t.cssText,o=/url\(["']?([^"')]+)["']?\)/g,u=i.match(/url\([^)]+\)/g)||[],c=u.map((function(u){return e(a,void 0,void 0,(function(){var e;return n(this,(function(n){return(e=u.replace(o,"$1")).startsWith("https://")||(e=new URL(e,t.url).href),[2,C(e,r.fetchRequestInit,(function(t){var e=t.result;return i=i.replace(u,"url(".concat(e,")")),[u,e]}))]}))}))})),[2,Promise.all(c).then((function(){return i}))]}))}))}function _(t){if(null==t)return[];for(var e=[],n=t.replace(/(\/\*[\s\S]*?\*\/)/gi,""),r=new RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})","gi");;){if(null===(u=r.exec(n)))break;e.push(u[0])}n=n.replace(r,"");for(var i=/@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi,o=new RegExp("((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})","gi");;){var u;if(null===(u=i.exec(n))){if(null===(u=o.exec(n)))break;i.lastIndex=o.lastIndex}else o.lastIndex=i.lastIndex;e.push(u[0])}return e}function J(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){return e=[],i=[],t.forEach((function(e){if("cssRules"in e)try{o(e.cssRules||[]).forEach((function(t,n){if(t.type===CSSRule.IMPORT_RULE){var o=n+1,u=$(t.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){try{e.insertRule(t,t.startsWith("@import")?o+=1:e.cssRules.length)}catch(e){console.error("Error inserting rule from remote css",{rule:t,error:e})}}))})).catch((function(t){console.error("Error loading remote css",t.toString())}));i.push(u)}}))}catch(o){var n=t.find((function(t){return null==t.href}))||document.styleSheets[0];null!=e.href&&i.push($(e.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){n.insertRule(t,n.cssRules.length)}))})).catch((function(t){console.error("Error loading remote stylesheet",t)}))),console.error("Error inlining remote css file",o)}})),[2,Promise.all(i).then((function(){return t.forEach((function(t){if("cssRules"in t)try{o(t.cssRules||[]).forEach((function(t){e.push(t)}))}catch(e){console.error("Error while reading CSS rules from ".concat(t.href),e)}})),e}))]}))}))}function Q(t){return t.filter((function(t){return t.type===CSSRule.FONT_FACE_RULE})).filter((function(t){return V(t.style.getPropertyValue("src"))}))}function X(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:if(null==t.ownerDocument)throw new Error("Provided element is not within a Document");return[4,J(o(t.ownerDocument.styleSheets),r)];case 1:return[2,Q(e.sent())]}}))}))}function K(t){return t.trim().replace(/["']/g,"")}function Y(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,X(t,r)];case 1:return e=n.sent(),i=function(t){var e=new Set;return function t(n){(n.style.fontFamily||getComputedStyle(n).fontFamily).split(",").forEach((function(t){e.add(K(t))})),Array.from(n.children).forEach((function(e){e instanceof HTMLElement&&t(e)}))}(t),e}(t),[4,Promise.all(e.filter((function(t){return i.has(K(t.style.fontFamily))})).map((function(t){var e=t.parentStyleSheet?t.parentStyleSheet.href:null;return q(t.cssText,e,r)})))];case 2:return[2,n.sent().join("\n")]}}))}))}function Z(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c;return n(this,(function(n){switch(n.label){case 0:return null==r.fontEmbedCSS?[3,1]:(i=r.fontEmbedCSS,[3,5]);case 1:return r.skipFonts?(o=null,[3,4]):[3,2];case 2:return[4,Y(t,r)];case 3:o=n.sent(),n.label=4;case 4:i=o,n.label=5;case 5:return(e=i)&&(u=document.createElement("style"),c=document.createTextNode(e),u.appendChild(c),t.firstChild?t.insertBefore(u,t.firstChild):t.appendChild(u)),[2]}}))}))}function tt(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,I(t,r,!0)];case 1:return[4,Z(u=n.sent(),r)];case 2:return n.sent(),[4,z(u,r)];case 3:return n.sent(),function(t,e){var n=t.style;e.backgroundColor&&(n.backgroundColor=e.backgroundColor),e.width&&(n.width="".concat(e.width,"px")),e.height&&(n.height="".concat(e.height,"px"));var r=e.style;null!=r&&Object.keys(r).forEach((function(t){n[t]=r[t]}))}(u,r),[4,v(u,i,o)];case 4:return[2,n.sent()]}}))}))}function et(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u,c,a,f,d,v;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,tt(t,r)];case 1:return[4,h(n.sent())];case 2:return u=n.sent(),c=document.createElement("canvas"),a=c.getContext("2d"),f=r.pixelRatio||function(){var t,e;try{e=process}catch(t){}var n=e&&e.env?e.env.devicePixelRatio:null;return n&&(t=parseInt(n,10),Number.isNaN(t)&&(t=1)),t||window.devicePixelRatio||1}(),d=r.canvasWidth||i,v=r.canvasHeight||o,c.width=d*f,c.height=v*f,r.skipAutoScale||function(t){(t.width>l||t.height>l)&&(t.width>l&&t.height>l?t.width>t.height?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l):t.width>l?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l))}(c),c.style.width="".concat(d),c.style.height="".concat(v),r.backgroundColor&&(a.fillStyle=r.backgroundColor,a.fillRect(0,0,c.width,c.height)),a.drawImage(u,0,0,c.width,c.height),[2,c]}}))}))}t.getFontEmbedCSS=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Y(t,r)]}))}))},t.toBlob=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[4,f(e.sent())];case 2:return[2,e.sent()]}}))}))},t.toCanvas=et,t.toJpeg=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL("image/jpeg",r.quality||1)]}}))}))},t.toPixelData=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,et(t,r)];case 1:return u=n.sent(),[2,u.getContext("2d").getImageData(0,0,i,o).data]}}))}))},t.toPng=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL()]}}))}))},t.toSvg=tt}));
 //# sourceMappingURL=html-to-image.js.map
@@ -108174,5 +108189,442 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
 })();
 
 </script>
+
+<!-- ═══════════ HISAABNOW · DESKTOP BILL PANEL · 3-ZONE LOCK · v34_121 ═══════════
+     Fixes the grocery (and every other vertical's) desktop new-sale screen.
+
+     THE BUG, in two sentences: every child of the bill column below the item
+     list carried flex-shrink:0 while the list itself was floored at 96px, and
+     .hnd-pos-r has overflow:hidden — so once the stack grew past the panel the
+     payment row and Complete button fell off a clipped edge with no scrollbar
+     to reach them. On a 1366x768 counter laptop the grocery cart needed ~558px
+     and had ~512px, so it clipped BEFORE any discount was even entered.
+
+     THE MODEL — three zones, one scroller, nothing clipped:
+       TOP     customer row, bill meta, "Item / Amount" header      (fixed)
+       MIDDLE  .hnd-pos-items — the ONLY scroller, min-height:0     (absorbs)
+       BOTTOM  total, payment, split, Complete                      (fixed)
+     Because the list can now shrink to nothing, adding items or opening the
+     discount drawer shrinks the LIST. The footer cannot move. Ever.
+
+     Height reclaimed for the middle zone:
+       ~100px  discount + note collapse into a 34px drawer (most kirana bills
+               use neither, and they were costing full height on every bill)
+       ~40px   the totals stack folds into one baseline-aligned subline inside
+               the black total block — applying a discount now changes the
+               panel height by exactly 0px
+       ~55px   compact metrics below 820px / 700px viewport height
+
+     Fast billing (we sell this screen on speed, so the hands stay on keys):
+       /            focus search
+       Enter        add the highlighted top match
+       atta*3       quantity in the same keystroke
+       F1..F4       Cash / UPI / Card / Udhaar
+       F12          complete
+       the amount is printed on the Complete button — the number the
+       shopkeeper says out loud is the button they press
+
+     Additive: one CSS block + one IIFE. Paired with five surgical edits that
+     removed the dead overrides rather than stacking a seventh on top of them.
+============================================================================ -->
+<style>
+/* ── MIDDLE ZONE · the one scroller ─────────────────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;          /* the whole fix in one declaration */
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin !important;
+  scrollbar-color: #C4BFB0 transparent !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar{ width: 9px !important; }
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar-track{ background: transparent !important; }
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar-thumb{
+  background: #C4BFB0 !important; border-radius: 99px !important;
+  border: 2.5px solid transparent !important; background-clip: content-box !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-items::-webkit-scrollbar-thumb:hover{
+  background: #9A9584 !important; background-clip: content-box !important;
+}
+
+/* ── BOTTOM ZONE · pinned, and now cheap enough to always fit ───────────── */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-totals,
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-extras,
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-grand,
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-pay,
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-actions,
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-complete{ flex-shrink: 0 !important; }
+
+/* The three-row totals stack is gone: the same numbers now ride the total
+   block's baseline, which costs no extra height whether they exist or not.
+   (dedupeTotal() writes an inline display on this node for restaurant, hence
+   the !important.) */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-totals{ display: none !important; }
+
+/* The footer zone opens with one full-width rule on the drawer, so the total
+   block does not need an inset border of its own (87912 gave it one). */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-extras{
+  border-top: 1px solid #F2F0EB !important; margin-top: 0 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-grand{
+  border-top: 0 !important;
+  margin: 9px 16px 0 !important; padding: 11px 14px !important;
+  align-items: baseline !important; gap: 10px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-grand-l{ flex-shrink: 0 !important; }
+#hnp-grand-sub{
+  flex: 1 1 auto; min-width: 0; text-align: right; padding-right: 2px;
+  font-size: 10.5px; font-weight: 700; color: #8FDCAE; letter-spacing: .01em;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── the discount + note drawer ─────────────────────────────────────────── */
+/* Collapsed it costs 34px instead of ~135px. Open, it eats the item list —
+   never the footer — because the list is the only flexible track left. */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-extras{
+  padding: 8px 16px 0 !important; gap: 0 !important;
+}
+.hnp-drawer{ border: 1px dashed var(--hnd-line,#E5E4E0); border-radius: 10px; overflow: hidden; background: var(--hnd-card,#fff); }
+.hnp-drawer.open{ border-style: solid; }
+.hnp-drawer-t{
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px 11px; border: 0; background: var(--hnd-bg,#FAFAF7); cursor: pointer;
+  font-family: inherit; font-size: 11.5px; font-weight: 800; color: #6B6B6B;
+}
+.hnp-drawer-t:hover{ color: var(--hnd-ink,#0A0A0A); }
+.hnp-drawer-t .chev{ margin-left: auto; font-size: 9px; color: var(--hnd-muted,#8C8C8C); transition: transform .18s; }
+.hnp-drawer.open .hnp-drawer-t .chev{ transform: rotate(180deg); }
+.hnp-drawer-t .hnp-badge{
+  background: #E8F6EE; color: #0B6B37; border-radius: 99px;
+  padding: 1px 7px; font-size: 10px; font-weight: 800; display: none;
+}
+.hnp-drawer-t .hnp-badge.on{ display: inline-block; }
+.hnp-drawer-b{ display: none; padding: 10px 11px; flex-direction: column; gap: 9px; }
+.hnp-drawer.open .hnp-drawer-b{ display: flex; }
+
+/* ── payment row: shortcut legends ──────────────────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-pay-btn{
+  display: flex !important; flex-direction: column !important;
+  align-items: center !important; gap: 1px !important; padding: 10px 0 8px !important;
+}
+.hnd-pos-pay-btn .hnp-fk{
+  font-style: normal; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 8.5px; font-weight: 700; opacity: .42; letter-spacing: .04em;
+}
+
+/* ── Complete: carries the amount ───────────────────────────────────────── */
+#hnp-amt{ font-variant-numeric: tabular-nums; }
+
+/* ── "6 shown · scroll ↓" — the list continues, and you can see that it does ── */
+.hnp-more{
+  color: var(--hnd-gold-rich,#B88A56); font-weight: 800; cursor: pointer;
+  margin-left: 5px; display: none;
+}
+.hnp-more.on{ display: inline; }
+.hnp-more:hover{ text-decoration: underline; }
+
+/* ── keyboard-first search ──────────────────────────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-grid > .hnd-pos-tile.hnp-top{
+  outline: 2px solid var(--hnd-gold,#D4A574); outline-offset: -2px;
+}
+.hnp-qmul{
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 700;
+  background: var(--hnd-ink,#0A0A0A); color: var(--hnd-gold,#D4A574);
+  padding: 2px 7px; border-radius: 5px; flex-shrink: 0; display: none;
+}
+.hnp-qmul.on{ display: inline-block; }
+
+/* ── counter laptops: 1366x768 is the machine this has to fit ───────────── */
+@media (max-height: 820px){
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cust{ padding: 9px 16px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cust-init{ width: 28px !important; height: 28px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-grand-r{ font-size: 21px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-pay-btn{ padding: 9px 0 7px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-actions{ margin: 7px 16px 0 !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-act{ padding: 8px !important; font-size: 11.5px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r .hnd-pos-complete{ margin: 9px 16px 11px !important; padding: 11px !important; }
+}
+@media (max-height: 700px){
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cust-meta{ display: none !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r > .hnd-pos-grand{ margin-top: 7px !important; padding: 9px 13px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-grand-r{ font-size: 19px !important; }
+}
+/* Last-resort guard, set by JS only if the footer would still cross the panel
+   edge on some screen we have not seen. Better a cramped bill than an
+   unreachable Complete button. */
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-cust{ display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-actions{ display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r > .hnd-pos-grand{ margin-top: 6px !important; padding: 8px 12px !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complete{ margin: 7px 16px 9px !important; padding: 10px !important; }
+</style>
+<script>
+/* === HisaabNow · desktop bill panel · 3-zone lock · v34_121 === */
+(function(){
+  'use strict';
+  var D = document;
+  function $(id){ return D.getElementById(id); }
+  function desk(){ return D.documentElement.getAttribute('data-shell') === 'desktop'; }
+  function onPos(){ return D.body && D.body.classList.contains('hnd-on-pos'); }
+  function q1(sel){ return D.querySelector(sel); }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     1 · Fold discount + note into a collapsible drawer.
+     The existing children are MOVED, never rebuilt — #hnd-pos-disc-input,
+     #hnd-pos-note-input, #hnd-disc-mode, #hnd-disc-sym and #hnd-disc-eq keep
+     their ids, and every handler on them is document-delegated, so moving
+     them is free.
+     ───────────────────────────────────────────────────────────────────── */
+  function buildDrawer(){
+    var ex = q1('.hnd-pos-r .hnd-pos-extras');
+    if (!ex || ex.getAttribute('data-hnp') === '1') return;
+
+    var d = D.createElement('div'); d.className = 'hnp-drawer'; d.id = 'hnp-drawer';
+    var t = D.createElement('button'); t.type = 'button'; t.className = 'hnp-drawer-t';
+    t.innerHTML = '<span>\uD83D\uDCB8</span><span class="hnp-dlbl">Discount &amp; note</span>'
+                + '<span class="hnp-badge" id="hnp-badge"></span><span class="chev">\u25BE</span>';
+    var b = D.createElement('div'); b.className = 'hnp-drawer-b';
+    while (ex.firstChild) b.appendChild(ex.firstChild);
+    d.appendChild(t); d.appendChild(b); ex.appendChild(d);
+    ex.setAttribute('data-hnp','1');
+
+    t.addEventListener('click', function(e){
+      e.preventDefault();
+      var open = d.classList.toggle('open');
+      if (open){
+        var i = $('hnd-pos-disc-input');
+        if (i) setTimeout(function(){ try{ i.focus(); i.select(); }catch(_){ } }, 60);
+      }
+      fit();
+    });
+  }
+  function closeDrawer(){ var d = $('hnp-drawer'); if (d) d.classList.remove('open'); }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     2 · One-off DOM additions in the footer + meta row.
+     ───────────────────────────────────────────────────────────────────── */
+  function buildChrome(){
+    /* subtotal / discount / GST as one baseline subline in the total block */
+    var g = q1('.hnd-pos-r .hnd-pos-grand'), r = $('hnd-pos-total');
+    if (g && r && !$('hnp-grand-sub')){
+      var s = D.createElement('div'); s.id = 'hnp-grand-sub';
+      g.insertBefore(s, r);
+    }
+    /* amount on the Complete button, before the F12 chip */
+    var c = $('hnd-pos-complete');
+    if (c && !$('hnp-amt')){
+      var a = D.createElement('span'); a.id = 'hnp-amt';
+      var kbd = c.querySelector('kbd');
+      if (kbd) c.insertBefore(a, kbd); else c.appendChild(a);
+    }
+    /* "n shown · scroll" affordance, as a sibling of #hnd-pos-count so
+       renderCart's textContent write cannot wipe it */
+    var cnt = $('hnd-pos-count');
+    if (cnt && cnt.parentNode && !$('hnp-more')){
+      var m = D.createElement('span'); m.className = 'hnp-more'; m.id = 'hnp-more';
+      cnt.parentNode.appendChild(m);
+      m.addEventListener('click', function(){
+        var it = $('hnd-pos-items'); if (it) it.scrollTo({ top: it.scrollHeight, behavior: 'smooth' });
+      });
+    }
+    /* F-key legends on the payment buttons */
+    var keys = { cash:'F1', upi:'F2', card:'F3', udhaar:'F4' };
+    [].forEach.call(D.querySelectorAll('.hnd-pos-pay-btn'), function(b){
+      if (b.querySelector('.hnp-fk')) return;
+      var k = keys[b.getAttribute('data-hnd-pay')];
+      if (!k) return;
+      var e = D.createElement('em'); e.className = 'hnp-fk'; e.textContent = k;
+      b.appendChild(e);
+    });
+    /* x3 chip in the search row */
+    var sr = q1('.hnd-pos-l .hnd-pos-search');
+    if (sr && !$('hnp-qmul')){
+      var qm = D.createElement('span'); qm.className = 'hnp-qmul'; qm.id = 'hnp-qmul';
+      var st = sr.querySelector('.hnd-pos-search-status');
+      if (st) sr.insertBefore(qm, st); else sr.appendChild(qm);
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     3 · Paint the derived bits. Reads the numbers renderCart already wrote
+     rather than recomputing them — one source of truth for the arithmetic.
+     ───────────────────────────────────────────────────────────────────── */
+  function shown(el){ try{ return el && getComputedStyle(el).display !== 'none'; }catch(_){ return false; } }
+
+  function paint(){
+    var sub  = $('hnd-pos-subtotal'), disc = $('hnd-pos-disc'), gst = $('hnd-pos-gst');
+    var dRow = $('hnd-pos-disc-row'),  gRow = $('hnd-pos-gst-row');
+    var hasD = dRow && dRow.style.display !== 'none';
+    var hasG = gRow && gRow.style.display !== 'none';
+
+    var sl = $('hnp-grand-sub');
+    if (sl){
+      var bits = [];
+      if (hasD || hasG) bits.push('Sub ' + ((sub && sub.textContent) || '\u20b90'));
+      if (hasD) bits.push('Disc ' + ((disc && disc.textContent) || ''));
+      if (hasG) bits.push('GST ' + ((gst && gst.textContent) || ''));
+      var txt = bits.join('  \u00b7  ');
+      if (sl.textContent !== txt) sl.textContent = txt;
+    }
+    var badge = $('hnp-badge');
+    if (badge){
+      var on = !!hasD;
+      badge.classList.toggle('on', on);
+      var bt = on ? ((disc && disc.textContent) || '') : '';
+      if (badge.textContent !== bt) badge.textContent = bt;
+    }
+    var amt = $('hnp-amt'), tot = $('hnd-pos-total'), go = $('hnd-pos-complete');
+    if (amt && tot){
+      var at = (go && go.disabled) ? '' : ('\u00b7 ' + tot.textContent);
+      if (amt.textContent !== at) amt.textContent = at;
+    }
+    /* scroll affordance */
+    var it = $('hnd-pos-items'), more = $('hnp-more');
+    if (it && more){
+      var over = it.scrollHeight - it.clientHeight > 6;
+      more.classList.toggle('on', over);
+      if (over){
+        var rows = it.querySelectorAll('.hnd-pos-i').length;
+        var vis  = 0;
+        [].forEach.call(it.querySelectorAll('.hnd-pos-i'), function(el){
+          if (el.offsetTop + el.offsetHeight <= it.scrollTop + it.clientHeight + 2
+              && el.offsetTop >= it.scrollTop - 2) vis++;
+        });
+        var mt = ' \u00b7 ' + Math.max(vis,1) + ' of ' + rows + ' shown \u2193';
+        if (more.textContent !== mt) more.textContent = mt;
+      }
+    }
+    /* keyboard target */
+    var tiles = D.querySelectorAll('#hnd-pos-grid .hnd-pos-tile');
+    var si = $('hnd-pos-search-input');
+    var searching = !!(si && si.value);
+    [].forEach.call(tiles, function(t, i){ t.classList.toggle('hnp-top', searching && i === 0); });
+    /* quantity chip */
+    var qm = $('hnp-qmul'), mul = (window.HND && HND._qtyMul) || 0;
+    if (qm){
+      qm.classList.toggle('on', mul > 1);
+      if (mul > 1 && qm.textContent !== ('\u00d7 ' + mul)) qm.textContent = '\u00d7 ' + mul;
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     4 · The guarantee. If the Complete button ever crosses the panel edge
+     on a screen we have not accounted for, compact rather than clip.
+     ───────────────────────────────────────────────────────────────────── */
+  var warned = false;
+  function fit(){
+    if (!desk() || !onPos()) return;
+    var cart = q1('.hnd-pos-r'), go = $('hnd-pos-complete');
+    if (!cart || !go) return;
+    var over = Math.round(go.getBoundingClientRect().bottom + 11 - cart.getBoundingClientRect().bottom);
+    if (over > 0){
+      if (!D.body.classList.contains('hnp-tight')){
+        D.body.classList.add('hnp-tight');
+        if (!warned){
+          warned = true;
+          try{ console.warn('[HNPos v34_121] bill footer was ' + over + 'px past the panel edge \u2014 compact mode on'); }catch(_){ }
+        }
+        return;
+      }
+      closeDrawer();   /* absolute last resort */
+    } else if (over < -70 && D.body.classList.contains('hnp-tight')){
+      D.body.classList.remove('hnp-tight');
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     5 · Keyboard-first billing.
+     ───────────────────────────────────────────────────────────────────── */
+  function addN(id, n, sized){
+    if (!window.App || !App.addToCart) return;
+    /* a sized product opens its own size sheet — fire once and let it ask */
+    var times = sized ? 1 : Math.max(1, n || 1);
+    for (var i = 0; i < times; i++){
+      try{ App.addToCart(id); }catch(e){ try{ console.error('[HNPos v34_121] addToCart', e); }catch(_){ } }
+    }
+  }
+  function clearSearch(){
+    var si = $('hnd-pos-search-input');
+    if (!si) return;
+    si.value = '';
+    try{ if (window.HND) HND._qtyMul = 0; }catch(_){ }
+    try{ si.dispatchEvent(new Event('input', { bubbles: true })); }catch(_){ }
+    try{ si.focus(); }catch(_){ }
+  }
+
+  D.addEventListener('keydown', function(e){
+    if (!desk() || !onPos()) return;
+    var ae = D.activeElement || {};
+    var si = $('hnd-pos-search-input');
+
+    /* Enter in the search box adds the highlighted top match */
+    if (e.key === 'Enter' && ae === si && si){
+      e.preventDefault();
+      var tile = q1('#hnd-pos-grid .hnd-pos-tile[data-hnd-add]');
+      if (!tile) return;
+      addN(tile.getAttribute('data-hnd-add'),
+           (window.HND && HND._qtyMul) || 1,
+           !!tile.querySelector('.hnd-pos-tile-sizes'));
+      clearSearch();
+      return;
+    }
+    /* "/" jumps to search from anywhere that is not a field */
+    if (e.key === '/' && ['INPUT','TEXTAREA','SELECT'].indexOf(ae.tagName) === -1){
+      e.preventDefault();
+      if (si){ si.focus(); si.select(); }
+      return;
+    }
+    /* F1..F4 pick the payment mode */
+    var fk = { F1:'cash', F2:'upi', F3:'card', F4:'udhaar' }[e.key];
+    if (fk){
+      e.preventDefault();
+      var btn = q1('.hnd-pos-pay-btn[data-hnd-pay="' + fk + '"]');
+      if (btn) btn.click();
+      return;
+    }
+  }, true);
+
+  /* after a tile click the hand should already be back on the keyboard */
+  D.addEventListener('click', function(e){
+    if (!desk() || !onPos()) return;
+    if (!e.target.closest) return;
+    if (e.target.closest('#hnd-pos-grid .hnd-pos-tile')){
+      var si = $('hnd-pos-search-input');
+      if (si) setTimeout(function(){ try{ si.focus(); si.select(); }catch(_){ } }, 0);
+    }
+  });
+
+  /* the bill closes -> the drawer resets with it */
+  D.addEventListener('click', function(e){
+    if (!e.target.closest) return;
+    var c = e.target.closest('#hnd-pos-complete');
+    if (c && !c.disabled) setTimeout(closeDrawer, 300);
+  }, true);
+
+  /* ─────────────────────────────────────────────────────────────────────
+     6 · Boot. renderCart() rewrites #hnd-pos-items wholesale, so the derived
+     chrome is repainted on a tick rather than hooked into five call sites —
+     the same idiom the rest of this file uses.
+     ───────────────────────────────────────────────────────────────────── */
+  function tick(){
+    if (!desk() || !onPos()) return;
+    try{ buildDrawer(); }catch(_){ }
+    try{ buildChrome(); }catch(_){ }
+    try{ paint(); }catch(_){ }
+    try{ fit(); }catch(_){ }
+  }
+  setInterval(tick, 400);
+  var it0 = $('hnd-pos-items');
+  if (it0) it0.addEventListener('scroll', function(){ try{ paint(); }catch(_){ } }, { passive: true });
+  window.addEventListener('resize', function(){ try{ fit(); }catch(_){ } });
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', tick); else tick();
+
+  try{
+    console.log('%c[HNPos] v34_121 \u00b7 bill panel 3-zone lock \u2014 footer pinned, discount drawer, keyboard billing',
+      'background:#12A150;color:#fff;padding:3px 8px;border-radius:5px');
+  }catch(_){ }
+})();
+</script>
+<!-- ═══════════ END · DESKTOP BILL PANEL 3-ZONE LOCK v34_121 ═══════════ -->
 </body>
 </html>
