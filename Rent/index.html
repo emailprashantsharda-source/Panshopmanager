@@ -37,7 +37,11 @@ body{
   margin:0;background:var(--bg);color:var(--t1);
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
   font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;
-  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  /* The nav is ~63px, but .nav-cta-btn is pulled up 22px and carries a 5px
+     ring, so the amber circle occupies ~90px from the bottom of the screen.
+     Reserving only 72px left the last card of every list sitting underneath
+     it — visible as a half-hidden bike at the end of the Fleet tab. */
+  padding-bottom:calc(104px + env(safe-area-inset-bottom));
 }
 button,input,select,textarea{font-family:inherit;font-size:inherit}
 h1,h2,h3{margin:0;letter-spacing:-.02em}
@@ -442,7 +446,12 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   transition:all .22s;max-width:88vw;text-align:center;
 }
 .toast.show{opacity:1;transform:translateX(-50%)}
-.wm{position:fixed;left:6px;bottom:74px;font-size:9px;color:#C9C4BA;z-index:1;font-family:monospace}
+/* The floating build watermark lived here: position:fixed; bottom:74px. With
+   the nav at ~63px and its raised FAB reaching ~90px, 74px put it in content
+   space, where it printed over the last row of every list. The build number is
+   now a line at the bottom of the Account sheet instead — one place, nothing
+   overlapping. To bring the watermark back, restore this rule, the #wm div in
+   the body, and the assignment in boot(). */
 </style>
 </head>
 <body>
@@ -528,7 +537,6 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="ov" id="ov"><div class="sheet" id="sheet" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="wm" id="wm">rn_v3_7_0_refundfix</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -542,7 +550,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_12_0_promoplans';
+const BUILD = 'rn_v3_12_2_fleetadd';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -769,7 +777,7 @@ const R = {
 
   boot(){
     DB.load();
-    document.getElementById('wm').textContent = BUILD;
+    /* watermark removed — build number lives in the Account sheet */
     this.render();
     this.payuReturnCheck();
     setInterval(()=>{ if (this.page==='out') this.renderOut(); }, 60000);
@@ -1675,7 +1683,14 @@ const R = {
           </div>
         </div>
       </div>`;
-    }).join('');
+    }).join('') +
+      /* An explicit control at the end of the list, not only the FAB in the
+         nav. The FAB is a 54px circle with no border and a one-word label — on
+         the Fleet tab it is also the thing overlapping the last row, so a
+         shopkeeper looking for "where do I add a bike" scans the list, not the
+         chrome. Costs one button and removes the question. */
+      `<button class="btn ghost" style="margin-top:4px" onclick="R.editVehicle()">
+         + Add another bike</button>`;
   },
 
   docWarn(v){
