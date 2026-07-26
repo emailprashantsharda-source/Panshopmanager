@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_127_stockin_twocol';
+    window.HISAABNOW_BUILD = 'v34_130_barcode_billing';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -6574,6 +6574,7 @@ html[data-current-role="manager"] body{
     /* Reports detail */
     'rep.lessOps':           { en: '− Operating expenses',          hi: '− खर्चे' },
     'rep.lessCogs':          { en: '− Cost of goods (COGS)',        hi: '− सामान की लागत' },
+    'rep.stockNotExpense':   { en: 'Stock purchases are not counted here — they appear above as cost of goods when the stock is sold.', hi: 'सामान की खरीद यहाँ नहीं गिनी जाती — बिकने पर वह ऊपर “सामान की लागत” में दिखती है।' },
     'rep.lessDirect':        { en: '− Direct costs (supplies + commission)', hi: '− सीधा खर्चा (सप्लाई + कमीशन)' },
     'rep.equalGross':        { en: '= Gross Profit',                hi: '= ग्रॉस प्रॉफिट' },
     'rep.equalNet':          { en: '= Net Profit',                  hi: '= नेट प्रॉफिट' },
@@ -11607,6 +11608,12 @@ const EXPENSE_BUCKETS = {
   'License':      'fixed',
   'Insurance':    'fixed',
   'EMI':          'fixed',
+  /* (v34_128) The purchase writer stamps cat:'Raw Material / Stock' — the
+     LABEL of the raw_material taxonomy entry (11357), not its key. So
+     expenseBucket() found it in neither EXPENSE_TAXONOMY (keyed 'raw_material')
+     nor here, fell through to 'variable', and every guard written against the
+     cogs bucket silently let stock purchases past. */
+  'Raw Material / Stock': 'cogs',
   'Supplies':     'cogs',
   'Inventory':    'cogs',
   'Ingredients':  'cogs',
@@ -11627,6 +11634,75 @@ window.expenseBucket = function(catName){
   if (EXPENSE_TAXONOMY[catName]) return EXPENSE_TAXONOMY[catName].bucket;
 
   return EXPENSE_BUCKETS[catName] || 'variable';
+};
+
+/* ═══ (v34_128) Which expenses belong in a P&L ═════════════════════════
+   Buying stock is not an expense. It converts cash or credit into inventory,
+   which is an asset; that cost becomes an expense as COGS at the moment of
+   sale (13881). Counting the purchase in the expense total as well deducts
+   the same rupees twice — buy 100 @ ₹50, sell 60 @ ₹70 and net profit read
+   −₹3,800 against a true ₹1,200, with 40 units still on the shelf already
+   fully expensed. The error grows with every restock and is worst for the
+   shops that buy well.
+
+   Three separate places compute net profit (15788, 19147, 40411) and all
+   three disagreed:
+     · 15788 counted stock purchases in full — the double deduction.
+     · 19147 summed e.amount on records stored as e.amt, so it counted no
+       expenses at all and reported gross profit as net.
+     · 40411 guarded on the cogs bucket, correctly, and was defeated by the
+       category-key mismatch fixed above.
+   One predicate now, used by all three.
+
+   It checks BOTH source and bucket deliberately: source catches our own
+   writes whatever the category text says, bucket catches anything a
+   shopkeeper files as stock by hand.
+
+   The expense RECORD is still written and still appears in Expenses and
+   Cashflow — the money really did leave the drawer. It is simply not a
+   P&L cost. See hisaabnow-purchase-register-accounting-design.md §1. */
+window.HN_STOCK_EXPENSE_SOURCES = ['purchase_entry', 'supply_purchase'];
+window.hnExpenseInPL = function(e){
+  if (!e) return false;
+  try {
+    if (window.HN_STOCK_EXPENSE_SOURCES.indexOf(e.source) >= 0) return false;
+    if ((window.expenseBucket ? window.expenseBucket(e.cat) : 'variable') === 'cogs') return false;
+  } catch(err){}
+  return true;
+};
+
+/* ═══ (v34_130) Barcode lookup ═════════════════════════════════════════
+   Must never go through the POS fuzzy matcher. That normaliser collapses
+   repeated characters — .replace(/(.)\1+/g,'$1') at 53261 — so 8901058812345
+   becomes 890105812345 and an exact code could never match itself. Barcodes
+   are compared raw, trimmed, case-folded, and short-circuit before any name
+   search runs. */
+window.hnBarcodeNorm = function(c){ return String(c == null ? '' : c).trim().toUpperCase(); };
+window.hnFindByBarcode = function(code){
+  var c = window.hnBarcodeNorm(code);
+  if (c.length < 6) return null;              /* EAN/UPC are 8–13; 6 is a floor */
+  if (!/^[0-9A-Z\-]+$/.test(c)) return null;  /* a name, not a code */
+  var list = [];
+  try { list = (window.Store && Store.list) ? (Store.list('prods') || []) : []; } catch(e){ return null; }
+  for (var i = 0; i < list.length; i++){
+    var p = list[i];
+    if (!p || p._deleted || p.active === false) continue;
+    if (window.hnBarcodeNorm(p.barcode) === c) return p;
+  }
+  return null;
+};
+/* True when some OTHER code merely starts with this one — used to hold off the
+   no-Enter safety net so a short code can't fire while a longer one is mid-scan. */
+window.hnBarcodeAmbiguous = function(code){
+  var c = window.hnBarcodeNorm(code);
+  if (c.length < 6) return true;
+  var list = [];
+  try { list = (window.Store && Store.list) ? (Store.list('prods') || []) : []; } catch(e){ return true; }
+  for (var i = 0; i < list.length; i++){
+    var b = window.hnBarcodeNorm(list[i] && list[i].barcode);
+    if (b && b !== c && b.indexOf(c) === 0) return true;
+  }
+  return false;
 };
 
 window.expenseDisplayLabel = function(exp){
@@ -14597,7 +14673,25 @@ const App = {
   // Live product search on the New Bill screen. Filters the grid by item name
   // across all active products (overrides the category chip).
   addSaleSearchInput(v){
-    this._addSaleSearch = v || '';
+    /* (v34_130) Scan straight to the bill. The mobile grid filters on
+       indexOf(name), so a 13-digit code would simply show "No items match" —
+       check the barcode before falling through to the name filter. */
+    var raw = v || '';
+    if (window.hnFindByBarcode && raw.length >= 8 && !window.hnBarcodeAmbiguous(raw)){
+      var bp = window.hnFindByBarcode(raw);
+      if (bp){
+        this._addSaleSearch = '';
+        try { this.addToCart(bp.id || bp.name); } catch(e){}
+        try {
+          var el = document.getElementById('addsale-search') || document.querySelector('.hnd-svc-search input');
+          if (el) el.value = '';
+        } catch(e){}
+        try { this.toast('\u2713 ' + (bp.name || 'Item') + ' added'); } catch(e){}
+        this.renderServiceGrid();
+        return;
+      }
+    }
+    this._addSaleSearch = raw;
     this.renderServiceGrid();
   },
 
@@ -15652,7 +15746,10 @@ const App = {
         const amt = Number(e.amt || 0);
 
         if (isoDate && isoDate >= monthStartIso) {
-          result.monthExpensesTotal += amt;
+          /* (v34_128) Stock purchases are excluded — they are COGS at sale,
+             not an expense at purchase. expByBucket below still takes them,
+             so the spend breakdown and Cashflow are unchanged. */
+          if (!window.hnExpenseInPL || window.hnExpenseInPL(e)) result.monthExpensesTotal += amt;
 
           const bucket = window.expenseBucket ? window.expenseBucket(e.cat) : 'variable';
           result.expByBucket[bucket] = (result.expByBucket[bucket] || 0) + amt;
@@ -19138,8 +19235,13 @@ const App = {
     let expensesInRange = 0;
     expenses.forEach(e => {
       const eDate = e.date || (e.t ? window.tdAt(e.t) : '');
-      if (eDate >= fromIso && eDate <= toIso) {
-        expensesInRange += Number(e.amount || 0);
+      if (eDate >= fromIso && eDate <= toIso && (!window.hnExpenseInPL || window.hnExpenseInPL(e))) {
+        /* (v34_128) Was Number(e.amount || 0). Expenses are stored as `amt`
+           (93057, 25514) and nothing writes `amount`, so this summed to zero
+           and the Reports P&L has been subtracting no expenses whatsoever —
+           reporting gross profit as net. Read amt, fall back to amount in
+           case any very old record carries it. */
+        expensesInRange += Number(e.amt != null ? e.amt : (e.amount || 0));
       }
     });
 
@@ -19166,6 +19268,7 @@ const App = {
           ${cogsRow}
           ${commRow}
           <div class="li-row" style="padding:6px 0"><div class="li-name" style="color:var(--t2)" data-i18n="nav.expensesLbl">Expenses</div><div class="li-amt" style="color:var(--danger)">${expensesInRange > 0 ? '−₹' + Math.round(expensesInRange).toLocaleString('en-IN') : '<span style=\"color:var(--t3);font-weight:500\" data-i18n="common.notTracked">Not tracked</span>'}</div></div>
+          <div style="font-size:10.5px;color:var(--t3);font-weight:600;line-height:1.4;padding:0 0 6px" data-i18n="rep.stockNotExpense">Stock purchases are not counted here — they appear above as cost of goods when the stock is sold.</div>
           <div class="li-row" style="padding:8px 0;border-top:1px solid var(--bd);margin-top:8px"><div class="li-name" style="font-weight:800" data-i18n="rep.netProfitLbl">Net Profit</div><div class="li-amt" style="color:${netProfit >= 0 ? 'var(--ok)' : 'var(--danger)'};font-weight:800">₹${Math.abs(Math.round(netProfit)).toLocaleString('en-IN')}${netProfit < 0 ? ' loss' : ''}</div></div>
           <div class="li-sub" style="margin-top:6px">Margin <b>${margin}%</b> · ${rangeLabel}</div>`;
       }
@@ -27906,6 +28009,22 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         <div class="ps-error" id="ps-name-error"></div>
       </div>
     `;
+    /* (v34_130) Barcode. The pricing page has sold "Barcode scanner billing"
+       for grocery and stationery (33432, 101983) while the word `barcode`
+       appeared five times in the whole file and never once as a field on a
+       product — so a scanner typed a code into a search box that had nothing
+       to match it against. This is the field it was missing. */
+    const barcodeField = `
+      <div class="ps-section">
+        <label class="ps-label">Barcode <span class="ps-optional-badge">scan or type · optional</span></label>
+        <input id="ps-barcode" class="ps-input" type="text" inputmode="numeric" autocomplete="off"
+          value="${(v.barcode||'').replace(/"/g,'&quot;')}" placeholder="Point the scanner here"
+          oninput="App._psBarcodeCheck && App._psBarcodeCheck()"
+          style="font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:.04em">
+        <div class="ps-barcode-note" id="ps-barcode-note"></div>
+      </div>
+    `;
+
     const packSizeField = `
       <div class="ps-section">
         <label class="ps-label">Pack size <span class="ps-optional-badge">optional · helps voice billing</span></label>
@@ -27969,11 +28088,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           </div>
           <div class="ps-section ps-half">
             <label class="ps-label">Unit</label>
-            <select id="ps-unit" class="ps-input">
+            <select id="ps-unit" class="ps-input" onchange="App._psUnitHint && App._psUnitHint()">
               ${(function(){ var _cem=(window.isDistributionVert&&isDistributionVert(App.vertical)); var _u=_cem?['bag','MT','kg','pcs','box']:['kg','g','litres','ml','pcs','packs','bottles','tubs','loaves','dozen','box']; var _d=v.unit||App._defaultUnit(); return _u.map(function(x){return '<option value="'+x+'"'+(x===_d?' selected':'')+'>'+x+'</option>';}).join(''); })()}
             </select>
           </div>
         </div>
+        <div id="ps-unit-hint" class="ps-unit-hint"></div>
         <div class="ps-section">
           <label class="ps-label">Low-stock alert at <span class="ps-optional-badge">optional</span></label>
           <input id="ps-min" class="ps-input" type="number" inputmode="numeric" value="${v.min||''}" placeholder="e.g. 5">
@@ -28008,11 +28128,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     var _vertKey = (typeof this._supplyVerticalKey === 'function')
       ? this._supplyVerticalKey() : this.vertical;
     var isSalonService = (_vertKey === 'salon') && (v.cat !== 'Retail') && !useWizard;
-    /* Compact retail layout (pan / grocery) — Zomato-style: essentials first,
-       stock + pack + icon tucked behind a "Stock & details" collapsible.
+    /* Retail layout (pan / grocery / cement). Every field is on the screen —
+       name and pack size, then price, category, Stock, Icon. It used to tuck
+       stock, pack and icon behind a "Stock & details" collapsible that shipped
+       closed; v34_129 removed it, because hiding opening qty and unit on a
+       screen whose button says "Add to inventory" meant products landed at
+       qty 0 with an unread default unit.
        Food verticals (café/restaurant/sweets/bakery) with ingredients OFF also
-       use it, so Add matches the clean SELL+COST+profit+category edit layout
-       instead of the older stacked "Add item" form. */
+       use this layout, so Add matches the SELL+COST+profit+category edit form
+       rather than the older stacked one. */
     var _fSimple = ({ cafe:1, restaurant:1, sweets:1, bakery:1 }[_vertKey])
       && (typeof this._usesRecipe === 'function' ? !this._usesRecipe(_vertKey) : true);
     /* (v34_092) Cement is retail-with-stock like grocery/pan — use the same compact
@@ -28106,6 +28230,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       sheet.innerHTML = `
         ${this._kitchenBarToggleHTML('kitchen')}
         ${nameField}
+        ${barcodeField}
+        ${packSizeField}
 
         <div class="aip-pcard">
           <div class="aip-prow">
@@ -28138,23 +28264,23 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           </div>
         </div>
 
-        <button type="button" class="ps-more-toggle" aria-expanded="${_distAdd ? 'true' : 'false'}"
-          onclick="App._toggleMoreOptions(this)"
-          style="width:100%;background:#FFF7ED;border:1.5px solid var(--p-200,#FED7AA);border-radius:12px;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:inherit;margin:8px 0 4px">
-          <span style="font-size:14px;font-weight:800;color:var(--p-deep,#9A3412);display:flex;align-items:center;gap:8px">
-            <span style="font-size:15px">⚙️</span> Stock & details
-          </span>
-          <span style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11.5px;color:#fff;background:var(--p,#FF6B35);font-weight:800;padding:4px 11px;border-radius:99px;letter-spacing:.01em">qty · pack · icon</span>
-            <svg class="ps-more-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--p-deep,#9A3412);transition:transform .2s;transform:rotate(${_distAdd ? '90' : '0'}deg)"><polyline points="9 18 15 12 9 6"/></svg>
-          </span>
-        </button>
-        <div class="ps-more-content" style="display:${_distAdd ? 'block' : 'none'};padding:10px 0 4px">
+        <!-- (v34_129) The "⚙️ Stock & details" collapsible is gone. It shipped
+             closed for every vertical except cement, which meant opening qty,
+             unit and the low-stock alert were hidden on a screen whose own
+             button reads "Add to inventory". A shopkeeper adding his first
+             fifty items never opened it, so every product landed at qty 0 with
+             whatever the unit dropdown happened to default to — which is how a
+             bottle of Coke became a kg item. Nothing is behind a tap now. -->
+        <div class="ps-open-sec">
+          <div class="ps-open-hd">Stock</div>
           ${trackStockSlim}
           ${stockFields}
-          ${packSizeField}
-          ${emojiField}
           ${summaryField}
+        </div>
+
+        <div class="ps-open-sec">
+          <div class="ps-open-hd">Icon</div>
+          ${emojiField}
         </div>
 
         <div style="margin-top:14px">
@@ -28182,6 +28308,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         </div>
       `;
     }
+
+    try { this._psUnitHint(); } catch(e){}
+    try { this._psBarcodeCheck(); } catch(e){}
 
     document.getElementById('ps-title').textContent = isInactive
       ? 'Activate · ' + (item.name || 'item')
@@ -28553,6 +28682,65 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   // Flip the per-item Track stock toggle. Updates the UI live so stock
   // fields appear/disappear without re-rendering the whole drawer (which
   // would lose typed-but-not-yet-saved values like name/SP/CP).
+  /* (v34_129) Unit was the last field inside a collapsed drawer, so in practice
+     nobody chose it — the dropdown default did. That is how a bottle of Coke was
+     saved as a kg item and started asking for 250g at the counter. The field is
+     now visible, and changing it says what will happen while billing, in the
+     words the shopkeeper would use. It reads the actual Settings → Weight
+     options state rather than assuming, so the sentence is never a lie. */
+  /* (v34_130) Tell him about the clash while the scanner is still in his hand,
+     not after he presses Save. */
+  _psBarcodeCheck(){
+    var el = document.getElementById('ps-barcode');
+    var note = document.getElementById('ps-barcode-note');
+    if (!el || !note) return;
+    var c = window.hnBarcodeNorm ? window.hnBarcodeNorm(el.value) : String(el.value||'').trim();
+    this.hideFieldError && this.hideFieldError('ps-barcode');
+    if (!c){ note.className = 'ps-barcode-note'; note.textContent = ''; return; }
+    if (c.length < 6){
+      note.className = 'ps-barcode-note wait';
+      note.textContent = 'Keep scanning \u2014 codes are usually 8 to 13 digits.';
+      return;
+    }
+    var clash = null;
+    try {
+      clash = (Store.list('prods') || []).find(function(x){
+        return x && !x._deleted && x.id !== (this._editingId || null)
+          && window.hnBarcodeNorm(x.barcode) === c;
+      }, this) || null;
+    } catch(e){}
+    if (clash){
+      note.className = 'ps-barcode-note bad';
+      note.textContent = '\u26a0 Already used by \u201c' + (clash.name || 'another item') + '\u201d';
+    } else {
+      note.className = 'ps-barcode-note ok';
+      note.textContent = '\u2713 Scanning this packet will add it to the bill';
+    }
+  },
+
+  _psUnitHint(){
+    var el  = document.getElementById('ps-unit-hint');
+    var sel = document.getElementById('ps-unit');
+    if (!el || !sel) return;
+    var u = String(sel.value || '').toLowerCase();
+    var weighed = (u === 'kg' || u === 'l' || u === 'ltr' || u === 'litres');
+    var pickerOn = false;
+    try { pickerOn = this._weightPickerOn ? this._weightPickerOn() : false; } catch(e){}
+    var html;
+    if (weighed && pickerOn){
+      html = '<span class="g">\u2696\ufe0f</span><div>Billing will <b>ask for the weight</b> first \u2014 '
+           + 'paav, aadha, pauna, kilo. Right for loose atta and sabzi. Wrong for anything sold by the packet.</div>';
+    } else if (weighed){
+      html = '<span class="g">\u2696\ufe0f</span><div>Sold by weight. Tapping <b>adds 1 ' + this.escapeHtml(sel.value)
+           + '</b> to the bill. Turn on <b>Settings \u2192 Weight options</b> if you want it to ask for paav / aadha instead.</div>';
+    } else {
+      html = '<span class="g">\ud83d\udc46</span><div>Tapping this product <b>adds 1 to the bill</b> straight away, '
+           + 'no popup. This is what you want for packets, bottles and boxes.</div>';
+    }
+    el.className = 'ps-unit-hint' + (weighed ? ' weigh' : '');
+    el.innerHTML = html;
+  },
+
   toggleTracksStock(){
     const stateEl = document.getElementById('ps-tracks-stock-state');
     if (!stateEl) return;
@@ -29027,8 +29215,30 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const value = itemTracksStock ? stock * (cp != null ? cp : sp) : 0;
 
+    /* (v34_130) Barcode. Two products sharing one code makes the scanner
+       ambiguous forever, and the shopkeeper would never work out why the wrong
+       item kept landing on the bill. Refuse the save and name the clash. */
+    const barcode = window.hnBarcodeNorm
+      ? window.hnBarcodeNorm((document.getElementById('ps-barcode')||{}).value)
+      : String(((document.getElementById('ps-barcode')||{}).value || '')).trim();
+    if (barcode){
+      var _clash = null;
+      try {
+        _clash = (Store.list('prods') || []).find(function(x){
+          return x && !x._deleted && x.id !== (this._editingId || null)
+            && window.hnBarcodeNorm(x.barcode) === barcode;
+        }, this) || null;
+      } catch(e){}
+      if (_clash){
+        this.showFieldError('ps-barcode', 'Already used by ' + (_clash.name || 'another item'));
+        var _bEl = document.getElementById('ps-barcode');
+        if (_bEl){ _bEl.focus(); _bEl.scrollIntoView({ block:'center', behavior:'smooth' }); }
+        return;
+      }
+    }
+
     const fields = {
-      name, cp, sp, price: sp, stock, unit, min, emoji, cat,
+      name, cp, sp, price: sp, stock, unit, min, emoji, cat, barcode,
       tracksStock: itemTracksStock,
       value: Math.round(value),
       active,
@@ -40403,8 +40613,10 @@ window.MunimRules = {
       return t >= monthStart;
     });
     var opex = monthExps.reduce(function(a, e){
-      var bucket = window.expenseBucket ? expenseBucket(e.cat) : 'variable';
-      if (bucket === 'cogs') return a;
+      /* (v34_128) This one had the right idea already — exclude the cogs
+         bucket — and the category-key mismatch meant the guard never fired
+         for stock purchases. Now on the shared predicate. */
+      if (window.hnExpenseInPL && !window.hnExpenseInPL(e)) return a;
       return a + Number(e.amt || 0);
     }, 0);
 
@@ -53487,6 +53699,23 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
          The multiplier is stripped before filtering, otherwise the fuzzy
          matcher looks for a product literally called "atta 3" and finds none. */
       var _raw = e.target.value || '';
+
+      /* (v34_130) Barcode first. A USB scanner is just a keyboard: it types the
+         code and (by default) sends Enter. Enter is handled in the v34_121
+         block; this is the safety net for scanners with no terminator set.
+         It only fires on an unambiguous exact match so that a short code can
+         never trigger while a longer one is still being typed in. */
+      if (window.hnFindByBarcode && _raw.length >= 8 && !window.hnBarcodeAmbiguous(_raw)){
+        var _bp = window.hnFindByBarcode(_raw);
+        if (_bp){
+          try { window.App && App.addToCart && App.addToCart(_bp.id || _bp.name); } catch(_e){}
+          e.target.value = ''; HND._qtyMul = 0; searchQ = '';
+          renderGrid();
+          try { App.toast && App.toast('\u2713 ' + (_bp.name || 'Item') + ' added'); } catch(_e){}
+          return;
+        }
+      }
+
       var _m = _raw.match(/^\s*(.*?)\s*[*x\u00d7]\s*(\d+(?:\.\d+)?)\s*$/i);
       HND._qtyMul = _m ? Math.max(1, Math.round(+_m[2])) : 0;
       searchQ = _m ? _m[1] : _raw;
@@ -98757,8 +98986,11 @@ var KB=[
     if (bc && bc.nextSibling) tb.insertBefore(wrap, bc.nextSibling); else tb.insertBefore(wrap, tb.firstChild);
   }
   function relabelSearch(){
-    var s = document.getElementById('hnd-pos-search-input');
-    if (s && /barcode|scan/i.test(s.placeholder || '')) { s.placeholder = 'Search items\u2026'; s.removeAttribute('data-i18n-ph'); }
+    /* (v34_130) This used to rewrite "Search or scan barcode…" down to
+       "Search items…", which was the honest thing to do while no product
+       carried a barcode. Products carry one now and the scanner works, so the
+       original wording stands — a shopkeeper who bought the plan for scanner
+       billing needs to see that the box accepts a scan. */
   }
   function injectExit(){
     var tb = document.querySelector('.hnd-tb');
@@ -106053,7 +106285,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
 })();
 </script>
 
-<!-- ===== HNRoyalBill v34_127_stockin_twocol · self-hosted royal WhatsApp bills (offline) ===== -->
+<!-- ===== HNRoyalBill v34_130_barcode_billing · self-hosted royal WhatsApp bills (offline) ===== -->
 <script id="hnrb-lib-h2i">/*! html-to-image (MIT) */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).htmlToImage={})}(this,(function(t){"use strict";function e(t,e,n,r){return new(n||(n=Promise))((function(i,o){function u(t){try{a(r.next(t))}catch(t){o(t)}}function c(t){try{a(r.throw(t))}catch(t){o(t)}}function a(t){var e;t.done?i(t.value):(e=t.value,e instanceof n?e:new n((function(t){t(e)}))).then(u,c)}a((r=r.apply(t,e||[])).next())}))}function n(t,e){var n,r,i,o,u={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return o={next:c(0),throw:c(1),return:c(2)},"function"==typeof Symbol&&(o[Symbol.iterator]=function(){return this}),o;function c(c){return function(a){return function(c){if(n)throw new TypeError("Generator is already executing.");for(;o&&(o=0,c[0]&&(u=0)),u;)try{if(n=1,r&&(i=2&c[0]?r.return:c[0]?r.throw||((i=r.return)&&i.call(r),0):r.next)&&!(i=i.call(r,c[1])).done)return i;switch(r=0,i&&(c=[2&c[0],i.value]),c[0]){case 0:case 1:i=c;break;case 4:return u.label++,{value:c[1],done:!1};case 5:u.label++,r=c[1],c=[0];continue;case 7:c=u.ops.pop(),u.trys.pop();continue;default:if(!(i=u.trys,(i=i.length>0&&i[i.length-1])||6!==c[0]&&2!==c[0])){u=0;continue}if(3===c[0]&&(!i||c[1]>i[0]&&c[1]<i[3])){u.label=c[1];break}if(6===c[0]&&u.label<i[1]){u.label=i[1],i=c;break}if(i&&u.label<i[2]){u.label=i[2],u.ops.push(c);break}i[2]&&u.ops.pop(),u.trys.pop();continue}c=e.call(t,u)}catch(t){c=[6,t],r=0}finally{n=i=0}if(5&c[0])throw c[1];return{value:c[0]?c[1]:void 0,done:!0}}([c,a])}}}var r,i=(r=0,function(){return r+=1,"u".concat("0000".concat((Math.random()*Math.pow(36,4)<<0).toString(36)).slice(-4)).concat(r)});function o(t){for(var e=[],n=0,r=t.length;n<r;n++)e.push(t[n]);return e}var u=null;function c(t){return void 0===t&&(t={}),u||(u=t.includeStyleProperties?t.includeStyleProperties:o(window.getComputedStyle(document.documentElement)))}function a(t,e){var n=(t.ownerDocument.defaultView||window).getComputedStyle(t).getPropertyValue(e);return n?parseFloat(n.replace("px","")):0}function s(t,e){void 0===e&&(e={});var n,r,i,o=e.width||(r=a(n=t,"border-left-width"),i=a(n,"border-right-width"),n.clientWidth+r+i),u=e.height||function(t){var e=a(t,"border-top-width"),n=a(t,"border-bottom-width");return t.clientHeight+e+n}(t);return{width:o,height:u}}var l=16384;function f(t,e){return void 0===e&&(e={}),t.toBlob?new Promise((function(n){t.toBlob(n,e.type?e.type:"image/png",e.quality?e.quality:1)})):new Promise((function(n){for(var r=window.atob(t.toDataURL(e.type?e.type:void 0,e.quality?e.quality:void 0).split(",")[1]),i=r.length,o=new Uint8Array(i),u=0;u<i;u+=1)o[u]=r.charCodeAt(u);n(new Blob([o],{type:e.type?e.type:"image/png"}))}))}function h(t){return new Promise((function(e,n){var r=new Image;r.onload=function(){r.decode().then((function(){requestAnimationFrame((function(){return e(r)}))}))},r.onerror=n,r.crossOrigin="anonymous",r.decoding="async",r.src=t}))}function d(t){return e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Promise.resolve().then((function(){return(new XMLSerializer).serializeToString(t)})).then(encodeURIComponent).then((function(t){return"data:image/svg+xml;charset=utf-8,".concat(t)}))]}))}))}function v(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u;return n(this,(function(n){return e="http://www.w3.org/2000/svg",o=document.createElementNS(e,"svg"),u=document.createElementNS(e,"foreignObject"),o.setAttribute("width","".concat(r)),o.setAttribute("height","".concat(i)),o.setAttribute("viewBox","0 0 ".concat(r," ").concat(i)),u.setAttribute("width","100%"),u.setAttribute("height","100%"),u.setAttribute("x","0"),u.setAttribute("y","0"),u.setAttribute("externalResourcesRequired","true"),o.appendChild(u),u.appendChild(t),[2,d(o)]}))}))}var p=function(t,e){if(t instanceof e)return!0;var n=Object.getPrototypeOf(t);return null!==n&&(n.constructor.name===e.name||p(n,e))};function g(t,e,n,r){var i=".".concat(t,":").concat(e),o=n.cssText?function(t){var e=t.getPropertyValue("content");return"".concat(t.cssText," content: '").concat(e.replace(/'|"/g,""),"';")}(n):function(t,e){return c(e).map((function(e){var n=t.getPropertyValue(e),r=t.getPropertyPriority(e);return"".concat(e,": ").concat(n).concat(r?" !important":"",";")})).join(" ")}(n,r);return document.createTextNode("".concat(i,"{").concat(o,"}"))}function m(t,e,n,r){var o=window.getComputedStyle(t,n),u=o.getPropertyValue("content");if(""!==u&&"none"!==u){var c=i();try{e.className="".concat(e.className," ").concat(c)}catch(t){return}var a=document.createElement("style");a.appendChild(g(c,n,o,r)),e.appendChild(a)}}var w="application/font-woff",y="image/jpeg",b={woff:w,woff2:w,ttf:"application/font-truetype",eot:"application/vnd.ms-fontobject",png:"image/png",jpg:y,jpeg:y,gif:"image/gif",tiff:"image/tiff",svg:"image/svg+xml",webp:"image/webp"};function S(t){var e=function(t){var e=/\.([^./]*?)$/g.exec(t);return e?e[1]:""}(t).toLowerCase();return b[e]||""}function E(t){return-1!==t.search(/^(data:)/)}function x(t,e){return"data:".concat(e,";base64,").concat(t)}function C(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){switch(n.label){case 0:return[4,fetch(t,r)];case 1:if(404===(e=n.sent()).status)throw new Error('Resource "'.concat(e.url,'" not found'));return[4,e.blob()];case 2:return o=n.sent(),[2,new Promise((function(t,n){var r=new FileReader;r.onerror=n,r.onloadend=function(){try{t(i({res:e,result:r.result}))}catch(t){n(t)}},r.readAsDataURL(o)}))]}}))}))}var P={};function R(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u,c,a;return n(this,(function(n){switch(n.label){case 0:if(e=function(t,e,n){var r=t.replace(/\?.*/,"");return n&&(r=t),/ttf|otf|eot|woff2?/i.test(r)&&(r=r.replace(/.*\//,"")),e?"[".concat(e,"]").concat(r):r}(t,r,i.includeQueryParams),null!=P[e])return[2,P[e]];i.cacheBust&&(t+=(/\?/.test(t)?"&":"?")+(new Date).getTime()),n.label=1;case 1:return n.trys.push([1,3,,4]),[4,C(t,i.fetchRequestInit,(function(t){var e=t.res,n=t.result;return r||(r=e.headers.get("Content-Type")||""),function(t){return t.split(/,/)[1]}(n)}))];case 2:return u=n.sent(),o=x(u,r),[3,4];case 3:return c=n.sent(),o=i.imagePlaceholder||"",a="Failed to fetch resource: ".concat(t),c&&(a="string"==typeof c?c:c.message),a&&console.warn(a),[3,4];case 4:return P[e]=o,[2,o]}}))}))}function T(t){return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){return"data:,"===(e=t.toDataURL())?[2,t.cloneNode(!1)]:[2,h(e)]}))}))}function A(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return t.currentSrc?(e=document.createElement("canvas"),i=e.getContext("2d"),e.width=t.clientWidth,e.height=t.clientHeight,null==i||i.drawImage(t,0,0,e.width,e.height),[2,h(e.toDataURL())]):(o=t.poster,u=S(o),[4,R(o,u,r)]);case 1:return[2,h(n.sent())]}}))}))}function k(t,r){var i;return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return e.trys.push([0,3,,4]),(null===(i=null==t?void 0:t.contentDocument)||void 0===i?void 0:i.body)?[4,I(t.contentDocument.body,r,!0)]:[3,2];case 1:return[2,e.sent()];case 2:return[3,4];case 3:return e.sent(),[3,4];case 4:return[2,t.cloneNode(!1)]}}))}))}var L=function(t){return null!=t.tagName&&"SVG"===t.tagName.toUpperCase()};function N(t,e,n){return p(e,Element)&&(function(t,e,n){var r=e.style;if(r){var i=window.getComputedStyle(t);i.cssText?(r.cssText=i.cssText,r.transformOrigin=i.transformOrigin):c(n).forEach((function(n){var o=i.getPropertyValue(n);if("font-size"===n&&o.endsWith("px")){var u=Math.floor(parseFloat(o.substring(0,o.length-2)))-.1;o="".concat(u,"px")}p(t,HTMLIFrameElement)&&"display"===n&&"inline"===o&&(o="block"),"d"===n&&e.getAttribute("d")&&(o="path(".concat(e.getAttribute("d"),")")),r.setProperty(n,o,i.getPropertyPriority(n))}))}}(t,e,n),function(t,e,n){m(t,e,":before",n),m(t,e,":after",n)}(t,e,n),function(t,e){p(t,HTMLTextAreaElement)&&(e.innerHTML=t.value),p(t,HTMLInputElement)&&e.setAttribute("value",t.value)}(t,e),function(t,e){if(p(t,HTMLSelectElement)){var n=e,r=Array.from(n.children).find((function(e){return t.value===e.getAttribute("value")}));r&&r.setAttribute("selected","")}}(t,e)),e}function I(t,r,i){return e(this,void 0,void 0,(function(){return n(this,(function(u){return i||!r.filter||r.filter(t)?[2,Promise.resolve(t).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){return p(t,HTMLCanvasElement)?[2,T(t)]:p(t,HTMLVideoElement)?[2,A(t,r)]:p(t,HTMLIFrameElement)?[2,k(t,r)]:[2,t.cloneNode(L(t))]}))}))}(t,r)})).then((function(i){return function(t,r,i){var u,c;return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){switch(n.label){case 0:return L(r)?[2,r]:(e=[],0===(e=null!=(a=t).tagName&&"SLOT"===a.tagName.toUpperCase()&&t.assignedNodes?o(t.assignedNodes()):p(t,HTMLIFrameElement)&&(null===(u=t.contentDocument)||void 0===u?void 0:u.body)?o(t.contentDocument.body.childNodes):o((null!==(c=t.shadowRoot)&&void 0!==c?c:t).childNodes)).length||p(t,HTMLVideoElement)?[2,r]:[4,e.reduce((function(t,e){return t.then((function(){return I(e,i)})).then((function(t){t&&r.appendChild(t)}))}),Promise.resolve())]);case 1:return n.sent(),[2,r]}var a}))}))}(t,i,r)})).then((function(e){return N(t,e,r)})).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c,a,s,l,f,h,d,v,p;return n(this,(function(n){switch(n.label){case 0:if(0===(e=t.querySelectorAll?t.querySelectorAll("use"):[]).length)return[2,t];i={},p=0,n.label=1;case 1:return p<e.length?(o=e[p],(u=o.getAttribute("xlink:href"))?(c=t.querySelector(u),a=document.querySelector(u),c||!a||i[u]?[3,3]:(s=i,l=u,[4,I(a,r,!0)])):[3,3]):[3,4];case 2:s[l]=n.sent(),n.label=3;case 3:return p++,[3,1];case 4:if((f=Object.values(i)).length){for(h="http://www.w3.org/1999/xhtml",(d=document.createElementNS(h,"svg")).setAttribute("xmlns",h),d.style.position="absolute",d.style.width="0",d.style.height="0",d.style.overflow="hidden",d.style.display="none",v=document.createElementNS(h,"defs"),d.appendChild(v),p=0;p<f.length;p++)v.appendChild(f[p]);t.appendChild(d)}return[2,t]}}))}))}(t,r)}))]:[2,null]}))}))}var D=/url\((['"]?)([^'"]+?)\1\)/g,H=/url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g,M=/src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;function F(t,r,i,o,u){return e(this,void 0,void 0,(function(){var e,c,a,s;return n(this,(function(n){switch(n.label){case 0:return n.trys.push([0,5,,6]),e=i?function(t,e){if(t.match(/^[a-z]+:\/\//i))return t;if(t.match(/^\/\//))return window.location.protocol+t;if(t.match(/^[a-z]+:/i))return t;var n=document.implementation.createHTMLDocument(),r=n.createElement("base"),i=n.createElement("a");return n.head.appendChild(r),n.body.appendChild(i),e&&(r.href=e),i.href=t,i.href}(r,i):r,c=S(r),a=void 0,u?[4,u(e)]:[3,2];case 1:return s=n.sent(),a=x(s,c),[3,4];case 2:return[4,R(e,c,o)];case 3:a=n.sent(),n.label=4;case 4:return[2,t.replace((l=r,f=l.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1"),new RegExp("(url\\(['\"]?)(".concat(f,")(['\"]?\\))"),"g")),"$1".concat(a,"$3"))];case 5:return n.sent(),[3,6];case 6:return[2,t]}var l,f}))}))}function V(t){return-1!==t.search(D)}function q(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){return V(t)?(e=function(t,e){var n=e.preferredFontFormat;return n?t.replace(M,(function(t){for(;;){var e=H.exec(t)||[],r=e[0],i=e[2];if(!i)return"";if(i===n)return"src: ".concat(r,";")}})):t}(t,i),o=function(t){var e=[];return t.replace(D,(function(t,n,r){return e.push(r),t})),e.filter((function(t){return!E(t)}))}(e),[2,o.reduce((function(t,e){return t.then((function(t){return F(t,e,r,i)}))}),Promise.resolve(e))]):[2,t]}))}))}function U(t,r,i){var o;return e(this,void 0,void 0,(function(){var e,u;return n(this,(function(n){switch(n.label){case 0:return(e=null===(o=r.style)||void 0===o?void 0:o.getPropertyValue(t))?[4,q(e,null,i)]:[3,2];case 1:return u=n.sent(),r.style.setProperty(t,u,r.style.getPropertyPriority(t)),[2,!0];case 2:return[2,!1]}}))}))}function j(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,U("background",t,r)];case 1:return n.sent()?[3,3]:[4,U("background-image",t,r)];case 2:n.sent(),n.label=3;case 3:return[4,U("mask",t,r)];case 4:return(i=n.sent())?[3,6]:[4,U("-webkit-mask",t,r)];case 5:i=n.sent(),n.label=6;case 6:return(e=i)?[3,8]:[4,U("mask-image",t,r)];case 7:e=n.sent(),n.label=8;case 8:return e?[3,10]:[4,U("-webkit-mask-image",t,r)];case 9:n.sent(),n.label=10;case 10:return[2]}}))}))}function O(t,r){return e(this,void 0,void 0,(function(){var e,i,o;return n(this,(function(n){switch(n.label){case 0:return(e=p(t,HTMLImageElement))&&!E(t.src)||p(t,SVGImageElement)&&!E(t.href.baseVal)?[4,R(i=e?t.src:t.href.baseVal,S(i),r)]:[2];case 1:return o=n.sent(),[4,new Promise((function(n,i){t.onload=n,t.onerror=r.onImageErrorHandler?function(){for(var t=[],e=0;e<arguments.length;e++)t[e]=arguments[e];try{n(r.onImageErrorHandler.apply(r,t))}catch(t){i(t)}}:i;var u=t;u.decode&&(u.decode=n),"lazy"===u.loading&&(u.loading="eager"),e?(t.srcset="",t.src=o):t.href.baseVal=o}))];case 2:return n.sent(),[2]}}))}))}function B(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return e=o(t.childNodes),i=e.map((function(t){return z(t,r)})),[4,Promise.all(i).then((function(){return t}))];case 1:return n.sent(),[2]}}))}))}function z(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return p(t,Element)?[4,j(t,r)]:[3,4];case 1:return e.sent(),[4,O(t,r)];case 2:return e.sent(),[4,B(t,r)];case 3:e.sent(),e.label=4;case 4:return[2]}}))}))}var W={};function $(t){return e(this,void 0,void 0,(function(){var e,r;return n(this,(function(n){switch(n.label){case 0:return null!=(e=W[t])?[2,e]:[4,fetch(t)];case 1:return[4,n.sent().text()];case 2:return r=n.sent(),e={url:t,cssText:r},W[t]=e,[2,e]}}))}))}function G(t,r){return e(this,void 0,void 0,(function(){var i,o,u,c,a=this;return n(this,(function(s){return i=t.cssText,o=/url\(["']?([^"')]+)["']?\)/g,u=i.match(/url\([^)]+\)/g)||[],c=u.map((function(u){return e(a,void 0,void 0,(function(){var e;return n(this,(function(n){return(e=u.replace(o,"$1")).startsWith("https://")||(e=new URL(e,t.url).href),[2,C(e,r.fetchRequestInit,(function(t){var e=t.result;return i=i.replace(u,"url(".concat(e,")")),[u,e]}))]}))}))})),[2,Promise.all(c).then((function(){return i}))]}))}))}function _(t){if(null==t)return[];for(var e=[],n=t.replace(/(\/\*[\s\S]*?\*\/)/gi,""),r=new RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})","gi");;){if(null===(u=r.exec(n)))break;e.push(u[0])}n=n.replace(r,"");for(var i=/@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi,o=new RegExp("((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})","gi");;){var u;if(null===(u=i.exec(n))){if(null===(u=o.exec(n)))break;i.lastIndex=o.lastIndex}else o.lastIndex=i.lastIndex;e.push(u[0])}return e}function J(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){return e=[],i=[],t.forEach((function(e){if("cssRules"in e)try{o(e.cssRules||[]).forEach((function(t,n){if(t.type===CSSRule.IMPORT_RULE){var o=n+1,u=$(t.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){try{e.insertRule(t,t.startsWith("@import")?o+=1:e.cssRules.length)}catch(e){console.error("Error inserting rule from remote css",{rule:t,error:e})}}))})).catch((function(t){console.error("Error loading remote css",t.toString())}));i.push(u)}}))}catch(o){var n=t.find((function(t){return null==t.href}))||document.styleSheets[0];null!=e.href&&i.push($(e.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){n.insertRule(t,n.cssRules.length)}))})).catch((function(t){console.error("Error loading remote stylesheet",t)}))),console.error("Error inlining remote css file",o)}})),[2,Promise.all(i).then((function(){return t.forEach((function(t){if("cssRules"in t)try{o(t.cssRules||[]).forEach((function(t){e.push(t)}))}catch(e){console.error("Error while reading CSS rules from ".concat(t.href),e)}})),e}))]}))}))}function Q(t){return t.filter((function(t){return t.type===CSSRule.FONT_FACE_RULE})).filter((function(t){return V(t.style.getPropertyValue("src"))}))}function X(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:if(null==t.ownerDocument)throw new Error("Provided element is not within a Document");return[4,J(o(t.ownerDocument.styleSheets),r)];case 1:return[2,Q(e.sent())]}}))}))}function K(t){return t.trim().replace(/["']/g,"")}function Y(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,X(t,r)];case 1:return e=n.sent(),i=function(t){var e=new Set;return function t(n){(n.style.fontFamily||getComputedStyle(n).fontFamily).split(",").forEach((function(t){e.add(K(t))})),Array.from(n.children).forEach((function(e){e instanceof HTMLElement&&t(e)}))}(t),e}(t),[4,Promise.all(e.filter((function(t){return i.has(K(t.style.fontFamily))})).map((function(t){var e=t.parentStyleSheet?t.parentStyleSheet.href:null;return q(t.cssText,e,r)})))];case 2:return[2,n.sent().join("\n")]}}))}))}function Z(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c;return n(this,(function(n){switch(n.label){case 0:return null==r.fontEmbedCSS?[3,1]:(i=r.fontEmbedCSS,[3,5]);case 1:return r.skipFonts?(o=null,[3,4]):[3,2];case 2:return[4,Y(t,r)];case 3:o=n.sent(),n.label=4;case 4:i=o,n.label=5;case 5:return(e=i)&&(u=document.createElement("style"),c=document.createTextNode(e),u.appendChild(c),t.firstChild?t.insertBefore(u,t.firstChild):t.appendChild(u)),[2]}}))}))}function tt(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,I(t,r,!0)];case 1:return[4,Z(u=n.sent(),r)];case 2:return n.sent(),[4,z(u,r)];case 3:return n.sent(),function(t,e){var n=t.style;e.backgroundColor&&(n.backgroundColor=e.backgroundColor),e.width&&(n.width="".concat(e.width,"px")),e.height&&(n.height="".concat(e.height,"px"));var r=e.style;null!=r&&Object.keys(r).forEach((function(t){n[t]=r[t]}))}(u,r),[4,v(u,i,o)];case 4:return[2,n.sent()]}}))}))}function et(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u,c,a,f,d,v;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,tt(t,r)];case 1:return[4,h(n.sent())];case 2:return u=n.sent(),c=document.createElement("canvas"),a=c.getContext("2d"),f=r.pixelRatio||function(){var t,e;try{e=process}catch(t){}var n=e&&e.env?e.env.devicePixelRatio:null;return n&&(t=parseInt(n,10),Number.isNaN(t)&&(t=1)),t||window.devicePixelRatio||1}(),d=r.canvasWidth||i,v=r.canvasHeight||o,c.width=d*f,c.height=v*f,r.skipAutoScale||function(t){(t.width>l||t.height>l)&&(t.width>l&&t.height>l?t.width>t.height?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l):t.width>l?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l))}(c),c.style.width="".concat(d),c.style.height="".concat(v),r.backgroundColor&&(a.fillStyle=r.backgroundColor,a.fillRect(0,0,c.width,c.height)),a.drawImage(u,0,0,c.width,c.height),[2,c]}}))}))}t.getFontEmbedCSS=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Y(t,r)]}))}))},t.toBlob=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[4,f(e.sent())];case 2:return[2,e.sent()]}}))}))},t.toCanvas=et,t.toJpeg=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL("image/jpeg",r.quality||1)]}}))}))},t.toPixelData=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,et(t,r)];case 1:return u=n.sent(),[2,u.getContext("2d").getImageData(0,0,i,o).data]}}))}))},t.toPng=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL()]}}))}))},t.toSvg=tt}));
 //# sourceMappingURL=html-to-image.js.map
@@ -108834,6 +109066,17 @@ html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complet
     /* Enter in the search box adds the highlighted top match */
     if (e.key === 'Enter' && ae === si && si){
       e.preventDefault();
+      /* (v34_130) A scanned code beats the fuzzy name match. Scanners send Enter
+         by default, so this is the path virtually every counter will take. */
+      if (window.hnFindByBarcode){
+        var bp = window.hnFindByBarcode(si.value);
+        if (bp){
+          addN(bp.id || bp.name, 1, false);
+          clearSearch();
+          try { App.toast && App.toast('\u2713 ' + (bp.name || 'Item') + ' added'); } catch(_e){}
+          return;
+        }
+      }
       var tile = q1('#hnd-pos-grid .hnd-pos-tile[data-hnd-add]');
       if (!tile) return;
       addN(tile.getAttribute('data-hnd-add'),
@@ -108900,5 +109143,72 @@ html[data-shell="desktop"] body.hnd-on-pos.hnp-tight .hnd-pos-r .hnd-pos-complet
 })();
 </script>
 <!-- ═══════════ END · DESKTOP BILL PANEL 3-ZONE LOCK v34_121 ═══════════ -->
+
+<!-- ═══════════ HISAABNOW · ADD PRODUCT · NO DRAWER · v34_129 ═══════════
+     The "⚙️ Stock & details" collapsible is removed from the retail-compact
+     Add/Edit item screen (grocery, pan, cement, and the food verticals with
+     ingredients off). Every field is on the screen. Styling only — the layout
+     change itself is in openProductSheet().
+
+     Deliberately NOT two columns. On desktop .ps-drawer is a centred modal
+     capped at 580px (85604), which is a single-column measure, and widening it
+     would move every other sheet that borrows .ps-drawer — shop creation, the
+     list views. The form scrolls instead, which is what a form does.
+============================================================================ -->
+<style>
+/* Section headers, so an open screen still reads as groups rather than a wall */
+.ps-open-sec{ margin-top: 18px; }
+.ps-open-sec:first-of-type{ margin-top: 14px; }
+.ps-open-hd{
+  display: flex; align-items: center; gap: 10px; margin: 0 0 11px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--p-deep, #9A3412);
+}
+.ps-open-hd::after{ content: ''; flex: 1; height: 1px; background: var(--bd, #EFE6D8); }
+
+/* The unit consequence line */
+.ps-unit-hint{
+  display: flex; gap: 10px; align-items: flex-start;
+  margin: 2px 0 14px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--p-200, #FED7AA); background: #fff;
+  font-size: 12px; line-height: 1.45; font-weight: 600; color: var(--t2, #454545);
+}
+.ps-unit-hint.weigh{ border-color: #FBD5A5; background: #FFFAF2; }
+.ps-unit-hint .g{ font-size: 16px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+.ps-unit-hint b{ color: var(--t1, #111); font-weight: 800; }
+.ps-unit-hint:empty{ display: none; }
+
+/* Unit is a real decision now, not a leftover dropdown */
+#ps-unit{ font-weight: 700; }
+
+/* Taller form in a fixed-height modal — keep the scrollbar findable */
+html[data-shell="desktop"] .ps-drawer .ps-body{ scrollbar-gutter: stable; }
+</style>
+<!-- ═══════════ END · ADD PRODUCT NO DRAWER v34_129 ═══════════ -->
+
+<!-- ═══════════ HISAABNOW · BARCODE BILLING · v34_130 ═══════════
+     "Barcode scanner billing" has been on the grocery and stationery plan
+     lists (33432, 101983) since those lists were written, while no product
+     had anywhere to store a code. This closes that gap:
+       · a Barcode field on the product, under the name
+       · one lookup, hnFindByBarcode(), that never touches the fuzzy name
+         matcher — that normaliser collapses repeats, so 8901058812345 would
+         have been searched for as 890105812345
+       · scan-to-cart on the desktop POS and on mobile
+       · a duplicate-code guard, because two items on one code makes the
+         scanner ambiguous forever and unexplainable at the counter
+     Hardware note: a USB or Bluetooth scanner is a keyboard. It types the
+     digits and sends Enter. No integration, no permissions, works offline.
+     Phone-camera scanning is a separate job and is NOT in this build.
+============================================================================ -->
+<style>
+.ps-barcode-note{ font-size:11.5px; font-weight:650; line-height:1.4; margin-top:6px; min-height:1px; }
+.ps-barcode-note:empty{ display:none; }
+.ps-barcode-note.ok{   color:#0B6B37; }
+.ps-barcode-note.bad{  color:#B3261E; font-weight:800; }
+.ps-barcode-note.wait{ color:var(--t3,#8C8577); }
+#ps-barcode::placeholder{ letter-spacing:0; font-family:'Inter',sans-serif; }
+</style>
+<!-- ═══════════ END · BARCODE BILLING v34_130 ═══════════ -->
 </body>
 </html>
