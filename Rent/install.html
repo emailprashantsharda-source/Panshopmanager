@@ -546,10 +546,6 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
       'If neither appears, another app may already claim this website on your phone. Message us and we will sort it.');
   }
 
-  /* Exposed so a pricing card can trigger the same install prompt rather than
-     duplicating the iOS / in-app-browser / already-installed branching. */
-  window.__rnStart = function(){ fire(); };
-
   function fire(){
     if (!evt) return help();
     var e=evt; evt=null; window.__bip=null;
@@ -637,25 +633,26 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
     t.addEventListener('click',function(){ paint(t.dataset.cycle); });
   });
 
-  /* Every card, and the button inside it, starts the same journey as the top
-     CTA. Nobody can buy from this page — they are not signed in and there is
-     no shop yet — so the honest action is "get the app and start the trial",
-     and the label says exactly that rather than implying a purchase.
+  /* A pricing card opens the app. It does NOT run the install logic.
+     
+     It used to, and that was wrong in a way the branching could never fix: a
+     shop that already has RentalNow on the phone tapped "Start free with
+     Starter" and got a dialog reading "Already installed — open it from your
+     home screen". Technically accurate, useless as an answer. The intent
+     behind tapping a plan is "take me in and let me start", and install is a
+     different question that already has its own button at the top of the page
+     and its own banner inside the app.
 
-     The plan choice rides along as ?plan=, which the app ignores today. It
-     costs nothing, it does not lie to anyone, and it means the day the app
-     reads it the link already works. */
+     So: always navigate. The app decides what to do about installation, which
+     is the only place that can answer it correctly. */
   cards.forEach(function(c){
-    var plan = (c.querySelector('.pbtn') || {}).dataset
-             ? c.querySelector('.pbtn').dataset.plan : '';
+    var b = c.querySelector('.pbtn');
+    var plan = b && b.dataset ? (b.dataset.plan || '') : '';
     var go = function(e){
       if (e) e.preventDefault();
-      try { sessionStorage.setItem('rn_plan', plan || ''); } catch(err){}
-      if (typeof window.__rnStart === 'function') return window.__rnStart(plan);
       location.href = './' + (plan ? '?plan=' + encodeURIComponent(plan) : '');
     };
     c.addEventListener('click', go);
-    var b = c.querySelector('.pbtn');
     if (b) b.addEventListener('click', function(e){ e.stopPropagation(); go(e); });
   });
   window.addEventListener('resize',slide);
