@@ -203,6 +203,25 @@ h3{font-size:17px;font-weight:850;letter-spacing:-.02em}
   letter-spacing:.05em;text-transform:uppercase;background:#E7F9F0;color:var(--ok);
   padding:3px 9px;border-radius:99px;animation:pop .34s cubic-bezier(.34,1.5,.5,1)}
 @keyframes pop{0%{opacity:0;transform:scale(.72)}100%{opacity:1;transform:none}}
+/* A price with no way to act on it is a dead end, and a card that looks
+   clickable but is not is worse. Both fixed here: a real button on every card,
+   pinned to the bottom with margin-top:auto so the four line up however tall
+   their copy runs, and the card itself carries a pressed state so a thumb
+   landing anywhere on it does something. */
+.p{cursor:pointer;transition:transform .1s ease,box-shadow .15s}
+.p:active{transform:scale(.99)}
+.p:hover{box-shadow:0 16px 34px -22px rgba(15,61,92,.35)}
+.pbtn{margin-top:auto;width:100%;border:1.5px solid var(--bd);background:var(--card);
+  color:var(--navy);font-family:inherit;font-size:14.5px;font-weight:850;
+  letter-spacing:-.015em;padding:13px;border-radius:11px;cursor:pointer;
+  transition:background .12s,color .12s,border-color .12s}
+/* The gap above the button lives here rather than as a second margin-top on
+   .pbtn, where it silently beat margin-top:auto and unpinned the button. */
+.p .yr{margin-bottom:14px}
+.p:hover .pbtn{border-color:var(--navy)}
+.pbtn:active{transform:scale(.98)}
+.p.hot .pbtn{background:var(--navy);color:#fff;border-color:var(--navy);
+  box-shadow:0 10px 22px -12px rgba(15,61,92,.9)}
 .price-note{background:#fff;border:1px solid var(--bd);border-radius:13px;padding:15px 17px;
   font-size:14px;color:var(--t2);margin-top:18px}
 .price-note b{color:var(--t1)}
@@ -402,24 +421,28 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
         <div class="nm">Starter</div>
         <div class="amt"><b class="v">₹4,990</b><span class="per">/year</span></div>
         <div class="yr"></div>
+        <button class="pbtn" data-plan="starter">Start free with Starter</button>
       </div>
       <div class="p hot" data-m="1299" data-y="12990">
         <div class="tag">MOST SHOPS PICK THIS</div><div class="bikes">Up to 50 bikes</div>
         <div class="nm">Growth</div>
         <div class="amt"><b class="v">₹12,990</b><span class="per">/year</span></div>
         <div class="yr"></div>
+        <button class="pbtn" data-plan="growth">Start free with Growth</button>
       </div>
       <div class="p" data-m="2499" data-y="24990">
         <div class="bikes">Up to 150 bikes</div>
         <div class="nm">Pro</div>
         <div class="amt"><b class="v">₹24,990</b><span class="per">/year</span></div>
         <div class="yr"></div>
+        <button class="pbtn" data-plan="pro">Start free with Pro</button>
       </div>
       <div class="p" data-m="4999" data-y="49990">
         <div class="bikes">Any number of bikes</div>
         <div class="nm">Multi-branch</div>
         <div class="amt"><b class="v">₹49,990</b><span class="per">/year</span></div>
         <div class="yr"></div>
+        <button class="pbtn" data-plan="multi">Start free with Multi-branch</button>
       </div>
     </div>
     <div class="price-note">
@@ -523,6 +546,10 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
       'If neither appears, another app may already claim this website on your phone. Message us and we will sort it.');
   }
 
+  /* Exposed so a pricing card can trigger the same install prompt rather than
+     duplicating the iOS / in-app-browser / already-installed branching. */
+  window.__rnStart = function(){ fire(); };
+
   function fire(){
     if (!evt) return help();
     var e=evt; evt=null; window.__bip=null;
@@ -608,6 +635,28 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 
   tabs.forEach(function(t){
     t.addEventListener('click',function(){ paint(t.dataset.cycle); });
+  });
+
+  /* Every card, and the button inside it, starts the same journey as the top
+     CTA. Nobody can buy from this page — they are not signed in and there is
+     no shop yet — so the honest action is "get the app and start the trial",
+     and the label says exactly that rather than implying a purchase.
+
+     The plan choice rides along as ?plan=, which the app ignores today. It
+     costs nothing, it does not lie to anyone, and it means the day the app
+     reads it the link already works. */
+  cards.forEach(function(c){
+    var plan = (c.querySelector('.pbtn') || {}).dataset
+             ? c.querySelector('.pbtn').dataset.plan : '';
+    var go = function(e){
+      if (e) e.preventDefault();
+      try { sessionStorage.setItem('rn_plan', plan || ''); } catch(err){}
+      if (typeof window.__rnStart === 'function') return window.__rnStart(plan);
+      location.href = './' + (plan ? '?plan=' + encodeURIComponent(plan) : '');
+    };
+    c.addEventListener('click', go);
+    var b = c.querySelector('.pbtn');
+    if (b) b.addEventListener('click', function(e){ e.stopPropagation(); go(e); });
   });
   window.addEventListener('resize',slide);
   /* Fonts can land after first paint and change the tab width. */
