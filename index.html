@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_148_chip_rank';
+    window.HISAABNOW_BUILD = 'v34_149_pos2_salon';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -53188,7 +53188,6 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
         <div class="hnd-pos-cust-name" data-i18n="d.walkIn">Walk-in customer</div>
         <div class="hnd-pos-cust-meta" data-i18n="d.clickAttach">Click to attach customer</div>
       </div>
-      <span class="hnd-pos-cust-action">+ Add</span>
     </div>
     <div class="hnd-pos-bill-meta">
       <span>New bill · <b data-i18n="staff.cashierRole">Cashier</b></span>
@@ -109824,5 +109823,240 @@ html[data-shell="desktop"] #preg-close-x{ display: none !important; }
 })();
 </script>
 <!-- ═══════════ END · PURCHASES UNDER MONEY v34_147 ═══════════ -->
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     HisaabNow Step POS2 · Salon desktop POS theme · v34_149
+     ───────────────────────────────────────────────────────────────────
+     Scoped to  html[data-shell="desktop"] body.hnd-on-pos.hnpos2
+     `hnpos2` is added by the JS below ONLY when the effective vertical
+     is salon. Every rule dies with the class.
+
+     KILL SWITCH — if this misbehaves in production:
+       localStorage.setItem('HN_POS2','off'); location.reload();
+     Nothing else needs to change; the old theme is untouched underneath.
+
+     Uses !important in places because it is overriding earlier blocks
+     (99229 / 102161 / 102577 / 103025) that already use it. A truly flat
+     layer needs those deleted first — that is a separate change.
+     ═══════════════════════════════════════════════════════════════════ -->
+<style>
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 {
+  --p2-floor:#E9E8E3; --p2-paper:#FFFFFF; --p2-ink:#16150F;
+  --p2-gold:#D4A574; --p2-gold-lt:#EBCFA9; --p2-wash:#FBF3E7;
+  --p2-line:#E2E0D8; --p2-soft:#F0EEE8;
+  --p2-t2:#78756A; --p2-t3:#A8A59A;
+}
+
+/* ── shell: cart stops scaling with the screen ─────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnd-pos {
+  grid-template-columns: minmax(0,1fr) 380px !important;
+  background: var(--p2-floor) !important;
+  padding: 16px 16px 16px !important;
+  gap: 16px !important;
+}
+
+/* ── search ────────────────────────────────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search {
+  border-radius: 10px !important; padding: 12px 16px !important;
+  border-color: var(--p2-line) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search:focus-within {
+  border-color: var(--p2-gold) !important;
+  box-shadow: 0 0 0 3px rgba(212,165,116,.16) !important;
+}
+
+/* ── category rail: pills, masked edge, no scrollbar ───────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tabs {
+  gap: 6px !important; border-bottom: 0 !important; padding: 1px !important;
+  -webkit-mask-image: linear-gradient(to right,#000 calc(100% - 48px),transparent);
+          mask-image: linear-gradient(to right,#000 calc(100% - 48px),transparent);
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab {
+  padding: 7px 13px !important; border-radius: 999px !important;
+  background: var(--p2-paper) !important; border: 1px solid var(--p2-line) !important;
+  font-size: 12.5px !important; font-weight: 600 !important; color: var(--p2-t2) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab.active {
+  background: var(--p2-ink) !important; border-color: var(--p2-ink) !important; color: #fff !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab.active::after { display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab-c {
+  background: transparent !important; padding: 0 !important; color: var(--p2-t3) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab.active .hnd-pos-tab-c { color: var(--p2-gold) !important; }
+
+/* ── tiles ─────────────────────────────────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grid {
+  grid-template-columns: repeat(auto-fill,minmax(186px,1fr)) !important; gap: 10px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile {
+  border-radius: 14px !important; padding: 13px 14px 12px !important;
+  min-height: 108px !important; border-color: var(--p2-line) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile:hover {
+  border-color: var(--p2-gold) !important;
+  box-shadow: 0 6px 16px -8px rgba(212,165,116,.5) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-cat {
+  font-size: 9.5px !important; letter-spacing: .09em !important; color: var(--p2-t3) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-name {
+  font-size: 14px !important; font-weight: 700 !important; letter-spacing: -.01em !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-price { font-size: 18px !important; }
+/* the + keeps its job, just rounder */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-add {
+  width: 28px !important; height: 28px !important; padding: 0 !important;
+  border-radius: 50% !important; display: grid !important; place-items: center !important;
+  background: var(--p2-wash) !important; border: 1px solid #F0DFC4 !important;
+  color: #9A7440 !important; font-size: 15px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile:hover .hnd-pos-tile-add {
+  background: var(--p2-gold) !important; border-color: var(--p2-gold) !important; color: var(--p2-ink) !important;
+}
+/* salon has no veg/non-veg. The marker is a restaurant leak. */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-veg { display: none !important; }
+
+/* ── the bill slip floats ──────────────────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r {
+  background: var(--p2-paper) !important; border: 0 !important; border-radius: 14px !important;
+  box-shadow: 0 1px 2px rgba(22,21,15,.05), 0 8px 24px -12px rgba(22,21,15,.18) !important;
+  overflow: hidden !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-cust {
+  border-bottom: 1px solid var(--p2-soft) !important; flex-shrink: 0 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-bill-meta {
+  border-bottom: 1px solid var(--p2-soft) !important; flex-shrink: 0 !important;
+  font-size: 10.5px !important; font-weight: 700 !important;
+  letter-spacing: .07em !important; text-transform: uppercase !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items { min-height: 128px !important; }
+
+/* ── served by: match the slip instead of the dashed orange box ── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section.fff-desktop {
+  margin: 0 !important; padding: 11px 16px !important;
+  background: var(--p2-wash) !important;
+  border: 0 !important; border-top: 1px solid var(--p2-soft) !important;
+  border-radius: 0 !important; box-shadow: inset 3px 0 0 var(--p2-gold) !important;
+  flex-shrink: 0 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section.fff-desktop::before {
+  color: #9A7440 !important; font-size: 10px !important;
+  letter-spacing: .08em !important; font-weight: 700 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section .jjj-select,
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section select {
+  border: 1px solid #F0DFC4 !important; border-radius: 8px !important;
+  background: var(--p2-paper) !important; font-size: 13px !important; font-weight: 600 !important;
+}
+
+/* ── money band: total + payment + CTA as one ink object ───────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-totals {
+  border-top: 1px solid var(--p2-soft) !important; padding: 10px 16px 2px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-extras { padding: 6px 16px 10px !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grand {
+  margin: 0 !important; border-radius: 0 !important; padding: 14px 16px 12px !important;
+  background: var(--p2-ink) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grand-r {
+  font-size: 31px !important; color: var(--p2-gold) !important; letter-spacing: -.035em !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-pay {
+  background: var(--p2-ink) !important; padding: 0 16px 9px !important; gap: 5px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-pay-btn {
+  background: transparent !important; border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 7px !important; color: rgba(255,255,255,.6) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-pay-btn.active {
+  background: var(--p2-gold) !important; border-color: var(--p2-gold) !important; color: var(--p2-ink) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-actions {
+  background: var(--p2-ink) !important; margin: 0 !important; padding: 0 16px 4px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-act.split {
+  background: transparent !important; border-color: rgba(255,255,255,.14) !important;
+  color: rgba(255,255,255,.6) !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-complete {
+  margin: 0 !important; border-radius: 10px !important;
+  background: var(--p2-gold) !important; color: var(--p2-ink) !important;
+}
+/* the band needs its own padding wrapper since .complete lost its margin */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r > .hnd-pos-complete {
+  margin: 0 16px 14px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r::after {
+  content: ''; display: block; background: var(--p2-ink); height: 0;
+}
+</style>
+
+<script>
+/* === HisaabNow Step POS2 · salon desktop POS theme · v34_149 === */
+(function(){
+  if (document.documentElement.getAttribute('data-shell') !== 'desktop') return;
+
+  function off(){
+    try { return localStorage.getItem('HN_POS2') === 'off'; } catch(e){ return false; }
+  }
+
+  /* Same resolution order the rest of the app uses: override, then the
+     active shop, then the legacy App.vertical field. */
+  function vertical(){
+    try {
+      var ov = localStorage.getItem('hn_vertical_override');
+      if (ov) return String(ov).toLowerCase();
+    } catch(e){}
+    try {
+      if (window.MShop && typeof MShop.getActive === 'function'){
+        var a = MShop.getActive();
+        if (a && (a.cardType || a.profession)) return String(a.cardType || a.profession).toLowerCase();
+      }
+    } catch(e){}
+    try { if (window.App && App.vertical) return String(App.vertical).toLowerCase(); } catch(e){}
+    return '';
+  }
+
+  function syncClass(){
+    var on = !off() && vertical() === 'salon';
+    try { document.body.classList.toggle('hnpos2', on); } catch(e){}
+    return on;
+  }
+
+  /* Subtotal only earns a row when something sits between it and the
+     total. With no discount and no GST the two numbers are identical and
+     the row is pure noise — the grand total already states the figure. */
+  function syncSubtotal(){
+    var totals = document.querySelector('.hnd-pos-totals');
+    if (!totals) return;
+    var rows = totals.children;
+    if (!rows || !rows.length) return;
+    var subRow = rows[0];
+    var disc = document.getElementById('hnd-pos-disc-row');
+    var gst  = document.getElementById('hnd-pos-gst-row');
+    function shown(el){
+      if (!el) return false;
+      try { return getComputedStyle(el).display !== 'none'; } catch(e){ return false; }
+    }
+    var needed = shown(disc) || shown(gst);
+    subRow.style.display = needed ? 'flex' : 'none';
+  }
+
+  function tick(){
+    try { if (syncClass()) syncSubtotal(); } catch(e){}
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', tick);
+  } else { tick(); }
+  setInterval(tick, 500);
+
+  console.log('[POS2] salon desktop POS theme armed — disable with localStorage.setItem("HN_POS2","off")');
+})();
+</script>
+<!-- ═══════════ END · Step POS2 v34_149 ═══════════ -->
+
 </body>
 </html>
