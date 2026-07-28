@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_151_pos2_served';
+    window.HISAABNOW_BUILD = 'v34_152_pos2_split';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -109963,47 +109963,68 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-bill-meta {
   font-size: 10.5px !important; font-weight: 700 !important;
   letter-spacing: .07em !important; text-transform: uppercase !important;
 }
-/* v34_149 put a 128px floor here to stop the list collapsing. On a short
-   window that floor refuses to yield, the ink band is flex-shrink:0, and
-   .hnd-pos-r is overflow:hidden — so Complete sale got clipped off the
-   bottom. The list must be the thing that gives. */
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items {
-  flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important;
+/* Two nested scrollers inside a fixed-height overflow:hidden panel is the
+   bug behind both earlier regressions — a floor on the list clipped
+   Complete sale, no floor collapsed the list to zero. Same bug twice.
+   One scroller now: the slip scrolls as a whole, the ink band sticks to
+   its floor. Nothing can be clipped out of reach at any window height. */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r {
+  overflow-y: auto !important; overscroll-behavior: contain !important;
 }
-/* short laptops: tighten the band so Complete sale is never below the fold */
-@media (max-height: 880px){
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band { padding-bottom: 10px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand { padding: 10px 16px 8px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand-r { font-size: 26px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay { padding-bottom: 6px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay-btn { padding: 8px 0 !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-actions { padding-bottom: 6px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-act { padding: 8px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete { padding: 11px !important; }
-  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-extras { padding: 4px 16px 8px !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items {
+  flex: 0 0 auto !important; min-height: 0 !important;
+  max-height: none !important; overflow: visible !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band {
+  position: sticky !important; bottom: 0 !important;
+  margin-top: auto !important; z-index: 2 !important;
 }
 
+/* ── the head row: customer | served by, two cells one divider ──── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-head {
+  display: grid !important; grid-template-columns: 1fr 1fr !important;
+  border-bottom: 1px solid var(--p2-soft) !important; flex-shrink: 0 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-head .hnd-pos-cust {
+  padding: 11px 12px !important; border-bottom: 0 !important;
+  gap: 9px !important; min-width: 0 !important; margin-top: 0 !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-head .hnd-pos-cust-init {
+  width: 30px !important; height: 30px !important; font-size: 11px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-head .hnd-pos-cust-meta { display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-head .hnd-pos-cust-name {
+  font-size: 13px !important; white-space: nowrap !important;
+  overflow: hidden !important; text-overflow: ellipsis !important;
+}
+/* one picker, not two — ours handles both the staff and no-staff states */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section { display: none !important; }
 /* ── FIX 3 · Served by always present on salon ──────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served {
-  display: flex; align-items: center; gap: 11px; flex-shrink: 0;
-  padding: 11px 16px; background: var(--p2-wash);
-  border-top: 1px solid var(--p2-soft); box-shadow: inset 3px 0 0 var(--p2-gold);
+  display: flex; align-items: center; gap: 9px; min-width: 0;
+  padding: 11px 12px; background: none;
+  border-left: 1px solid var(--p2-soft);
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served:hover { background: var(--p2-floor); }
+/* a REQUIRED pill will not fit in half a row — a gold dot carries it */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--p2-gold); flex-shrink: 0;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-v {
+  font-size: 13px; font-weight: 600; margin-top: 1px; color: var(--p2-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-av {
-  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
   display: grid; place-items: center; background: #fff; color: #9A7440; font-size: 14px;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-t { flex: 1; min-width: 0; }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-l {
-  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  font-size: 9px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: #9A7440; display: flex; align-items: center; gap: 6px;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-req {
-  background: var(--p2-gold); color: var(--p2-ink); font-size: 8.5px;
-  font-weight: 800; letter-spacing: .08em; padding: 2px 6px; border-radius: 999px;
-}
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served select {
-  margin-top: 3px; width: 100%; border: 1px solid #F0DFC4; border-radius: 8px;
+  margin-top: 2px; width: 100%; max-width: 100%; border: 1px solid #F0DFC4; border-radius: 8px;
   background: #fff; padding: 6px 9px; font-size: 13px; font-weight: 600;
   font-family: inherit; color: var(--p2-ink); cursor: pointer;
 }
@@ -110153,24 +110174,12 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
     return out;
   }
 
-  function nativeShown(){
-    var n = document.getElementById('bill-staff-picker-section');
-    if (!n) return false;
-    try { return getComputedStyle(n).display !== 'none'; } catch(e){ return false; }
-  }
-
   function syncServed(){
     var r = document.querySelector('#hnd-pos .hnd-pos-r');
-    var cust = r && r.querySelector(':scope > .hnd-pos-cust');
+    var cust = r && r.querySelector('.hnd-pos-cust');
     if (!r || !cust) return;
 
     var row = document.getElementById('hnpos2-served');
-
-    /* native picker is doing the job — stand down */
-    if (nativeShown()){
-      if (row && row.parentNode) row.parentNode.removeChild(row);
-      return;
-    }
 
     if (!row){
       row = document.createElement('div');
@@ -110194,8 +110203,8 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
     if (!staff.length){
       row.innerHTML = '<div class="p2s-av">\u2702</div>'
         + '<div class="p2s-t">'
-        +   '<div class="p2s-l">Served by <span class="p2s-req">REQUIRED</span></div>'
-        +   '<button type="button" class="p2s-add">Add a stylist to start billing</button>'
+        +   '<div class="p2s-l"><span data-i18n="bill.servedBy">Served by</span> <i class="p2s-dot"></i></div>'
+        +   '<button type="button" class="p2s-add">Add a stylist</button>'
         + '</div>';
       var add = row.querySelector('.p2s-add');
       if (add) add.onclick = function(){
@@ -110210,11 +110219,12 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
       var comm = (st.commission != null) ? st.commission : 15;
       opts += '<option value="' + esc(st.id) + '"'
             + ((picked && picked.id === st.id) ? ' selected' : '') + '>'
-            + esc(st.name || '\u2014') + ' \u00b7 ' + comm + '% commission</option>';
+            + esc(st.name || '\u2014') + ' \u00b7 ' + comm + '%</option>';
     }
     row.innerHTML = '<div class="p2s-av">\u2702</div>'
       + '<div class="p2s-t">'
-      +   '<div class="p2s-l">Served by' + (picked ? '' : ' <span class="p2s-req">REQUIRED</span>') + '</div>'
+      +   '<div class="p2s-l"><span data-i18n="bill.servedBy">Served by</span>'
+      +     (picked ? '' : ' <i class="p2s-dot"></i>') + '</div>'
       +   '<select>' + opts + '</select>'
       + '</div>';
     var sel = row.querySelector('select');
@@ -110225,6 +110235,40 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
         row.__sig = null;
       } catch(e){}
     };
+  }
+
+  /* Customer and Served by are both bill-level metadata answering the same
+     question shape, so stacking them spent ~48px of slip height for nothing.
+     Two cells, one divider. The customer subtitle is hidden by CSS — at
+     186px it does not fit and the avatar already carries the state. */
+  function wrapHead(){
+    var r = document.querySelector('#hnd-pos .hnd-pos-r');
+    if (!r) return;
+    var cust   = r.querySelector('.hnd-pos-cust');
+    var served = document.getElementById('hnpos2-served');
+    var head   = r.querySelector(':scope > .hnpos2-head');
+
+    if (!cust || !served){          /* nothing to pair — undo any wrap */
+      if (head) unwrapHead();
+      return;
+    }
+    if (head && cust.parentNode === head && served.parentNode === head) return;
+
+    if (!head){
+      head = document.createElement('div');
+      head.className = 'hnpos2-head';
+      cust.parentNode.insertBefore(head, cust);
+    }
+    head.appendChild(cust);
+    head.appendChild(served);
+  }
+
+  function unwrapHead(){
+    var head = document.querySelector('#hnd-pos .hnd-pos-r > .hnpos2-head');
+    if (!head || !head.parentNode) return;
+    var p = head.parentNode;
+    while (head.firstChild) p.insertBefore(head.firstChild, head);
+    p.removeChild(head);
   }
 
   /* The packs strip renders an empty-state box that costs ~82px above the
@@ -110252,9 +110296,9 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
 
   function tick(){
     try {
-      if (syncClass()){ wrapBand(); syncServed(); syncPacks(); syncSubtotal(); }
+      if (syncClass()){ wrapBand(); syncServed(); wrapHead(); syncPacks(); syncSubtotal(); }
       else {
-        unwrapBand();
+        unwrapBand(); unwrapHead();
         var sv = document.getElementById('hnpos2-served');
         if (sv && sv.parentNode) sv.parentNode.removeChild(sv);
       }
@@ -110266,10 +110310,10 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
   } else { tick(); }
   setInterval(tick, 500);
 
-  console.log('[POS2] v34_151 armed — disable with localStorage.setItem("HN_POS2","off")');
+  console.log('[POS2] v34_152 armed — disable with localStorage.setItem("HN_POS2","off")');
 })();
 </script>
-<!-- ═══════════ END · Step POS2 v34_151 ═══════════ -->
+<!-- ═══════════ END · Step POS2 v34_152 ═══════════ -->
 
 
 </body>
