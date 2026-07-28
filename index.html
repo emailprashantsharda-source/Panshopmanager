@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_130_barcode_billing';
+    window.HISAABNOW_BUILD = 'v34_136_salon_noseed';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -4379,6 +4379,16 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label menu-name" data-i18n="more.stockIn">Stock In / Purchase</div><div class="menu-sub" data-i18n="more.stockInSub">Add stock · updates cost price &amp; dues</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- (v34_134) Mobile had more-stockin-entry (record a purchase) but no way
+           to reach the register itself, on any vertical — you could file a bill
+           and never look at what you bought or what you owe. Desktop has had
+           the nav row since v34_045. -->
+      <button class="menu-item" id="more-purchases-entry" onclick="window.PurchaseReg && PurchaseReg.open()" data-role-min="manager">
+        <div class="menu-icon" style="background:#EDE9FE;color:#5B21B6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Purchases</div><div class="menu-sub">Supplier bills, input GST, what you owe</div></div>
+        <div class="menu-arrow">›</div>
+      </button>
+
       <button class="menu-item" id="more-suppliers-entry" onclick="window.Suppliers && Suppliers.open()" data-role-min="manager">
         <div class="menu-icon" style="background:#E0E7FF;color:#3730A3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
         <div class="menu-text"><div class="menu-label menu-name" data-i18n="more.suppliers">Suppliers</div><div class="menu-sub" id="more-suppliers-sub" data-i18n="more.suppliersSub">Vendors, dues &amp; purchase history</div></div>
@@ -8205,7 +8215,11 @@ salon: {
   inventoryFilter: function(p){ return (p.cat || p.category) !== 'Retail'; },
 
   catalogChips: ['All','Retail'],
-  addSaleChips: ['All','Men · Hair','Men · Face','Women · Hair','Women · Face','Women · Threading','Women · Nails','Women · Waxing','Women · Bridal','Common','Retail'],
+  /* (v34_132) 'Men · Body' and 'Women · Body' were in the catalogue category
+     list (7466) but missing here, so body massage, polishing and body spa —
+     which are half a salon's ticket value — could be created and then not
+     filtered to on the billing screen. Two lists that had to agree and didn't. */
+  addSaleChips: ['All','Men · Hair','Men · Face','Men · Body','Women · Hair','Women · Face','Women · Threading','Women · Nails','Women · Waxing','Women · Body','Women · Bridal','Common','Retail'],
   salesUnitLabel: 'Bills',
   showUdhar: true,
   tracksStock: false,
@@ -9578,138 +9592,22 @@ const DAIRY_SKUS = [
 window.DAIRY_SKUS = DAIRY_SKUS;
 
 const SEED_CATALOGS = {
+  /* (v34_136) Emptied deliberately — do not repopulate.
+
+     Salon shipped 40 seeded services (Men · Hair 12, Men · Face 10,
+     Men · Body 8, Women · Hair 9) created inactive at ₹0 during onboarding.
+     Unlike a kirana, where "Toor Dal" is "Toor Dal" in every shop, no two
+     salons share a service list or a price: one charges 450 for a men's cut
+     and the next charges 150, and neither offers the same set. So every new
+     salon opened onto 40 greyed-out rows it had to either price or delete
+     before its own list was visible — setup work in exchange for nothing.
+
+     The rate-card import is the real path in, and it produces the shop's
+     OWN services at the shop's OWN prices. seedCatalog() no-ops cleanly on
+     an empty array ('no seeds for salon'). Other verticals are untouched. */
   salon: [
-
-    {name:'Men Haircut', emoji:'✂️', cat:'Men · Hair'},
-    {name:'Men Haircut + Wash + Blow Dry', emoji:'✂️', cat:'Men · Hair'},
-    {name:'Men Hair Wash', emoji:'🚿', cat:'Men · Hair'},
-    {name:'Men Hair Color · Global', emoji:'🎨', cat:'Men · Hair'},
-    {name:'Men Hair Color · Highlights', emoji:'✨', cat:'Men · Hair'},
-    {name:'Men Hair Spa', emoji:'💆‍♂️', cat:'Men · Hair'},
-    {name:'Men Head Massage', emoji:'💆‍♂️', cat:'Men · Hair'},
-    {name:'Beard Trim', emoji:'🧔', cat:'Men · Hair'},
-    {name:'Beard Style / Shaping', emoji:'🧔', cat:'Men · Hair'},
-    {name:'Beard Color', emoji:'🎨', cat:'Men · Hair'},
-    {name:'Hot Towel Shave', emoji:'🪒', cat:'Men · Hair'},
-    {name:'Mustache Trim', emoji:'🪒', cat:'Men · Hair'},
-
-    {name:'Men Cleanup · Regular', emoji:'🧼', cat:'Men · Face'},
-    {name:'Men Cleanup · Deep', emoji:'🧼', cat:'Men · Face'},
-    {name:'Men Facial · Regular', emoji:'💆', cat:'Men · Face'},
-    {name:'Men Facial · O3+', emoji:'💆', cat:'Men · Face'},
-    {name:'Men Facial · Anti-Aging', emoji:'💆', cat:'Men · Face'},
-    {name:'Men Facial · De-Tan', emoji:'☀️', cat:'Men · Face'},
-    {name:'Men Eyebrow Shaping', emoji:'🪡', cat:'Men · Face'},
-    {name:'Men Face Bleach', emoji:'☀️', cat:'Men · Face'},
-    {name:'Men Face Pack', emoji:'🧖', cat:'Men · Face'},
-    {name:'Men Charcoal Mask', emoji:'🖤', cat:'Men · Face'},
-
-    {name:'Men Manicure · Classic', emoji:'💅', cat:'Men · Body'},
-    {name:'Men Manicure · Spa', emoji:'💅', cat:'Men · Body'},
-    {name:'Men Pedicure · Classic', emoji:'🦶', cat:'Men · Body'},
-    {name:'Men Pedicure · Spa', emoji:'🦶', cat:'Men · Body'},
-    {name:'Men Back Wax', emoji:'🦾', cat:'Men · Body'},
-    {name:'Men Chest Wax', emoji:'🦾', cat:'Men · Body'},
-    {name:'Men Body Massage', emoji:'💆‍♂️', cat:'Men · Body'},
-    {name:'Men Body Polishing', emoji:'✨', cat:'Men · Body'},
-
-    {name:'Women Haircut', emoji:'✂️', cat:'Women · Hair'},
-    {name:'Women Haircut + Wash + Blow Dry', emoji:'✂️', cat:'Women · Hair'},
-    {name:'Women Hair Wash', emoji:'🚿', cat:'Women · Hair'},
-    {name:'Blow Dry', emoji:'💨', cat:'Women · Hair'},
-    {name:'Hair Ironing', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Hair Curling', emoji:'🦱', cat:'Women · Hair'},
-    {name:'Hair Spa · Regular', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Hair Spa · Habib', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Hair Color · Root Touch-Up', emoji:'🎨', cat:'Women · Hair'},
-    {name:'Hair Color · Global', emoji:'🎨', cat:'Women · Hair'},
-    {name:'Hair Highlights', emoji:'✨', cat:'Women · Hair'},
-    {name:'Hair Balayage', emoji:'✨', cat:'Women · Hair'},
-    {name:'Hair Ombre', emoji:'✨', cat:'Women · Hair'},
-    {name:'Keratin · Short Hair', emoji:'💁‍♀️', cat:'Women · Hair'},
-    {name:'Keratin · Long Hair', emoji:'💁‍♀️', cat:'Women · Hair'},
-    {name:'Hair Smoothening · Short', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Hair Smoothening · Long', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Hair Rebonding · Short', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Hair Rebonding · Long', emoji:'💆‍♀️', cat:'Women · Hair'},
-    {name:'Henna Application', emoji:'🌿', cat:'Women · Hair'},
-
-    {name:'Threading · Eyebrow', emoji:'🪡', cat:'Women · Threading'},
-    {name:'Threading · Upper Lip', emoji:'🪡', cat:'Women · Threading'},
-    {name:'Threading · Chin', emoji:'🪡', cat:'Women · Threading'},
-    {name:'Threading · Forehead', emoji:'🪡', cat:'Women · Threading'},
-    {name:'Threading · Sideburn', emoji:'🪡', cat:'Women · Threading'},
-    {name:'Threading · Full Face', emoji:'🪡', cat:'Women · Threading'},
-
-    {name:'Cleanup · Regular', emoji:'🧼', cat:'Women · Face'},
-    {name:'Cleanup · Deep', emoji:'🧼', cat:'Women · Face'},
-    {name:'Facial · Regular', emoji:'💆', cat:'Women · Face'},
-    {name:'Facial · O3+', emoji:'💆', cat:'Women · Face'},
-    {name:'Facial · Diamond', emoji:'💎', cat:'Women · Face'},
-    {name:'Facial · Gold', emoji:'🌟', cat:'Women · Face'},
-    {name:'Facial · Anti-Aging', emoji:'✨', cat:'Women · Face'},
-    {name:'Facial · Acne Treatment', emoji:'💆', cat:'Women · Face'},
-    {name:'Face Bleach', emoji:'☀️', cat:'Women · Face'},
-    {name:'Face De-Tan', emoji:'☀️', cat:'Women · Face'},
-
-    {name:'Manicure · Classic', emoji:'💅', cat:'Women · Nails'},
-    {name:'Manicure · Spa', emoji:'💅', cat:'Women · Nails'},
-    {name:'Manicure · Gel', emoji:'💅', cat:'Women · Nails'},
-    {name:'Pedicure · Classic', emoji:'🦶', cat:'Women · Nails'},
-    {name:'Pedicure · Spa', emoji:'🦶', cat:'Women · Nails'},
-    {name:'Pedicure · Gel', emoji:'🦶', cat:'Women · Nails'},
-    {name:'Nail Art', emoji:'🎨', cat:'Women · Nails'},
-    {name:'Nail Extensions', emoji:'💅', cat:'Women · Nails'},
-    {name:'Nail Polish Change', emoji:'💅', cat:'Women · Nails'},
-    {name:'French Manicure', emoji:'💅', cat:'Women · Nails'},
-
-    {name:'Waxing · Underarm', emoji:'🦾', cat:'Women · Waxing'},
-    {name:'Waxing · Half Arm', emoji:'🦾', cat:'Women · Waxing'},
-    {name:'Waxing · Full Arm', emoji:'🦾', cat:'Women · Waxing'},
-    {name:'Waxing · Half Leg', emoji:'🦵', cat:'Women · Waxing'},
-    {name:'Waxing · Full Leg', emoji:'🦵', cat:'Women · Waxing'},
-    {name:'Waxing · Bikini', emoji:'💆‍♀️', cat:'Women · Waxing'},
-    {name:'Waxing · Brazilian', emoji:'💆‍♀️', cat:'Women · Waxing'},
-    {name:'Waxing · Stomach', emoji:'💆‍♀️', cat:'Women · Waxing'},
-    {name:'Waxing · Back', emoji:'🦾', cat:'Women · Waxing'},
-    {name:'Waxing · Full Body', emoji:'💆‍♀️', cat:'Women · Waxing'},
-    {name:'Waxing · Face', emoji:'💆‍♀️', cat:'Women · Waxing'},
-    {name:'Honey Wax · Full Body', emoji:'🍯', cat:'Women · Waxing'},
-
-    {name:'Body Polishing', emoji:'✨', cat:'Women · Body'},
-    {name:'Body Spa', emoji:'🧖', cat:'Women · Body'},
-    {name:'Body Massage · Swedish', emoji:'💆‍♀️', cat:'Women · Body'},
-    {name:'Body Massage · Aromatherapy', emoji:'🌸', cat:'Women · Body'},
-    {name:'Body Massage · Deep Tissue', emoji:'💆‍♀️', cat:'Women · Body'},
-    {name:'Back Massage', emoji:'💆‍♀️', cat:'Women · Body'},
-    {name:'Foot Massage', emoji:'🦶', cat:'Women · Body'},
-    {name:'De-Tan · Full Body', emoji:'☀️', cat:'Women · Body'},
-
-    {name:'Bridal Makeup', emoji:'👰', cat:'Women · Bridal'},
-    {name:'Bridal Makeup · HD', emoji:'👰', cat:'Women · Bridal'},
-    {name:'Bridal Makeup · Airbrush', emoji:'👰', cat:'Women · Bridal'},
-    {name:'Reception Makeup', emoji:'💍', cat:'Women · Bridal'},
-    {name:'Engagement Makeup', emoji:'💍', cat:'Women · Bridal'},
-    {name:'Party Makeup', emoji:'✨', cat:'Women · Bridal'},
-    {name:'Pre-Bridal Package', emoji:'💒', cat:'Women · Bridal'},
-    {name:'Mehendi · Hands', emoji:'🌿', cat:'Women · Bridal'},
-    {name:'Mehendi · Bridal Full', emoji:'🌿', cat:'Women · Bridal'},
-    {name:'Saree Draping', emoji:'👗', cat:'Women · Bridal'},
-
-    {name:'Kids Haircut', emoji:'👦', cat:'Common'},
-    {name:'Kids Hair Wash', emoji:'🚿', cat:'Common'},
-    {name:'Ear Piercing', emoji:'👂', cat:'Common'},
-    {name:'Eyelash Extensions', emoji:'👁️', cat:'Common'},
-
-    {name:"L'Oréal Hair Color", emoji:'🎨', cat:'Retail'},
-    {name:'Schwarzkopf Shampoo', emoji:'🧴', cat:'Retail'},
-    {name:'Hair Serum', emoji:'🧴', cat:'Retail'},
-    {name:'Hair Spa Cream', emoji:'🧴', cat:'Retail'},
-    {name:'Beard Oil', emoji:'🧴', cat:'Retail'},
-    {name:'Hair Gel', emoji:'🧴', cat:'Retail'},
-    {name:'Henna Powder', emoji:'🌿', cat:'Retail'},
-    {name:'Face Pack', emoji:'🧴', cat:'Retail'}
   ],
+
 
   cafe: [
 
@@ -68529,6 +68427,14 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
       subscriptions: true,
       campaigns:     true,
       cashflow:      true,
+      /* (v34_134) Purchases was the ONLY data-hnd-nav button with no entry in
+         EITHER visibility filter. Both loops iterate their own rule keys, so
+         nothing ever touched it — it was visible by omission rather than by
+         decision, and any stray hnd-l-hidden would have stuck forever with no
+         rule to clear it. Stock In already writes to `ingredients` as well as
+         `prods` (93157, 93234), so a salon buying shampoo and colour is a
+         first-class case, not an accident. */
+      purchases:     true,
       /* Always-on */
       home: true, sales: true, customers: true, catalog: true, expenses: true, reports: true, settings: true
     };
@@ -69498,6 +69404,14 @@ html[data-shell="desktop"] #pg-home {
       subscriptions: true,
       campaigns:     true,
       cashflow:      true,
+      /* (v34_134) Purchases was the ONLY data-hnd-nav button with no entry in
+         EITHER visibility filter. Both loops iterate their own rule keys, so
+         nothing ever touched it — it was visible by omission rather than by
+         decision, and any stray hnd-l-hidden would have stuck forever with no
+         rule to clear it. Stock In already writes to `ingredients` as well as
+         `prods` (93157, 93234), so a salon buying shampoo and colour is a
+         first-class case, not an accident. */
+      purchases:     true,
       /* (v34_042) Same allowlist that gates tables/KOT and the mobile More
          entry — TABLE_VERTS_ON, exported in v34_024. One source of truth. */
       waiters:       (function(){ try { return !!(window.isTableVert && isTableVert(v)); } catch(e){ return false; } })(),
@@ -98550,10 +98464,58 @@ var KB=[
     return out;
   }
 
+  /* (v34_131) This used to be a bare readAsDataURL — no resize, no
+     re-compression. pdfToImages() right above has always downscaled to a
+     1600px edge at JPEG 0.72, roughly 250KB a page; a phone screenshot went up
+     raw at 2–3MB, and base64 adds another third. A callable request is capped
+     at 10MB, so two or three screenshots silently blew the limit and the
+     failure surfaced as "Something went wrong reading the menu".
+     Same treatment as the PDF path now. */
+  var MI_EDGE = 1600, MI_Q = 0.72;
+
   function imageFileToDataUrl(file){
     return new Promise(function(res, rej){
-      var r = new FileReader(); r.onload = function(){ res(String(r.result)); }; r.onerror = rej; r.readAsDataURL(file);
+      var url = null;
+      var done = function(v){ if (url) { try { URL.revokeObjectURL(url); } catch(e){} } res(v); };
+      try { url = URL.createObjectURL(file); } catch(e){ return rej(e); }
+      var img = new Image();
+      img.onload = function(){
+        try {
+          var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if (!w || !h) throw new Error('no dimensions');
+          var scale = Math.min(1, MI_EDGE / Math.max(w, h));
+          var cv = document.createElement('canvas');
+          cv.width  = Math.max(1, Math.round(w * scale));
+          cv.height = Math.max(1, Math.round(h * scale));
+          var ctx = cv.getContext('2d');
+          /* Screenshots of a rate card are usually white paper; a white base
+             stops any alpha in a PNG turning black when we flatten to JPEG. */
+          ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, cv.width, cv.height);
+          ctx.drawImage(img, 0, 0, cv.width, cv.height);
+          done(cv.toDataURL('image/jpeg', MI_Q));
+        } catch(e){
+          /* Canvas failed (rare, e.g. an odd colour profile). Send the original
+             rather than losing the page entirely — the size guard below will
+             catch it if it is too big. */
+          var r = new FileReader();
+          r.onload = function(){ done(String(r.result)); };
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        }
+      };
+      img.onerror = function(){ if (url) { try { URL.revokeObjectURL(url); } catch(e){} } rej(new Error('unreadable image')); };
+      img.src = url;
     });
+  }
+
+  /* Rough encoded size of a data: URL, in bytes. */
+  function miBytes(list){
+    var n = 0;
+    for (var i = 0; i < list.length; i++){
+      var c = String(list[i] || '');
+      n += Math.floor((c.length - (c.indexOf(',') + 1)) * 0.75);
+    }
+    return n;
   }
 
   function emojiFor(cat, name){
@@ -98653,7 +98615,75 @@ var KB=[
     return null;
   }
   /* Clean & normalise a category to a standard name in the CURRENT app language. */
+  /* (v34_132) A salon rate card imported through here used to land every row
+     in a category literally called "Menu" — catKey() only knows food words, so
+     nothing matched and everything fell through to the default. The services
+     were then invisible under every salon chip. Mapped locally rather than
+     changing parseMenuImage, so it works against the CF as deployed today. */
+  var SALON_RULES = [
+    [/bridal|dulhan|\u0926\u0941\u0932\u094D\u0939\u0928|party\s*makeup|makeup|mehendi|mehandi|\u092E\u0939\u0902\u0926\u0940|engagement|reception/i, 'Women \u00b7 Bridal'],
+    [/thread|eyebrow|\u092D\u094D\u0930\u0942|upper\s*lip|forehead|chin|\u0925\u094D\u0930\u0947\u0921/i,           'Women \u00b7 Threading'],
+    [/manicure|pedicure|nail|\u0928\u0947\u0932|gel\s*polish|extension/i,                                                'Women \u00b7 Nails'],
+    [/wax|\u0935\u0948\u0915\u094D\u0938|rica|honey\s*wax|full\s*arm|full\s*leg|bikini/i,                              'Women \u00b7 Waxing'],
+    [/massage|body\s*polish|body\s*spa|body\s*scrub|\u092E\u0938\u093E\u091C|steam|sauna/i,                             'BODY'],
+    [/facial|clean\s*up|cleanup|bleach|d[\s-]?tan|detan|\u092B\u0947\u0936\u093F\u092F\u0932|glow|hydra/i,             'FACE'],
+    [/shave|beard|\u0926\u093E\u0922\u093C\u0940|moustache|trim/i,                                                       'Men \u00b7 Face'],
+    [/hair|cut|\u0915\u091F\u093F\u0902\u0917|colou?r|\u0930\u0902\u0917|spa|smoothen|keratin|straight|curl|rebond|highlight|global|\u092C\u093E\u0932/i, 'HAIR'],
+    [/shampoo|serum|conditioner|oil|cream|bottle|pack\b|product/i,                                                          'Retail']
+  ];
+  function salonCatFor(aiCat, name){
+    var t = ((name || '') + ' ' + (aiCat || '')).toLowerCase();
+    /* Gender is usually said once, on the row or the section heading. */
+    var men   = /\bmen\b|gent|\u092A\u0941\u0930\u0941\u0937|boy|male|beard|shave|moustache/i.test(t);
+    var women = /\bwomen\b|\blad(y|ies)\b|female|girl|\u092E\u0939\u093F\u0932\u093E|bridal|saree/i.test(t);
+    for (var i = 0; i < SALON_RULES.length; i++){
+      if (!SALON_RULES[i][0].test(t)) continue;
+      var c = SALON_RULES[i][1];
+      if (c === 'HAIR') return men ? 'Men \u00b7 Hair' : (women ? 'Women \u00b7 Hair' : 'Common');
+      if (c === 'FACE') return men ? 'Men \u00b7 Face' : (women ? 'Women \u00b7 Face' : 'Common');
+      if (c === 'BODY') return men ? 'Men \u00b7 Body' : (women ? 'Women \u00b7 Body' : 'Common');
+      return c;
+    }
+    /* Everything else is a real service we simply could not place. "Common"
+       keeps it billable under a real chip; "Menu" did not. */
+    return 'Common';
+  }
+
+  /* (v34_136) A printed section heading, made fit to be a category. */
+  var CAT_JUNK = /^(menu|other|others|misc|uncategor|items?|services?|price|rate|list|reg|mem)\.?$/i;
+  function tidyPrintedCat(c){
+    var t = String(c == null ? '' : c)
+      .replace(/\s+(REG|MEM)\.?(\s+(REG|MEM)\.?)*\s*$/i, '')  /* column headers ride along */
+      .replace(/[\s·:.\-–]+$/, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (!t || t.length < 3 || t.length > 34) return '';
+    if (CAT_JUNK.test(t)) return '';
+    if (!/[A-Za-z\u0900-\u097F]/.test(t)) return '';        /* digits only */
+    /* SHOUTING on the card, Title Case in the app */
+    var letters = t.replace(/[^A-Za-z]/g, '');
+    if (letters && letters === letters.toUpperCase()) {
+      t = t.toLowerCase().replace(/\b([a-z])/g, function(m, c){ return c.toUpperCase(); })
+           .replace(/\bAnd\b/g, 'and').replace(/\bPer\b/g, 'per').replace(/\bWith\b/g, 'with');
+    }
+    return t;
+  }
+
   function catFor(aiCat, name){
+    /* Opened from the Retail screen — everything on that list is retail,
+       whatever it happens to be called. */
+    if (STATE.retail) return 'Retail';
+    try {
+      if (String((window.App && App.vertical) || '').toLowerCase() === 'salon') {
+        /* (v34_136) Use the shop's OWN section headings — "Hair Colouring",
+           "Nail Essentials", "Beauty Essentials". A tariff card already IS a
+           category structure, printed by the people who run the shop, and the
+           billing screen builds its chips from the categories actually present
+           (uniqueCats, 53368) so anything we create gets a chip. Falling back
+           to our fixed twelve only when the card gave us nothing usable. */
+        return tidyPrintedCat(aiCat) || salonCatFor(aiCat, name);
+      }
+    } catch(e){}
     var lang = curLang();
     var key = catKey(aiCat, name);
     if (key && CAT_LABELS[key]) return CAT_LABELS[key][lang] || CAT_LABELS[key].en;
@@ -98662,10 +98692,38 @@ var KB=[
     return CAT_LABELS.menu[lang];
   }
 
-  var STATE = { items: [] };
+  /* (v34_131) This module was written for restaurants and reads that way
+     everywhere: "menu", a veg/non-veg dot on every row, an emoji map full of
+     biryani and paneer. A salon owner importing a rate card gets asked whether
+     Bridal Makeup is vegetarian. The importer itself works for any price list,
+     so only the wording and the veg control are gated. */
+  var FOOD_VERTS = { restaurant:1, cafe:1, dhaba:1, bakery:1, sweets:1, juice:1, tiffin:1, pan:1 };
+  function isFoodVert(){
+    try { return !!FOOD_VERTS[String((window.App && App.vertical) || '').toLowerCase()]; }
+    catch(e){ return true; }
+  }
+  /* What the shopkeeper calls the thing he is uploading. */
+  function listWord(){
+    try {
+      var v = String((window.App && App.vertical) || '').toLowerCase();
+      if (isFoodVert()) return 'menu';
+      if (v === 'salon') return 'rate card';
+      return 'price list';
+    } catch(e){ return 'menu'; }
+  }
+
+  /* (v34_133) Salon splits one `prods` collection across two screens:
+     Catalog shows cat === 'Retail', Inventory (Services) shows everything else.
+     The Import button is injected next to EVERY add-product button, including
+     the Retail one, so a shampoo price list imported from the Retail screen was
+     being run through the service rules and filed as a service — landing on the
+     other screen entirely. The importer now inherits the screen it was opened
+     from. */
+  var STATE = { items: [], retail: false };
 
   /* ---------- Step 1: picker ---------- */
-  App.openMenuImport = function(){
+  App.openMenuImport = function(opts){
+    STATE.retail = !!(opts && opts.retail);
     if (document.getElementById('mi-overlay')) return;
     var ov = document.createElement('div');
     ov.id = 'mi-overlay';
@@ -98673,7 +98731,7 @@ var KB=[
     ov.innerHTML =
       '<div style="background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;max-height:94vh;display:flex;flex-direction:column;overflow:hidden">'
       + '<div style="padding:16px 18px;border-bottom:1px solid #EEE;display:flex;align-items:center;justify-content:between;gap:10px">'
-      +   '<div style="flex:1"><div style="font-size:16px;font-weight:800">\uD83D\uDCC4 Import menu</div><div style="font-size:12px;color:#888;font-weight:600;margin-top:2px">Upload a PDF or photos of your menu \u2014 we\u2019ll read the items & prices</div></div>'
+      +   '<div style="flex:1"><div style="font-size:16px;font-weight:800">\uD83D\uDCC4 Import ' + (STATE.retail ? 'retail products' : listWord()) + '</div><div style="font-size:12px;color:#888;font-weight:600;margin-top:2px">Upload a PDF or photos of your ' + (STATE.retail ? 'product list \u2014 these go to Retail' : listWord()) + ' \u2014 we\u2019ll read the items &amp; prices.<br>A page saved from a web viewer (.mht) is not a PDF \u2014 use the viewer\u2019s Download button.</div></div>'
       +   '<button onclick="App._miClose()" style="width:30px;height:30px;border:none;background:#F3F4F6;border-radius:8px;font-size:16px;cursor:pointer">\u2715</button>'
       + '</div>'
       + '<div id="mi-body" style="flex:1;overflow-y:auto;overscroll-behavior:contain;padding:18px">'
@@ -98703,14 +98761,61 @@ var KB=[
         else images.push(await imageFileToDataUrl(f));
       }
       if (!images.length){ toast('No pages found'); App._miClose(); return; }
+
+      /* (v34_131) A callable request dies at 10MB. Shed pages before the
+         network does it for us, and say which ones were dropped rather than
+         failing the whole import. */
+      var LIMIT = 7 * 1024 * 1024;
+      if (miBytes(images) > LIMIT){
+        var kept = [], dropped = 0;
+        for (var k = 0; k < images.length; k++){
+          if (miBytes(kept.concat([images[k]])) > LIMIT){ dropped++; continue; }
+          kept.push(images[k]);
+        }
+        if (!kept.length){
+          throw new Error('MI_TOO_BIG');
+        }
+        images = kept;
+        toast('Reading the first ' + kept.length + ' page(s) \u2014 ' + dropped + ' too large, import those separately');
+      }
+
       setProg('Reading ' + images.length + ' page(s) with AI\u2026');
       var items = await callParse(images);
-      if (!items || !items.length){ setBody('<div style="text-align:center;padding:34px 12px"><div style="font-size:28px">\uD83E\uDD14</div><div style="font-size:14px;font-weight:800;margin-top:10px">Couldn\u2019t read any items</div><div style="font-size:12px;color:#888;font-weight:600;margin-top:5px;line-height:1.5">Try clearer photos, or add items manually. </div><button onclick="App._miClose()" style="margin-top:16px;padding:11px 20px;background:#111;color:#fff;border:none;border-radius:11px;font-weight:800;cursor:pointer">Close</button></div>'); return; }
-      STATE.items = items.map(function(it){ return { name: String(it.name||'').trim(), price: Number(it.price)||0, cat: catFor(it.category||it.cat, it.name), veg: it.veg !== false, sel: !!(it.name && (Number(it.price)||0) > 0) }; }).filter(function(x){ return x.name; });
+      if (!items || !items.length){ setBody('<div style="text-align:center;padding:34px 12px"><div style="font-size:28px">\uD83E\uDD14</div><div style="font-size:14px;font-weight:800;margin-top:10px">Couldn\u2019t read any items</div><div style="font-size:12px;color:#888;font-weight:600;margin-top:5px;line-height:1.5">Try a clearer, straight-on photo of the printed ' + listWord() + ' \u2014 or add items manually.</div><button onclick="App._miClose()" style="margin-top:16px;padding:11px 20px;background:#111;color:#fff;border:none;border-radius:11px;font-weight:800;cursor:pointer">Close</button></div>'); return; }
+      STATE.items = items.map(function(it){
+        var p = Number(it.price) || 0;
+        var mem = Number(it.memPrice || it.mem || 0) || 0;
+        /* (v34_135) A member rate is always below the walk-in rate. If the model
+           returned them the other way round it read the columns backwards —
+           swap, rather than pricing every service at the member rate. */
+        if (mem && p && mem > p) { var t = p; p = mem; mem = t; }
+        return { name: String(it.name||'').trim(), price: p, mem: mem,
+                 cat: catFor(it.category||it.cat, it.name), veg: it.veg !== false,
+                 sel: !!(it.name && p > 0) };
+      }).filter(function(x){ return x.name; });
       renderReview();
     } catch(err){
       console.error('[MenuImport]', err);
-      var msg = (err && /pdfjs/.test(String(err.message))) ? 'Could not open the PDF. Try uploading photos of the pages instead.' : 'Something went wrong reading the menu. Please try again.';
+      /* (v34_131) "Something went wrong" covered a missing Cloud Function, an
+         oversized request and a genuine model failure with one sentence, so
+         there was no way to tell which had happened without opening DevTools. */
+      var code = String((err && (err.code || err.message)) || '');
+      var msg;
+      if (/pdfjs/.test(code)) {
+        msg = 'Could not open that PDF. If it came from a web viewer, use its Download button to get the real .pdf file \u2014 a page saved from the browser (.mht / .html) is not a PDF.';
+      } else if (/MI_TOO_BIG/.test(code)) {
+        msg = 'Those photos are too large even after shrinking. Upload two or three pages at a time.';
+      } else if (/not-found|NOT_FOUND/.test(code)) {
+        msg = 'The menu reader is not switched on for this account yet. (parseMenuImage is not deployed.)';
+      } else if (/unauthenticated|permission-denied/.test(code)) {
+        msg = 'Please sign in again and retry.';
+      } else if (/resource-exhausted|too large|payload/i.test(code)) {
+        msg = 'That was too much to send in one go. Try two or three pages at a time.';
+      } else if (/AI not available/.test(code)) {
+        msg = 'Still connecting to the server. Wait a moment and try again.';
+      } else {
+        msg = 'Could not read that file. Photos of the printed rate card usually work best.';
+      }
       setBody('<div style="text-align:center;padding:34px 12px"><div style="font-size:28px">\u26A0\uFE0F</div><div style="font-size:13.5px;font-weight:700;margin-top:10px;line-height:1.5">'+esc(msg)+'</div><button onclick="App._miClose()" style="margin-top:16px;padding:11px 20px;background:#111;color:#fff;border:none;border-radius:11px;font-weight:800;cursor:pointer">Close</button></div>');
     }
   }
@@ -98718,7 +98823,29 @@ var KB=[
   async function callParse(images){
     if (!(window.kfCallable && window.kfFunctions)) throw new Error('AI not available');
     var fn = window.kfCallable(window.kfFunctions, 'parseMenuImage');
-    var r = await fn({ images: images });
+
+    /* (v34_135) Tell the model what it is looking at. A salon tariff card is
+       not a menu: it is laid out in two columns, prices come in REG/MEM pairs
+       (walk-in vs member — 165 of 332 priced rows on the Jawed Habib Tier A
+       card carry both), and a row labelled "Men" or "Upto shoulder" is
+       meaningless without the ALL-CAPS heading above it. Extra fields are
+       ignored by a callable that does not read them, so this is safe against
+       parseMenuImage as deployed and goes live when the prompt is updated. */
+    var vert = '';
+    try { vert = String((window.App && App.vertical) || '').toLowerCase(); } catch(e){}
+    var payload = {
+      images: images,
+      vertical: vert,
+      docType: STATE.retail ? 'product_price_list'
+             : (vert === 'salon' ? 'salon_tariff_card' : 'menu'),
+      hints: {
+        twoPriceColumns: 'If a row has two prices, the FIRST is the regular walk-in rate and the SECOND is a member rate. Return the FIRST as price, and the second as memPrice.',
+        headingScope: 'ALL-CAPS lines without a price are headings. Prefix rows beneath them: HAIRCUT then "Men 450" is "Haircut · Men".',
+        multiColumn: 'The page may be two columns. Read each column top to bottom separately; never join a row from the left column to one on the right.',
+        ignore: 'Skip marketing copy, footnotes starting with *, descriptions in brackets, website and address lines, and REG./MEM. column headers.'
+      }
+    };
+    var r = await fn(payload);
     var data = (r && r.data) ? r.data : r;
     return (data && data.items) ? data.items : [];
   }
@@ -98737,7 +98864,10 @@ var KB=[
           + '<input type="checkbox" '+(it.sel?'checked':'')+' onchange="App._miTgl('+i+',this.checked)" style="width:18px;height:18px;flex-shrink:0">'
           + '<input value="'+esc(it.name)+'" onchange="App._miName('+i+',this.value)" style="flex:1;min-width:0;border:1px solid #E5E7EB;border-radius:8px;padding:7px 9px;font-size:13px;font-family:inherit">'
           + '<div style="display:flex;align-items:center;gap:2px"><span style="font-size:12px;color:#888">\u20b9</span><input value="'+(it.price||'')+'" inputmode="numeric" onchange="App._miPrice('+i+',this.value)" style="width:58px;border:1px solid #E5E7EB;border-radius:8px;padding:7px 6px;font-size:13px;font-family:inherit;text-align:right"></div>'
-          + '<button onclick="App._miVeg('+i+')" title="veg/non-veg" style="width:20px;height:20px;border:1.5px solid '+(it.veg?'#16A34A':'#DC2626')+';border-radius:4px;background:none;cursor:pointer;flex-shrink:0;padding:0;display:flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:50%;background:'+(it.veg?'#16A34A':'#DC2626')+'"></span></button>'
+          + (it.mem ? '<span title="member rate on the card" style="font-size:10.5px;color:#9CA3AF;font-weight:700;min-width:42px;text-align:right">mem '+it.mem+'</span>' : '')
+          + (isFoodVert()
+              ? '<button onclick="App._miVeg('+i+')" title="veg/non-veg" style="width:20px;height:20px;border:1.5px solid '+(it.veg?'#16A34A':'#DC2626')+';border-radius:4px;background:none;cursor:pointer;flex-shrink:0;padding:0;display:flex;align-items:center;justify-content:center"><span style="width:9px;height:9px;border-radius:50%;background:'+(it.veg?'#16A34A':'#DC2626')+'"></span></button>'
+              : '')
           + '</div>';
       });
     });
@@ -98745,14 +98875,14 @@ var KB=[
     var f = document.getElementById('mi-foot'); if (f) f.remove();
     var foot = document.createElement('div'); foot.id = 'mi-foot';
     foot.style.cssText = 'padding:12px 16px;border-top:1px solid #EEE;background:#fff';
-    foot.innerHTML = '<button id="mi-add-btn" onclick="App._miConfirm()" style="width:100%;padding:14px;background:#16A34A;color:#fff;border:none;border-radius:13px;font-size:14.5px;font-weight:800;cursor:pointer">\u2795 Add '+selCount+' items to menu</button>';
+    foot.innerHTML = '<button id="mi-add-btn" onclick="App._miConfirm()" style="width:100%;padding:14px;background:#16A34A;color:#fff;border:none;border-radius:13px;font-size:14.5px;font-weight:800;cursor:pointer">\u2795 Add '+selCount+' items</button>';
     var ov = document.getElementById('mi-overlay'); if (ov && ov.firstChild) ov.firstChild.appendChild(foot);
   }
   App._miTgl = function(i,v){ STATE.items[i].sel = v; updateAddBtn(); };
   App._miName = function(i,v){ STATE.items[i].name = String(v||'').trim(); };
   App._miPrice = function(i,v){ STATE.items[i].price = Number(v)||0; };
   App._miVeg = function(i){ STATE.items[i].veg = !STATE.items[i].veg; renderReview(); };
-  function updateAddBtn(){ var n = STATE.items.filter(function(x){return x.sel;}).length; var b = document.getElementById('mi-add-btn'); if (b) b.textContent = '\u2795 Add ' + n + ' items to menu'; }
+  function updateAddBtn(){ var n = STATE.items.filter(function(x){return x.sel;}).length; var b = document.getElementById('mi-add-btn'); if (b) b.textContent = '\u2795 Add ' + n + ' items'; }
 
   /* ---------- Step 3: bulk create ---------- */
   App._miConfirm = function(){
@@ -98801,7 +98931,9 @@ var KB=[
       b.type = 'button';
       b.className = 'mi-import-btn' + (isDesktop ? ' hnd-btn' : '');
       b.setAttribute('data-role-min','manager');
-      b.setAttribute('onclick','App.openMenuImport()');
+      /* forceRetail marks salon's "Add retail product" button — see 56042. */
+      var _isRetailAdd = /forceRetail/.test(addBtn.getAttribute('onclick') || '');
+      b.setAttribute('onclick', _isRetailAdd ? 'App.openMenuImport({retail:true})' : 'App.openMenuImport()');
       if (isDesktop){
         b.style.cssText = 'margin-right:8px;cursor:pointer';
         b.innerHTML = '\uD83D\uDCC4 <span>' + ((window.I18n&&I18n.t)?I18n.t('btn.import'):'Import') + '</span>';
@@ -106285,7 +106417,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
 })();
 </script>
 
-<!-- ===== HNRoyalBill v34_130_barcode_billing · self-hosted royal WhatsApp bills (offline) ===== -->
+<!-- ===== HNRoyalBill v34_136_salon_noseed · self-hosted royal WhatsApp bills (offline) ===== -->
 <script id="hnrb-lib-h2i">/*! html-to-image (MIT) */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).htmlToImage={})}(this,(function(t){"use strict";function e(t,e,n,r){return new(n||(n=Promise))((function(i,o){function u(t){try{a(r.next(t))}catch(t){o(t)}}function c(t){try{a(r.throw(t))}catch(t){o(t)}}function a(t){var e;t.done?i(t.value):(e=t.value,e instanceof n?e:new n((function(t){t(e)}))).then(u,c)}a((r=r.apply(t,e||[])).next())}))}function n(t,e){var n,r,i,o,u={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return o={next:c(0),throw:c(1),return:c(2)},"function"==typeof Symbol&&(o[Symbol.iterator]=function(){return this}),o;function c(c){return function(a){return function(c){if(n)throw new TypeError("Generator is already executing.");for(;o&&(o=0,c[0]&&(u=0)),u;)try{if(n=1,r&&(i=2&c[0]?r.return:c[0]?r.throw||((i=r.return)&&i.call(r),0):r.next)&&!(i=i.call(r,c[1])).done)return i;switch(r=0,i&&(c=[2&c[0],i.value]),c[0]){case 0:case 1:i=c;break;case 4:return u.label++,{value:c[1],done:!1};case 5:u.label++,r=c[1],c=[0];continue;case 7:c=u.ops.pop(),u.trys.pop();continue;default:if(!(i=u.trys,(i=i.length>0&&i[i.length-1])||6!==c[0]&&2!==c[0])){u=0;continue}if(3===c[0]&&(!i||c[1]>i[0]&&c[1]<i[3])){u.label=c[1];break}if(6===c[0]&&u.label<i[1]){u.label=i[1],i=c;break}if(i&&u.label<i[2]){u.label=i[2],u.ops.push(c);break}i[2]&&u.ops.pop(),u.trys.pop();continue}c=e.call(t,u)}catch(t){c=[6,t],r=0}finally{n=i=0}if(5&c[0])throw c[1];return{value:c[0]?c[1]:void 0,done:!0}}([c,a])}}}var r,i=(r=0,function(){return r+=1,"u".concat("0000".concat((Math.random()*Math.pow(36,4)<<0).toString(36)).slice(-4)).concat(r)});function o(t){for(var e=[],n=0,r=t.length;n<r;n++)e.push(t[n]);return e}var u=null;function c(t){return void 0===t&&(t={}),u||(u=t.includeStyleProperties?t.includeStyleProperties:o(window.getComputedStyle(document.documentElement)))}function a(t,e){var n=(t.ownerDocument.defaultView||window).getComputedStyle(t).getPropertyValue(e);return n?parseFloat(n.replace("px","")):0}function s(t,e){void 0===e&&(e={});var n,r,i,o=e.width||(r=a(n=t,"border-left-width"),i=a(n,"border-right-width"),n.clientWidth+r+i),u=e.height||function(t){var e=a(t,"border-top-width"),n=a(t,"border-bottom-width");return t.clientHeight+e+n}(t);return{width:o,height:u}}var l=16384;function f(t,e){return void 0===e&&(e={}),t.toBlob?new Promise((function(n){t.toBlob(n,e.type?e.type:"image/png",e.quality?e.quality:1)})):new Promise((function(n){for(var r=window.atob(t.toDataURL(e.type?e.type:void 0,e.quality?e.quality:void 0).split(",")[1]),i=r.length,o=new Uint8Array(i),u=0;u<i;u+=1)o[u]=r.charCodeAt(u);n(new Blob([o],{type:e.type?e.type:"image/png"}))}))}function h(t){return new Promise((function(e,n){var r=new Image;r.onload=function(){r.decode().then((function(){requestAnimationFrame((function(){return e(r)}))}))},r.onerror=n,r.crossOrigin="anonymous",r.decoding="async",r.src=t}))}function d(t){return e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Promise.resolve().then((function(){return(new XMLSerializer).serializeToString(t)})).then(encodeURIComponent).then((function(t){return"data:image/svg+xml;charset=utf-8,".concat(t)}))]}))}))}function v(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u;return n(this,(function(n){return e="http://www.w3.org/2000/svg",o=document.createElementNS(e,"svg"),u=document.createElementNS(e,"foreignObject"),o.setAttribute("width","".concat(r)),o.setAttribute("height","".concat(i)),o.setAttribute("viewBox","0 0 ".concat(r," ").concat(i)),u.setAttribute("width","100%"),u.setAttribute("height","100%"),u.setAttribute("x","0"),u.setAttribute("y","0"),u.setAttribute("externalResourcesRequired","true"),o.appendChild(u),u.appendChild(t),[2,d(o)]}))}))}var p=function(t,e){if(t instanceof e)return!0;var n=Object.getPrototypeOf(t);return null!==n&&(n.constructor.name===e.name||p(n,e))};function g(t,e,n,r){var i=".".concat(t,":").concat(e),o=n.cssText?function(t){var e=t.getPropertyValue("content");return"".concat(t.cssText," content: '").concat(e.replace(/'|"/g,""),"';")}(n):function(t,e){return c(e).map((function(e){var n=t.getPropertyValue(e),r=t.getPropertyPriority(e);return"".concat(e,": ").concat(n).concat(r?" !important":"",";")})).join(" ")}(n,r);return document.createTextNode("".concat(i,"{").concat(o,"}"))}function m(t,e,n,r){var o=window.getComputedStyle(t,n),u=o.getPropertyValue("content");if(""!==u&&"none"!==u){var c=i();try{e.className="".concat(e.className," ").concat(c)}catch(t){return}var a=document.createElement("style");a.appendChild(g(c,n,o,r)),e.appendChild(a)}}var w="application/font-woff",y="image/jpeg",b={woff:w,woff2:w,ttf:"application/font-truetype",eot:"application/vnd.ms-fontobject",png:"image/png",jpg:y,jpeg:y,gif:"image/gif",tiff:"image/tiff",svg:"image/svg+xml",webp:"image/webp"};function S(t){var e=function(t){var e=/\.([^./]*?)$/g.exec(t);return e?e[1]:""}(t).toLowerCase();return b[e]||""}function E(t){return-1!==t.search(/^(data:)/)}function x(t,e){return"data:".concat(e,";base64,").concat(t)}function C(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){switch(n.label){case 0:return[4,fetch(t,r)];case 1:if(404===(e=n.sent()).status)throw new Error('Resource "'.concat(e.url,'" not found'));return[4,e.blob()];case 2:return o=n.sent(),[2,new Promise((function(t,n){var r=new FileReader;r.onerror=n,r.onloadend=function(){try{t(i({res:e,result:r.result}))}catch(t){n(t)}},r.readAsDataURL(o)}))]}}))}))}var P={};function R(t,r,i){return e(this,void 0,void 0,(function(){var e,o,u,c,a;return n(this,(function(n){switch(n.label){case 0:if(e=function(t,e,n){var r=t.replace(/\?.*/,"");return n&&(r=t),/ttf|otf|eot|woff2?/i.test(r)&&(r=r.replace(/.*\//,"")),e?"[".concat(e,"]").concat(r):r}(t,r,i.includeQueryParams),null!=P[e])return[2,P[e]];i.cacheBust&&(t+=(/\?/.test(t)?"&":"?")+(new Date).getTime()),n.label=1;case 1:return n.trys.push([1,3,,4]),[4,C(t,i.fetchRequestInit,(function(t){var e=t.res,n=t.result;return r||(r=e.headers.get("Content-Type")||""),function(t){return t.split(/,/)[1]}(n)}))];case 2:return u=n.sent(),o=x(u,r),[3,4];case 3:return c=n.sent(),o=i.imagePlaceholder||"",a="Failed to fetch resource: ".concat(t),c&&(a="string"==typeof c?c:c.message),a&&console.warn(a),[3,4];case 4:return P[e]=o,[2,o]}}))}))}function T(t){return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){return"data:,"===(e=t.toDataURL())?[2,t.cloneNode(!1)]:[2,h(e)]}))}))}function A(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return t.currentSrc?(e=document.createElement("canvas"),i=e.getContext("2d"),e.width=t.clientWidth,e.height=t.clientHeight,null==i||i.drawImage(t,0,0,e.width,e.height),[2,h(e.toDataURL())]):(o=t.poster,u=S(o),[4,R(o,u,r)]);case 1:return[2,h(n.sent())]}}))}))}function k(t,r){var i;return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return e.trys.push([0,3,,4]),(null===(i=null==t?void 0:t.contentDocument)||void 0===i?void 0:i.body)?[4,I(t.contentDocument.body,r,!0)]:[3,2];case 1:return[2,e.sent()];case 2:return[3,4];case 3:return e.sent(),[3,4];case 4:return[2,t.cloneNode(!1)]}}))}))}var L=function(t){return null!=t.tagName&&"SVG"===t.tagName.toUpperCase()};function N(t,e,n){return p(e,Element)&&(function(t,e,n){var r=e.style;if(r){var i=window.getComputedStyle(t);i.cssText?(r.cssText=i.cssText,r.transformOrigin=i.transformOrigin):c(n).forEach((function(n){var o=i.getPropertyValue(n);if("font-size"===n&&o.endsWith("px")){var u=Math.floor(parseFloat(o.substring(0,o.length-2)))-.1;o="".concat(u,"px")}p(t,HTMLIFrameElement)&&"display"===n&&"inline"===o&&(o="block"),"d"===n&&e.getAttribute("d")&&(o="path(".concat(e.getAttribute("d"),")")),r.setProperty(n,o,i.getPropertyPriority(n))}))}}(t,e,n),function(t,e,n){m(t,e,":before",n),m(t,e,":after",n)}(t,e,n),function(t,e){p(t,HTMLTextAreaElement)&&(e.innerHTML=t.value),p(t,HTMLInputElement)&&e.setAttribute("value",t.value)}(t,e),function(t,e){if(p(t,HTMLSelectElement)){var n=e,r=Array.from(n.children).find((function(e){return t.value===e.getAttribute("value")}));r&&r.setAttribute("selected","")}}(t,e)),e}function I(t,r,i){return e(this,void 0,void 0,(function(){return n(this,(function(u){return i||!r.filter||r.filter(t)?[2,Promise.resolve(t).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){return p(t,HTMLCanvasElement)?[2,T(t)]:p(t,HTMLVideoElement)?[2,A(t,r)]:p(t,HTMLIFrameElement)?[2,k(t,r)]:[2,t.cloneNode(L(t))]}))}))}(t,r)})).then((function(i){return function(t,r,i){var u,c;return e(this,void 0,void 0,(function(){var e;return n(this,(function(n){switch(n.label){case 0:return L(r)?[2,r]:(e=[],0===(e=null!=(a=t).tagName&&"SLOT"===a.tagName.toUpperCase()&&t.assignedNodes?o(t.assignedNodes()):p(t,HTMLIFrameElement)&&(null===(u=t.contentDocument)||void 0===u?void 0:u.body)?o(t.contentDocument.body.childNodes):o((null!==(c=t.shadowRoot)&&void 0!==c?c:t).childNodes)).length||p(t,HTMLVideoElement)?[2,r]:[4,e.reduce((function(t,e){return t.then((function(){return I(e,i)})).then((function(t){t&&r.appendChild(t)}))}),Promise.resolve())]);case 1:return n.sent(),[2,r]}var a}))}))}(t,i,r)})).then((function(e){return N(t,e,r)})).then((function(t){return function(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c,a,s,l,f,h,d,v,p;return n(this,(function(n){switch(n.label){case 0:if(0===(e=t.querySelectorAll?t.querySelectorAll("use"):[]).length)return[2,t];i={},p=0,n.label=1;case 1:return p<e.length?(o=e[p],(u=o.getAttribute("xlink:href"))?(c=t.querySelector(u),a=document.querySelector(u),c||!a||i[u]?[3,3]:(s=i,l=u,[4,I(a,r,!0)])):[3,3]):[3,4];case 2:s[l]=n.sent(),n.label=3;case 3:return p++,[3,1];case 4:if((f=Object.values(i)).length){for(h="http://www.w3.org/1999/xhtml",(d=document.createElementNS(h,"svg")).setAttribute("xmlns",h),d.style.position="absolute",d.style.width="0",d.style.height="0",d.style.overflow="hidden",d.style.display="none",v=document.createElementNS(h,"defs"),d.appendChild(v),p=0;p<f.length;p++)v.appendChild(f[p]);t.appendChild(d)}return[2,t]}}))}))}(t,r)}))]:[2,null]}))}))}var D=/url\((['"]?)([^'"]+?)\1\)/g,H=/url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g,M=/src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;function F(t,r,i,o,u){return e(this,void 0,void 0,(function(){var e,c,a,s;return n(this,(function(n){switch(n.label){case 0:return n.trys.push([0,5,,6]),e=i?function(t,e){if(t.match(/^[a-z]+:\/\//i))return t;if(t.match(/^\/\//))return window.location.protocol+t;if(t.match(/^[a-z]+:/i))return t;var n=document.implementation.createHTMLDocument(),r=n.createElement("base"),i=n.createElement("a");return n.head.appendChild(r),n.body.appendChild(i),e&&(r.href=e),i.href=t,i.href}(r,i):r,c=S(r),a=void 0,u?[4,u(e)]:[3,2];case 1:return s=n.sent(),a=x(s,c),[3,4];case 2:return[4,R(e,c,o)];case 3:a=n.sent(),n.label=4;case 4:return[2,t.replace((l=r,f=l.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1"),new RegExp("(url\\(['\"]?)(".concat(f,")(['\"]?\\))"),"g")),"$1".concat(a,"$3"))];case 5:return n.sent(),[3,6];case 6:return[2,t]}var l,f}))}))}function V(t){return-1!==t.search(D)}function q(t,r,i){return e(this,void 0,void 0,(function(){var e,o;return n(this,(function(n){return V(t)?(e=function(t,e){var n=e.preferredFontFormat;return n?t.replace(M,(function(t){for(;;){var e=H.exec(t)||[],r=e[0],i=e[2];if(!i)return"";if(i===n)return"src: ".concat(r,";")}})):t}(t,i),o=function(t){var e=[];return t.replace(D,(function(t,n,r){return e.push(r),t})),e.filter((function(t){return!E(t)}))}(e),[2,o.reduce((function(t,e){return t.then((function(t){return F(t,e,r,i)}))}),Promise.resolve(e))]):[2,t]}))}))}function U(t,r,i){var o;return e(this,void 0,void 0,(function(){var e,u;return n(this,(function(n){switch(n.label){case 0:return(e=null===(o=r.style)||void 0===o?void 0:o.getPropertyValue(t))?[4,q(e,null,i)]:[3,2];case 1:return u=n.sent(),r.style.setProperty(t,u,r.style.getPropertyPriority(t)),[2,!0];case 2:return[2,!1]}}))}))}function j(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,U("background",t,r)];case 1:return n.sent()?[3,3]:[4,U("background-image",t,r)];case 2:n.sent(),n.label=3;case 3:return[4,U("mask",t,r)];case 4:return(i=n.sent())?[3,6]:[4,U("-webkit-mask",t,r)];case 5:i=n.sent(),n.label=6;case 6:return(e=i)?[3,8]:[4,U("mask-image",t,r)];case 7:e=n.sent(),n.label=8;case 8:return e?[3,10]:[4,U("-webkit-mask-image",t,r)];case 9:n.sent(),n.label=10;case 10:return[2]}}))}))}function O(t,r){return e(this,void 0,void 0,(function(){var e,i,o;return n(this,(function(n){switch(n.label){case 0:return(e=p(t,HTMLImageElement))&&!E(t.src)||p(t,SVGImageElement)&&!E(t.href.baseVal)?[4,R(i=e?t.src:t.href.baseVal,S(i),r)]:[2];case 1:return o=n.sent(),[4,new Promise((function(n,i){t.onload=n,t.onerror=r.onImageErrorHandler?function(){for(var t=[],e=0;e<arguments.length;e++)t[e]=arguments[e];try{n(r.onImageErrorHandler.apply(r,t))}catch(t){i(t)}}:i;var u=t;u.decode&&(u.decode=n),"lazy"===u.loading&&(u.loading="eager"),e?(t.srcset="",t.src=o):t.href.baseVal=o}))];case 2:return n.sent(),[2]}}))}))}function B(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return e=o(t.childNodes),i=e.map((function(t){return z(t,r)})),[4,Promise.all(i).then((function(){return t}))];case 1:return n.sent(),[2]}}))}))}function z(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return p(t,Element)?[4,j(t,r)]:[3,4];case 1:return e.sent(),[4,O(t,r)];case 2:return e.sent(),[4,B(t,r)];case 3:e.sent(),e.label=4;case 4:return[2]}}))}))}var W={};function $(t){return e(this,void 0,void 0,(function(){var e,r;return n(this,(function(n){switch(n.label){case 0:return null!=(e=W[t])?[2,e]:[4,fetch(t)];case 1:return[4,n.sent().text()];case 2:return r=n.sent(),e={url:t,cssText:r},W[t]=e,[2,e]}}))}))}function G(t,r){return e(this,void 0,void 0,(function(){var i,o,u,c,a=this;return n(this,(function(s){return i=t.cssText,o=/url\(["']?([^"')]+)["']?\)/g,u=i.match(/url\([^)]+\)/g)||[],c=u.map((function(u){return e(a,void 0,void 0,(function(){var e;return n(this,(function(n){return(e=u.replace(o,"$1")).startsWith("https://")||(e=new URL(e,t.url).href),[2,C(e,r.fetchRequestInit,(function(t){var e=t.result;return i=i.replace(u,"url(".concat(e,")")),[u,e]}))]}))}))})),[2,Promise.all(c).then((function(){return i}))]}))}))}function _(t){if(null==t)return[];for(var e=[],n=t.replace(/(\/\*[\s\S]*?\*\/)/gi,""),r=new RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})","gi");;){if(null===(u=r.exec(n)))break;e.push(u[0])}n=n.replace(r,"");for(var i=/@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi,o=new RegExp("((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})","gi");;){var u;if(null===(u=i.exec(n))){if(null===(u=o.exec(n)))break;i.lastIndex=o.lastIndex}else o.lastIndex=i.lastIndex;e.push(u[0])}return e}function J(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){return e=[],i=[],t.forEach((function(e){if("cssRules"in e)try{o(e.cssRules||[]).forEach((function(t,n){if(t.type===CSSRule.IMPORT_RULE){var o=n+1,u=$(t.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){try{e.insertRule(t,t.startsWith("@import")?o+=1:e.cssRules.length)}catch(e){console.error("Error inserting rule from remote css",{rule:t,error:e})}}))})).catch((function(t){console.error("Error loading remote css",t.toString())}));i.push(u)}}))}catch(o){var n=t.find((function(t){return null==t.href}))||document.styleSheets[0];null!=e.href&&i.push($(e.href).then((function(t){return G(t,r)})).then((function(t){return _(t).forEach((function(t){n.insertRule(t,n.cssRules.length)}))})).catch((function(t){console.error("Error loading remote stylesheet",t)}))),console.error("Error inlining remote css file",o)}})),[2,Promise.all(i).then((function(){return t.forEach((function(t){if("cssRules"in t)try{o(t.cssRules||[]).forEach((function(t){e.push(t)}))}catch(e){console.error("Error while reading CSS rules from ".concat(t.href),e)}})),e}))]}))}))}function Q(t){return t.filter((function(t){return t.type===CSSRule.FONT_FACE_RULE})).filter((function(t){return V(t.style.getPropertyValue("src"))}))}function X(t,r){return e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:if(null==t.ownerDocument)throw new Error("Provided element is not within a Document");return[4,J(o(t.ownerDocument.styleSheets),r)];case 1:return[2,Q(e.sent())]}}))}))}function K(t){return t.trim().replace(/["']/g,"")}function Y(t,r){return e(this,void 0,void 0,(function(){var e,i;return n(this,(function(n){switch(n.label){case 0:return[4,X(t,r)];case 1:return e=n.sent(),i=function(t){var e=new Set;return function t(n){(n.style.fontFamily||getComputedStyle(n).fontFamily).split(",").forEach((function(t){e.add(K(t))})),Array.from(n.children).forEach((function(e){e instanceof HTMLElement&&t(e)}))}(t),e}(t),[4,Promise.all(e.filter((function(t){return i.has(K(t.style.fontFamily))})).map((function(t){var e=t.parentStyleSheet?t.parentStyleSheet.href:null;return q(t.cssText,e,r)})))];case 2:return[2,n.sent().join("\n")]}}))}))}function Z(t,r){return e(this,void 0,void 0,(function(){var e,i,o,u,c;return n(this,(function(n){switch(n.label){case 0:return null==r.fontEmbedCSS?[3,1]:(i=r.fontEmbedCSS,[3,5]);case 1:return r.skipFonts?(o=null,[3,4]):[3,2];case 2:return[4,Y(t,r)];case 3:o=n.sent(),n.label=4;case 4:i=o,n.label=5;case 5:return(e=i)&&(u=document.createElement("style"),c=document.createTextNode(e),u.appendChild(c),t.firstChild?t.insertBefore(u,t.firstChild):t.appendChild(u)),[2]}}))}))}function tt(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,I(t,r,!0)];case 1:return[4,Z(u=n.sent(),r)];case 2:return n.sent(),[4,z(u,r)];case 3:return n.sent(),function(t,e){var n=t.style;e.backgroundColor&&(n.backgroundColor=e.backgroundColor),e.width&&(n.width="".concat(e.width,"px")),e.height&&(n.height="".concat(e.height,"px"));var r=e.style;null!=r&&Object.keys(r).forEach((function(t){n[t]=r[t]}))}(u,r),[4,v(u,i,o)];case 4:return[2,n.sent()]}}))}))}function et(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u,c,a,f,d,v;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,tt(t,r)];case 1:return[4,h(n.sent())];case 2:return u=n.sent(),c=document.createElement("canvas"),a=c.getContext("2d"),f=r.pixelRatio||function(){var t,e;try{e=process}catch(t){}var n=e&&e.env?e.env.devicePixelRatio:null;return n&&(t=parseInt(n,10),Number.isNaN(t)&&(t=1)),t||window.devicePixelRatio||1}(),d=r.canvasWidth||i,v=r.canvasHeight||o,c.width=d*f,c.height=v*f,r.skipAutoScale||function(t){(t.width>l||t.height>l)&&(t.width>l&&t.height>l?t.width>t.height?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l):t.width>l?(t.height*=l/t.width,t.width=l):(t.width*=l/t.height,t.height=l))}(c),c.style.width="".concat(d),c.style.height="".concat(v),r.backgroundColor&&(a.fillStyle=r.backgroundColor,a.fillRect(0,0,c.width,c.height)),a.drawImage(u,0,0,c.width,c.height),[2,c]}}))}))}t.getFontEmbedCSS=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){return[2,Y(t,r)]}))}))},t.toBlob=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[4,f(e.sent())];case 2:return[2,e.sent()]}}))}))},t.toCanvas=et,t.toJpeg=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL("image/jpeg",r.quality||1)]}}))}))},t.toPixelData=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){var e,i,o,u;return n(this,(function(n){switch(n.label){case 0:return e=s(t,r),i=e.width,o=e.height,[4,et(t,r)];case 1:return u=n.sent(),[2,u.getContext("2d").getImageData(0,0,i,o).data]}}))}))},t.toPng=function(t,r){return void 0===r&&(r={}),e(this,void 0,void 0,(function(){return n(this,(function(e){switch(e.label){case 0:return[4,et(t,r)];case 1:return[2,e.sent().toDataURL()]}}))}))},t.toSvg=tt}));
 //# sourceMappingURL=html-to-image.js.map
