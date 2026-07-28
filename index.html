@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_152_pos2_split';
+    window.HISAABNOW_BUILD = 'v34_153_pos2_cta';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -110056,8 +110056,21 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-totals {
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-extras { padding: 6px 16px 10px !important; flex-shrink: 0 !important; }
 
+/* Must be a flex column. .hnd-pos-r is one, and that stretch is what gave
+   Complete sale its full width — a <button> falls back to shrink-to-fit in
+   a plain block parent, so wrapping it in a div shrank it to its text. */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band {
+  display: flex !important; flex-direction: column !important; align-items: stretch !important;
   background: var(--p2-ink) !important; flex-shrink: 0 !important; padding-bottom: 14px !important;
+}
+/* Step HHH (line 53076) pins grand/pay/complete individually with hardcoded
+   bottom offsets and a white background. Inside our own sticky band that is
+   both redundant and a white-flash risk — neutralise it for the wrapped set.
+   The 88294 override stopped matching once these left .hnd-pos-r directly. */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand,
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay,
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete {
+  position: static !important; bottom: auto !important; box-shadow: none !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand {
   margin: 0 !important; border-radius: 0 !important; padding: 14px 16px 12px !important;
@@ -110084,7 +110097,8 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-act.spli
   color: rgba(255,255,255,.6) !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete {
-  margin: 0 16px !important; border-radius: 10px !important;
+  width: auto !important; margin: 0 16px !important; padding: 15px !important;
+  border-radius: 10px !important; font-size: 15px !important;
   background: var(--p2-gold) !important; color: var(--p2-ink) !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete:disabled {
@@ -110310,10 +110324,10 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
   } else { tick(); }
   setInterval(tick, 500);
 
-  console.log('[POS2] v34_152 armed — disable with localStorage.setItem("HN_POS2","off")');
+  console.log('[POS2] v34_153 armed — disable with localStorage.setItem("HN_POS2","off")');
 })();
 </script>
-<!-- ═══════════ END · Step POS2 v34_152 ═══════════ -->
+<!-- ═══════════ END · Step POS2 v34_153 ═══════════ -->
 
 
 </body>
