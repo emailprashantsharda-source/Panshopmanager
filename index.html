@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_149_pos2_salon';
+    window.HISAABNOW_BUILD = 'v34_150_pos2_band';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -109825,24 +109825,29 @@ html[data-shell="desktop"] #preg-close-x{ display: none !important; }
 <!-- ═══════════ END · PURCHASES UNDER MONEY v34_147 ═══════════ -->
 
 <!-- ═══════════════════════════════════════════════════════════════════
-     HisaabNow Step POS2 · Salon desktop POS theme · v34_149
+     HisaabNow Step POS2 · Salon desktop POS theme · v34_150
      ───────────────────────────────────────────────────────────────────
      Scoped to  html[data-shell="desktop"] body.hnd-on-pos.hnpos2
      `hnpos2` is added by the JS below ONLY when the effective vertical
      is salon. Every rule dies with the class.
 
-     KILL SWITCH — if this misbehaves in production:
-       localStorage.setItem('HN_POS2','off'); location.reload();
-     Nothing else needs to change; the old theme is untouched underneath.
+     KILL SWITCH:  localStorage.setItem('HN_POS2','off'); location.reload();
 
-     Uses !important in places because it is overriding earlier blocks
-     (99229 / 102161 / 102577 / 103025) that already use it. A truly flat
-     layer needs those deleted first — that is a separate change.
+     v34_150 fixes three things v34_149 got wrong against the mock:
+       1. Complete sale sat OUTSIDE the ink band. The band is four
+          separate siblings, so CSS alone cannot make them one object —
+          they are now wrapped in .hnpos2-band by JS.
+       2. The empty "Subscription packs" box still ate ~82px above the
+          grid. It renders only when packs exist now.
+       3. Scrollbars kept arrow buttons: line 53032 sets scrollbar-color,
+          which makes Chrome drop the ::-webkit-scrollbar styling and use
+          the standard renderer, and at scrollbar-width:auto that draws
+          ▲▼ buttons. Forced back to thin.
      ═══════════════════════════════════════════════════════════════════ -->
 <style>
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 {
   --p2-floor:#E9E8E3; --p2-paper:#FFFFFF; --p2-ink:#16150F;
-  --p2-gold:#D4A574; --p2-gold-lt:#EBCFA9; --p2-wash:#FBF3E7;
+  --p2-gold:#D4A574; --p2-wash:#FBF3E7;
   --p2-line:#E2E0D8; --p2-soft:#F0EEE8;
   --p2-t2:#78756A; --p2-t3:#A8A59A;
 }
@@ -109851,9 +109856,23 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 {
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnd-pos {
   grid-template-columns: minmax(0,1fr) 380px !important;
   background: var(--p2-floor) !important;
-  padding: 16px 16px 16px !important;
-  gap: 16px !important;
+  padding: 16px !important; gap: 16px !important;
 }
+
+/* ── scrollbars: thin, no arrow buttons ────────────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grid,
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items,
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r {
+  scrollbar-width: thin !important;
+  scrollbar-color: #C9C6BD transparent !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tabs {
+  scrollbar-width: none !important;
+  scrollbar-color: transparent transparent !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tabs::-webkit-scrollbar { height: 0 !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grid::-webkit-scrollbar-button,
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items::-webkit-scrollbar-button { display: none !important; }
 
 /* ── search ────────────────────────────────────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search {
@@ -109865,7 +109884,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search:focus-within {
   box-shadow: 0 0 0 3px rgba(212,165,116,.16) !important;
 }
 
-/* ── category rail: pills, masked edge, no scrollbar ───────────── */
+/* ── category rail: pills, masked edge ─────────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tabs {
   gap: 6px !important; border-bottom: 0 !important; padding: 1px !important;
   -webkit-mask-image: linear-gradient(to right,#000 calc(100% - 48px),transparent);
@@ -109884,6 +109903,15 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab-c {
   background: transparent !important; padding: 0 !important; color: var(--p2-t3) !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tab.active .hnd-pos-tab-c { color: var(--p2-gold) !important; }
+
+/* ── packs: a strip only when there is something to show ───────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pkstrip-wrap.hnpos2-void { display: none !important; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pkstrip-wrap {
+  background: var(--p2-wash) !important; border: 1px solid #F0DFC4 !important;
+  border-radius: 10px !important; padding: 9px 12px !important; margin: 0 0 2px !important;
+  max-height: none !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pkstrip-h { margin-bottom: 6px !important; }
 
 /* ── tiles ─────────────────────────────────────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grid {
@@ -109904,7 +109932,6 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-name {
   font-size: 14px !important; font-weight: 700 !important; letter-spacing: -.01em !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-price { font-size: 18px !important; }
-/* the + keeps its job, just rounder */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-add {
   width: 28px !important; height: 28px !important; padding: 0 !important;
   border-radius: 50% !important; display: grid !important; place-items: center !important;
@@ -109914,17 +109941,18 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-add {
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile:hover .hnd-pos-tile-add {
   background: var(--p2-gold) !important; border-color: var(--p2-gold) !important; color: var(--p2-ink) !important;
 }
-/* salon has no veg/non-veg. The marker is a restaurant leak. */
+/* salon has no veg/non-veg — restaurant leak */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-tile-veg { display: none !important; }
 
-/* ── the bill slip floats ──────────────────────────────────────── */
+/* ── the bill slip floats, with a gold head ────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r {
   background: var(--p2-paper) !important; border: 0 !important; border-radius: 14px !important;
-  box-shadow: 0 1px 2px rgba(22,21,15,.05), 0 8px 24px -12px rgba(22,21,15,.18) !important;
+  box-shadow: inset 0 3px 0 var(--p2-gold),
+              0 1px 2px rgba(22,21,15,.05), 0 8px 24px -12px rgba(22,21,15,.18) !important;
   overflow: hidden !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-cust {
-  border-bottom: 1px solid var(--p2-soft) !important; flex-shrink: 0 !important;
+  border-bottom: 1px solid var(--p2-soft) !important; flex-shrink: 0 !important; margin-top: 3px !important;
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-bill-meta {
   border-bottom: 1px solid var(--p2-soft) !important; flex-shrink: 0 !important;
@@ -109933,7 +109961,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-bill-meta {
 }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items { min-height: 128px !important; }
 
-/* ── served by: match the slip instead of the dashed orange box ── */
+/* ── served by ─────────────────────────────────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section.fff-desktop {
   margin: 0 !important; padding: 11px 16px !important;
   background: var(--p2-wash) !important;
@@ -109945,56 +109973,55 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section.fff
   color: #9A7440 !important; font-size: 10px !important;
   letter-spacing: .08em !important; font-weight: 700 !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section .jjj-select,
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section select {
   border: 1px solid #F0DFC4 !important; border-radius: 8px !important;
   background: var(--p2-paper) !important; font-size: 13px !important; font-weight: 600 !important;
 }
 
-/* ── money band: total + payment + CTA as one ink object ───────── */
+/* ── the money band — ONE ink object (wrapped by JS below) ─────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-totals {
-  border-top: 1px solid var(--p2-soft) !important; padding: 10px 16px 2px !important;
+  border-top: 1px solid var(--p2-soft) !important; padding: 10px 16px 2px !important; flex-shrink: 0 !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-extras { padding: 6px 16px 10px !important; }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grand {
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-extras { padding: 6px 16px 10px !important; flex-shrink: 0 !important; }
+
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band {
+  background: var(--p2-ink) !important; flex-shrink: 0 !important; padding-bottom: 14px !important;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand {
   margin: 0 !important; border-radius: 0 !important; padding: 14px 16px 12px !important;
-  background: var(--p2-ink) !important;
+  background: transparent !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-grand-r {
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand-r {
   font-size: 31px !important; color: var(--p2-gold) !important; letter-spacing: -.035em !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-pay {
-  background: var(--p2-ink) !important; padding: 0 16px 9px !important; gap: 5px !important;
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay {
+  padding: 0 16px 9px !important; gap: 5px !important; background: transparent !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-pay-btn {
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay-btn {
   background: transparent !important; border: 1px solid rgba(255,255,255,.14) !important;
   border-radius: 7px !important; color: rgba(255,255,255,.6) !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-pay-btn.active {
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay-btn.active {
   background: var(--p2-gold) !important; border-color: var(--p2-gold) !important; color: var(--p2-ink) !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-actions {
-  background: var(--p2-ink) !important; margin: 0 !important; padding: 0 16px 4px !important;
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-actions {
+  margin: 0 !important; padding: 0 16px 9px !important; background: transparent !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-act.split {
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-act.split {
   background: transparent !important; border-color: rgba(255,255,255,.14) !important;
   color: rgba(255,255,255,.6) !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-complete {
-  margin: 0 !important; border-radius: 10px !important;
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete {
+  margin: 0 16px !important; border-radius: 10px !important;
   background: var(--p2-gold) !important; color: var(--p2-ink) !important;
 }
-/* the band needs its own padding wrapper since .complete lost its margin */
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r > .hnd-pos-complete {
-  margin: 0 16px 14px !important;
-}
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r::after {
-  content: ''; display: block; background: var(--p2-ink); height: 0;
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete:disabled {
+  background: rgba(255,255,255,.09) !important; color: rgba(255,255,255,.32) !important;
 }
 </style>
 
 <script>
-/* === HisaabNow Step POS2 · salon desktop POS theme · v34_149 === */
+/* === HisaabNow Step POS2 · salon desktop POS theme · v34_150 === */
 (function(){
   if (document.documentElement.getAttribute('data-shell') !== 'desktop') return;
 
@@ -110002,8 +110029,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r::after {
     try { return localStorage.getItem('HN_POS2') === 'off'; } catch(e){ return false; }
   }
 
-  /* Same resolution order the rest of the app uses: override, then the
-     active shop, then the legacy App.vertical field. */
+  /* Same resolution order the rest of the app uses. */
   function vertical(){
     try {
       var ov = localStorage.getItem('hn_vertical_override');
@@ -110025,27 +110051,65 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r::after {
     return on;
   }
 
+  /* Total, payment mode, split and Complete sale are four siblings, so no
+     amount of CSS makes them read as one object — the light panel shows
+     between them. Wrap them once, in place, preserving order. */
+  function wrapBand(){
+    var r = document.querySelector('html[data-shell="desktop"] #hnd-pos .hnd-pos-r');
+    if (!r) return;
+    if (r.querySelector(':scope > .hnpos2-band')) return;   /* already wrapped */
+
+    var grand    = r.querySelector(':scope > .hnd-pos-grand');
+    var pay      = r.querySelector(':scope > .hnd-pos-pay');
+    var actions  = r.querySelector(':scope > .hnd-pos-actions');
+    var complete = r.querySelector(':scope > .hnd-pos-complete');
+    if (!grand || !pay || !complete) return;                /* not ready yet */
+
+    var band = document.createElement('div');
+    band.className = 'hnpos2-band';
+    grand.parentNode.insertBefore(band, grand);
+    band.appendChild(grand);
+    band.appendChild(pay);
+    if (actions) band.appendChild(actions);
+    band.appendChild(complete);
+  }
+
+  function unwrapBand(){
+    var band = document.querySelector('#hnd-pos .hnd-pos-r > .hnpos2-band');
+    if (!band || !band.parentNode) return;
+    var p = band.parentNode;
+    while (band.firstChild) p.insertBefore(band.firstChild, band);
+    p.removeChild(band);
+  }
+
+  /* The packs strip renders an empty-state box that costs ~82px above the
+     grid — nearly a full tile row — to say there is nothing to show. */
+  function syncPacks(){
+    var wrap = document.getElementById('hnd-pkstrip-wrap');
+    if (!wrap) return;
+    var empty = !!wrap.querySelector('.hnd-pkstrip-empty');
+    wrap.classList.toggle('hnpos2-void', empty);
+  }
+
   /* Subtotal only earns a row when something sits between it and the
-     total. With no discount and no GST the two numbers are identical and
-     the row is pure noise — the grand total already states the figure. */
+     total. No discount and no GST means the two numbers are identical. */
   function syncSubtotal(){
-    var totals = document.querySelector('.hnd-pos-totals');
-    if (!totals) return;
-    var rows = totals.children;
-    if (!rows || !rows.length) return;
-    var subRow = rows[0];
+    var totals = document.querySelector('#hnd-pos .hnd-pos-totals');
+    if (!totals || !totals.children.length) return;
     var disc = document.getElementById('hnd-pos-disc-row');
     var gst  = document.getElementById('hnd-pos-gst-row');
     function shown(el){
       if (!el) return false;
       try { return getComputedStyle(el).display !== 'none'; } catch(e){ return false; }
     }
-    var needed = shown(disc) || shown(gst);
-    subRow.style.display = needed ? 'flex' : 'none';
+    totals.children[0].style.display = (shown(disc) || shown(gst)) ? 'flex' : 'none';
   }
 
   function tick(){
-    try { if (syncClass()) syncSubtotal(); } catch(e){}
+    try {
+      if (syncClass()){ wrapBand(); syncPacks(); syncSubtotal(); }
+      else { unwrapBand(); }
+    } catch(e){}
   }
 
   if (document.readyState === 'loading'){
@@ -110053,10 +110117,11 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-r::after {
   } else { tick(); }
   setInterval(tick, 500);
 
-  console.log('[POS2] salon desktop POS theme armed — disable with localStorage.setItem("HN_POS2","off")');
+  console.log('[POS2] v34_150 armed — disable with localStorage.setItem("HN_POS2","off")');
 })();
 </script>
-<!-- ═══════════ END · Step POS2 v34_149 ═══════════ -->
+<!-- ═══════════ END · Step POS2 v34_150 ═══════════ -->
+
 
 </body>
 </html>
