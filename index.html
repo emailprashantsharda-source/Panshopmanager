@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_153_pos2_cta';
+    window.HISAABNOW_BUILD = 'v34_154_svc_click';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -15056,6 +15056,13 @@ const App = {
     if (invEntry) {
       if (_isSalonShop) {
         invEntry.style.display = '';
+        /* (v34_154) This branch relabelled the row but never claimed the click
+           target, unlike the two branches below. On a shop converted from
+           cafe/restaurant to salon, the cafe branch had already written
+           onclick="HNCostMode.open()" as an inline attribute on this static
+           node — it survives the switch, so "Services" opened cost mode
+           instead of the services list. Claim it explicitly. */
+        invEntry.setAttribute('onclick', "App.nav('inventory')");
         const _cfgSalon = VERTICAL_CONFIG[this.vertical] || VERTICAL_CONFIG['salon'] || {};
         const invLabel = document.getElementById('more-inventory-label');
         const invSubEl = document.getElementById('more-inventory-sub');
@@ -110324,10 +110331,10 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
   } else { tick(); }
   setInterval(tick, 500);
 
-  console.log('[POS2] v34_153 armed — disable with localStorage.setItem("HN_POS2","off")');
+  console.log('[POS2] v34_154 armed — disable with localStorage.setItem("HN_POS2","off")');
 })();
 </script>
-<!-- ═══════════ END · Step POS2 v34_153 ═══════════ -->
+<!-- ═══════════ END · Step POS2 v34_154 ═══════════ -->
 
 
 </body>
