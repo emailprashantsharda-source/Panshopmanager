@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_154_svc_click';
+    window.HISAABNOW_BUILD = 'v34_156_svc_icons';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -110336,6 +110336,180 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
 </script>
 <!-- ═══════════ END · Step POS2 v34_154 ═══════════ -->
 
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     HisaabNow Step SVC1 · Salon "Services" screen · v34_156
+     ───────────────────────────────────────────────────────────────────
+     On salon, More → Services opens App.nav('inventory') — the ordinary
+     stock screen with a new label. The LIST was already correct
+     (VERTICAL_CONFIG.salon.inventoryFilter drops cat === 'Retail' at
+     line 24458), but the chrome around it was never adapted, so a salon
+     got Stock In, Stock Take, a Low/Out counter and a READY badge on a
+     haircut. A haircut has no stock.
+
+     Scoped to  body.hnsvc  — added only when the effective vertical is
+     salon AND the current page is inventory. Retail products keep every
+     stock control on their own screen (More → Retail), untouched.
+
+     KILL SWITCH:  localStorage.setItem('HN_SVC1','off'); location.reload();
+     ═══════════════════════════════════════════════════════════════════ -->
+<style>
+/* a service is not stocked, counted, or reordered */
+body.hnsvc #inv-actions { display: none !important; }
+/* "READY" / "Low · 3" badges belong to things that sit on a shelf */
+body.hnsvc #inv-list .inv-stock { display: none !important; }
+body.hnsvc #inv-list .li-sub { min-height: 0 !important; }
+</style>
+
+<script>
+/* === HisaabNow Step SVC1 · salon Services screen · v34_155 === */
+(function(){
+  function off(){
+    try { return localStorage.getItem('HN_SVC1') === 'off'; } catch(e){ return false; }
+  }
+
+  /* cardType first — App.vertical can be stale (see line 86531) */
+  function vertical(){
+    try {
+      var ov = localStorage.getItem('hn_vertical_override');
+      if (ov) return String(ov).toLowerCase();
+    } catch(e){}
+    try {
+      if (window.MShop && typeof MShop.getActive === 'function'){
+        var a = MShop.getActive();
+        if (a && (a.cardType || a.profession)) return String(a.cardType || a.profession).toLowerCase();
+      }
+    } catch(e){}
+    try { if (window.App && App.vertical) return String(App.vertical).toLowerCase(); } catch(e){}
+    return '';
+  }
+
+  function onServices(){
+    if (off() || vertical() !== 'salon') return false;
+    try { return window.App && App.current === 'inventory'; } catch(e){ return false; }
+  }
+
+  function services(){
+    var out = [];
+    try {
+      var list = window.INVENTORY || [];
+      for (var i=0;i<list.length;i++){
+        var it = list[i];
+        if (!it || it._deleted || it.active === false) continue;
+        if ((it.cat || it.category) === 'Retail') continue;   /* same predicate as inventoryFilter */
+        out.push(it);
+      }
+    } catch(e){}
+    return out;
+  }
+
+  function inr(n){
+    n = Math.round(Number(n) || 0);
+    try { return '\u20B9' + n.toLocaleString('en-IN'); } catch(e){ return '\u20B9' + n; }
+  }
+
+  /* Items / Low-Out / Avg margin are stock questions. For a service list the
+     useful three are: how many services, how many groups they fall into, and
+     what the average one costs. */
+  function syncStats(){
+    var el = document.getElementById('inv-stats');
+    if (!el) return;
+
+    var list = services();
+    var cats = {}, nCat = 0, priced = 0, sum = 0;
+    for (var i=0;i<list.length;i++){
+      var c = (list[i].cat || list[i].category || '').trim();
+      if (c && !cats[c]){ cats[c] = 1; nCat++; }
+      var sp = Number(list[i].sp || list[i].price || 0);
+      if (sp > 0){ priced++; sum += sp; }
+    }
+    var avg = priced ? inr(sum / priced) : '\u2014';
+
+    var sig = list.length + '|' + nCat + '|' + avg;
+    if (el.__svcSig === sig) return;
+    el.__svcSig = sig;
+
+    el.innerHTML =
+        '<div class="stat-card"><div class="stat-lbl">Services</div>'
+      +   '<div class="stat-val">' + list.length + '</div></div>'
+      + '<div class="stat-card"><div class="stat-lbl">Categories</div>'
+      +   '<div class="stat-val">' + nCat + '</div></div>'
+      + '<div class="stat-card"><div class="stat-lbl">Avg price</div>'
+      +   '<div class="stat-val">' + avg + '</div></div>';
+  }
+
+  /* VERTICAL_CONFIG.salon.inventorySearch has said "Search services…" since
+     it was written (line 8213) — nothing ever read it. */
+  function syncSearch(){
+    var s = document.getElementById('inv-search');
+    if (!s) return;
+    var want = 'Search services\u2026';
+    if (s.placeholder !== want){
+      s.placeholder = want;
+      s.removeAttribute('data-i18n-ph');
+    }
+  }
+
+  /* The row renders ${it.emoji || '\uD83D\uDCE6'} — the box is only the fallback
+     for an item with no emoji of its own, which is every service imported or
+     typed in without picking one. Map a salon-appropriate default from the
+     service name and category. Nothing is written to the record: an emoji the
+     owner picked is left exactly as it is. */
+  var SVC_ICONS = [
+    [/thread|eyebrow|upper ?lip|forehead|chin/,            '\uD83E\uDDF5'],  /* thread   */
+    [/manicure|pedicure|nail|cuticle/,                     '\uD83D\uDC85'],  /* nails    */
+    [/makeup|make-up|bridal|party ?look|draping/,          '\uD83D\uDC84'],  /* lipstick */
+    [/colou?r|highlight|global|root ?touch|henna|mehndi/,  '\uD83C\uDFA8'],  /* palette  */
+    [/wax|shave|razor|d-?tan|detan/,                       '\uD83E\uDE92'],  /* razor    */
+    [/facial|clean ?-?up|bleach|glow|skin|peel|mask/,      '\uD83E\uDDD6'],  /* steamy   */
+    [/spa|massage|keratin|smoothen|botox|treatment/,       '\uD83D\uDC86'],  /* massage  */
+    /* styling must beat wash — "Blowdry (Without Wash)" contains both */
+    [/blow ?dry|styl|iron|curl|updo|braid/,                '\uD83D\uDC87'],  /* styling  */
+    [/wash|shampoo|conditioner|serum|ampoule|add-?on/,     '\uD83E\uDDF4'],  /* lotion   */
+    [/hair ?cut|haircut|trim|beard|fringe|bang/,           '\u2702\uFE0F']   /* scissors */
+  ];
+
+  function iconFor(text){
+    var t = String(text || '').toLowerCase();
+    for (var i=0;i<SVC_ICONS.length;i++){
+      if (SVC_ICONS[i][0].test(t)) return SVC_ICONS[i][1];
+    }
+    return '\u2728';                                   /* sparkles */
+  }
+
+  function syncIcons(){
+    var list = document.getElementById('inv-list');
+    if (!list) return;
+    var rows = list.querySelectorAll('.li-avatar');
+    for (var i=0;i<rows.length;i++){
+      var av = rows[i];
+      /* only replace the generic fallback — never an owner's own choice */
+      if (av.textContent.trim() !== '\uD83D\uDCE6') continue;
+      var card = av.closest('.li') || av.parentElement;
+      var name = card ? (card.querySelector('.li-name') || {}).textContent : '';
+      var cat  = card ? (card.querySelector('.li-sub span') || {}).textContent : '';
+      av.textContent = iconFor((name || '') + ' ' + (cat || ''));
+    }
+  }
+
+  function tick(){
+    try {
+      var on = onServices();
+      document.body.classList.toggle('hnsvc', on);
+      if (on){ syncStats(); syncSearch(); syncIcons(); }
+    } catch(e){}
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', tick);
+  } else { tick(); }
+  setInterval(tick, 500);
+
+  console.log('[SVC1] salon Services screen armed — disable with localStorage.setItem("HN_SVC1","off")');
+})();
+</script>
+<!-- ═══════════ END · Step SVC1 v34_156 ═══════════ -->
 
 </body>
 </html>
