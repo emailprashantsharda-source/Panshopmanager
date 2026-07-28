@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_156_svc_icons';
+    window.HISAABNOW_BUILD = 'v34_157_svc_icons2';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -110339,7 +110339,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
 
 
 <!-- ═══════════════════════════════════════════════════════════════════
-     HisaabNow Step SVC1 · Salon "Services" screen · v34_156
+     HisaabNow Step SVC1 · Salon "Services" screen · v34_157
      ───────────────────────────────────────────────────────────────────
      On salon, More → Services opens App.nav('inventory') — the ordinary
      stock screen with a new label. The LIST was already correct
@@ -110385,8 +110385,12 @@ body.hnsvc #inv-list .li-sub { min-height: 0 !important; }
     return '';
   }
 
+  function isSalon(){
+    return !off() && vertical() === 'salon';
+  }
+
   function onServices(){
-    if (off() || vertical() !== 'salon') return false;
+    if (!isSalon()) return false;
     try { return window.App && App.current === 'inventory'; } catch(e){ return false; }
   }
 
@@ -110478,18 +110482,29 @@ body.hnsvc #inv-list .li-sub { min-height: 0 !important; }
     return '\u2728';                                   /* sparkles */
   }
 
+  /* Two screens render a service with the same p.emoji || box fallback:
+     the Services list (.li-avatar) and the New Sale grid (.svc-tile-emoji).
+     Same treatment on both — replace only the generic box, never an emoji
+     the owner picked, and never touch the stored record. */
+  var GRIDS = [
+    ['#inv-list .li-avatar',      '.li',        '.li-name',        '.li-sub span'],
+    ['#svc-grid .svc-tile-emoji', '.svc-tile',  '.svc-tile-name',  null]
+  ];
+
   function syncIcons(){
-    var list = document.getElementById('inv-list');
-    if (!list) return;
-    var rows = list.querySelectorAll('.li-avatar');
-    for (var i=0;i<rows.length;i++){
-      var av = rows[i];
-      /* only replace the generic fallback — never an owner's own choice */
-      if (av.textContent.trim() !== '\uD83D\uDCE6') continue;
-      var card = av.closest('.li') || av.parentElement;
-      var name = card ? (card.querySelector('.li-name') || {}).textContent : '';
-      var cat  = card ? (card.querySelector('.li-sub span') || {}).textContent : '';
-      av.textContent = iconFor((name || '') + ' ' + (cat || ''));
+    for (var g=0; g<GRIDS.length; g++){
+      var sel = GRIDS[g];
+      var nodes = document.querySelectorAll(sel[0]);
+      for (var i=0;i<nodes.length;i++){
+        var av = nodes[i];
+        if (av.textContent.trim() !== '\uD83D\uDCE6') continue;
+        var card = av.closest(sel[1]) || av.parentElement;
+        var name = card && card.querySelector(sel[2]);
+        var cat  = (sel[3] && card) ? card.querySelector(sel[3]) : null;
+        av.textContent = iconFor(
+          ((name && name.textContent) || '') + ' ' + ((cat && cat.textContent) || '')
+        );
+      }
     }
   }
 
@@ -110497,7 +110512,9 @@ body.hnsvc #inv-list .li-sub { min-height: 0 !important; }
     try {
       var on = onServices();
       document.body.classList.toggle('hnsvc', on);
-      if (on){ syncStats(); syncSearch(); syncIcons(); }
+      if (on){ syncStats(); syncSearch(); }
+      /* icons apply anywhere a service is listed, not just the Services page */
+      if (isSalon()) syncIcons();
     } catch(e){}
   }
 
@@ -110509,7 +110526,7 @@ body.hnsvc #inv-list .li-sub { min-height: 0 !important; }
   console.log('[SVC1] salon Services screen armed — disable with localStorage.setItem("HN_SVC1","off")');
 })();
 </script>
-<!-- ═══════════ END · Step SVC1 v34_156 ═══════════ -->
+<!-- ═══════════ END · Step SVC1 v34_157 ═══════════ -->
 
 </body>
 </html>
