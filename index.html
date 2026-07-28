@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_150_pos2_band';
+    window.HISAABNOW_BUILD = 'v34_151_pos2_served';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -109876,9 +109876,13 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items::-webkit-scroll
 
 /* ── search ────────────────────────────────────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search {
+  /* line 99197 caps this at 360px — the bar is the barcode target, it
+     should own the full column width. */
+  max-width: none !important; width: auto !important;
   border-radius: 10px !important; padding: 12px 16px !important;
   border-color: var(--p2-line) !important;
 }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search input { font-size: 14.5px !important; }
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-search:focus-within {
   border-color: var(--p2-gold) !important;
   box-shadow: 0 0 0 3px rgba(212,165,116,.16) !important;
@@ -109959,7 +109963,54 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-bill-meta {
   font-size: 10.5px !important; font-weight: 700 !important;
   letter-spacing: .07em !important; text-transform: uppercase !important;
 }
-html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items { min-height: 128px !important; }
+/* v34_149 put a 128px floor here to stop the list collapsing. On a short
+   window that floor refuses to yield, the ink band is flex-shrink:0, and
+   .hnd-pos-r is overflow:hidden — so Complete sale got clipped off the
+   bottom. The list must be the thing that gives. */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-items {
+  flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important;
+}
+/* short laptops: tighten the band so Complete sale is never below the fold */
+@media (max-height: 880px){
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band { padding-bottom: 10px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand { padding: 10px 16px 8px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-grand-r { font-size: 26px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay { padding-bottom: 6px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-pay-btn { padding: 8px 0 !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-actions { padding-bottom: 6px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-act { padding: 8px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete { padding: 11px !important; }
+  html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnd-pos-extras { padding: 4px 16px 8px !important; }
+}
+
+/* ── FIX 3 · Served by always present on salon ──────────────────── */
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served {
+  display: flex; align-items: center; gap: 11px; flex-shrink: 0;
+  padding: 11px 16px; background: var(--p2-wash);
+  border-top: 1px solid var(--p2-soft); box-shadow: inset 3px 0 0 var(--p2-gold);
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-av {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center; background: #fff; color: #9A7440; font-size: 14px;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-t { flex: 1; min-width: 0; }
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-l {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: #9A7440; display: flex; align-items: center; gap: 6px;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-req {
+  background: var(--p2-gold); color: var(--p2-ink); font-size: 8.5px;
+  font-weight: 800; letter-spacing: .08em; padding: 2px 6px; border-radius: 999px;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served select {
+  margin-top: 3px; width: 100%; border: 1px solid #F0DFC4; border-radius: 8px;
+  background: #fff; padding: 6px 9px; font-size: 13px; font-weight: 600;
+  font-family: inherit; color: var(--p2-ink); cursor: pointer;
+}
+html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #hnpos2-served .p2s-add {
+  margin-top: 2px; background: none; border: 0; padding: 0; font-family: inherit;
+  font-size: 13px; font-weight: 700; color: #9A7440; text-decoration: underline; cursor: pointer;
+}
 
 /* ── served by ─────────────────────────────────────────────────── */
 html[data-shell="desktop"] body.hnd-on-pos.hnpos2 #bill-staff-picker-section.fff-desktop {
@@ -110082,6 +110133,100 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
     p.removeChild(band);
   }
 
+  /* Served by. The native #bill-staff-picker-section hides itself whenever
+     no active stylists exist (_renderBillStaffPicker returns early), so on a
+     salon with no staff yet the row simply vanishes and the cashier gets no
+     hint it is required. Render our own row in that gap — and when staff DO
+     exist, drive App._pickBillStaff so commission still lands correctly. */
+  function activeStylists(){
+    var out = [];
+    try {
+      var list = window.STAFF || [];
+      for (var i=0;i<list.length;i++){
+        var st = list[i];
+        if (!st || st._deleted || st.active === false) continue;
+        var role = String(st.role || '').toLowerCase();
+        if (role === 'cashier' || role === 'helper') continue;
+        out.push(st);
+      }
+    } catch(e){}
+    return out;
+  }
+
+  function nativeShown(){
+    var n = document.getElementById('bill-staff-picker-section');
+    if (!n) return false;
+    try { return getComputedStyle(n).display !== 'none'; } catch(e){ return false; }
+  }
+
+  function syncServed(){
+    var r = document.querySelector('#hnd-pos .hnd-pos-r');
+    var cust = r && r.querySelector(':scope > .hnd-pos-cust');
+    if (!r || !cust) return;
+
+    var row = document.getElementById('hnpos2-served');
+
+    /* native picker is doing the job — stand down */
+    if (nativeShown()){
+      if (row && row.parentNode) row.parentNode.removeChild(row);
+      return;
+    }
+
+    if (!row){
+      row = document.createElement('div');
+      row.id = 'hnpos2-served';
+      cust.parentNode.insertBefore(row, cust.nextSibling);
+    }
+
+    var staff = activeStylists();
+    var picked = null;
+    try { picked = window.App && App._billStaff; } catch(e){}
+    var sig = staff.map(function(s){ return s.id; }).join(',') + '|' + (picked && picked.id || '');
+    if (row.__sig === sig) return;
+    row.__sig = sig;
+
+    function esc(x){
+      return String(x==null?'':x).replace(/[&<>"]/g,function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+      });
+    }
+
+    if (!staff.length){
+      row.innerHTML = '<div class="p2s-av">\u2702</div>'
+        + '<div class="p2s-t">'
+        +   '<div class="p2s-l">Served by <span class="p2s-req">REQUIRED</span></div>'
+        +   '<button type="button" class="p2s-add">Add a stylist to start billing</button>'
+        + '</div>';
+      var add = row.querySelector('.p2s-add');
+      if (add) add.onclick = function(){
+        try { if (window.App && App.nav) App.nav('staff'); } catch(e){}
+      };
+      return;
+    }
+
+    var opts = '<option value="">\u2014 Select stylist \u2014</option>';
+    for (var i=0;i<staff.length;i++){
+      var st = staff[i];
+      var comm = (st.commission != null) ? st.commission : 15;
+      opts += '<option value="' + esc(st.id) + '"'
+            + ((picked && picked.id === st.id) ? ' selected' : '') + '>'
+            + esc(st.name || '\u2014') + ' \u00b7 ' + comm + '% commission</option>';
+    }
+    row.innerHTML = '<div class="p2s-av">\u2702</div>'
+      + '<div class="p2s-t">'
+      +   '<div class="p2s-l">Served by' + (picked ? '' : ' <span class="p2s-req">REQUIRED</span>') + '</div>'
+      +   '<select>' + opts + '</select>'
+      + '</div>';
+    var sel = row.querySelector('select');
+    if (sel) sel.onchange = function(){
+      try {
+        if (!sel.value){ if (window.App) App._billStaff = null; }
+        else if (window.App && typeof App._pickBillStaff === 'function'){ App._pickBillStaff(sel.value); }
+        row.__sig = null;
+      } catch(e){}
+    };
+  }
+
   /* The packs strip renders an empty-state box that costs ~82px above the
      grid — nearly a full tile row — to say there is nothing to show. */
   function syncPacks(){
@@ -110107,8 +110252,12 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
 
   function tick(){
     try {
-      if (syncClass()){ wrapBand(); syncPacks(); syncSubtotal(); }
-      else { unwrapBand(); }
+      if (syncClass()){ wrapBand(); syncServed(); syncPacks(); syncSubtotal(); }
+      else {
+        unwrapBand();
+        var sv = document.getElementById('hnpos2-served');
+        if (sv && sv.parentNode) sv.parentNode.removeChild(sv);
+      }
     } catch(e){}
   }
 
@@ -110117,10 +110266,10 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
   } else { tick(); }
   setInterval(tick, 500);
 
-  console.log('[POS2] v34_150 armed — disable with localStorage.setItem("HN_POS2","off")');
+  console.log('[POS2] v34_151 armed — disable with localStorage.setItem("HN_POS2","off")');
 })();
 </script>
-<!-- ═══════════ END · Step POS2 v34_150 ═══════════ -->
+<!-- ═══════════ END · Step POS2 v34_151 ═══════════ -->
 
 
 </body>
