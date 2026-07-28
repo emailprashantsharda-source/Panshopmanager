@@ -531,11 +531,21 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
   function help(){
     if (standalone) return sheet('Already installed',
       ['Open RentalNow from your home screen or app drawer.'],'');
-    if (inApp) return sheet('Open in Chrome first',
-      ['Tap the menu in the corner of this screen',
-       'Choose <b>Open in Chrome</b>',
-       'Come back here and tap Install app'],
-      'Links opened inside WhatsApp cannot install apps. This is the most common reason it does not work.');
+    /* iOS is checked INSIDE this branch, not after it. An iPhone user who taps
+       the link inside WhatsApp is the single most common visitor this page
+       gets, and telling him to "open in Chrome" is advice that cannot work:
+       Chrome on iOS has no Add to Home Screen. Only Safari does. */
+    if (inApp) return isIOS
+      ? sheet('Open in Safari first',
+          ['Tap the <b>&#8942;</b> or share icon in the corner of this screen',
+           'Choose <b>Open in Safari</b>',
+           'In Safari, tap <b>Share</b> then <b>Add to Home Screen</b>'],
+          'On iPhone only Safari can add an app to the home screen \u2014 Chrome cannot, and neither can WhatsApp\u2019s built-in browser.')
+      : sheet('Open in Chrome first',
+          ['Tap the menu in the corner of this screen',
+           'Choose <b>Open in Chrome</b>',
+           'Come back here and tap Install app'],
+          'Links opened inside WhatsApp cannot install apps. This is the most common reason it does not work.');
     if (isIOS) return sheet('On iPhone and iPad',
       ['Open this page in <b>Safari</b>','Tap <b>Share</b> at the bottom',
        'Scroll down, tap <b>Add to Home Screen</b>','Tap <b>Add</b>'],
