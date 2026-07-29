@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_157_svc_icons2';
+    window.HISAABNOW_BUILD = 'v34_159_price499_nogf';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -6701,7 +6701,7 @@ html[data-current-role="manager"] body{
     'feat.builtForShop':       { en: 'Built for your shop',      hi: 'आपकी दुकान के लिए' },
     'feat.swipe':              { en: 'Swipe →',                  hi: 'स्वाइप करें →' },
     'feat.seeAllPlans':        { en: 'See all plans',            hi: 'सभी प्लान देखें' },
-    'feat.fromPrice':          { en: 'From ₹199/mo',             hi: '₹199/माह से' },
+    'feat.fromPrice':          { en: 'From ₹499/mo',             hi: '₹499/माह से' },
     'feat.liveProfit':         { en: 'Live Profit',              hi: 'लाइव प्रॉफिट' },
     'feat.liveProfitSub':      { en: 'Real margin on every sale', hi: 'हर बिक्री पर असली मार्जिन' },
     'feat.voiceBilling':       { en: 'Voice Billing',            hi: 'वॉइस बिलिंग' },
@@ -21160,7 +21160,7 @@ const App = {
           <svg width="30" height="30" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>
         </div>
         <div style="font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.018em">${wasTrial ? 'Subscribe to start' : 'Your subscription expired'}</div>
-        <div style="font-size:13px;color:var(--t2);font-weight:600;margin-top:5px;line-height:1.45;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? 'Unlock everything from just ₹99/mo.' : 'Renew to keep billing and AI insights.'}</div>
+        <div style="font-size:13px;color:var(--t2);font-weight:600;margin-top:5px;line-height:1.45;max-width:280px;margin-left:auto;margin-right:auto">${wasTrial ? 'Unlock everything from just ₹499/mo.' : 'Renew to keep billing and AI insights.'}</div>
       </div>
       <div style="margin:12px 0 2px;display:flex;flex-direction:column;gap:7px">
         ${['Unlimited bills & customers','AI advisor insights','Cloud backup & voice billing'].map(function(t){ return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border:1px solid var(--bd);border-radius:11px;font-size:13px;font-weight:600;color:var(--t1)"><span style="color:var(--success);font-weight:800;font-size:15px">✓</span><span>'+t+'</span></div>'; }).join('')}
@@ -31652,7 +31652,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let planPickerHtml = '';
     let dockHtml = '';
     if (!isPaid || isExpired) {
-      /* (v33_305) data-driven from _pricing() — grandfathering-aware, matches the main paywall */
+      /* (v33_305) data-driven from _pricing() — matches the main paywall */
       const _pp = this._pricing();
       const _inr = function(n){ return Number(n||0).toLocaleString('en-IN'); };
       const plans = [
@@ -33379,18 +33379,24 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   _freeBillsLeft(){ return Math.max(0, this._FREE_BILLS - this._freeBillsUsed()); },
   _isPaidUser(){ try { return !!(window.Subs && Subs.isPaid && Subs.isPaid()); } catch(e){ return false; } },
   _isGrandfathered(){
-    /* Option B: only CURRENTLY-active subscribers keep old pricing.
-       A shop that let its subscription lapse moves to new pricing on return. */
-    try { return !!this._isPaidUser(); } catch(e){ return false; }
+    /* (v34_159) GRANDFATHERING RETIRED. Legacy payers used to renew at the old
+       ₹99 / ₹199 card while everyone else saw list price, so _pricing() had two
+       tables that had to agree and slowly stopped agreeing — the same
+       two-configs-drift bug that has bitten this codebase repeatedly. There is
+       now ONE price table for everybody. Kept as a stub (rather than deleted)
+       so any future caller gets a defined, honest answer. */
+    return false;
   },
   _pricing(){
-    if (this._isGrandfathered()) return {   /* existing payers keep old prices on renewal */
-      pro:  { m:99,  y:990,  mMrp:99,  yMrp:1188 },
-      king: { m:199, y:1990, mMrp:199, yMrp:2388 }
-    };
-    return {                                 /* new pricing */
-      pro:  { m:199, y:1990, mMrp:299, yMrp:3588 },
-      king: { m:299, y:2990, mMrp:399, yMrp:4788 }
+    /* SINGLE SOURCE OF TRUTH for all pricing — mobile cards, desktop cards,
+       the review-and-pay sheet and the Munim answer all read this.
+       Annual = 10 × monthly, i.e. 2 months free. yMrp is the 12-month
+       equivalent, which is what the strikethrough and the savings line use.
+       NOTE: the amount actually charged is decided server-side by the
+       payuCreateOrder Cloud Function — keep that table in sync with this one. */
+    return {
+      pro:  { m:499, y:4990, mMrp:499, yMrp:5988 },
+      king: { m:799, y:7990, mMrp:799, yMrp:9588 }
     };
   },
   _shouldGateBilling(){ return !this._isPaidUser() && this._freeBillsUsed() >= this._FREE_BILLS; },
@@ -33588,7 +33594,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+f[0]+'</svg>';
       return '<div class="hnfs-card"><div class="hnfs-ic">'+svg+'</div><h4>'+f[1]+'</h4><p>'+f[2]+'</p></div>';
     }).join('');
-    var more = '<div class="hnfs-card hnfs-more" onclick="App.openSubscription()"><div class="hnfs-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1300" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div><h4>'+T('feat.seeAllPlans','See all plans')+'</h4><p>'+T('feat.fromPrice','From ₹199/mo')+'</p></div>';
+    var more = '<div class="hnfs-card hnfs-more" onclick="App.openSubscription()"><div class="hnfs-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1300" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div><h4>'+T('feat.seeAllPlans','See all plans')+'</h4><p>'+T('feat.fromPrice','From ₹499/mo')+'</p></div>';
     el.innerHTML = '<div class="hnfs-head"><h3>'+T('feat.builtForShop','Built for your shop')+'</h3><span>'+T('feat.swipe','Swipe →')+'</span></div><div class="hnfs-row">'+cards+more+'</div>';
     el.dataset.built='1';
     el.style.display='block';
@@ -45570,8 +45576,8 @@ var STORAGE_KEY   = 'kf_subs';
 var TIERS = {
   trial:   { name: 'Trial',    monthlyPrice: 10,  annualPrice: null, maxShops: 5, color: '#F59E0B' },
   basic:   { name: 'Basic',    monthlyPrice: 99,  annualPrice: null, maxShops: 1, color: '#0891B2' },
-  pro:     { name: 'Pro',      monthlyPrice: 199,  annualPrice: 1990, maxShops: 1, color: '#000000' },
-  king:    { name: 'King',     monthlyPrice: 299,  annualPrice: 2990, maxShops: 5, color: '#DC2626' },
+  pro:     { name: 'Pro',      monthlyPrice: 499,  annualPrice: 4990, maxShops: 1, color: '#000000' },
+  king:    { name: 'King',     monthlyPrice: 799,  annualPrice: 7990, maxShops: 5, color: '#DC2626' },
   'trial-expired': { name: 'Trial expired', monthlyPrice: 0, annualPrice: 0, maxShops: 1, color: '#94A3B8' },
   expired: { name: 'Expired',  monthlyPrice: 0, annualPrice: 0, maxShops: 1, color: '#94A3B8' }
 };
@@ -74286,10 +74292,10 @@ html[data-shell="desktop"] #pg-settings .toggle {
   var PLAN_DETAILS = {
     'basic-monthly': { name: 'Basic', cycle: 'Monthly', amount: 99,   amountStr: '₹99',  emoji: '✨', tier: 'basic', cycleKey: 'monthly' },
     'basic-annual':  { name: 'Basic', cycle: 'Annual',  amount: 990,  amountStr: '₹990', emoji: '✨', tier: 'basic', cycleKey: 'annual' },
-    'pro-monthly':   { name: 'Pro',   cycle: 'Monthly', amount: 149,  amountStr: '₹149', emoji: '⭐', tier: 'pro',   cycleKey: 'monthly' },
-    'pro-annual':    { name: 'Pro',   cycle: 'Annual',  amount: 1490, amountStr: '₹1,490', emoji: '⭐', tier: 'pro',   cycleKey: 'annual' },
-    'king-monthly':  { name: 'King',  cycle: 'Monthly', amount: 399,  amountStr: '₹399', emoji: '👑', tier: 'king',  cycleKey: 'monthly' },
-    'king-annual':   { name: 'King',  cycle: 'Annual',  amount: 3990, amountStr: '₹3,990', emoji: '👑', tier: 'king',  cycleKey: 'annual' }
+    'pro-monthly':   { name: 'Pro',   cycle: 'Monthly', amount: 499,  amountStr: '₹499', emoji: '⭐', tier: 'pro',   cycleKey: 'monthly' },
+    'pro-annual':    { name: 'Pro',   cycle: 'Annual',  amount: 4990, amountStr: '₹4,990', emoji: '⭐', tier: 'pro',   cycleKey: 'annual' },
+    'king-monthly':  { name: 'King',  cycle: 'Monthly', amount: 799,  amountStr: '₹799', emoji: '👑', tier: 'king',  cycleKey: 'monthly' },
+    'king-annual':   { name: 'King',  cycle: 'Annual',  amount: 7990, amountStr: '₹7,990', emoji: '👑', tier: 'king',  cycleKey: 'annual' }
   };
 
   /* Generate a unique reference number per attempt — used to track payments */
@@ -74698,7 +74704,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
     <div class="hnd-lock-actions">
       <button class="hnd-lock-cta" id="hnd-lock-cta-subscribe" type="button">
         <span style="font-size:18px">⚡</span>
-        See plans · From ₹199/month
+        See plans · From ₹499/month
       </button>
       <button class="hnd-lock-secondary" id="hnd-lock-cta-whatsapp" type="button">Need help? WhatsApp us</button>
     </div>
@@ -74999,13 +75005,13 @@ html[data-shell="desktop"] #pg-settings .toggle {
   /* ═══════════════════════════════════════════════════════
      FIX 4 · Subscription Plans port (from hisaabnow.com)
      Overrides Step T's PLAN_DETAILS with the website's
-     authoritative pricing: Pro (₹499/₹4,190) and
-     Business (₹799/₹6,710).
+     authoritative pricing: Pro (₹499/mo · ₹4,990/yr) and
+     King (₹799/mo · ₹7,990/yr) — annual = 2 months free.
   ═══════════════════════════════════════════════════════ */
-  /* (v33_306) Desktop plans use the SAME grandfathering-aware pricing as mobile (App._pricing()). */
+  /* (v33_306) Desktop plans use the SAME pricing source as mobile (App._pricing()). */
   function _hndInr(n){ return Number(n||0).toLocaleString('en-IN'); }
   function buildPlansV2(){
-    var P = (window.App && App._pricing) ? App._pricing() : { pro:{m:199,y:1990}, king:{m:299,y:2990} };
+    var P = (window.App && App._pricing) ? App._pricing() : { pro:{m:499,y:4990}, king:{m:799,y:7990} };
     return {
       'pro-monthly':      { name:'Pro',  cycle:'Monthly', amount:P.pro.m,  amountStr:'₹'+_hndInr(P.pro.m),  emoji:'⭐', tier:'pro',      cycleKey:'monthly', save:null },
       'pro-annual':       { name:'Pro',  cycle:'Annual',  amount:P.pro.y,  amountStr:'₹'+_hndInr(P.pro.y),  emoji:'⭐', tier:'pro',      cycleKey:'annual',  save:'₹'+_hndInr(P.pro.m*12 - P.pro.y) },
@@ -75091,10 +75097,11 @@ html[data-shell="desktop"] #pg-settings .toggle {
           + '</div>'
         + '</div>';
 
-      var proPrice = cycle === 'monthly' ? '99' : '990';
-      var proSub = cycle === 'monthly' ? 'per month · billed monthly' : 'per year · ₹83/month effective';
-      var proSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹198/year vs monthly</div>' : '';
-      var proWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹1,188</span>' : '';
+      var _P = (window.App && App._pricing) ? App._pricing() : { pro:{m:499,y:4990,mMrp:499,yMrp:5988}, king:{m:799,y:7990,mMrp:799,yMrp:9588} };
+      var proPrice = _hndInr(cycle === 'monthly' ? _P.pro.m : _P.pro.y);
+      var proSub = cycle === 'monthly' ? 'per month · billed monthly' : ('per year · ₹' + _hndInr(Math.round(_P.pro.y / 12)) + '/month effective');
+      var proSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹' + _hndInr(_P.pro.m * 12 - _P.pro.y) + '/year vs monthly</div>' : '';
+      var proWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹' + _hndInr(_P.pro.yMrp || _P.pro.m * 12) + '</span>' : '';
       var proKey = 'pro-' + cycle;
       var proCard = ''
         + '<div class="hnd-plan-card featured">'
@@ -75132,10 +75139,10 @@ html[data-shell="desktop"] #pg-settings .toggle {
           + '</div>'
         + '</div>';
 
-      var bizPrice = cycle === 'monthly' ? '199' : '1,990';
-      var bizSub = cycle === 'monthly' ? 'per month · billed monthly' : 'per year · ₹166/month effective';
-      var bizSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹398/year vs monthly</div>' : '';
-      var bizWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹2,388</span>' : '';
+      var bizPrice = _hndInr(cycle === 'monthly' ? _P.king.m : _P.king.y);
+      var bizSub = cycle === 'monthly' ? 'per month · billed monthly' : ('per year · ₹' + _hndInr(Math.round(_P.king.y / 12)) + '/month effective');
+      var bizSave = cycle === 'annual' ? '<div class="hnd-plan-save">Save ₹' + _hndInr(_P.king.m * 12 - _P.king.y) + '/year vs monthly</div>' : '';
+      var bizWas = cycle === 'annual' ? '<span class="hnd-plan-was">₹' + _hndInr(_P.king.yMrp || _P.king.m * 12) + '</span>' : '';
       var bizKey = 'business-' + cycle;
       var bizCard = ''
         + '<div class="hnd-plan-card">'
@@ -91071,7 +91078,7 @@ var KB=[
     { k:['insight','insights','munim','advisor','ai advisor','tips','suggestion','business advice','salah','ai insight','best seller','trend','recommendation'], a:L('As you bill, your AI Business Advisor surfaces best sellers, slow days, low stock and concrete ways to earn more — see them under AI Insights on the dashboard.','जैसे-जैसे आप bill बनाते हैं, आपका AI Business Advisor best sellers, सुस्त दिन, कम stock और कमाई बढ़ाने के तरीके बताता है — dashboard पर AI Insights में देखें।'),act:{label:LC('See AI Insights','AI Insights देखें'),go:'munim'} },
     { k:['voice','voice billing','bol kar','aawaz','mic','speak','say items','bolkar bill','voice se','microphone'], a:L('On the New Sale screen tap the mic and just say the items — the app adds them to the bill. It understands Hindi and English and works best in Chrome.','New Sale screen पर mic दबाकर items बोलें — app उन्हें bill में add कर देता है। ये Hindi और English दोनों समझता है, और Chrome में सबसे अच्छा चलता है।'),act:{label:LC('Try voice billing','Voice billing करें'),go:'newsale'} },
     { k:['multi shop','multiple shops','add shop','switch shop','another shop','branch','second shop','my businesses','dusri dukan','more shops'], a:L('You can run more than one shop from the same account. Open My Businesses to add a shop or switch between them — each keeps its own products, bills and reports.','एक ही account से एक से ज़्यादा shop चला सकते हैं। My Businesses खोलकर shop जोड़ें या बदलें — हर shop के अपने products, bills और reports रहते हैं।'),act:{label:LC('My Businesses','My Businesses खोलें'),go:'my-businesses'} },
-    { k:['plan','plans','subscription','pro','king','upgrade','price','cost','kitne ka','membership','trial','free','validity','renew','pricing'], a:L('It\'s free for 7 days, no card needed. After that Pro is ₹199/month (₹1,990/year) and King is ₹299/month (₹2,990/year). Open Subscription to see the plans and upgrade.','7 दिन बिल्कुल free, कोई card नहीं। उसके बाद Pro ₹199/month (₹1,990/साल) और King ₹299/month (₹2,990/साल)। Plans देखने और upgrade के लिए Subscription खोलें।'),act:{label:LC('See plans','Plans देखें'),go:'subscriptions'} },
+    { k:['plan','plans','subscription','pro','king','upgrade','price','cost','kitne ka','membership','trial','free','validity','renew','pricing'], a:L('It\'s free for 7 days, no card needed. After that Pro is ₹499/month (₹4,990/year) and King is ₹799/month (₹7,990/year) — the annual plan gives you 2 months free. Open Subscription to see the plans and upgrade.','7 दिन बिल्कुल free, कोई card नहीं। उसके बाद Pro ₹499/month (₹4,990/साल) और King ₹799/month (₹7,990/साल) — सालाना प्लान में 2 महीने free। Plans देखने और upgrade के लिए Subscription खोलें।'),act:{label:LC('See plans','Plans देखें'),go:'subscriptions'} },
     { k:['payment fail','subscription payment','paid but not activated','upgrade failed','payu','payment problem','plan activate','renew fail','transaction'], a:L('If a subscription payment went through but your plan didn\'t activate, give it a minute and reopen Subscription — it re-checks automatically. If it\'s still off, your payment is safe and it\'ll relink to your phone number on next sign-in.','अगर subscription payment हो गया पर plan activate नहीं हुआ, एक मिनट रुककर Subscription दोबारा खोलें — ये अपने-आप दोबारा check करता है। फिर भी न हो तो आपका payment safe है और अगली sign-in पर आपके नंबर से जुड़ जाएगा।'),act:{label:LC('Open Subscription','Subscription खोलें'),go:'subscriptions'} },
     { k:['login','sign in','otp','phone number','account','log out','signin','change phone','number change','re-login','sign up'], a:L('You sign in with your phone number and a one-time OTP — no password to remember. Signing in on a new phone restores all your data automatically.','आप अपने phone number और एक OTP से sign in करते हैं — कोई password याद रखने की ज़रूरत नहीं। नए फोन पर sign in करते ही आपका सारा data वापस आ जाता है।'),act:{label:LC('Open Settings','Settings खोलें'),go:'settings'} },
     { k:['backup','data','safe','restore','cloud','lost data','phone change','data safe','backup kaha','recover','data loss','sync'], a:L('Your data saves on the phone instantly and backs up to the cloud, so nothing is lost even if your phone breaks — just sign in again on the new phone to restore everything.','आपका data फोन पर तुरंत save और cloud पर backup होता है, फोन टूटने पर भी कुछ नहीं खोता — नए फोन पर बस फिर से sign in करें, सब वापस आ जाएगा।') },
@@ -102470,8 +102477,8 @@ html[data-shell="desktop"] .hnd-help-btn{display:none !important;}</style>
 
 <!-- ═══════════ HISAABNOW · DESKTOP PLANS — REAL PRICING + FEATURESET · v33_337d ═══════════
      Fixes the desktop "Choose a plan" modal:
-     - prices now come from App._pricing() (Pro ₹199/₹1,990, King ₹299/₹2,990,
-       grandfathering-aware) instead of the old hardcoded ₹99 / ₹199
+     - prices now come from App._pricing() (Pro ₹499/₹4,990, King ₹799/₹7,990,
+       annual = 2 months free; one table for all users) instead of hardcoded values
      - features are now VERTICAL-AWARE (restaurant shows the restaurant Pro/King
        featureset), matching the mobile paywall
      Overrides window.HND.plans.render — display and charge now use one source. -->
@@ -102516,7 +102523,7 @@ html[data-shell="desktop"] .hnd-help-btn{display:none !important;}</style>
     PM.__featHooked = true;
     PM.render = function(){
       var cycle = this.cycle || 'monthly';
-      var P = (window.App && App._pricing) ? App._pricing() : { pro:{m:199,y:1990,mMrp:299,yMrp:3588}, king:{m:299,y:2990,mMrp:399,yMrp:4788} };
+      var P = (window.App && App._pricing) ? App._pricing() : { pro:{m:499,y:4990,mMrp:499,yMrp:5988}, king:{m:799,y:7990,mMrp:799,yMrp:9588} };
       var v = vert();
       var pw = PRO_WYG[v] || PRO_WYG._default;
       var kp = KING_PLUS[v] || KING_PLUS._default;
