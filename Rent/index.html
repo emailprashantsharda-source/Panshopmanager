@@ -199,6 +199,11 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   text-align:right;font-variant-numeric:tabular-nums;padding:0;height:100%}
 .rt-in input::-webkit-outer-spin-button,
 .rt-in input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+/* Belt and braces: should a placeholder ever be reintroduced here, it must not
+   be able to pass for a typed figure again. */
+.rt-in input::placeholder{color:var(--t4);opacity:.5;font-weight:500;font-size:13px}
+/* An empty required box is worth seeing before the save button refuses. */
+.rt-in.miss{border-color:var(--danger);background:var(--danger-tint)}
 .rt-sep{font-size:10.5px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;
   color:var(--t4);margin:11px 0 3px}
 .rt-hint{font-size:11.5px;color:var(--t3);line-height:1.5;margin-top:10px}
@@ -591,7 +596,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_16_0_ratecard';
+const BUILD = 'rn_v3_16_2_ratecard';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2017,27 +2022,38 @@ const R = {
   rateFields(pfx, rc){
     rc = rc || {};
     const t = rc.tiers || {};
-    const row = (id, label, val, req, ph) => `
+    /* No placeholder. A grey "700" sitting right-aligned in a price field is
+       indistinguishable from a real 700 at arm's length on a cream card — the
+       first person to use this filled nothing in, saw every row apparently
+       complete, and got told to enter the 24-hour rate. Example prices live in
+       the hint line underneath instead, where they cannot be mistaken for
+       data. */
+    const row = (id, label, val, req) => `
       <div class="rt-row">
         <label class="rt-l" for="${pfx}-${id}">${label}${req?' <span class="req">*</span>':''}</label>
         <div class="rt-in"><span>\u20B9</span>
           <input id="${pfx}-${id}" type="number" inputmode="numeric" enterkeyhint="next"
-            value="${val?val:''}" placeholder="${ph}"></div>
+            value="${val?val:''}"></div>
       </div>`;
     return `
       <div class="rt">
-        ${row('dep','Deposit you take', rc.deposit, false, '800')}
+        ${row('dep','Deposit', rc.deposit, false)}
         <div class="rt-sep">Rent by</div>
-        ${row('h3','3 hours',  t.h3,  false, '150')}
-        ${row('h6','6 hours',  t.h6,  false, '300')}
-        ${row('h12','12 hours',t.h12, false, '450')}
-        ${row('h24','24 hours',t.h24, true,  '700')}
-        ${row('d7','7 days',   t.d7,  false, '3500')}
+        ${row('h3','3 hours',  t.h3,  false)}
+        ${row('h6','6 hours',  t.h6,  false)}
+        ${row('h12','12 hours',t.h12, false)}
+        ${row('h24','24 hours',t.h24, true)}
+        ${row('d7','7 days',   t.d7,  false)}
         <div class="rt-sep">If they are late</div>
-        ${row('ot','Overtime, per hour', rc.ot, true, '50')}
-        <div class="rt-hint">Fill only the ones you actually rent by. 24 hours and
-          overtime are the two the app cannot work without \u2014 leave the others blank
-          and they simply will not be offered at the counter.</div>
+        ${row('ot','Overtime / hour', rc.ot, true)}
+        <!-- No example figures anywhere on this form. A number printed near an
+             empty price box gets read as the price, whether it sits inside the
+             box or under it. Every rate here comes from the shop and nowhere
+             else. -->
+        <div class="rt-hint">
+          Fill only the ones you actually rent by \u2014 blank ones are not offered at the
+          counter. <b>24 hours</b> and <b>overtime</b> are the two the app cannot work without.
+        </div>
       </div>`;
   },
   /* Reads whatever rateFields(pfx) wrote. Returns null with a toast if the two
@@ -2045,9 +2061,17 @@ const R = {
   readRate(pfx){
     const g = i => document.getElementById(pfx + '-' + i);
     const n = i => Number((g(i)||{}).value) || 0;
+    /* Point at the box, do not just complain. A toast saying "enter the 24-hour
+       rate" while the row looks the same as every other row is how someone ends
+       up certain they already filled it in. */
+    const flag = i => { const el = g(i); if (el && el.parentElement){
+      el.parentElement.classList.add('miss'); el.focus(); } };
+    const clear = () => ['dep','h3','h6','h12','h24','d7','ot'].forEach(i => {
+      const el = g(i); if (el && el.parentElement) el.parentElement.classList.remove('miss'); });
+    clear();
     const d24 = n('h24'), ot = n('ot');
-    if (!(d24 > 0)) { toast('Enter what you charge for 24 hours'); return null; }
-    if (!(ot > 0))  { toast('Enter the overtime rate \u2014 it is what late returns cost you'); return null; }
+    if (!(d24 > 0)) { flag('h24'); Haptic.error(); toast('Enter what you charge for 24 hours'); return null; }
+    if (!(ot > 0))  { flag('ot');  Haptic.error(); toast('Enter the overtime rate \u2014 it is what late returns cost you'); return null; }
     return { deposit: n('dep'), ot: ot,
              tiers: { h3:n('h3'), h6:n('h6'), h12:n('h12'), h24:d24, d7:n('d7') } };
   },
