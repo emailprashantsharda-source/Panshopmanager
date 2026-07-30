@@ -628,7 +628,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_18_0_nav';
+const BUILD = 'rn_v3_18_1_nav';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1680,12 +1680,14 @@ const R = {
     /* Dim it when there is genuinely nothing to rent, rather than letting a
        shopkeeper tap the biggest button on screen and be told no. */
     const cta = document.getElementById('nv-cta');
-    /* Dimmed on every tab now, not just Out Now, since the button means the same
-       thing everywhere. But NOT dimmed when the yard is empty — there it opens
-       "Add your first bike", which is the most useful thing on the screen. */
-    const veh = (DB.d.vehicles||[]).filter(v=>!v.deletedAt);
-    if (cta) cta.classList.toggle('off',
-      veh.length > 0 && !veh.some(v=>v.status==='available'));
+    /* Never dimmed. It used to grey out whenever no bike was available, which
+       for a one- or two-bike shop is most of the working day — the button went
+       dead exactly when the app was doing its job, and a dead primary action
+       reads as a broken app rather than a considerate one.
+       
+       checkoutStart() already refuses politely and says why, which is a better
+       answer than a grey circle that says nothing. */
+    if (cta) cta.classList.remove('off');
     if (this.page==='out') this.renderOut();
     if (this.page==='fleet') this.renderFleet();
     if (this.page==='rates') this.renderRates();
@@ -2643,7 +2645,12 @@ const R = {
     if (!this.canRentOut()) return toast('Trial ended — returns still work. Tap "Talk to us" to continue.');
     const avail = DB.d.vehicles.filter(v=>v.status==='available');
     if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a bike first — rates are only prices, not bikes'); }
-    if (!avail.length) return toast('No vehicles available — everything is out');
+    if (!avail.length){
+      /* Say what to do, not just what is wrong. With everything out, the next
+         useful action is taking one back. */
+      this.nav('out');
+      return toast('Every bike is out — check one in to free it up');
+    }
     openSheet(`
       <div class="sheet-hd"><h2>Rent out</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
