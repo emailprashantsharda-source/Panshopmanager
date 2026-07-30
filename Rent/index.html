@@ -174,6 +174,19 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .kpi.liab{background:var(--y-tint);border-color:var(--y-bd)}
 
 /* ── pills / badges ────────────────────────────────────── */
+/* ── suggestion chips ──────────────────────────────────────
+   These were rendered with class="chip", which did not exist in this
+   stylesheet at all — so thirteen spans collapsed into one line of
+   run-together words that read exactly like a preloaded list of bikes.
+   Nothing was being loaded; the buttons simply had no styling. */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 0}
+.chip{background:var(--card);border:1.5px solid var(--bd);border-radius:99px;
+  padding:8px 13px;font-size:13px;font-weight:750;color:var(--t2);
+  white-space:nowrap;cursor:pointer;user-select:none;
+  transition:transform .08s ease,background .12s,border-color .12s,color .12s}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--p);border-color:var(--p);color:#fff}
+
 .pill{
   display:inline-flex;align-items:center;gap:5px;border-radius:99px;
   padding:3px 9px;font-size:11px;font-weight:800;letter-spacing:.01em;
@@ -554,7 +567,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_15_0_prod';
+const BUILD = 'rn_v3_15_1_chips';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2015,7 +2028,13 @@ const R = {
   },
   pickModel(m){
     const el = document.getElementById('fb-name') || document.getElementById('v-name');
-    if (el){ el.value = m; el.focus(); }
+    if (el){ el.value = m; }
+    /* Mark the tapped chip so the choice is visible after the keyboard covers
+       the field. Not focusing the input on purpose: on Android that throws the
+       keyboard up and hides the rest of the sheet, and the shop still has a
+       deposit and two prices to fill in below. */
+    document.querySelectorAll('.chip').forEach(c =>
+      c.classList.toggle('on', (c.textContent||'').trim() === m));
     Haptic.tap();
   },
   saveFirstBike(){
