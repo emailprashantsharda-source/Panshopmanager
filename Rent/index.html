@@ -550,7 +550,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_12_3_fleetadd';
+const BUILD = 'rn_v3_13_0_rateprompt';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -780,6 +780,7 @@ const R = {
     /* watermark removed — build number lives in the Account sheet */
     this.render();
     this.payuReturnCheck();
+    this.planDeepLink();
     setInterval(()=>{ if (this.page==='out') this.renderOut(); }, 60000);
   },
 
@@ -1288,7 +1289,9 @@ const R = {
         } else if (isSug){
           cls = '';
         }
-        return `<div class="pl ${isCur?'cur':(isSug?'sug':'')}">
+        const wanted = this._wantPlan === p.id;
+        return `<div class="pl ${isCur?'cur':(isSug?'sug':'')}"${wanted
+          ? ' style="outline:2.5px solid var(--y);outline-offset:2px"' : ''}>
           ${isCur?'<div class="pl-tag cur">YOUR PLAN</div>'
                  :(isSug?'<div class="pl-tag">Fits your fleet</div>':'')}
           <div class="row">
@@ -1446,6 +1449,34 @@ const R = {
   /* Coming back from PayU: say what happened. The webhook is the source of
      truth, so a success here is confirmed by the shop document updating —
      we do not take the redirect's word for it. */
+  /* ?plan=growth&cycle=annual — arriving from a pricing card on the landing
+     page. Opens the Plans sheet with that billing period already chosen and
+     the plan marked, rather than dropping someone who just tapped a price on
+     a dashboard with no mention of it.
+
+     It deliberately does NOT jump to PayU. A visitor from a marketing page may
+     not have signed in, may not have a shop yet, and has certainly not agreed
+     to be charged by tapping a price on a webpage. */
+  planDeepLink(){
+    try {
+      const q = new URLSearchParams(location.search);
+      const want = String(q.get('plan') || '').toLowerCase();
+      if (!want) return;
+      const cyc = String(q.get('cycle') || 'annual').toLowerCase();
+      history.replaceState({}, '', location.pathname);
+      if (!this.planById(want)) return;
+      this._billing = /month/.test(cyc) ? 'm' : 'y';
+      this._wantPlan = want;
+      /* Waits for sign-in. Cloud.ready is false while the OTP gate is up, and
+         a plans sheet over the phone-number screen helps nobody. */
+      const open = () => {
+        if (!(window.Cloud && Cloud.ready)) return setTimeout(open, 600);
+        this.plans();
+      };
+      setTimeout(open, 900);
+    } catch(e){ console.warn('planDeepLink', e); }
+  },
+
   payuReturnCheck(){
     try {
       const q = new URLSearchParams(location.search);
@@ -1644,7 +1675,16 @@ const R = {
     /* Top of the list, not the bottom. It was at the end and a shop with more
        bikes than fit on screen never saw it — which is the whole point of the
        button, since the FAB was already there for anyone who had found it. */
-    const hdr = `<div class="muted" style="margin:0 2px 10px">
+    /* One count at the top beats discovering it bike by bike. ratesPending()
+       already exists for exactly this and is what the Rates tab badges. */
+    const pending = this.ratesPending();
+    const hdr = (pending ? `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-bottom:11px">
+        <b style="font-size:13.5px">${pending} rate card${pending===1?'':'s'} still at \u20B90</b>
+        <div class="muted" style="margin-top:3px">A bike cannot be rented out until its rate is
+        set. Photograph your printed price list and the app can read them in.</div>
+        <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.nav('rates')">Open Rates</button>
+      </div>` : '') +
+      `<div class="muted" style="margin:0 2px 10px">
         One bike per row. Rename it, add a vehicle number, or add a second bike
         of the same model from Rates.</div>
       <button class="btn" style="margin-bottom:12px" onclick="R.editVehicle()">
@@ -1677,10 +1717,23 @@ const R = {
               <b class="ell" style="font-size:15.5px">${esc(vLabel(v))}</b>
               <span class="pill ${pill}">${v.status.toUpperCase()}</span>
               ${docs ? `<span class="pill warn">${esc(docs)}</span>` : ''}
+              ${rc && !this.rateReady(rc) ? `<span class="pill late">NO RATE</span>` : ''}
             </div>
             <div class="muted ell" style="margin-top:2px">
-              ${esc(vSub(v))||esc(v.model)}${rc?' · deposit '+money(rc.deposit):' · no rate card'}
-            </div>
+              ${esc(vSub(v))||esc(v.model)}${
+                !rc ? ' · no rate card'
+                : (this.rateReady(rc) ? ' · deposit '+money(rc.deposit) : '')
+              }</div>
+            ${rc && !this.rateReady(rc) ? `
+            <!-- The prompt sits where the problem was noticed, and goes straight
+                 to the rate card rather than to the Rates list. stopPropagation
+                 because the whole card already opens the bike editor, and a
+                 thumb aiming at this should not land there instead. -->
+            <div class="muted" style="margin-top:4px;color:var(--danger)">
+              Rate not set \u2014 this bike cannot go out.
+              <span style="font-weight:850;text-decoration:underline"
+                onclick="event.stopPropagation();R.editRate('${rc.id}')">Set rate</span>
+            </div>` : ''}
             <div class="muted" style="margin-top:4px">
               Earned ${money(earned)}${v.cost?' of '+money(v.cost)+' cost':''}
               ${r?' · out, due '+fmtDT(r.dueAt):''}
@@ -1737,7 +1790,14 @@ const R = {
     const v = id ? DB.d.vehicles.find(x=>x.id===id) : null;
     const sel = v ? v.rateId : (preRate||'');
     const opts = DB.d.rates.map(r=>
-      `<option value="${r.id}" ${sel===r.id?'selected':''}>${esc(r.model)} · dep ${money(r.deposit)}</option>`).join('');
+      /* A seeded rate card is all zeros, so "dep ₹0" is accurate and useless —
+         it reads as "this bike needs no deposit" when it means "nobody has told
+         me the price yet". rateReady() is the same test that blocks renting the
+         bike out, so the dropdown, the fleet card and the counter now agree on
+         what "set" means. */
+      `<option value="${r.id}" ${sel===r.id?'selected':''}>${esc(r.model)} · ${
+        this.rateReady(r) ? 'dep ' + money(r.deposit) : 'rate not set'
+      }</option>`).join('');
     openSheet(`
       <div class="sheet-hd"><h2>${v?'Edit bike':'Add bike'}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
