@@ -628,7 +628,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_17_1_audit';
+const BUILD = 'rn_v3_18_0_nav';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1659,17 +1659,19 @@ const R = {
 
   topAction(){
     Haptic.primary();
-    if (this.page === 'fleet') return this.editVehicle();
-    if (this.page === 'rates') return this.editRate();
-    /* Nothing rentable yet: send him to the thing that has to happen first
-       rather than opening a checkout sheet that can only fail. */
+    /* Renting out, from wherever the shop is standing. Adding a bike or a rate
+       lives at the top of the list it belongs to, not in the nav. */
     if (!(DB.d.vehicles||[]).filter(v=>!v.deletedAt).length) return this.firstBike();
     return this.checkoutStart();
   },
 
   render(){
     const titles = { out:'Out Now', fleet:'Fleet', rates:'Rate cards', money:'Money' };
-    const acts   = { out:'Rent out', fleet:'Add bike', rates:'Add rate', money:'Rent out' };
+    /* One meaning on every tab. It used to read Add bike on Fleet and Add rate
+       on Rates — duplicating the button already at the top of those lists, and
+       leaving the only action that earns money reachable from two tabs out of
+       four. The permanent control gets the permanent job. */
+    const acts   = { out:'Rent out', fleet:'Rent out', rates:'Rent out', money:'Rent out' };
     document.getElementById('top-title').textContent = titles[this.page];
     const biz = document.getElementById('top-biz');
     if (biz) biz.textContent = (window.Cloud && Cloud.shopName) || 'RentalNow';
@@ -1678,8 +1680,12 @@ const R = {
     /* Dim it when there is genuinely nothing to rent, rather than letting a
        shopkeeper tap the biggest button on screen and be told no. */
     const cta = document.getElementById('nv-cta');
+    /* Dimmed on every tab now, not just Out Now, since the button means the same
+       thing everywhere. But NOT dimmed when the yard is empty — there it opens
+       "Add your first bike", which is the most useful thing on the screen. */
+    const veh = (DB.d.vehicles||[]).filter(v=>!v.deletedAt);
     if (cta) cta.classList.toggle('off',
-      this.page==='out' && !(DB.d.vehicles||[]).some(v=>v.status==='available'));
+      veh.length > 0 && !veh.some(v=>v.status==='available'));
     if (this.page==='out') this.renderOut();
     if (this.page==='fleet') this.renderFleet();
     if (this.page==='rates') this.renderRates();
@@ -1946,11 +1952,11 @@ const R = {
           </div>
         </div>
       </div>`;
-    }).join('') +
-      /* And once more at the end, quieter, for the shop that has just finished
-         reading down its fleet. */
-      `<button class="btn ghost" style="margin-top:4px" onclick="R.editVehicle()">
-         + Add another bike</button>`;
+    }).join('');
+      /* The second Add button at the end of the list is gone. It existed because
+         the first one was hard to find at the bottom; the first one now sits at
+         the top, and two of them four centimetres apart on a one-bike fleet was
+         the result. */
   },
 
   docWarn(v){
@@ -2398,7 +2404,13 @@ const R = {
   renderRates(){
     const box = document.getElementById('rates-list');
     box.innerHTML =
-      (this.isOwner() ? `<button class="btn" style="margin-bottom:12px" onclick="R.scanRates()">
+      /* The centre button used to be the only way to create a rate card. Now
+         that it always means Rent out, Rates carries its own — otherwise the
+         screen becomes read-only for anyone who has not memorised the old
+         behaviour. */
+      (this.isOwner() ? `<button class="btn" style="margin-bottom:9px" onclick="R.editRate()">
+          + New rate card</button>
+        <button class="btn ghost" style="margin-bottom:12px" onclick="R.scanRates()">
           📷 Read my price list from a photo</button>` : '') +
       `<div class="muted" style="margin:0 2px 12px">Tap a card to edit. Rates are copied onto each
         rental at check-out, so changing a price never re-prices a bike that is already out.</div>` +
