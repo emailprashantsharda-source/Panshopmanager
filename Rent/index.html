@@ -179,6 +179,30 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
    stylesheet at all — so thirteen spans collapsed into one line of
    run-together words that read exactly like a preloaded list of bikes.
    Nothing was being loaded; the buttons simply had no styling. */
+/* ── rate entry ────────────────────────────────────────────
+   Rows, not a grid: label left, amount right, in the order a printed rate
+   card lists them. A shop can start at the top and tab straight down with
+   the keyboard's Next key, which is the fastest way to type six numbers on
+   a phone. Right-aligned tabular figures so the column of prices lines up
+   and a typo in the hundreds is obvious at a glance. */
+.rt{margin-top:8px}
+.rt-row{display:flex;align-items:center;gap:10px;padding:7px 0;
+  border-bottom:1px solid rgba(0,0,0,.055)}
+.rt-row:last-of-type{border-bottom:0}
+.rt-l{flex:1;min-width:0;font-size:13.5px;font-weight:750;color:var(--t2)}
+.rt-in{flex:0 0 116px;display:flex;align-items:center;gap:5px;background:#fff;
+  border:1.5px solid var(--bd);border-radius:10px;padding:0 10px;height:42px}
+.rt-in:focus-within{border-color:var(--y);box-shadow:0 0 0 3px rgba(245,166,35,.15)}
+.rt-in span{font-size:13px;font-weight:800;color:var(--t4)}
+.rt-in input{flex:1;min-width:0;border:0;outline:0;background:transparent;
+  font-family:inherit;font-size:15.5px;font-weight:850;color:var(--t1);
+  text-align:right;font-variant-numeric:tabular-nums;padding:0;height:100%}
+.rt-in input::-webkit-outer-spin-button,
+.rt-in input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.rt-sep{font-size:10.5px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--t4);margin:11px 0 3px}
+.rt-hint{font-size:11.5px;color:var(--t3);line-height:1.5;margin-top:10px}
+
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 0}
 .chip{background:var(--card);border:1.5px solid var(--bd);border-radius:99px;
   padding:8px 13px;font-size:13px;font-weight:750;color:var(--t2);
@@ -567,7 +591,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_15_1_chips';
+const BUILD = 'rn_v3_16_0_ratecard';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1922,18 +1946,11 @@ const R = {
              shop adding its second model has one rate card and no reason to
              know that a rate card is a separate thing from a bike. -->
         <div id="v-newrate" style="display:none">
-          <div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-top:10px">
+          <div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-top:10px;padding:13px 12px">
             <b style="font-size:13.5px">Price for this model</b>
-            <div class="muted" style="margin-top:2px">Hourly and weekly rates can wait \u2014 add them
-              in Rates when you need them.</div>
-            <div class="fld"><label class="lbl">Deposit you take</label>
-              <input class="in" id="v-nr-dep" type="number" inputmode="numeric" placeholder="\u20B9 800"></div>
-            <div class="two">
-              <div class="fld"><label class="lbl">24 hours <span class="req">*</span></label>
-                <input class="in" id="v-nr-24" type="number" inputmode="numeric" placeholder="\u20B9 700"></div>
-              <div class="fld"><label class="lbl">Overtime / hr <span class="req">*</span></label>
-                <input class="in" id="v-nr-ot" type="number" inputmode="numeric" placeholder="\u20B9 50"></div>
-            </div>
+            <div class="muted" style="margin:2px 0 4px">Every bike you point at this rate card
+              charges the same.</div>
+            ${this.rateFields('vnr', null)}
           </div>
         </div>
         ${anyReady ? '' : `
@@ -1984,6 +2001,57 @@ const R = {
     btn.innerHTML = (open ? 'More details' : 'Hide details') + ' <span class="muted">— optional</span>';
   },
 
+  /* ── rate entry ───────────────────────────────────────────────────
+     One definition, used by the first-bike sheet and by the inline
+     "+ New rate" in Add bike. Two copies of a price form is how the two
+     drift apart and one of them quietly stops saving the 7-day rate.
+
+     Laid out as rows rather than a grid: label left, amount right, in the
+     order a printed rate card lists them. A shop can start at the top and
+     tab straight down with the keyboard's Next key, which is the fastest way
+     to enter six numbers on a phone.
+
+     Only 24 hr and overtime are required. The rest are the tiers this shop
+     may simply not rent by, and demanding five numbers before a bike can
+     exist is what made the old screen feel like paperwork. */
+  rateFields(pfx, rc){
+    rc = rc || {};
+    const t = rc.tiers || {};
+    const row = (id, label, val, req, ph) => `
+      <div class="rt-row">
+        <label class="rt-l" for="${pfx}-${id}">${label}${req?' <span class="req">*</span>':''}</label>
+        <div class="rt-in"><span>\u20B9</span>
+          <input id="${pfx}-${id}" type="number" inputmode="numeric" enterkeyhint="next"
+            value="${val?val:''}" placeholder="${ph}"></div>
+      </div>`;
+    return `
+      <div class="rt">
+        ${row('dep','Deposit you take', rc.deposit, false, '800')}
+        <div class="rt-sep">Rent by</div>
+        ${row('h3','3 hours',  t.h3,  false, '150')}
+        ${row('h6','6 hours',  t.h6,  false, '300')}
+        ${row('h12','12 hours',t.h12, false, '450')}
+        ${row('h24','24 hours',t.h24, true,  '700')}
+        ${row('d7','7 days',   t.d7,  false, '3500')}
+        <div class="rt-sep">If they are late</div>
+        ${row('ot','Overtime, per hour', rc.ot, true, '50')}
+        <div class="rt-hint">Fill only the ones you actually rent by. 24 hours and
+          overtime are the two the app cannot work without \u2014 leave the others blank
+          and they simply will not be offered at the counter.</div>
+      </div>`;
+  },
+  /* Reads whatever rateFields(pfx) wrote. Returns null with a toast if the two
+     required numbers are missing, so both callers fail the same way. */
+  readRate(pfx){
+    const g = i => document.getElementById(pfx + '-' + i);
+    const n = i => Number((g(i)||{}).value) || 0;
+    const d24 = n('h24'), ot = n('ot');
+    if (!(d24 > 0)) { toast('Enter what you charge for 24 hours'); return null; }
+    if (!(ot > 0))  { toast('Enter the overtime rate \u2014 it is what late returns cost you'); return null; }
+    return { deposit: n('dep'), ot: ot,
+             tiers: { h3:n('h3'), h6:n('h6'), h12:n('h12'), h24:d24, d7:n('d7') } };
+  },
+
   /* ── first bike ──────────────────────────────────────────────────
      A rate card cannot be chosen before one exists, so the first bike collects
      its own price and writes both records together. Three price fields only:
@@ -2006,18 +2074,11 @@ const R = {
         <span class="muted">optional</span></label>
         <input class="in" id="fb-reg" placeholder="MP04 AB 1234" autocapitalize="characters"></div>
 
-      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd);padding:13px 12px">
         <b style="font-size:13.5px">What do you charge for it?</b>
-        <div class="muted" style="margin-top:2px">Just these three now. Hourly and weekly rates can
-          wait until you need them.</div>
-        <div class="fld"><label class="lbl">Deposit you take <span class="req">*</span></label>
-          <input class="in" id="fb-dep" type="number" inputmode="numeric" placeholder="\u20B9 800"></div>
-        <div class="two">
-          <div class="fld"><label class="lbl">24 hours <span class="req">*</span></label>
-            <input class="in" id="fb-24" type="number" inputmode="numeric" placeholder="\u20B9 700"></div>
-          <div class="fld"><label class="lbl">Overtime / hr <span class="req">*</span></label>
-            <input class="in" id="fb-ot" type="number" inputmode="numeric" placeholder="\u20B9 50"></div>
-        </div>
+        <div class="muted" style="margin:2px 0 4px">This becomes the rate card for every bike of
+          this model you add later.</div>
+        ${this.rateFields('fb', null)}
       </div>
 
       <button class="btn" onclick="R.saveFirstBike()">Save bike &amp; price</button>
@@ -2041,20 +2102,18 @@ const R = {
     const g = i => document.getElementById(i);
     const name = (g('fb-name').value||'').trim();
     const reg  = (g('fb-reg').value||'').trim().toUpperCase();
-    const dep  = Number(g('fb-dep').value)||0;
-    const d24  = Number(g('fb-24').value)||0;
-    const ot   = Number(g('fb-ot').value)||0;
     if (!name) return toast('Bike name is required');
-    if (!(d24 > 0)) return toast('Enter what you charge for 24 hours');
+    const rt = this.readRate('fb');
+    if (!rt) return;
+    const dep = rt.deposit, d24 = rt.tiers.h24;
     /* Deposit of zero is a legitimate choice — plenty of shops take none — so
-       it is not validated. A 24-hour price of zero is not, because rateReady()
-       would then refuse to let the bike out and we would be right back at the
-       screen this whole change exists to remove. */
+       it is not validated. A 24-hour price of zero is, because rateReady() would
+       then refuse to let the bike out and we would be back at the screen this
+       whole change exists to remove. */
     /* Same persistence path saveVehicle() and saveRate() use — Cloud.put when
        signed in, local push otherwise. Written by hand rather than reused
        because the rate card must land before the vehicle that points at it. */
-    const rateRec = { model: name, deposit: dep,
-                      tiers:{ h3:0, h6:0, h12:0, h24:d24, d7:0 }, ot: ot };
+    const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot };
     if (window.Cloud && Cloud.ready){
       const rid = Cloud.nid('rc');
       const vehRec = { name, regNo: reg, rateId: rid, model: name,
@@ -2087,7 +2146,7 @@ const R = {
       /* Prefill the model name from the bike name — for a first bike of a model
          they are the same thing, and retyping it is friction for no reason. */
       const nm = document.getElementById('v-name');
-      const d24 = document.getElementById('v-nr-24');
+      const d24 = document.getElementById('vnr-h24');
       if (nm && d24 && !d24.value) d24.focus();
     }
   },
@@ -2103,13 +2162,9 @@ const R = {
        save with its id. Doing it here rather than in a second sheet keeps the
        name and number the shop already typed. */
     if (rateId === '__new'){
-      const g2 = i => document.getElementById(i);
-      const d24 = Number(g2('v-nr-24').value)||0;
-      const nrOt = Number(g2('v-nr-ot').value)||0;
-      const nrDep = Number(g2('v-nr-dep').value)||0;
-      if (!(d24 > 0)) return toast('Enter what you charge for 24 hours');
-      const rateRec = { model: name, deposit: nrDep,
-                        tiers:{ h3:0, h6:0, h12:0, h24:d24, d7:0 }, ot: nrOt };
+      const rt = this.readRate('vnr');
+      if (!rt) return;
+      const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot };
       if (window.Cloud && Cloud.ready){
         rateId = Cloud.nid('rc');
         Cloud.put('rates', rateId, rateRec).then(w => {
@@ -3915,16 +3970,15 @@ const Cloud = {
     this.ready = true;
     this.hap('success');
     this.hideGate();
-    /* A business with no models cannot rent anything out, which reads as a
-       broken app rather than an empty one. Fill it silently. */
-    setTimeout(() => {
-      try {
-        if (this.ready && this.role === 'owner'
-            && !((window.DB && window.DB.d && window.DB.d.rates) || []).length) {
-          this.seedCatalogue(true);
-        }
-      } catch(e){}
-    }, 2500);
+    /* There used to be a silent seedCatalogue() here, firing 2.5s after any
+       shop with no rate cards finished opening. It was the second of two
+       seeders — removing the one in createShop() did nothing, because this one
+       refilled the shop on the next open. Ten bikes kept coming back and it
+       looked like the fix had not deployed.
+       
+       Both are gone now. An empty shop stays empty and R.obCard() walks the
+       owner through setting it up, which is the honest version of "a business
+       with no models cannot rent anything out". */
     this.chip();
     await this.maybeMigrate();
     if (window.R) window.R.render();
