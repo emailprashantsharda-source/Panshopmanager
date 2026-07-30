@@ -174,6 +174,33 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .kpi.liab{background:var(--y-tint);border-color:var(--y-bd)}
 
 /* ── pills / badges ────────────────────────────────────── */
+/* ── first-run welcome ─────────────────────────────────────
+   Deliberately generous with space. This is the only thing on the screen, so it
+   can afford to breathe, and a shop that has just signed up should feel invited
+   rather than handed a form. */
+.wl{text-align:center;padding:26px 6px 4px}
+.wl-ring{width:76px;height:76px;border-radius:99px;margin:0 auto 15px;
+  background:radial-gradient(circle at 30% 25%,#1C6291,#0A2C43);
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+  box-shadow:0 12px 26px -12px rgba(10,44,67,.6)}
+.wl h2{font-size:22px;font-weight:900;letter-spacing:-.035em}
+.wl p{font-size:13.5px;color:var(--t2);margin-top:6px;padding:0 4px}
+.wl-steps{margin:20px 0 0}
+.sr{display:flex;gap:11px;align-items:center;background:var(--card);border:1px solid var(--bd);
+  border-radius:12px;padding:12px;margin-bottom:8px}
+.sr.now{border-color:var(--p);box-shadow:0 8px 20px -14px rgba(15,61,92,.6)}
+.sr.done{background:#F7F5F0;border-color:#E9E5DC}
+.sr .n{width:26px;height:26px;border-radius:99px;flex:0 0 auto;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:900;background:#EDEAE4;color:var(--t3)}
+.sr.now .n{background:var(--y);color:#0A0A0A}
+.sr.done .n{background:var(--success-tint);color:var(--success-d)}
+.sr .tx{flex:1;min-width:0}
+.sr .tx b{display:block;font-size:13.5px;font-weight:850;letter-spacing:-.01em}
+.sr .tx span{display:block;font-size:11.5px;color:var(--t3);margin-top:1px}
+.wl-link{text-align:center;font-size:12.5px;font-weight:800;color:var(--p);
+  text-decoration:underline;margin-top:13px;cursor:pointer}
+.wl-foot{text-align:center;font-size:11.5px;color:var(--t4);margin-top:12px}
+
 /* ── suggestion chips ──────────────────────────────────────
    These were rendered with class="chip", which did not exist in this
    stylesheet at all — so thirteen spans collapsed into one line of
@@ -513,6 +540,10 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <!-- ═══ OUT NOW ═══ -->
 <div class="page active" id="pg-out">
+  <!-- Wrapped so the whole strip can be hidden while every figure is zero. On
+       a shop with no bikes, 0 / 0 / ₹0 / ₹0 is four numbers of noise on the
+       one screen that has to be simple. -->
+  <div id="out-kpis">
   <div class="kpis">
     <div class="kpi"><div class="l">Out</div><div class="v" id="k-out">0</div></div>
     <div class="kpi warn"><div class="l">Overdue</div><div class="v" id="k-late">0</div></div>
@@ -522,6 +553,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <div class="l">Deposits held — not your money</div>
     <div class="v" id="k-dep">₹0</div>
     <div class="muted" style="font-size:11px;margin-top:2px" id="k-dep-sub">0 open rentals</div>
+  </div>
   </div>
   <div id="out-list"></div>
 </div>
@@ -596,7 +628,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_16_2_ratecard';
+const BUILD = 'rn_v3_17_1_audit';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1629,6 +1661,9 @@ const R = {
     Haptic.primary();
     if (this.page === 'fleet') return this.editVehicle();
     if (this.page === 'rates') return this.editRate();
+    /* Nothing rentable yet: send him to the thing that has to happen first
+       rather than opening a checkout sheet that can only fail. */
+    if (!(DB.d.vehicles||[]).filter(v=>!v.deletedAt).length) return this.firstBike();
     return this.checkoutStart();
   },
 
@@ -1676,7 +1711,11 @@ const R = {
     if (!this.isManager()) return '';          /* setup is the owner's job */
     const o = this.obState();
     if (o.bikes && o.priced && o.rented){
+      /* BUG FIX: obDismiss() wrote rn_ob_done to localStorage and nothing ever
+         read it, so "Got it" lasted until the next reload and the congratulations
+         card came back for ever. */
       if (this._obDismissed) return '';
+      try { if (localStorage.getItem('rn_ob_done')) { this._obDismissed = true; return ''; } } catch(e){}
       return `<div class="card" style="background:var(--success-tint);border-color:#B7ECD1">
         <div class="row"><b class="grow" style="font-size:13.5px">Your shop is set up \u{1F389}</b>
           <button class="btn ghost sm" onclick="R.obDismiss()">Got it</button></div>
@@ -1712,10 +1751,38 @@ const R = {
       <div style="height:5px;border-radius:99px;background:rgba(255,255,255,.18);margin:11px 0 10px;overflow:hidden">
         <i style="display:block;height:100%;width:${pct}%;background:var(--y);border-radius:99px"></i></div>
       ${step(1, o.bikes ? (o.nBikes===1?'1 bike added':o.nBikes+' bikes added') : 'Add your first bike', s1)}
-      ${step(2, o.priced ? 'Prices set' : 'Set what you charge', s2)}
+      ${step(2, o.priced ? 'Prices set' : 'Check the prices', s2)}
       ${step(3, o.rented ? 'First rental done' : 'Rent it out', s3)}
       <div style="margin-top:11px">${cta}</div></div>`;
   },
+  /* The first screen after a new shop signs in. Deliberately the only thing on
+     it: a shop that owns nothing has exactly one useful next action, and every
+     extra card on this screen is a chance to pick the wrong one. */
+  welcome(){
+    const who = (Cloud.shopName||'').trim().split(/\s+/)[0] || 'there';
+    const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    const step = (n, title, sub, state) => `
+      <div class="sr ${state}"><span class="n">${state==='done'?'\u2713':n}</span>
+        <div class="tx"><b>${title}</b><span>${sub}</span></div></div>`;
+    return `
+      <div class="wl">
+        <div class="wl-ring">\u{1F6F5}</div>
+        <h2>Welcome, ${esc(who)}</h2>
+        <p>Let\u2019s get your shop ready. Two minutes, and you can rent a bike out today.</p>
+      </div>
+      <div class="wl-steps">
+        ${step(1,'Add your first bike','Name it and set what you charge','now')}
+        ${step(2,'Check it looks right','Deposit, 24-hour rate, overtime','')}
+        ${step(3,'Rent it out','Your first customer, on the app','')}
+      </div>
+      <button class="btn y" style="margin-top:14px" onclick="R.firstBike()">Add your first bike</button>
+      ${this.isOwner() ? `<div class="wl-link" onclick="R.scanRates()">I have a printed rate card
+        \u2014 photograph it</div>` : ''}
+      <div class="wl-foot">${t && t.paid ? esc(this.planLabel(t)) + ' active'
+        : (t && t.active ? t.trialDaysLeft + ' days free left \u00b7 no card needed'
+        : '14 days free \u00b7 no card needed')}</div>`;
+  },
+
   obDismiss(){ this._obDismissed = true; try{ localStorage.setItem('rn_ob_done','1'); }catch(e){} this.render(); },
 
   renderOut(){
@@ -1743,29 +1810,27 @@ const R = {
        nothing else on this screen matters. ratesBanner() would otherwise fire
        at the same time and say the same thing twice, so it stands down until
        setup is done. */
+    /* ── a shop with no bikes gets ONE thing on screen ──────────────
+       Not a KPI strip of zeros, not a trial banner, not an empty state
+       offering to "create 0 bikes from my rate card" — which is what this
+       branch used to do, having been written when rate cards shipped
+       pre-seeded. One welcome, three steps, one button. */
+    const noBikes = !(DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
+    const kp = document.getElementById('out-kpis');
+    if (kp) kp.style.display = noBikes ? 'none' : '';
+    if (noBikes && this.isManager()){
+      box.innerHTML = this.welcome();
+      return;
+    }
+
     const ob = this.obCard();
     const banner = ob + (this.obDone() ? this.ratesBanner() : '') + this.trialBanner();
     if (!open.length){
-      /* Rate cards ship pre-seeded, so a brand-new shop sees 10 models under
-         Rates and reasonably assumes it is set up — then "+ Rent out" dead-ends
-         on a toast. A rate card is a PRICE for a model; a vehicle is an actual
-         bike with a number plate. Until at least one bike exists there is
-         nothing to rent, so say that here instead of pointing at a button that
-         cannot work yet. */
-      box.innerHTML = banner + (DB.d.vehicles.length
-        ? `<div class="empty"><div class="e">🛵</div>
-             <b>Nothing is out right now</b>
-             <span>Every bike is in the yard.</span>
-             <div style="margin-top:18px"><button class="btn y" onclick="R.checkoutStart()">
-               Rent out a bike</button></div></div>`
-        : `<div class="empty"><div class="e">🏍️</div>
-             <b>Add your bikes first</b>
-             <span>Rates are ready for ${DB.d.rates.length} models. Now add the actual
-             bikes you own — each one with its number plate.</span>
-             <div style="margin-top:18px"><button class="btn" onclick="R.fillFromRates()">
-               + Create ${DB.d.rates.length} bikes from my rate card</button></div>
-             <div style="margin-top:9px"><button class="btn ghost" onclick="R.nav('fleet')">
-               Go to Fleet</button></div></div>`);
+      box.innerHTML = banner + `<div class="empty"><div class="e">🛵</div>
+          <b>Nothing is out right now</b>
+          <span>Every bike is in the yard.</span>
+          <div style="margin-top:18px"><button class="btn y" onclick="R.checkoutStart()">
+            Rent out a bike</button></div></div>`;
       return;
     }
     open.sort((a,b)=> a.dueAt - b.dueAt);
@@ -1820,15 +1885,24 @@ const R = {
         of the same model from Rates.</div>
       <button class="btn" style="margin-bottom:12px" onclick="R.editVehicle()">
         + Add a bike</button>` +
+      /* Only offered when there genuinely are priced rate cards with no bike
+         against them. With no seeding that is a real, useful state — a shop that
+         photographed its price list and now wants a bike per model. */
       (missing ? `<button class="btn ghost" style="margin-bottom:12px" onclick="R.fillFromRates()">
           + Add ${missing} missing bike${missing===1?'':'s'} from your rate card</button>` : '');
     if (!DB.d.vehicles.length){
+      /* One action. This used to read "Your rate card lists 0 models" and offer
+         "+ Create 0 bikes from my rate card" — copy written when rate cards
+         shipped pre-seeded, which now offers to create nothing. */
       box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
-        <b>No bikes yet</b><span>Your rate card lists ${DB.d.rates.length} models.
-        Create one bike for each, then rename or add numbers as you like.</span>
-        <div style="margin-top:16px"><button class="btn" onclick="R.fillFromRates()">
-          + Create ${DB.d.rates.length} bikes from my rate card</button></div>
-        <div style="margin-top:9px"><button class="btn ghost" onclick="R.editVehicle()">Add one manually</button></div></div>`;
+        <b>No bikes yet</b>
+        <span>Add the bikes you actually own. Each one gets its own row, and you can
+          give it a number plate.</span>
+        <div style="margin-top:18px"><button class="btn y" onclick="R.firstBike()">
+          Add your first bike</button></div>
+        ${this.isOwner() ? `<div style="margin-top:9px"><button class="btn ghost"
+          onclick="R.scanRates()">\u{1F4F7} Photograph my printed rate card</button></div>` : ''}
+      </div>`;
       return;
     }
     const order = { available:0, rented:1, maintenance:2, retired:3 };
@@ -2140,11 +2214,26 @@ const R = {
     const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot };
     if (window.Cloud && Cloud.ready){
       const rid = Cloud.nid('rc');
+      const vid = Cloud.nid('v');
       const vehRec = { name, regNo: reg, rateId: rid, model: name,
         status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 };
+      /* BUG FIX: local state was left empty until the Firestore listener echoed
+         back, so render() ran with zero bikes and painted the welcome screen
+         again. The shop saved its first bike and watched the setup screen
+         reappear, which reads exactly like the save failing.
+         
+         The listener replaces these arrays wholesale, so an optimistic copy
+         cannot duplicate anything. */
+      DB.d.rates.push(Object.assign({ id: rid }, rateRec));
+      DB.d.vehicles.push(Object.assign({ id: vid }, vehRec));
       Cloud.put('rates', rid, rateRec).then(w => {
-        if (!w.ok) return toast(Cloud.explainWrite(w.code));
-        return Cloud.put('vehicles', Cloud.nid('v'), vehRec).then(w2 => {
+        if (!w.ok){
+          DB.d.rates = DB.d.rates.filter(r => r.id !== rid);
+          DB.d.vehicles = DB.d.vehicles.filter(v => v.id !== vid);
+          DB.save(); R.render();
+          return toast('Could not save \u2014 ' + Cloud.explainWrite(w.code));
+        }
+        return Cloud.put('vehicles', vid, vehRec).then(w2 => {
           if (!w2.ok) toast(Cloud.explainWrite(w2.code));
         });
       });
@@ -2191,11 +2280,16 @@ const R = {
       const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot };
       if (window.Cloud && Cloud.ready){
         rateId = Cloud.nid('rc');
-        Cloud.put('rates', rateId, rateRec).then(w => {
-          if (!w.ok) toast(Cloud.explainWrite(w.code));
-        });
-        /* Optimistic local copy so the lines below can find it by id before the
-           listener echoes it back. */
+        /* BUG FIX: this used to fire the rate write and carry straight on to the
+           vehicle write. If the rate write failed — offline, or an owner-only
+           rules refusal for a manager — the bike saved anyway, pointing at a
+           rate card that does not exist. The shop got a permanent "no rate
+           card" bike and no explanation.
+           
+           Now the vehicle write is queued from inside the rate's callback, so a
+           failed rate means no orphan. Local state is still updated
+           immediately so the sheet can close without waiting. */
+        this._pendingRate = { id: rateId, rec: rateRec };
         DB.d.rates.push(Object.assign({ id: rateId }, rateRec));
       } else {
         rateId = DB.id('rc');
@@ -2220,9 +2314,25 @@ const R = {
       odo: old ? (old.odo||0) : 0,
     };
     if (window.Cloud && Cloud.ready){
-      Cloud.put('vehicles', id || Cloud.nid('v'), rec).then(w => {
+      const vid = id || Cloud.nid('v');
+      const pend = this._pendingRate; this._pendingRate = null;
+      /* If a rate card was created in this same save, it has to land first —
+         otherwise a failed rate leaves a bike pointing at nothing. */
+      const writeVeh = () => Cloud.put('vehicles', vid, rec).then(w => {
         if (!w.ok) toast(Cloud.explainWrite(w.code));
       });
+      if (pend){
+        Cloud.put('rates', pend.id, pend.rec).then(w => {
+          if (!w.ok){
+            /* Roll the optimistic copy back so the UI does not show a rate the
+               server rejected, and do NOT create the bike. */
+            DB.d.rates = DB.d.rates.filter(r => r.id !== pend.id);
+            DB.save(); R.render();
+            return toast('Could not save the rate \u2014 ' + Cloud.explainWrite(w.code));
+          }
+          return writeVeh();
+        });
+      } else { writeVeh(); }
     } else if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
     DB.save(); closeSheet(); this.render(); toast(id?'Bike updated':'Bike added');
@@ -3055,9 +3165,15 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         due ${fmtDT(r.dueAt)}</div></div>
       <div class="fld"><label class="lbl">Change package to</label>
         <div class="tiers" id="ex-tiers">
-          ${TIERS.map(t=>`<div class="tier ${t.k===r.tier?'on':''}" data-t="${t.k}"
-            onclick="R.exPick('${t.k}')"><div class="t">${t.label}</div>
-            <div class="p">${money((rs.tiers||{})[t.k]||0)}</div></div>`).join('')}
+          ${TIERS.map(t=>{
+            /* Same rule as the checkout: a tier at zero is unpriced, not free.
+               Extending to an unpriced package would hand the customer more
+               hours for nothing. */
+            const ev = Number((rs.tiers||{})[t.k])||0;
+            return `<div class="tier ${t.k===r.tier?'on':''}${ev>0?'':' off'}" data-t="${t.k}"
+              onclick="R.exPick('${t.k}')"><div class="t">${t.label}</div>
+              <div class="p">${ev>0?money(ev):'not set'}</div></div>`;
+          }).join('')}
         </div></div>
       <div class="fld"><label class="lbl">Or set a new due time</label>
         <input class="in" id="ex-due" type="datetime-local" value="${dtLocal(r.dueAt)}"></div>
@@ -3067,6 +3183,12 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     this._exTier = r.tier;
   },
   exPick(k){
+    const r0 = DB.d.rentals.find(x=>x.id===this._exId);
+    const rs0 = (r0 && r0.rateSnapshot) || {};
+    if (!(Number((rs0.tiers||{})[k]) > 0)){
+      Haptic.error();
+      return toast(tierOf(k).label + ' has no price on this rental \u2014 set a new due time instead');
+    }
     this._exTier = k;
     document.querySelectorAll('#ex-tiers .tier').forEach(el=>el.classList.toggle('on', el.dataset.t===k));
     const r = DB.d.rentals.find(x=>x.id===this._exId);
