@@ -234,6 +234,10 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .tier .p{font-size:15px;font-weight:850;margin-top:2px;font-variant-numeric:tabular-nums}
 .tier.on{background:var(--p);border-color:var(--p);color:#fff}
 .tier.on .t{color:rgba(255,255,255,.75)}
+/* Unpriced: visible so the tier is discoverable, dimmed so it does not read as
+   a free rental waiting to be taken. */
+.tier.off{opacity:.45;border-style:dashed;cursor:not-allowed}
+.tier.off .p{color:var(--t4);font-weight:750;font-size:12.5px}
 
 /* ── sheet ─────────────────────────────────────────────── */
 .ov{
@@ -550,7 +554,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_13_0_rateprompt';
+const BUILD = 'rn_v3_15_0_prod';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -601,12 +605,23 @@ const DB = {
    what a given shop charges. Renting out is blocked until the rate is
    set — see R.rateReady().
    ══════════════════════════════════════════════════════════════════ */
+/* Names only. Offered as tappable chips when adding a bike; nothing is written
+   to the database until the shop saves. Access 125, Splendor and HF Deluxe are
+   added because they turn up in rental yards more often than several of the
+   originals. */
+const MODEL_SUGGESTIONS = [
+  'Activa 5G','Activa 3G','Jupiter','Pleasure','Maestro','Aviator',
+  'Access 125','Splendor','HF Deluxe','Discover','NS Pulsar','TVS Sports',
+  'Suzuki Hayate'
+];
+window.MODEL_SUGGESTIONS = MODEL_SUGGESTIONS;
+
+/* Still used by seedCatalogue(), the MANUAL "create the whole model list"
+   button in Rates. It is no longer called at signup. */
 function seed(){
   const M = (model) => ({ id: DB.id('rc'), model, deposit: 0,
                           tiers:{h3:0,h6:0,h12:0,h24:0,d7:0}, ot: 0 });
-  DB.d.rates = ['Activa 3G','Activa 5G','Pleasure','Maestro','Jupiter',
-                'Aviator','TVS Sports','Discover','Suzuki Hayate','NS Pulsar'
-               ].map(M);
+  DB.d.rates = MODEL_SUGGESTIONS.slice(0,10).map(M);
 }
 
 /* ── tiers ────────────────────────────────────────────────────────── */
@@ -1595,6 +1610,72 @@ const R = {
   },
 
   /* ── OUT NOW ────────────────────────────────────────────────────── */
+  /* ── onboarding ───────────────────────────────────────────────────
+     State is derived from the data, never stored. There is no `onboarded`
+     flag to fall out of step with reality: delete the only bike and step 1
+     comes back, which is correct. It also needs no migration, works the same
+     on a second phone, and cannot claim a shop is set up when it owns
+     nothing. */
+  obState(){
+    const veh   = (DB.d.vehicles||[]).filter(v=>!v.deletedAt);
+    const rates = (DB.d.rates||[]);
+    return {
+      bikes:   veh.length > 0,
+      priced:  rates.some(r => this.rateReady(r)),
+      rented:  (DB.d.rentals||[]).length > 0,
+      nBikes:  veh.length,
+      firstReady: (veh.find(v => { const rc = rates.find(r=>r.id===v.rateId);
+                                   return rc && this.rateReady(rc); }) || null)
+    };
+  },
+  obDone(){ const o=this.obState(); return o.bikes && o.priced && o.rented; },
+
+  obCard(){
+    if (!this.isManager()) return '';          /* setup is the owner's job */
+    const o = this.obState();
+    if (o.bikes && o.priced && o.rented){
+      if (this._obDismissed) return '';
+      return `<div class="card" style="background:var(--success-tint);border-color:#B7ECD1">
+        <div class="row"><b class="grow" style="font-size:13.5px">Your shop is set up \u{1F389}</b>
+          <button class="btn ghost sm" onclick="R.obDismiss()">Got it</button></div>
+        <div class="muted" style="margin-top:3px">Add the rest of your bikes whenever you have a
+        minute \u2014 Fleet, then Add a bike.</div></div>`;
+    }
+    const pct = (o.bikes?33:4) + (o.priced?33:0) + (o.rented?34:0);
+    const step = (n,label,state) => `<div class="row" style="gap:9px;padding:5px 0;font-size:13px;
+        font-weight:${state==='now'?'800':'700'};color:${
+          state==='done'?'#9FBACD':(state==='now'?'#fff':'#7E9AAE')}">
+      <span style="width:20px;height:20px;border-radius:99px;flex:0 0 auto;display:flex;
+        align-items:center;justify-content:center;font-size:10px;font-weight:900;
+        background:${state==='done'?'var(--success)':(state==='now'?'var(--y)':'rgba(255,255,255,.14)')};
+        color:${state==='done'?'#04361D':(state==='now'?'#0A0A0A':'#fff')}">${
+          state==='done'?'\u2713':n}</span>${label}</div>`;
+    const s1 = o.bikes ? 'done' : 'now';
+    const s2 = o.priced ? 'done' : (o.bikes ? 'now' : 'todo');
+    const s3 = o.rented ? 'done' : ((o.bikes&&o.priced) ? 'now' : 'todo');
+    let cta;
+    if (!o.bikes)       cta = `<button class="btn" style="background:var(--y);color:#0A0A0A"
+                                onclick="R.firstBike()">Add your first bike</button>`;
+    else if (!o.priced) cta = `<button class="btn" style="background:var(--y);color:#0A0A0A"
+                                onclick="R.nav('rates')">Set what you charge</button>`;
+    else                cta = `<button class="btn" style="background:var(--y);color:#0A0A0A"
+                                onclick="R.checkoutStart()">Rent out ${
+                                  esc((this.obState().firstReady||{}).name||'a bike')}</button>`;
+    return `<div style="background:linear-gradient(160deg,#12466A,#0A2C43);color:#fff;
+        border-radius:14px;padding:14px;margin-bottom:11px">
+      <div style="font-size:14px;font-weight:875;letter-spacing:-.02em">${
+        o.bikes ? 'Almost there' : 'Set up your shop'}</div>
+      <div style="font-size:11.5px;color:#BFD4E2;margin-top:2px">${
+        o.bikes ? (o.priced ? 'One step left.' : 'Two steps left.') : 'Three steps. About two minutes.'}</div>
+      <div style="height:5px;border-radius:99px;background:rgba(255,255,255,.18);margin:11px 0 10px;overflow:hidden">
+        <i style="display:block;height:100%;width:${pct}%;background:var(--y);border-radius:99px"></i></div>
+      ${step(1, o.bikes ? (o.nBikes===1?'1 bike added':o.nBikes+' bikes added') : 'Add your first bike', s1)}
+      ${step(2, o.priced ? 'Prices set' : 'Set what you charge', s2)}
+      ${step(3, o.rented ? 'First rental done' : 'Rent it out', s3)}
+      <div style="margin-top:11px">${cta}</div></div>`;
+  },
+  obDismiss(){ this._obDismissed = true; try{ localStorage.setItem('rn_ob_done','1'); }catch(e){} this.render(); },
+
   renderOut(){
     const open = DB.d.rentals.filter(r => r.status === 'open');
     const now = Date.now();
@@ -1616,7 +1697,12 @@ const R = {
       open.length + ' open rental' + (open.length===1?'':'s') + ' · refundable';
 
     const box = document.getElementById('out-list');
-    const banner = this.ratesBanner() + this.trialBanner();
+    /* Onboarding first: while a shop has no bikes, no prices and no rentals,
+       nothing else on this screen matters. ratesBanner() would otherwise fire
+       at the same time and say the same thing twice, so it stands down until
+       setup is done. */
+    const ob = this.obCard();
+    const banner = ob + (this.obDone() ? this.ratesBanner() : '') + this.trialBanner();
     if (!open.length){
       /* Rate cards ship pre-seeded, so a brand-new shop sees 10 models under
          Rates and reasonably assumes it is set up — then "+ Rent out" dead-ends
@@ -1678,11 +1764,14 @@ const R = {
     /* One count at the top beats discovering it bike by bike. ratesPending()
        already exists for exactly this and is what the Rates tab badges. */
     const pending = this.ratesPending();
+    const junk = this.starterJunk().length;
     const hdr = (pending ? `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-bottom:11px">
         <b style="font-size:13.5px">${pending} rate card${pending===1?'':'s'} still at \u20B90</b>
         <div class="muted" style="margin-top:3px">A bike cannot be rented out until its rate is
         set. Photograph your printed price list and the app can read them in.</div>
         <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.nav('rates')">Open Rates</button>
+        ${junk && this.isOwner() ? `<button class="btn ghost sm" style="margin-top:8px;width:100%"
+          onclick="R.clearStarters()">Remove ${junk} unpriced bike${junk===1?'':'s'} I never added</button>` : ''}
       </div>` : '') +
       `<div class="muted" style="margin:0 2px 10px">
         One bike per row. Rename it, add a vehicle number, or add a second bike
@@ -1798,17 +1887,54 @@ const R = {
       `<option value="${r.id}" ${sel===r.id?'selected':''}>${esc(r.model)} · ${
         this.rateReady(r) ? 'dep ' + money(r.deposit) : 'rate not set'
       }</option>`).join('');
+    const anyReady = (DB.d.rates||[]).some(r => this.rateReady(r));
     openSheet(`
       <div class="sheet-hd"><h2>${v?'Edit bike':'Add bike'}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
       <div class="fld"><label class="lbl">Bike name <span class="req">*</span></label>
         <input class="in" id="v-name" value="${esc(v?(v.name||v.regNo||''):'')}"
           placeholder="Activa 3G — red"></div>
+      ${v ? '' : `<div class="muted" style="margin:-4px 2px 6px">Common models \u2014 tap to fill, or type your own</div>
+      <div class="chips" style="margin-bottom:12px">${(window.MODEL_SUGGESTIONS||[]).map(m=>
+        `<span class="chip" onclick="R.pickModel('${esc(m)}')">${esc(m)}</span>`).join('')}</div>`}
       <div class="fld"><label class="lbl">Vehicle no. <span class="muted">optional</span></label>
         <input class="in" id="v-reg" value="${esc(v?(v.regNo||''):'')}"
           placeholder="MP04 AB 1234" autocapitalize="characters"></div>
       <div class="fld"><label class="lbl">Rate card <span class="req">*</span></label>
-        <select class="in" id="v-rate"><option value="">— choose —</option>${opts}</select></div>
+        <select class="in" id="v-rate" onchange="R.rateSel()">
+          <option value="">— choose —</option>${opts}
+          <option value="__new">+ New rate \u2014 set the price here</option></select>
+
+        <!-- Set the price inline rather than sending him to Rates and back. A
+             shop adding its second model has one rate card and no reason to
+             know that a rate card is a separate thing from a bike. -->
+        <div id="v-newrate" style="display:none">
+          <div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-top:10px">
+            <b style="font-size:13.5px">Price for this model</b>
+            <div class="muted" style="margin-top:2px">Hourly and weekly rates can wait \u2014 add them
+              in Rates when you need them.</div>
+            <div class="fld"><label class="lbl">Deposit you take</label>
+              <input class="in" id="v-nr-dep" type="number" inputmode="numeric" placeholder="\u20B9 800"></div>
+            <div class="two">
+              <div class="fld"><label class="lbl">24 hours <span class="req">*</span></label>
+                <input class="in" id="v-nr-24" type="number" inputmode="numeric" placeholder="\u20B9 700"></div>
+              <div class="fld"><label class="lbl">Overtime / hr <span class="req">*</span></label>
+                <input class="in" id="v-nr-ot" type="number" inputmode="numeric" placeholder="\u20B9 50"></div>
+            </div>
+          </div>
+        </div>
+        ${anyReady ? '' : `
+        <!-- Every option in that picker reads "rate not set", so choosing one is
+             a dead end: the bike is created and then cannot be rented out. Say
+             that here, next to the field causing it, rather than letting the
+             shop find out at the counter. Adding the bike is still allowed —
+             building the fleet first is a legitimate order of work. -->
+        <div class="muted" style="margin-top:7px;color:var(--danger);line-height:1.5">
+          None of your rate cards have prices yet, so this bike will not be
+          rentable until you set one.
+          <span style="font-weight:850;text-decoration:underline"
+            onclick="closeSheet();R.nav('rates')">Set prices first</span>
+        </div>`}</div>
 
       <button type="button" class="btn ghost" style="margin:4px 0 12px"
         onclick="R.more('v-more',this)">More details <span class="muted">— optional</span></button>
@@ -1845,12 +1971,139 @@ const R = {
     btn.innerHTML = (open ? 'More details' : 'Hide details') + ' <span class="muted">— optional</span>';
   },
 
+  /* ── first bike ──────────────────────────────────────────────────
+     A rate card cannot be chosen before one exists, so the first bike collects
+     its own price and writes both records together. Three price fields only:
+     deposit, a 24-hour rate and overtime. The 3, 6, 12-hour and weekly tiers
+     are real and stay in Rates — a shop that needs them will go looking, and
+     one that does not should not have to type five zeros to open for business. */
+  firstBike(){
+    const chips = (window.MODEL_SUGGESTIONS||[]).map(m =>
+      `<span class="chip" onclick="R.pickModel('${esc(m)}')">${esc(m)}</span>`).join('');
+    openSheet(`
+      <div class="sheet-hd"><h2>Add your first bike</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+
+      <div class="fld"><label class="lbl">Bike name <span class="req">*</span></label>
+        <input class="in" id="fb-name" placeholder="Activa 5G" autocomplete="off"></div>
+      <div class="muted" style="margin:-4px 2px 6px">Common models \u2014 tap to fill, or type your own</div>
+      <div class="chips" id="fb-chips">${chips}</div>
+
+      <div class="fld" style="margin-top:12px"><label class="lbl">Vehicle no.
+        <span class="muted">optional</span></label>
+        <input class="in" id="fb-reg" placeholder="MP04 AB 1234" autocapitalize="characters"></div>
+
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:13.5px">What do you charge for it?</b>
+        <div class="muted" style="margin-top:2px">Just these three now. Hourly and weekly rates can
+          wait until you need them.</div>
+        <div class="fld"><label class="lbl">Deposit you take <span class="req">*</span></label>
+          <input class="in" id="fb-dep" type="number" inputmode="numeric" placeholder="\u20B9 800"></div>
+        <div class="two">
+          <div class="fld"><label class="lbl">24 hours <span class="req">*</span></label>
+            <input class="in" id="fb-24" type="number" inputmode="numeric" placeholder="\u20B9 700"></div>
+          <div class="fld"><label class="lbl">Overtime / hr <span class="req">*</span></label>
+            <input class="in" id="fb-ot" type="number" inputmode="numeric" placeholder="\u20B9 50"></div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="R.saveFirstBike()">Save bike &amp; price</button>
+      ${this.isOwner() ? `<button class="btn ghost" style="margin-top:9px" onclick="closeSheet();R.scanRates()">
+        \u{1F4F7} I have a printed rate card \u2014 photograph it</button>` : ''}
+      <div class="muted" style="text-align:center;margin-top:9px">You can add more bikes and more
+        rates any time.</div>`);
+  },
+  pickModel(m){
+    const el = document.getElementById('fb-name') || document.getElementById('v-name');
+    if (el){ el.value = m; el.focus(); }
+    Haptic.tap();
+  },
+  saveFirstBike(){
+    const g = i => document.getElementById(i);
+    const name = (g('fb-name').value||'').trim();
+    const reg  = (g('fb-reg').value||'').trim().toUpperCase();
+    const dep  = Number(g('fb-dep').value)||0;
+    const d24  = Number(g('fb-24').value)||0;
+    const ot   = Number(g('fb-ot').value)||0;
+    if (!name) return toast('Bike name is required');
+    if (!(d24 > 0)) return toast('Enter what you charge for 24 hours');
+    /* Deposit of zero is a legitimate choice — plenty of shops take none — so
+       it is not validated. A 24-hour price of zero is not, because rateReady()
+       would then refuse to let the bike out and we would be right back at the
+       screen this whole change exists to remove. */
+    /* Same persistence path saveVehicle() and saveRate() use — Cloud.put when
+       signed in, local push otherwise. Written by hand rather than reused
+       because the rate card must land before the vehicle that points at it. */
+    const rateRec = { model: name, deposit: dep,
+                      tiers:{ h3:0, h6:0, h12:0, h24:d24, d7:0 }, ot: ot };
+    if (window.Cloud && Cloud.ready){
+      const rid = Cloud.nid('rc');
+      const vehRec = { name, regNo: reg, rateId: rid, model: name,
+        status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 };
+      Cloud.put('rates', rid, rateRec).then(w => {
+        if (!w.ok) return toast(Cloud.explainWrite(w.code));
+        return Cloud.put('vehicles', Cloud.nid('v'), vehRec).then(w2 => {
+          if (!w2.ok) toast(Cloud.explainWrite(w2.code));
+        });
+      });
+    } else {
+      const rid = DB.id('rc');
+      DB.d.rates.push(Object.assign({ id: rid }, rateRec));
+      DB.d.vehicles.push({ id: DB.id('v'), name, regNo: reg, rateId: rid, model: name,
+        status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 });
+    }
+    DB.save();
+    Haptic.success();
+    closeSheet();
+    toast(name + ' added at ' + money(d24) + ' for 24 hr');
+    this.render();
+  },
+
+  rateSel(){
+    const sel = document.getElementById('v-rate');
+    const box = document.getElementById('v-newrate');
+    if (!sel || !box) return;
+    box.style.display = sel.value === '__new' ? 'block' : 'none';
+    if (sel.value === '__new'){
+      /* Prefill the model name from the bike name — for a first bike of a model
+         they are the same thing, and retyping it is friction for no reason. */
+      const nm = document.getElementById('v-name');
+      const d24 = document.getElementById('v-nr-24');
+      if (nm && d24 && !d24.value) d24.focus();
+    }
+  },
+
   saveVehicle(id){
     const name = document.getElementById('v-name').value.trim();
     const reg  = document.getElementById('v-reg').value.trim().toUpperCase();
-    const rateId = document.getElementById('v-rate').value;
+    let rateId = document.getElementById('v-rate').value;
     if (!name) return toast('Bike name is required');
     if (!rateId) return toast('Choose a rate card');
+
+    /* "+ New rate" creates the card first, then falls through to the normal
+       save with its id. Doing it here rather than in a second sheet keeps the
+       name and number the shop already typed. */
+    if (rateId === '__new'){
+      const g2 = i => document.getElementById(i);
+      const d24 = Number(g2('v-nr-24').value)||0;
+      const nrOt = Number(g2('v-nr-ot').value)||0;
+      const nrDep = Number(g2('v-nr-dep').value)||0;
+      if (!(d24 > 0)) return toast('Enter what you charge for 24 hours');
+      const rateRec = { model: name, deposit: nrDep,
+                        tiers:{ h3:0, h6:0, h12:0, h24:d24, d7:0 }, ot: nrOt };
+      if (window.Cloud && Cloud.ready){
+        rateId = Cloud.nid('rc');
+        Cloud.put('rates', rateId, rateRec).then(w => {
+          if (!w.ok) toast(Cloud.explainWrite(w.code));
+        });
+        /* Optimistic local copy so the lines below can find it by id before the
+           listener echoes it back. */
+        DB.d.rates.push(Object.assign({ id: rateId }, rateRec));
+      } else {
+        rateId = DB.id('rc');
+        DB.d.rates.push(Object.assign({ id: rateId }, rateRec));
+      }
+    }
     /* Reg is optional now, so NAME is the identity. Only guard duplicates on
        whichever one the shop actually filled in. */
     if (reg && DB.d.vehicles.some(x=>x.regNo===reg && x.id!==id))
@@ -1875,6 +2128,52 @@ const R = {
     } else if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
     DB.save(); closeSheet(); this.render(); toast(id?'Bike updated':'Bike added');
+  },
+
+  /* ── clean up the old seeder's leftovers ─────────────────────────
+     Removing seed() from createShop() stops NEW shops getting ten phantom
+     bikes; it does nothing for shops that already have them sitting in
+     Firestore. This finds them and takes them out.
+
+     Deliberately conservative about what counts as a leftover: the rate card
+     must be unpriced, and the bike must never have been rented. A bike with
+     any rental history is somebody's real record and is left alone whatever
+     its price says. Everything is soft-deleted — the rules forbid a hard
+     delete, and history should survive anyway. */
+  starterJunk(){
+    const rates = DB.d.rates||[];
+    return (DB.d.vehicles||[]).filter(v => {
+      if (v.deletedAt) return false;
+      if ((DB.d.rentals||[]).some(r => r.vehicleId === v.id)) return false;
+      const rc = rates.find(r => r.id === v.rateId);
+      return rc && !this.rateReady(rc);
+    });
+  },
+  clearStarters(){
+    if (!this.isOwner()) return toast('Only the owner can do this');
+    const junk = this.starterJunk();
+    if (!junk.length) return toast('Nothing to remove');
+    if (!confirm('Remove ' + junk.length + ' unpriced bike' + (junk.length===1?'':'s') +
+      ' that have never been rented?\n\nRate cards for them go too. Nothing with rental ' +
+      'history is touched.')) return;
+    const rids = new Set();
+    junk.forEach(v => {
+      if (window.Cloud && Cloud.ready) Cloud.softDelete('vehicles', v.id);
+      if (v.rateId) rids.add(v.rateId);
+    });
+    /* A rate card only goes if no surviving bike still points at it. */
+    const keep = new Set((DB.d.vehicles||[])
+      .filter(v => !junk.some(j => j.id === v.id))
+      .map(v => v.rateId));
+    rids.forEach(rid => {
+      if (keep.has(rid)) return;
+      if (window.Cloud && Cloud.ready) Cloud.softDelete('rates', rid);
+      DB.d.rates = (DB.d.rates||[]).filter(r => r.id !== rid);
+    });
+    const ids = new Set(junk.map(v => v.id));
+    DB.d.vehicles = (DB.d.vehicles||[]).filter(v => !ids.has(v.id));
+    DB.save(); this.render();
+    toast('Removed ' + junk.length + ' unpriced bike' + (junk.length===1?'':'s'));
   },
 
   delVehicle(id){
@@ -2173,6 +2472,10 @@ const R = {
     if (!r){ blk.innerHTML = `<div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
       <b>No rate card for ${esc(v.model)}</b><div class="muted">Add one under Rates first.</div></div>`; return; }
 
+    /* The effective tiers, after rateFor() has applied any weekend card. Stashed
+       so coPick can refuse an unpriced one without re-deriving the whole thing
+       and possibly disagreeing with what is on screen. */
+    this._coTiers = r.tiers || {};
     const blocked = this.docBlocked(v);
     blk.innerHTML =
       (blocked ? `<div class="card" style="background:var(--danger-tint);border-color:var(--danger);margin-bottom:11px">
@@ -2185,8 +2488,17 @@ const R = {
         </div>` : '') +
       `<div class="fld"><label class="lbl">Duration <span class="req">*</span></label>
         <div class="tiers" id="c-tiers">
-          ${TIERS.map(t=>`<div class="tier" data-t="${t.k}" onclick="R.coPick('${t.k}')">
-            <div class="t">${t.label}</div><div class="p">${money(r.tiers[t.k])}</div></div>`).join('')}
+          ${TIERS.map(t=>{
+            /* Zero means unpriced, not free. firstBike() only asks for the
+               24-hour rate, so four of these are legitimately blank on a new
+               shop — and offering "3 hr · \u20B90" as a choice is offering to
+               rent a bike out for nothing. Shown so the tier is discoverable,
+               dimmed so it cannot be mistaken for a rental waiting to happen. */
+            const tv = Number(r.tiers[t.k])||0;
+            return `<div class="tier${tv>0?'':' off'}" data-t="${t.k}" onclick="R.coPick('${t.k}')">
+              <div class="t">${t.label}</div>
+              <div class="p">${tv>0?money(tv):'not set'}</div></div>`;
+          }).join('')}
         </div></div>
       <div class="two">
         <div class="fld"><label class="lbl">Deposit taken</label>
@@ -2235,6 +2547,10 @@ const R = {
   },
 
   coPick(k){
+    if (!(Number((this._coTiers||{})[k]) > 0)){
+      Haptic.error();
+      return toast(tierOf(k).label + ' has no price yet \u2014 set it under Rates first');
+    }
     this._tier = k;
     document.querySelectorAll('#c-tiers .tier').forEach(el=>
       el.classList.toggle('on', el.dataset.t===k));
@@ -3504,23 +3820,18 @@ const Cloud = {
       await b1.commit();
       this.role='owner';
 
-      /* Now the membership exists, so rnIsOwner() passes and the catalogue
-         can be written. Non-fatal on failure: the shop is already real, and
-         the Rates screen can seed it later. */
-      try {
-        const b2 = writeBatch(db);
-        window.seed();
-        ((window.DB && window.DB.d && window.DB.d.rates) || []).forEach(rc => {
-          const rid = 'rc_' + rc.model.toLowerCase().replace(/[^a-z0-9]+/g,'_');
-          b2.set(doc(db,'rn_shops',shopId,'rates',rid),
-            { model: rc.model, deposit: rc.deposit, tiers: rc.tiers, ot: rc.ot });
-          b2.set(doc(db,'rn_shops',shopId,'vehicles','v_'+rid), {
-            name: rc.model, regNo: '', rateId: rid, model: rc.model,
-            status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0
-          });
-        });
-        await b2.commit();
-      } catch(e2){ console.warn('catalogue seed failed (shop is fine)', e2); }
+      /* No catalogue is written here any more.
+         
+         This used to commit ten rate cards and ten vehicles, so the first
+         screen a brand-new shop saw was ten bikes it did not own, priced at
+         zero, none of which could be rented out. A shopkeeper cannot tell
+         that from a real fleet, and the only honest reading of it is that the
+         app has already got his business wrong.
+         
+         A shop now starts empty and R.obCard() walks him through it: either
+         photograph the printed rate card he already has, or add bikes one at a
+         time. seedCatalogue() still exists as a manual button for anyone who
+         actually wants the full model list. */
 
       await this.open(shopId);
     } catch(e){ console.error(e); window.toast('Could not create business — '+(e.code||e.message)); }
