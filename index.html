@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_159_price499_nogf';
+    window.HISAABNOW_BUILD = 'v34_161_srvlapsed';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -32278,6 +32278,30 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
      and if the payment then failed he'd be left on trial having paid nothing
      and lost what he had. Only the paths that ask a settled question — sign-in
      boot and "Restore purchases" — are allowed to act on a "no". */
+  /* (v34_161) Does this getSubscription payload describe someone who WAS a
+     subscriber? Deliberately tolerant of several response shapes so it works
+     with whatever the Cloud Function returns today and keeps working when an
+     explicit `everPaid` field is added later — rather than becoming a second
+     contract that has to agree with the server and quietly stops agreeing.
+     Every signal here is one a never-paid user cannot produce: you do not get a
+     plan on record, a past expiry date or a cancelled status without having
+     subscribed at some point. Order is cheapest-check-first. */
+  _serverSaysEverPaid(d){
+    if (!d) return false;
+    if (d.everPaid === true || d.hadSubscription === true || d.wasSubscriber === true) return true;
+    if (typeof d.status === 'string' &&
+        /expired|cancell?ed|lapsed|past_due|paused|grace/i.test(d.status)) return true;
+    if (d.lastPlan || d.previousPlan || d.cancelledAt || d.canceledAt) return true;
+    /* A plan on record while active !== true means it ran out or was stopped. */
+    if (d.plan && d.active !== true) return true;
+    var raw = d.expiry || d.lastExpiry || d.expiredAt || null;
+    if (raw) {
+      var t = new Date(raw).getTime();
+      if (!isNaN(t) && t < Date.now()) return true;
+    }
+    return false;
+  },
+
   async reconcileSubFromServer(opts){
     var _allowRevoke = !!(opts && opts.allowRevoke);
     try {
@@ -32303,6 +32327,24 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
          Billing purchases, so treating its silence as a "no" would cut off
          genuine Play subscribers. Those are reconciled by reconcileFromPlay(). */
       if (!d || d.active !== true || !d.plan) {
+        /* (v34_161) The server just said "not active". That answer alone does
+           not distinguish a never-paid user from a lapsed subscriber — but the
+           payload usually carries enough to tell them apart. If it does, stamp
+           the durable marker so the billing gate treats this user as a lapsed
+           payer (no free-bill runway) even on a device whose kf_subs was never
+           written, was cleared, or was reset() away. This is the server-side
+           backstop for the localStorage backfill in Subs._load().
+           Runs regardless of _allowRevoke: stamping the marker grants nothing
+           and takes nothing away that the user was entitled to — it only
+           decides whether they get a NEW free-bill runway they've already had. */
+        try {
+          if (d && window.Subs.markEverPaid && this._serverSaysEverPaid(d)) {
+            if (window.Subs.markEverPaid()) {
+              console.log('[Subs] server reports a prior subscription — everPaid stamped');
+              try { if (this.renderMoreMenu) this.renderMoreMenu(); } catch(e){}
+            }
+          }
+        } catch(e){ console.warn('[Subs] everPaid stamp failed (non-fatal):', e && e.message); }
         try {
           const st = (window.Subs && window.Subs._state) || null;
           if (_allowRevoke && st && st.purchaseToken === 'payu' && window.Subs.isPaid && window.Subs.isPaid()) {
@@ -33399,7 +33441,20 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       king: { m:799, y:7990, mMrp:799, yMrp:9588 }
     };
   },
-  _shouldGateBilling(){ return !this._isPaidUser() && this._freeBillsUsed() >= this._FREE_BILLS; },
+  /* (v34_160) Two ways to be gated, not one.
+     This used to be ONLY the free-bill counter, which meant expiry itself
+     blocked nothing: a subscriber whose monthly ran out kept billing until
+     hn_freeBillsUsed_<shopId> reached 15 — and since that counter is
+     localStorage-scoped, a new device, a cleared cache or a second shopId
+     handed them another 15 free bills, repeatable forever.
+     Now: never-paid users get the 15-bill runway; anyone who has ever paid and
+     is no longer paid is gated immediately, because they already had their
+     runway and then some. */
+  _shouldGateBilling(){
+    if (this._isPaidUser()) return false;
+    try { if (window.Subs && Subs.hasEverPaid && Subs.hasEverPaid()) return true; } catch(e){}
+    return this._freeBillsUsed() >= this._FREE_BILLS;
+  },
   _freeBillNudgeAfterSale(){
     if (this._isPaidUser()) return;
     var left = this._freeBillsLeft();
@@ -33603,9 +33658,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   _renderSubscribeBanner(){
     var b = document.getElementById('hn-subscribe-banner');
     if (!b) return;
-    var exhausted = !this._isPaidUser() && this._freeBillsUsed() >= this._FREE_BILLS;
+    /* (v34_160) Was a second copy of the gate condition — the exact
+       two-configs-that-must-agree shape that has bitten this codebase before.
+       Now reads the gate itself, so the banner can never disagree with the
+       lock. */
+    var exhausted = this._shouldGateBilling();
+    var lapsed = false;
+    try { lapsed = !!(window.Subs && Subs.hasEverPaid && Subs.hasEverPaid()); } catch(e){}
     /* Contextual funnel: NO top banner while free bills remain (stages 1-2).
-       The earned black-gold ask appears only once the 20 free bills are used. */
+       The earned black-gold ask appears only once the free bills are used, or
+       immediately once a paid plan lapses. */
     if (this.current !== 'home' || !exhausted) { b.style.display = 'none'; return; }
     b.innerHTML = ''
       + '<div style="background:radial-gradient(120% 90% at 50% 0%, #2a2a2a 0%, #0A0A0A 60%, #000 100%);border:1px solid #2A2A2A;padding:15px 16px;display:flex;align-items:center;gap:13px">'
@@ -33613,10 +33675,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       +     '<svg width="23" height="23" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>'
       +   '</div>'
       +   '<div style="flex:1;min-width:0">'
-      +     '<div style="color:#fff;font-weight:800;font-size:14.5px;letter-spacing:-.01em">Free bills used up</div>'
-      +     '<div style="color:#CFCFCF;font-size:12.5px;font-weight:600;margin-top:2px;line-height:1.4">Subscribe to keep billing &amp; keep your data.</div>'
+      +     '<div style="color:#fff;font-weight:800;font-size:14.5px;letter-spacing:-.01em">' + (lapsed ? 'Your plan has expired' : 'Free bills used up') + '</div>'
+      +     '<div style="color:#CFCFCF;font-size:12.5px;font-weight:600;margin-top:2px;line-height:1.4">' + (lapsed ? 'Renew to keep billing &amp; keep your data.' : 'Subscribe to keep billing &amp; keep your data.') + '</div>'
       +   '</div>'
-      +   '<button type="button" onclick="App.openSubscription()" style="flex:0 0 auto;background:linear-gradient(135deg,#E8C24A,#B8860B);color:#1a1300;border:none;padding:10px 15px;border-radius:11px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">Subscribe</button>'
+      +   '<button type="button" onclick="App.openSubscription()" style="flex:0 0 auto;background:linear-gradient(135deg,#E8C24A,#B8860B);color:#1a1300;border:none;padding:10px 15px;border-radius:11px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;letter-spacing:-.005em">' + (lapsed ? 'Renew' : 'Subscribe') + '</button>'
       + '</div>';
     b.style.display = 'block';
   },
@@ -45573,6 +45635,12 @@ if (window.Subs) return;
 var TRIAL_DAYS    = 0;
 var STORAGE_KEY   = 'kf_subs';
 
+/* NOTE (v34_160): monthlyPrice / annualPrice below are DEAD — nothing reads
+   them (only name, maxShops and color are consumed). They are stale by years
+   (trial:10, basic:99) and are left here only because removing keys from a
+   persisted-adjacent shape is riskier than labelling them.
+   THE ONLY PRICE TABLE IS App._pricing(). Do not read these; do not "fix"
+   them into a second source of truth. */
 var TIERS = {
   trial:   { name: 'Trial',    monthlyPrice: 10,  annualPrice: null, maxShops: 5, color: '#F59E0B' },
   basic:   { name: 'Basic',    monthlyPrice: 99,  annualPrice: null, maxShops: 1, color: '#0891B2' },
@@ -45599,6 +45667,18 @@ var state = {
      is asked; reconcileSubFromServer() confirms or revokes long before it runs
      out. Only a record that is BOTH unverifiable and un-confirmable expires. */
   graceUntilMs: null,
+  /* (v34_160) Durable "this person has paid at least once" marker.
+     WHY IT CANNOT BE DERIVED FROM paidExpiryMs: reset() nulls paidExpiryMs,
+     so the only evidence a user was ever a payer is destroyed by the very
+     path that handles a lapse. Without a separate marker, a subscriber whose
+     monthly ran out fell back to the 15 free bills that are meant for
+     never-paid users — and got a fresh 15 on every new device, browser or
+     shopId, because that counter is localStorage-scoped.
+     Scoped by uid for the same reason kf_subs is (v34_029): entitlement, and
+     the loss of it, belongs to a person, not a browser. NEVER cleared by
+     reset() or _revoke() — only reload() clears it, and only because reload()
+     immediately re-reads it from storage. */
+  everPaidUid: null,
   /* Set once the server (or Play) has vouched for this record. Must be declared,
      persisted AND reset here — as a bare ad-hoc property it survived reload()
      and every later grace check silently passed. */
@@ -45630,6 +45710,7 @@ function _save(){
       purchaseToken: state.purchaseToken,
       uid: state.uid,
       graceUntilMs: state.graceUntilMs,
+      everPaidUid: state.everPaidUid,
       serverConfirmed: !!state.serverConfirmed,
       lastVerifiedMs: state.lastVerifiedMs || 0
     }));
@@ -45649,8 +45730,19 @@ function _load(){
       state.purchaseToken= data.purchaseToken || null;
       state.uid          = data.uid || null;
       state.graceUntilMs = data.graceUntilMs || null;
+      state.everPaidUid  = data.everPaidUid || null;
       state.serverConfirmed = !!data.serverConfirmed;
       state.lastVerifiedMs  = data.lastVerifiedMs || 0;
+
+      /* (v34_160) Backfill for records written before everPaidUid existed.
+         A record carrying both a paid expiry and an owner uid is proof a
+         purchase happened, whether or not that expiry is still in the future.
+         This is what catches subscribers who ALREADY lapsed before this build
+         shipped. It must run here, at load — before _recomputeTier() below and
+         before any reset() can null paidExpiryMs out from under it. */
+      if (!state.everPaidUid && state.paidExpiryMs && state.uid) {
+        state.everPaidUid = state.uid;
+      }
     }
   } catch(e){}
   state.loaded = true;
@@ -45665,6 +45757,7 @@ function reload(){
   state.tier = 'trial'; state.cycle = null; state.trialStartMs = null;
   state.paidExpiryMs = null; state.purchaseToken = null;
   state.uid = null; state.graceUntilMs = null; state.serverConfirmed = false;
+  state.everPaidUid = null;
   state.lastVerifiedMs = 0;
   _load();
 }
@@ -45800,6 +45893,22 @@ function isExpired(){
   return t === 'trial-expired' || t === 'expired';
 }
 
+/* (v34_160) Has the CURRENTLY SIGNED-IN user ever paid? Drives the billing
+   gate: a lapsed payer gets no free-bill runway, a never-paid user still gets
+   the full 15.
+   Returns false while auth is unresolved. That is deliberate and lenient: the
+   gate is re-evaluated on every addToCart, so a real lapsed payer is caught
+   within a second of sign-in, and nobody eats a full-screen lock during boot
+   because currentUser hadn't arrived yet. Erring the other way would paywall
+   people for the duration of a slow network. */
+function hasEverPaid(){
+  if (!state.loaded) _load();
+  if (!state.everPaidUid) return false;
+  var me = _uidNow();
+  if (!me) return false;
+  return state.everPaidUid === me;
+}
+
 function daysLeft(){
   if (!state.loaded) _load();
   _recomputeTier();
@@ -45861,6 +45970,9 @@ function markPurchased(tier, cycle, purchaseToken, expiryMs){
   state.uid          = _uidNow();
   state.graceUntilMs = null;
   state.serverConfirmed = true;
+  /* (v34_160) Remember that this person paid, permanently. Guarded so a null
+     uid (auth not yet resolved) can't wipe an existing marker. */
+  if (state.uid) state.everPaidUid = state.uid;
 
   if (expiryMs) {
     state.paidExpiryMs = expiryMs;
@@ -45869,6 +45981,23 @@ function markPurchased(tier, cycle, purchaseToken, expiryMs){
     state.paidExpiryMs = Date.now() + (days * 24 * 60 * 60 * 1000);
   }
   _save();
+}
+
+/* (v34_161) Stamp the lapsed-payer marker WITHOUT granting any entitlement.
+   Called when the server reports this user as a former subscriber. Kept
+   separate from markPurchased() precisely so that "was a payer" and "is a
+   payer" can never be confused: this function touches nothing but the marker.
+   Overwriting a different uid is correct — the marker belongs to whoever is
+   signed in now, and the previous owner's marker is re-derived from the server
+   the next time they sign in. */
+function markEverPaid(){
+  if (!state.loaded) _load();
+  var me = _uidNow();
+  if (!me) return false;
+  if (state.everPaidUid === me) return false;
+  state.everPaidUid = me;
+  _save();
+  return true;
 }
 
 function getTierConfig(tier){
@@ -45954,6 +46083,8 @@ window.Subs = {
   isInTrial:       isInTrial,
   isPaid:          isPaid,
   isExpired:       isExpired,
+  hasEverPaid:     hasEverPaid,
+  markEverPaid:    markEverPaid,
   daysLeft:        daysLeft,
   startTrial:      startTrial,
   setTrialStart:   setTrialStart,
@@ -45962,8 +46093,7 @@ window.Subs = {
   getTierConfig:   getTierConfig,
   reset:           reset,
   TIERS:           TIERS,
-  TRIAL_DAYS:      TRIAL_DAYS,
-  _state:          state
+  TRIAL_DAYS:      TRIAL_DAYS
 };
 })();
 </script>
