@@ -26,6 +26,9 @@
   --y:#F5A623; --y-tint:#FFF4E0; --y-bd:#F0D9A8;
   --success:#06C167; --success-d:#048A45; --success-tint:#E7F9F0;
   --danger:#E11900; --danger-tint:#FDECEA;
+  /* Bookings are a third state — neither out nor available — so they get their
+     own colour rather than borrowing the navy that means "on the road". */
+  --vi:#5B21B6; --vi-tint:#EDE9FE; --vi-bd:#C4B5FD;
   --t1:#0A0A0A; --t2:#454545; --t3:#6B6B6B; --t4:#9C9C9C;
   --bg:#FBF7F0; --card:#FFFFFF; --bd:#E4E0D8;
   --shadow-sm:0 1px 2px rgba(0,0,0,.05);
@@ -234,6 +237,19 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .rt-sep{font-size:10.5px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;
   color:var(--t4);margin:11px 0 3px}
 .rt-hint{font-size:11.5px;color:var(--t3);line-height:1.5;margin-top:10px}
+
+/* ── segment control + booked list ─────────────────────────────── */
+.seg{display:flex;gap:6px;background:#F1EFE9;border:1px solid var(--bd);border-radius:12px;
+  padding:4px;margin-bottom:11px}
+.seg div{flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-size:13px;
+  font-weight:800;color:var(--t3);cursor:pointer;user-select:none}
+.seg div.on{background:#fff;color:var(--t1);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.sb{display:inline-block;background:var(--vi-tint);color:var(--vi);font-size:9.5px;font-weight:900;
+  padding:1px 6px;border-radius:99px;margin-left:4px;vertical-align:1px}
+.seg div.on .sb{background:var(--vi);color:#fff}
+.day-hd{font-size:10.5px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--t4);margin:14px 2px 7px}
+.pill.bk{background:var(--vi-tint);color:var(--vi)}
 
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 0}
 .chip{background:var(--card);border:1.5px solid var(--bd);border-radius:99px;
@@ -628,7 +644,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_18_1_nav';
+const BUILD = 'rn_v3_19_0_bookings';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1791,6 +1807,104 @@ const R = {
         : '14 days free \u00b7 no card needed')}</div>`;
   },
 
+  outTab(i){ this._bookTab = !!i; Haptic.tap(); this.render(); },
+
+  /* Grouped by day, nearest first. Today's carry their actions inline; later
+     ones are rows until their day comes round. */
+  bookedList(held){
+    if (!held.length) return `<div class="empty"><div class="e">\u{1F4C5}</div>
+      <b>No bookings yet</b>
+      <span>Set a future date on the rent-out sheet and it becomes a booking.</span>
+      <div style="margin-top:18px"><button class="btn" style="background:var(--vi)"
+        onclick="R.newBooking()">+ New booking</button></div></div>`;
+    const dayKey = ms => { const d=new Date(ms);
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+    const today = dayKey(Date.now());
+    const tmr   = dayKey(Date.now()+24*HOUR);
+    let out = `<button class="btn" style="background:var(--vi);margin-bottom:11px"
+      onclick="R.newBooking()">+ New booking</button>`;
+    let last = '';
+    held.forEach(b => {
+      const k = dayKey(b.fromAt);
+      if (k !== last){
+        last = k;
+        const lbl = k===today ? 'Today' : (k===tmr ? 'Tomorrow' : fmtDT(b.fromAt).split(',')[0]);
+        out += `<div class="day-hd">${esc(lbl)}${k===today?'':' · '+fmtDT(b.fromAt).split(',')[0]}</div>`;
+      }
+      const isToday = k === today;
+      const time = fmtDT(b.fromAt).split(', ').slice(1).join(', ');
+      out += `<div class="card" style="${isToday?'border-color:var(--vi)':''}">
+        <div class="row">
+          <b class="grow" style="font-size:15px">A ${esc(b.model)}</b>
+          <span class="pill ${isToday?'warn':'bk'}">${isToday?esc(time):'HELD'}</span>
+        </div>
+        <div class="muted" style="margin-top:2px">${esc(b.customerName)}${
+          b.customerPhone?' · '+esc(b.customerPhone):''}</div>
+        <div class="muted" style="margin-top:3px;color:var(--t2);font-weight:650">
+          ${esc(tierOf(b.tier).label)} · ${money(b.quotedRent)}${
+          b.token?' · token '+money(b.token)+' taken':' · no token'}</div>
+        ${b.preferredVehicleId ? (()=>{ const pv=DB.d.vehicles.find(v=>v.id===b.preferredVehicleId);
+          return pv?`<div class="muted" style="margin-top:2px">prefers ${esc(vSub(pv))||esc(vLabel(pv))}</div>`:''; })() : ''}
+        ${isToday ? `<div class="two" style="margin-top:10px">
+          <button class="btn sm" style="background:var(--y);color:#0A0A0A"
+            onclick="R.startBooking('${b.id}')">Start rental</button>
+          <button class="btn ghost sm" onclick="R.bookNoShow('${b.id}')">No-show</button>
+        </div>` : `<div style="margin-top:9px"><button class="btn ghost sm" style="width:100%"
+            onclick="R.bookCancel('${b.id}')">Cancel booking</button></div>`}
+      </div>`;
+    });
+    return out;
+  },
+
+  /* The second door. Same sheet, date pre-set to tomorrow — nobody discovers a
+     feature by scrolling to a date field. */
+  newBooking(){
+    this._prefillOut = Date.now() + 24*HOUR;
+    this.checkoutStart();
+  },
+
+  /* Booking becomes a rental. The bike is chosen NOW, from what is actually
+     standing in the yard — the preference is offered first, not forced. */
+  startBooking(id){
+    const b = (DB.d.bookings||[]).find(x=>x.id===id); if (!b) return;
+    const bikes = (DB.d.vehicles||[]).filter(v =>
+      !v.deletedAt && v.rateId === b.rateId && v.status === 'available');
+    if (!bikes.length) return toast('No ' + b.model + ' is free right now — check one in first');
+    bikes.sort((a,c)=> (a.id===b.preferredVehicleId?-1:0) - (c.id===b.preferredVehicleId?-1:0));
+    this._fromBooking = b.id;
+    this._prefillOut = Date.now();
+    this._prefillVeh = bikes[0].id;
+    this._prefillTier = b.tier;
+    closeSheet();
+    this.checkoutStart();
+  },
+
+  bookNoShow(id){
+    const b = (DB.d.bookings||[]).find(x=>x.id===id); if (!b) return;
+    if (!confirm('Mark ' + b.customerName + ' as a no-show?\n\nThe bike is freed for anyone else. ' +
+      (b.token ? 'The ' + money(b.token) + ' token stays with you unless you refund it yourself.'
+               : 'No token was taken.'))) return;
+    this._bookSet(id, { status:'noshow', closedAt: Date.now() });
+    toast('Marked no-show — the ' + b.model + ' is free');
+  },
+
+  bookCancel(id){
+    const b = (DB.d.bookings||[]).find(x=>x.id===id); if (!b) return;
+    if (!confirm('Cancel this booking?\n\n' + (b.token
+      ? 'Refunding the ' + money(b.token) + ' token is your call — the app only records the cancellation.'
+      : 'No token was taken.'))) return;
+    this._bookSet(id, { status:'cancelled', closedAt: Date.now() });
+    toast('Booking cancelled');
+  },
+
+  _bookSet(id, patch){
+    const i = (DB.d.bookings||[]).findIndex(x=>x.id===id);
+    if (i<0) return;
+    Object.assign(DB.d.bookings[i], patch);
+    if (window.Cloud && Cloud.ready) Cloud.put('bookings', id, patch);
+    DB.save(); this.render();
+  },
+
   obDismiss(){ this._obDismissed = true; try{ localStorage.setItem('rn_ob_done','1'); }catch(e){} this.render(); },
 
   renderOut(){
@@ -1832,7 +1946,35 @@ const R = {
     }
 
     const ob = this.obCard();
-    const banner = ob + (this.obDone() ? this.ratesBanner() : '') + this.trialBanner();
+    const held = this.bookings().sort((a,b)=> Number(a.fromAt)-Number(b.fromAt));
+    const seg = held.length || this._bookTab ? `
+      <div class="seg">
+        <div class="${this._bookTab?'':'on'}" onclick="R.outTab(0)">Out now${
+          open.length?` <span class="sb">${open.length}</span>`:''}</div>
+        <div class="${this._bookTab?'on':''}" onclick="R.outTab(1)">Booked${
+          held.length?` <span class="sb">${held.length}</span>`:''}</div>
+      </div>` : '';
+
+    if (this._bookTab){
+      const kp2 = document.getElementById('out-kpis');
+      if (kp2) kp2.style.display = 'none';
+      box.innerHTML = seg + this.bookedList(held);
+      return;
+    }
+
+    /* Pickups due today, at the top, because it is the only thing that changes
+       what a shop does this morning: how many bikes not to give a walk-in. */
+    const dayEnd = new Date(); dayEnd.setHours(23,59,59,999);
+    const todays = held.filter(b => Number(b.fromAt) <= dayEnd.getTime());
+    const pick = todays.length ? `
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <div class="row"><b class="grow" style="font-size:13px">${todays.length} pickup${
+          todays.length===1?'':'s'} today</b>
+          <button class="btn ghost sm" onclick="R.outTab(1)">See</button></div>
+        <div class="muted" style="margin-top:3px">Keep ${todays.map(b=>esc(b.model)).join(', ')} back.</div>
+      </div>` : '';
+
+    const banner = ob + seg + pick + (this.obDone() ? this.ratesBanner() : '') + this.trialBanner();
     if (!open.length){
       box.innerHTML = banner + `<div class="empty"><div class="e">🛵</div>
           <b>Nothing is out right now</b>
@@ -1932,6 +2074,11 @@ const R = {
               ${docs ? `<span class="pill warn">${esc(docs)}</span>` : ''}
               ${rc && !this.rateReady(rc) ? `<span class="pill late">NO RATE</span>` : ''}
             </div>
+            ${(()=>{ const nb = this.bookings()
+                .filter(b => b.rateId === v.rateId)
+                .sort((a,c)=> Number(a.fromAt)-Number(c.fromAt))[0];
+              return nb ? `<div class="muted" style="margin-top:3px;color:var(--vi);font-weight:750">
+                \u{1F4C5} Booked ${esc(fmtDT(nb.fromAt))} \u00b7 ${esc(nb.customerName)}</div>` : ''; })()}
             <div class="muted ell" style="margin-top:2px">
               ${esc(vSub(v))||esc(v.model)}${
                 !rc ? ' · no rate card'
@@ -2156,6 +2303,88 @@ const R = {
     if (!(ot > 0))  { flag('ot');  Haptic.error(); toast('Enter the overtime rate \u2014 it is what late returns cost you'); return null; }
     return { deposit: n('dep'), ot: ot,
              tiers: { h3:n('h3'), h6:n('h6'), h12:n('h12'), h24:d24, d7:n('d7') } };
+  },
+
+  /* ══════════════════════════════════════════════════════════════════
+     ADVANCE BOOKINGS
+     A booking holds a MODEL for a window. The bike the shop happened to be
+     looking at is recorded as a preference and chosen for real at pickup —
+     naming it now would mean reassigning by hand every time a bike is late,
+     damaged or sold before the date arrives.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* Anything within the next half hour is a rental; beyond that is a booking.
+     
+     90 seconds was too tight: a shop that says "out at 7.30" when it is 7.05,
+     because the customer is parking his car, would have had it silently
+     recorded as a booking. Nobody fills in a checkout sheet half an hour
+     before handing a bike over unless they mean to reserve it — and the sheet
+     says out loud which mode it is in, so a wrong guess is visible before
+     anything saves. */
+  BOOK_SLACK_MS: 30 * 60 * 1000,
+  isFuture(ms){ return ms > Date.now() + this.BOOK_SLACK_MS; },
+
+  bookings(){ return (DB.d.bookings||[]).filter(b => b.status === 'held'); },
+
+  /* How many bikes of this model are free for [from,to).
+     
+     total          bikes on the rate card, not deleted, not retired
+     minus rentals  open rentals of those bikes still running at `from`
+     minus bookings other held bookings for the model whose window overlaps
+     
+     Overlap is counted rather than peak concurrency: two bookings on
+     different days inside one long window both count against it. That makes
+     the answer conservative and occasionally refuses a booking that would
+     have fitted. Correct direction to be wrong — turning one away costs a
+     day's rent, double-booking costs the customer and the review. */
+  bookFree(rateId, from, to, ignoreId){
+    const bikes = (DB.d.vehicles||[]).filter(v =>
+      !v.deletedAt && v.rateId === rateId && v.status !== 'retired');
+    const total = bikes.length;
+    if (!total) return { total:0, free:0, outNow:0, booked:0 };
+    const ids = new Set(bikes.map(v=>v.id));
+    const outNow = (DB.d.rentals||[]).filter(r =>
+      r.status === 'open' && ids.has(r.vehicleId) && (Number(r.dueAt)||0) > from).length;
+    const booked = this.bookings().filter(b =>
+      b.id !== ignoreId && b.rateId === rateId &&
+      Number(b.fromAt) < to && Number(b.toAt) > from).length;
+    return { total, outNow, booked, free: Math.max(0, total - outNow - booked) };
+  },
+
+  /* Held bookings for a model that start before a proposed rental would end —
+     the walk-in clash. Returns the soonest, which is the one worth naming. */
+  bookClash(rateId, from, to, ignoreId){
+    const hits = this.bookings().filter(b =>
+      b.id !== ignoreId && b.rateId === rateId &&
+      Number(b.fromAt) < to && Number(b.toAt) > from);
+    if (!hits.length) return null;
+    const f = this.bookFree(rateId, from, to, ignoreId);
+    /* Only a clash if capacity actually runs out. Three Jupiters and one
+       booking is not a conflict. */
+    if (f.free > 0) return null;
+    hits.sort((a,b)=> Number(a.fromAt) - Number(b.fromAt));
+    return hits[0];
+  },
+
+  /* Models with capacity in the window, for the "offer something else" panel. */
+  bookAlternatives(rateId, from, to){
+    return (DB.d.rates||[])
+      .filter(r => r.id !== rateId && this.rateReady(r))
+      .map(r => ({ rate:r, f:this.bookFree(r.id, from, to) }))
+      .filter(x => x.f.free > 0)
+      .sort((a,b)=> b.f.free - a.f.free)
+      .slice(0,3);
+  },
+
+  /* The soonest time this model has capacity, scanning day by day. Cheap: at
+     most 21 evaluations of an in-memory filter. */
+  bookNextFree(rateId, from, to){
+    const span = to - from;
+    for (let d=1; d<=21; d++){
+      const f2 = from + d*24*HOUR;
+      if (this.bookFree(rateId, f2, f2+span).free > 0) return f2;
+    }
+    return null;
   },
 
   /* ── first bike ──────────────────────────────────────────────────
@@ -2665,7 +2894,7 @@ const R = {
       <div class="fld"><label class="lbl">Phone <span class="muted">optional — needed for WhatsApp</span></label>
         <input class="in" id="c-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits"></div>
       <div class="fld"><label class="lbl">Date &amp; time out</label>
-        <input class="in" id="c-out" type="datetime-local" value="${dtLocal(Date.now())}" onchange="R.coSummary()"></div>
+        <input class="in" id="c-out" type="datetime-local" value="${dtLocal(this._prefillOut || Date.now())}" onchange="R.coSummary()"></div>
 
       <button type="button" class="btn ghost" style="margin:4px 0 12px"
         onclick="R.more('c-more',this)">More details <span class="muted">— optional</span></button>
@@ -2684,6 +2913,7 @@ const R = {
               <option value="F">Full</option></select></div>
         </div>
       </div>
+      <div id="c-mode"></div>
       <div id="c-summary"></div>
       <button class="btn g" id="c-go" onclick="R.checkoutSave()" disabled>Choose a vehicle and duration</button>
     `);
@@ -2728,9 +2958,9 @@ const R = {
           }).join('')}
         </div></div>
       <div class="two">
-        <div class="fld"><label class="lbl">Deposit taken</label>
+        <div class="fld"><label class="lbl" id="c-dep-l">Deposit taken</label>
           <input class="in" id="c-dep" type="number" inputmode="numeric" value="${r.deposit}" oninput="R.coSummary()"></div>
-        <div class="fld"><label class="lbl">Rent paid now</label>
+        <div class="fld" id="c-adv-w"><label class="lbl">Rent paid now</label>
           <input class="in" id="c-adv" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
       </div>
       <div class="fld"><label class="lbl">How did it come in?</label>
@@ -2803,7 +3033,91 @@ const R = {
     const blocked = this.docBlocked(v);
     const ok = !blocked || (ovEl && ovEl.checked);
 
-    box.innerHTML = `<div class="card" style="background:var(--p-50);border-color:#D9E2EA">
+    /* ── booking mode ────────────────────────────────────────────────
+       A future pickup is a promise, not a handover: no bike goes out, no
+       deposit is held, no clock starts. Rendering it as a rental is what let
+       a date sixteen days out create an open rental that took the bike off
+       the market for sixteen days. */
+    const future = this.isFuture(outAt);
+    this._bookMode = future;
+    /* Same field, different meaning: a future pickup takes a token against a
+       no-show, not a deposit. Nobody holds five thousand rupees of someone's
+       money for sixteen days. */
+    const depL = document.getElementById('c-dep-l');
+    if (depL) depL.innerHTML = this.isFuture(outAt)
+      ? 'Token to hold it <span class="muted">optional</span>'
+      : 'Deposit taken';
+    const advWrap = document.getElementById('c-adv-w');
+    if (advWrap) advWrap.style.display = this.isFuture(outAt) ? 'none' : '';
+    const sheet = document.getElementById('c-mode');
+    if (sheet) sheet.innerHTML = future ? `
+      <div class="card" style="background:var(--vi-tint);border-color:var(--vi-bd)">
+        <b style="font-size:13px;color:var(--vi)">This is a booking, not a rental</b>
+        <div class="muted" style="margin-top:2px">Nothing is taken now and no bike goes out.
+        ${esc(vLabel(v))} stays available until ${fmtDT(outAt)}.</div>
+      </div>` : '';
+
+    if (future){
+      const f = this.bookFree(v.rateId, outAt, due);
+      const tok = dep;                    /* the deposit field becomes the token */
+      if (!f.free){
+        const alts = this.bookAlternatives(v.rateId, outAt, due);
+        const nf   = this.bookNextFree(v.rateId, outAt, due);
+        box.innerHTML = `
+          <div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+            <b style="font-size:13px;color:var(--danger)">No ${esc(r.model)} free then</b>
+            <div class="muted" style="margin-top:3px">You have ${f.total}.
+              ${f.outNow?f.outNow+' still out, ':''}${f.booked?f.booked+' already booked.':''}</div>
+          </div>
+          ${(alts.length || nf) ? `<div class="card">
+            <b style="font-size:12.5px">What you can offer instead</b>
+            ${alts.map(a=>`<div class="line"><span>${esc(a.rate.model)}</span>
+              <b class="pos">${a.f.free} free</b></div>`).join('')}
+            ${nf?`<div class="line"><span>${esc(r.model)} from ${fmtDT(nf).split(',')[0]}</span>
+              <b style="color:var(--vi)">free</b></div>`:''}
+          </div>` : ''}`;
+        btn.disabled = true;
+        btn.textContent = 'No ' + r.model + ' free on that date';
+        return;
+      }
+      box.innerHTML = `
+        <div class="card" style="background:var(--success-tint);border-color:#B7ECD1">
+          <div class="row"><b class="grow" style="font-size:12.5px">${f.free} of ${f.total}
+            ${esc(r.model)} free then</b><span class="pill ok">CHECKED</span></div>
+          ${(f.outNow||f.booked)?`<div class="muted" style="margin-top:2px">${
+            [f.outNow?f.outNow+' still out':'', f.booked?f.booked+' already booked':'']
+              .filter(Boolean).join(' · ')}</div>`:''}
+        </div>
+        <div class="card" style="background:var(--vi-tint);border-color:var(--vi-bd)">
+          <div class="line"><span>Holding</span><b>A ${esc(r.model)}</b></div>
+          <div class="line"><span>Preferred bike</span><b>${esc(vSub(v))||esc(vLabel(v))}</b></div>
+          <div class="line"><span>Pickup</span><b>${fmtDT(outAt)}</b></div>
+          <div class="line"><span>Back by</span><b>${fmtDT(due)}</b></div>
+          <div class="line tot"><span>Rent locked at</span><b>${money(r.tiers[this._tier])}</b></div>
+          ${tok?`<div class="line"><span>Token now</span><b>${money(tok)}</b></div>`:''}
+          <div class="muted" style="margin-top:6px">The ${money(r.deposit)} deposit is taken on
+          pickup day, not now.</div>
+        </div>`;
+      btn.disabled = false;
+      btn.textContent = 'Book for ' + fmtDT(outAt).split(',')[0];
+      return;
+    }
+
+    /* The walk-in guard. A booking only clashes if capacity actually runs out —
+       three Jupiters and one booking is not a conflict. Dimmed, never blocked:
+       the customer in front of him may well beat a token, but he should know he
+       is making that trade. */
+    const clash = this.bookClash(v.rateId, outAt, due, this._fromBooking);
+    const warn = clash ? `
+      <div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+        <b style="font-size:12.5px;color:var(--danger)">A ${esc(clash.model)} is booked for
+          ${fmtDT(clash.fromAt)}</b>
+        <div class="muted" style="margin-top:3px">${esc(clash.customerName)}${
+          clash.token?', token '+money(clash.token)+' taken':''}. Renting this one for
+          ${esc(t.label)} leaves them without a bike. A shorter package may still fit.</div>
+      </div>` : '';
+
+    box.innerHTML = warn + `<div class="card" style="background:var(--p-50);border-color:#D9E2EA">
       <div class="line"><span>Due back</span><b>${fmtDT(due)}</b></div>
       <div class="line"><span>Rent for ${t.label}</span><b>${money(r.tiers[this._tier])}</b></div>
       <div class="line"><span>Overtime after that</span><b>${money(r.ot)}/hr</b></div>
@@ -2812,11 +3126,69 @@ const R = {
       <div class="muted" style="margin-top:6px">Of this, ${money(dep)} is not your money — it goes to Deposits held.</div>
     </div>`;
     btn.disabled = !ok;
-    btn.textContent = ok ? 'Rent out · collect ' + money(dep + adv)
+    btn.textContent = ok ? (clash ? 'Rent out anyway · ' + money(dep + adv)
+                                  : 'Rent out · collect ' + money(dep + adv))
                          : 'Blocked — ' + blocked + ' expired';
   },
 
+  /* ── save a booking ─────────────────────────────────────────────── */
+  async bookSave(){
+    const vid = document.getElementById('c-veh').value;
+    const v = DB.d.vehicles.find(x=>x.id===vid); if (!v) return;
+    const name = (document.getElementById('c-name').value||'').trim();
+    if (!name) return toast('Customer name is required');
+    const outAt = dtParse((document.getElementById('c-out')||{}).value, Date.now());
+    const t = tierOf(this._tier);
+    const toAt = outAt + t.hours*HOUR;
+    const r = rateFor(DB.d.rates.find(x=>x.id===v.rateId), outAt);
+    const f = this.bookFree(v.rateId, outAt, toAt);
+    /* Re-checked at save, not just at render: two counter staff on two phones
+       can both be looking at the last free bike. */
+    if (!f.free) { Haptic.error(); return toast('That model is no longer free then'); }
+    const ph = (document.getElementById('c-phone').value||'').replace(/[^0-9]/g,'').slice(-10);
+    const rec = {
+      rateId: v.rateId, model: r.model,
+      preferredVehicleId: vid,
+      customerName: name, customerPhone: ph,
+      customerKyc: (document.getElementById('c-kyc')||{value:''}).value.trim(),
+      fromAt: outAt, toAt: toAt, tier: this._tier,
+      quotedRent: Number(r.tiers[this._tier])||0,
+      quotedDeposit: Number(r.deposit)||0,
+      token: Number((document.getElementById('c-dep')||{value:0}).value)||0,
+      tokenMode: this.pmGet('c-pm'),
+      status: 'held',
+      createdAt: Date.now(),
+      note: ''
+    };
+    if (window.Cloud && Cloud.ready){
+      const bid = Cloud.nid('bk');
+      DB.d.bookings = (DB.d.bookings||[]).concat([Object.assign({id:bid}, rec)]);
+      Cloud.put('bookings', bid, rec).then(w => {
+        if (!w.ok){
+          DB.d.bookings = DB.d.bookings.filter(b=>b.id!==bid);
+          DB.save(); R.render();
+          toast('Could not save the booking — ' + Cloud.explainWrite(w.code));
+        }
+      });
+    } else {
+      DB.d.bookings = (DB.d.bookings||[]).concat([Object.assign({id:DB.id('bk')}, rec)]);
+    }
+    DB.save();
+    Haptic.success(); closeSheet();
+    this._bookTab = true;
+    toast('Booked — ' + r.model + ', ' + fmtDT(outAt));
+    this.render();
+  },
+
   async checkoutSave(){
+    /* One button, two outcomes. The date decided which, and coSummary has
+       already said so on screen. */
+    if (this._bookMode) return this.bookSave();
+    /* Carried so a rental started from a booking credits the token, keeps the
+       quoted price and closes the booking instead of leaving it held. */
+    const fromBk = this._fromBooking
+      ? (DB.d.bookings||[]).find(x=>x.id===this._fromBooking && x.status==='held')
+      : null;
     const vid  = document.getElementById('c-veh').value;
     const name = document.getElementById('c-name').value.trim();
     const ph   = document.getElementById('c-phone').value.replace(/\D/g,'').slice(-10);
@@ -2849,6 +3221,10 @@ const R = {
       depositHeld: Number(document.getElementById('c-dep').value)||0,
       advancePaid: Number(document.getElementById('c-adv').value)||0,
       outPayMode: this.pmGet('c-pm'),
+      bookingId: fromBk ? fromBk.id : null,
+      /* A token already collected is rent already paid. Charging it again at
+         pickup would take the same money twice. */
+      tokenCredited: fromBk ? (Number(fromBk.token)||0) : 0,
       outCash: this.pmCash('c-pm',
         (Number(document.getElementById('c-dep').value)||0) +
         (Number(document.getElementById('c-adv').value)||0), 'c-cash'),
@@ -2877,6 +3253,16 @@ const R = {
       if (ph) Cloud.put('customers', 'ph_'+ph, { name, phone: ph, kyc: rental.customerKyc });
       Cloud.audit('rental.out', rental.id, null,
         { vehicleId: vid, tier: rental.tier, deposit: rental.depositHeld, advance: rental.advancePaid });
+      /* Close the booking only now the rental genuinely exists. Doing it before
+         Cloud.checkout() would free the bike on a failed handover and let a
+         walk-in take one the customer is standing there waiting for. */
+      if (fromBk){
+        this._bookSet(fromBk.id, { status:'converted', rentalId: rental.id, closedAt: Date.now() });
+        Cloud.audit('booking.convert', fromBk.id, { status:'held' },
+          { rentalId: rental.id, token: fromBk.token||0 });
+      }
+      this._fromBooking = null; this._prefillOut = null;
+      this._prefillVeh = null; this._prefillTier = null;
       /* Cash is recorded on the day it MOVES, not the day the rental closes.
          A deposit taken today is in the drawer today — booking it only at
          check-in meant money you are physically holding showed as ₹0 in, and
@@ -4047,7 +4433,11 @@ const Cloud = {
       b1.set(doc(db,'rn_shops',shopId), {
         name, city: ($('g-city').value||'').trim(), ownerUid: this.uid,
         orgId: null, createdAt: serverTimestamp(),
-        openRentals: 0, depositsHeld: 0
+        /* openRentals and depositsHeld used to be written here as 0 and never
+           touched again — two fields that looked like live counters and were
+           always zero. The admin panel computes both server-side from the
+           rentals themselves, which cannot drift and cannot be edited by the
+           shop whose liability it measures. */
       });
       b1.set(doc(db,'rn_shops',shopId,'members',this.uid), {
         role:'owner', phone: (auth.currentUser.phoneNumber||''), addedAt: serverTimestamp()
@@ -4094,6 +4484,10 @@ const Cloud = {
 
     this._unsub.push(bind(S('vehicles'), 'vehicles'));
     this._unsub.push(bind(S('rates'), 'rates'));
+    /* Bookings are small, few and needed on every screen, so a live listener
+       is right. Cancelled and converted ones are filtered client-side rather
+       than queried, because a shop wants to see last week's no-shows. */
+    this._unsub.push(bind(S('bookings'), 'bookings'));
     /* HOT SET ONLY: open rentals. Closed history is paged on demand so
        this listener never grows with the age of the business. */
     this._unsub.push(bind(query(S('rentals'), where('status','==','open')), 'rentals'));
