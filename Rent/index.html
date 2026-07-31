@@ -811,7 +811,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_20_2_desktop';
+const BUILD = 'rn_v3_20_3_bookline';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2332,11 +2332,29 @@ const R = {
               ${docs ? `<span class="pill warn">${esc(docs)}</span>` : ''}
               ${rc && !this.rateReady(rc) ? `<span class="pill late">NO RATE</span>` : ''}
             </div>
-            ${(()=>{ const nb = this.bookings()
-                .filter(b => b.rateId === v.rateId)
-                .sort((a,c)=> Number(a.fromAt)-Number(c.fromAt))[0];
-              return nb ? `<div class="muted" style="margin-top:3px;color:var(--vi);font-weight:750">
-                \u{1F4C5} Booked ${esc(fmtDT(nb.fromAt))} \u00b7 ${esc(nb.customerName)}</div>` : ''; })()}
+            ${(()=>{
+              /* A booking holds a MODEL, so this line is a fact about the rate
+                 card, not about this one bike. It used to read "Booked 9 Aug"
+                 on every bike sharing the card, which says the opposite of
+                 what is true: one booking against two Activas leaves one free.
+                 
+                 So it now counts. Two bikes, one booking reads "1 of 2 booked",
+                 which is both accurate and identical on every row — correct,
+                 because it is a model-level fact. The preferred bike says so. */
+              const bs = this.bookings().filter(b => b.rateId === v.rateId)
+                .sort((a,c)=> Number(a.fromAt)-Number(c.fromAt));
+              if (!bs.length) return '';
+              const nb = bs[0];
+              const bikes = (DB.d.vehicles||[]).filter(x =>
+                !x.deletedAt && x.rateId === v.rateId && x.status !== 'retired').length;
+              const tight = bs.length >= bikes;
+              const mine = nb.preferredVehicleId === v.id;
+              return `<div class="muted" style="margin-top:3px;font-weight:750;color:${
+                tight ? 'var(--danger)' : 'var(--vi)'}">
+                \u{1F4C5} ${bs.length} of ${bikes} ${esc(nb.model||'')} booked \u00b7 ${
+                  esc(fmtDT(nb.fromAt))}${bs.length===1?' \u00b7 '+esc(nb.customerName):''}${
+                  mine ? ' \u00b7 this one preferred' : ''}</div>`;
+            })()}
             <div class="muted ell" style="margin-top:2px">
               ${esc(vSub(v))||esc(v.model)}${
                 !rc ? ' · no rate card'
