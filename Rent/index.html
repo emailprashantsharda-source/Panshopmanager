@@ -238,6 +238,33 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   color:var(--t4);margin:11px 0 3px}
 .rt-hint{font-size:11.5px;color:var(--t3);line-height:1.5;margin-top:10px}
 
+/* ── selection & bulk actions (desktop tables only) ───────────── */
+.selcol{width:32px}
+.cb{width:15px;height:15px;border:1.6px solid #BFB8AA;border-radius:4px;display:inline-block;
+  vertical-align:-3px;background:#fff}
+.cb.on{background:var(--p);border-color:var(--p);position:relative}
+.cb.on:after{content:'\2713';position:absolute;inset:0;color:#fff;font-size:11px;font-weight:900;
+  display:flex;align-items:center;justify-content:center}
+.dt-tbl tr.sel td{background:#F1F5F8}
+.bulkbar{background:var(--p-deep);color:#fff;border-radius:11px;padding:9px 12px;display:flex;
+  align-items:center;gap:9px;margin-bottom:11px;flex-wrap:wrap}
+.bulkbar b{font-size:13px;font-weight:850}
+.bulkbar .sp{flex:1}
+.bb{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:8px;padding:7px 12px;
+  font-size:12px;font-weight:800;font-family:inherit;cursor:pointer}
+.bb:hover{background:rgba(255,255,255,.24)}
+.bb.dg{background:var(--danger)}
+.bb.gh{background:transparent;border:1px solid rgba(255,255,255,.3)}
+.prev{width:100%;border-collapse:collapse;font-size:12px}
+.prev th{text-align:left;color:var(--t3);padding:5px 6px;font-size:10px;font-weight:850;
+  text-transform:uppercase;letter-spacing:.04em}
+.prev td{padding:6px 6px;border-bottom:1px solid #F4F1EA}
+.prev .num{text-align:right;font-variant-numeric:tabular-nums}
+.prev .nm{font-weight:800}
+.was{color:var(--t4);text-decoration:line-through;margin-right:6px}
+.now{font-weight:850;color:var(--success-d)}
+.skip{color:var(--t4);font-style:italic}
+
 /* ── segment control + booked list ─────────────────────────────── */
 .seg{display:flex;gap:6px;background:#F1EFE9;border:1px solid var(--bd);border-radius:12px;
   padding:4px;margin-bottom:11px}
@@ -495,6 +522,106 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 #rn-install .ix{border:0;background:rgba(255,255,255,.14);color:#fff;width:26px;height:26px;
   border-radius:99px;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;font-family:inherit}
 @media (prefers-reduced-motion:reduce){ #rn-install{animation:none} }
+
+/* ══════════════════════════════════════════════════════════════════════
+   DESKTOP  (>= 1024px)
+   The app had no desktop breakpoint at all: every rule was written for a
+   phone and simply stretched, so a step card six words long ran a metre
+   wide and a thumb-reach tab bar sat at the bottom of a 15-inch screen.
+
+   Same DOM, same renderers. The bottom nav and the sidebar both exist and
+   CSS picks one, so they cannot disagree about which page is current.
+   ══════════════════════════════════════════════════════════════════════ */
+.side{display:none}
+@media (min-width:1024px){
+  body{padding-bottom:0}
+  .side{
+    display:flex;flex-direction:column;gap:3px;
+    position:fixed;left:0;top:0;bottom:0;width:216px;z-index:60;
+    background:var(--p-deep);color:#fff;padding:14px 12px;
+    transition:width .18s ease;
+  }
+  .side-brand{display:flex;align-items:center;gap:9px;padding:2px 4px 14px}
+  .side-brand img{width:32px;height:32px;border-radius:9px;flex:0 0 auto}
+  .side-brand b{font-size:14px;font-weight:875;letter-spacing:-.02em;line-height:1.15;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .side-brand b span{display:block;font-size:10px;font-weight:650;color:#8FAEC4;letter-spacing:0}
+  .side .nv{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;
+    font-size:13.5px;font-weight:750;color:#BFD4E2;background:none;border:0;
+    font-family:inherit;cursor:pointer;text-align:left;width:100%}
+  .side .nv:hover{background:rgba(255,255,255,.07);color:#fff}
+  .side .nv.on{background:rgba(255,255,255,.13);color:#fff;font-weight:850}
+  .side .nv .ic{font-size:15px;width:18px;text-align:center;flex:0 0 auto}
+  .side .nv .tx{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
+  .side .nv .ct{font-size:10.5px;font-weight:900;background:rgba(255,255,255,.16);
+    padding:1px 7px;border-radius:99px;flex:0 0 auto}
+  .side .nv .ct:empty{display:none}
+  .side-cta{margin-top:12px;background:var(--y);color:#0A0A0A;border:0;border-radius:10px;
+    padding:11px;font-size:13.5px;font-weight:875;font-family:inherit;cursor:pointer;
+    display:flex;align-items:center;justify-content:center}
+  .side-tog{margin-top:auto;background:none;border:0;border-top:1px solid rgba(255,255,255,.1);
+    color:#7E9AAE;font-family:inherit;font-size:11.5px;font-weight:750;padding:11px 4px 2px;
+    cursor:pointer;display:flex;align-items:center;gap:6px}
+  .side-tog:hover{color:#BFD4E2}
+  .side-tog .a{font-size:14px;font-weight:900}
+
+  /* collapsed: 160px back, which is about two table columns on a 1366 laptop */
+  .side.mini{width:56px;padding:14px 8px}
+  .side.mini .side-brand{justify-content:center;padding-bottom:12px}
+  .side.mini .side-brand b,
+  .side.mini .nv .tx,
+  .side.mini .side-cta .tx,
+  .side.mini .side-tog .tx{display:none}
+  .side.mini .nv{justify-content:center;padding:10px 0;position:relative}
+  .side.mini .nv .ct{position:absolute;top:2px;right:3px;font-size:9px;padding:0 4px}
+  .side.mini .side-cta{padding:11px 0;font-size:18px}
+  .side.mini .side-tog{justify-content:center}
+
+  /* content sits beside it, and stops being full-bleed */
+  .top,.page{margin-left:216px;transition:margin-left .18s ease}
+  body.side-mini .top,body.side-mini .page{margin-left:56px}
+  .top{position:sticky;top:0}
+  .page{max-width:1180px;padding:18px 24px 40px}
+  .nav{display:none}
+
+  /* sheets stop sliding up from the bottom and simply sit in the middle */
+  /* The sheet already caps at 520px because it was built for a phone, so on
+     desktop it only has to stop sliding up from the bottom. Two rules, no
+     JavaScript — which is why the booking flow, check-in and the rate form all
+     come along for free. */
+  #ov{align-items:center}
+  #sheet{border-radius:16px;max-height:88vh}
+  #sheet .grab{display:none}
+  .toast{bottom:26px}
+
+  /* the welcome screen is content, not a banner: cap and centre it */
+  .wl,.wl-steps,.wl+.btn,.wl-link,.wl-foot{max-width:430px;margin-left:auto;margin-right:auto}
+
+  /* two columns on Out Now once there is something to put beside the list */
+  .dt-cols{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+  .dt-rail .card{margin-bottom:12px}
+
+  /* tables, where a stack of cards wastes the room */
+  .dt-tbl{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:4px 12px}
+  .dt-tbl table{width:100%;border-collapse:collapse;font-size:13px}
+  .dt-tbl th{text-align:left;font-size:10px;font-weight:850;color:var(--t3);
+    text-transform:uppercase;letter-spacing:.05em;padding:9px 8px;
+    border-bottom:1.5px solid var(--bd);white-space:nowrap}
+  .dt-tbl td{padding:11px 8px;border-bottom:1px solid #F4F1EA;vertical-align:middle}
+  .dt-tbl tr:last-child td{border-bottom:0}
+  .dt-tbl tbody tr{cursor:pointer}
+  .dt-tbl tbody tr:hover td{background:#FAF8F4}
+  .dt-tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+  .dt-tbl .nm{font-weight:800;letter-spacing:-.01em}
+  .dt-tbl .nm span{display:block;font-size:11.5px;font-weight:600;color:var(--t3)}
+  .dt-hd{display:flex;align-items:flex-end;gap:12px;margin-bottom:14px}
+  .dt-hd h2{font-size:22px;font-weight:875;letter-spacing:-.03em}
+  .dt-hd .s{font-size:12.5px;color:var(--t3)}
+  .dt-hd .sp{flex:1}
+}
+@media (min-width:1024px) and (prefers-reduced-motion:reduce){
+  .side,.top,.page{transition:none}
+}
 .pm-split{display:flex;gap:9px}
 .pm-box{flex:1;border-radius:13px;padding:12px 11px;border:1px solid var(--bd)}
 .pm-box.cash{background:var(--success-tint);border-color:#B7ECD1}
@@ -544,6 +671,31 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 </style>
 </head>
 <body>
+
+<!-- ═══ DESKTOP SIDEBAR ═══
+     Hidden below 1024px, where the bottom nav does this job. Both exist in the
+     DOM at once and CSS decides which is real — no JavaScript branch, so the
+     two can never disagree about which page is current. -->
+<aside class="side" id="side">
+  <div class="side-brand">
+    <img src="./icon-192.png" alt="">
+    <b id="side-biz">—<span id="side-plan">Trial</span></b>
+  </div>
+  <button class="nv" id="sv-out" onclick="R.nav('out')">
+    <span class="ic">\u{1F6F5}</span><span class="tx">Out Now</span><span class="ct" id="sv-out-c"></span></button>
+  <button class="nv" id="sv-book" onclick="R.nav('out');R.outTab(1)">
+    <span class="ic">\u{1F4C5}</span><span class="tx">Booked</span><span class="ct" id="sv-book-c"></span></button>
+  <button class="nv" id="sv-fleet" onclick="R.nav('fleet')">
+    <span class="ic">\u{1F4CB}</span><span class="tx">Fleet</span><span class="ct" id="sv-fleet-c"></span></button>
+  <button class="nv" id="sv-rates" onclick="R.nav('rates')">
+    <span class="ic">\u20B9</span><span class="tx">Rates</span><span class="ct"></span></button>
+  <button class="nv" id="sv-money" onclick="R.nav('money')">
+    <span class="ic">\u{1F4C8}</span><span class="tx">Money</span><span class="ct"></span></button>
+  <button class="side-cta" onclick="R.topAction()"><span class="p">+</span>
+    <span class="tx"> Rent out a bike</span></button>
+  <button class="side-tog" onclick="R.sideToggle()">
+    <span class="a">\u00AB</span><span class="tx"> Collapse</span></button>
+</aside>
 
 <div class="top">
   <div class="grow">
@@ -644,7 +796,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_19_0_bookings';
+const BUILD = 'rn_v3_20_0_desktop';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -890,6 +1042,7 @@ const R = {
   },
 
   nav(p){
+    this._sel = null;   /* never carry a selection across screens */
     if ((p==='money' && !this.isManager()) || (p==='rates' && !this.isManager())) {
       toast('Ask the owner for access'); p = 'out';
     }
@@ -1704,6 +1857,29 @@ const R = {
        checkoutStart() already refuses politely and says why, which is a better
        answer than a grey circle that says nothing. */
     if (cta) cta.classList.remove('off');
+    /* The sidebar mirrors the bottom nav rather than replacing it: same page
+       state, same counts, so whichever one the screen is showing is right. */
+    const held = (DB.d.bookings||[]).filter(b=>b.status==='held').length;
+    const openN = (DB.d.rentals||[]).filter(r=>r.status==='open').length;
+    const setTx = (id,v) => { const e=document.getElementById(id); if (e) e.textContent = v||''; };
+    setTx('sv-out-c',   openN||'');
+    setTx('sv-book-c',  held||'');
+    setTx('sv-fleet-c', (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length||'');
+    const sb = document.getElementById('side-biz');
+    if (sb) sb.firstChild && (sb.firstChild.nodeValue = (window.Cloud && Cloud.shopName) || 'RentalNow');
+    const sp = document.getElementById('side-plan');
+    if (sp && window.Cloud && Cloud.ready){
+      const t = Cloud.trialInfo();
+      sp.textContent = t.paid ? this.planLabel(t)
+        : (t.active ? t.trialDaysLeft + ' days left' : 'Trial ended');
+    }
+    ['out','book','fleet','rates','money'].forEach(k=>{
+      const el = document.getElementById('sv-'+k);
+      if (el) el.classList.toggle('on',
+        k==='book' ? (this.page==='out' && this._bookTab)
+                   : (this.page===k && !(k==='out' && this._bookTab)));
+    });
+
     if (this.page==='out') this.renderOut();
     if (this.page==='fleet') this.renderFleet();
     if (this.page==='rates') this.renderRates();
@@ -1807,7 +1983,69 @@ const R = {
         : '14 days free \u00b7 no card needed')}</div>`;
   },
 
-  outTab(i){ this._bookTab = !!i; Haptic.tap(); this.render(); },
+  /* ── desktop ──────────────────────────────────────────────────────
+     One number, one place. Renderers ask isWide() rather than each carrying
+     its own breakpoint, so the CSS and the JavaScript cannot drift apart
+     about where desktop begins. */
+  WIDE_AT: 1024,
+  isWide(){ return window.innerWidth >= this.WIDE_AT; },
+
+  sideToggle(){
+    const mini = !document.body.classList.contains('side-mini');
+    document.body.classList.toggle('side-mini', mini);
+    const s = document.getElementById('side');
+    if (s) s.classList.toggle('mini', mini);
+    const a = document.querySelector('.side-tog .a');
+    if (a) a.textContent = mini ? '\u00BB' : '\u00AB';
+    try { localStorage.setItem('rn_side_mini', mini ? '1' : ''); } catch(e){}
+  },
+  sideRestore(){
+    let mini = false;
+    try { mini = !!localStorage.getItem('rn_side_mini'); } catch(e){}
+    if (mini){
+      document.body.classList.add('side-mini');
+      const s = document.getElementById('side'); if (s) s.classList.add('mini');
+      const a = document.querySelector('.side-tog .a'); if (a) a.textContent = '\u00BB';
+    }
+  },
+  /* Crossing the breakpoint changes which renderer is correct, so a resize has
+     to re-render — but only when it actually crosses, not on every pixel of a
+     window drag. */
+  _wasWide: null,
+  onResize(){
+    const w = this.isWide();
+    if (w === this._wasWide) return;
+    this._wasWide = w;
+    this.render();
+  },
+
+  /* ── selection ────────────────────────────────────────────────────
+     A Set of ids, cleared on every tab change, filter change and completed
+     action. Selection that survives a filter is selection nobody can audit:
+     the shop ticks three rows, filters to something else, and acts on rows it
+     can no longer see. */
+  _sel: null,
+  selHas(id){ return !!(this._sel && this._sel.has(id)); },
+  selCount(){ return this._sel ? this._sel.size : 0; },
+  selClear(){ this._sel = null; this.render(); },
+  selToggle(id){
+    if (!this._sel) this._sel = new Set();
+    this._sel.has(id) ? this._sel.delete(id) : this._sel.add(id);
+    if (!this._sel.size) this._sel = null;
+    this.render();
+  },
+  /* Selects the rows currently on screen, never the ones a filter is hiding.
+     "Select all" meaning "including the thirty you cannot see" is how bulk
+     actions earn their reputation. */
+  selAll(ids){
+    const all = ids.every(i => this.selHas(i));
+    this._sel = all ? null : new Set(ids);
+    this.render();
+  },
+  selIds(){ return this._sel ? Array.from(this._sel) : []; },
+  cbox(on){ return `<span class="cb${on?' on':''}"></span>`; },
+
+  outTab(i){ this._sel=null; this._bookTab = !!i; Haptic.tap(); this.render(); },
 
   /* Grouped by day, nearest first. Today's carry their actions inline; later
      ones are rows until their day comes round. */
@@ -2055,6 +2293,11 @@ const R = {
       </div>`;
       return;
     }
+    /* Desktop gets a table: twelve bikes readable at once, plus the two
+       columns a phone cannot afford — Idle days and Earned — which are what an
+       owner sitting down actually wants. Same data, different question. */
+    if (this.isWide()) return this.fleetTable(hdr);
+
     const order = { available:0, rented:1, maintenance:2, retired:3 };
     const vs = [...DB.d.vehicles].sort((a,b)=>
       (order[a.status]-order[b.status]) || String(vLabel(a)).localeCompare(String(vLabel(b))));
@@ -2106,6 +2349,108 @@ const R = {
          the first one was hard to find at the bottom; the first one now sits at
          the top, and two of them four centimetres apart on a one-bike fleet was
          the result. */
+  },
+
+  /* Days since this bike last went out. The number that says the Maestro has
+     sat for 41 days having earned ₹2,100 all year. */
+  idleDays(v){
+    const last = (DB.d.rentals||[])
+      .filter(r => r.vehicleId === v.id)
+      .reduce((m,r)=> Math.max(m, Number(r.outAt)||0), 0);
+    if (!last) return v.createdAt ? Math.floor((Date.now()-v.createdAt)/(24*HOUR)) : null;
+    return Math.floor((Date.now()-last)/(24*HOUR));
+  },
+  earnedBy(v){
+    return (DB.d.rentals||[])
+      .filter(r => r.vehicleId === v.id && r.status === 'closed')
+      .reduce((s,r)=> s + (Number(r.revenue)||0), 0);
+  },
+
+  fleetTable(hdr){
+    const box = document.getElementById('fleet-list');
+    const order = { available:0, rented:1, maintenance:2, retired:3 };
+    const list = (DB.d.vehicles||[]).filter(v=>!v.deletedAt)
+      .slice().sort((a,b)=> (order[a.status]||0)-(order[b.status]||0)
+        || String(vLabel(a)).localeCompare(String(vLabel(b))));
+    const ids = list.map(v=>v.id);
+    const n = this.selCount();
+
+    box.innerHTML = hdr + (n ? this.bulkBar(n + ' bike' + (n===1?'':'s') + ' selected', [
+        ['R.bulkStatus(\'maintenance\')', 'Mark unavailable'],
+        ['R.bulkStatus(\'available\')',   'Mark available'],
+        ['R.bulkRetire()',                'Retire', 'dg'],
+      ]) : '') +
+      `<div class="dt-tbl"><table>
+        <thead><tr>
+          <th class="selcol" onclick="R.selAll(${JSON.stringify(ids).replace(/"/g,'&quot;')})">
+            ${this.cbox(ids.length && ids.every(i=>this.selHas(i)))}</th>
+          <th>Bike</th><th>Number</th><th>Rate card</th>
+          <th class="num">Deposit</th><th class="num">Rentals</th>
+          <th class="num">Earned</th><th class="num">Idle days</th>
+          <th>Papers</th><th>Status</th>
+        </tr></thead><tbody>
+        ${list.map(v=>{
+          const rc = (DB.d.rates||[]).find(r=>r.id===v.rateId);
+          const docs = this.docWarn(v);
+          const rides = (DB.d.rentals||[]).filter(r=>r.vehicleId===v.id).length;
+          const idle = this.idleDays(v);
+          const pill = { available:'ok', rented:'out', maintenance:'maint', retired:'late' }[v.status]||'ok';
+          const sel = this.selHas(v.id);
+          return `<tr class="${sel?'sel':''}" onclick="R.editVehicle('${v.id}')">
+            <td class="selcol" onclick="event.stopPropagation();R.selToggle('${v.id}')">${this.cbox(sel)}</td>
+            <td class="nm">${esc(vLabel(v))}</td>
+            <td class="muted">${esc(v.regNo)||'—'}</td>
+            <td>${rc ? (this.rateReady(rc) ? esc(rc.model)
+                  : `<span class="pill late">NO RATE</span>`) : '<span class="pill late">NONE</span>'}</td>
+            <td class="num">${rc && this.rateReady(rc) ? money(rc.deposit) : '—'}</td>
+            <td class="num">${rides}</td>
+            <td class="num">${money(this.earnedBy(v))}</td>
+            <td class="num" ${idle!=null && idle>30 ? 'style="color:var(--danger);font-weight:850"':''}>${
+              idle==null?'—':idle}</td>
+            <td>${docs?`<span class="pill warn">${esc(docs)}</span>`:'<span class="muted">ok</span>'}</td>
+            <td><span class="pill ${pill}">${v.status.toUpperCase()}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+  },
+
+  /* One bar, every screen. Sits where the header was so nothing shifts under
+     the cursor when a row is ticked. */
+  bulkBar(label, actions){
+    return `<div class="bulkbar">
+      ${this.cbox(true)}<b>${esc(label)}</b><span class="sp"></span>
+      ${actions.map(a=>`<button class="bb ${a[2]||''}" onclick="${a[0]}">${esc(a[1])}</button>`).join('')}
+      <button class="bb gh" onclick="R.selClear()">Clear</button>
+    </div>`;
+  },
+
+  bulkStatus(st){
+    const ids = this.selIds(); if (!ids.length) return;
+    const out = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id && r.status==='open'));
+    if (out.length) return toast(out.length + ' of these are out — check them in first');
+    ids.forEach(id => {
+      const v = (DB.d.vehicles||[]).find(x=>x.id===id); if (!v) return;
+      v.status = st;
+      if (window.Cloud && Cloud.ready) Cloud.put('vehicles', id, { status: st });
+    });
+    DB.save(); this._sel = null; this.render();
+    toast(ids.length + ' bike' + (ids.length===1?'':'s') + ' marked ' + st);
+  },
+
+  bulkRetire(){
+    const ids = this.selIds(); if (!ids.length) return;
+    const out = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id && r.status==='open'));
+    if (out.length) return toast(out.length + ' of these are out — check them in first');
+    const withHist = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id));
+    if (!confirm('Remove ' + ids.length + ' bike' + (ids.length===1?'':'s') + '?\n\n' +
+      (withHist.length ? withHist.length + ' of them have rental history, which is kept.'
+                       : 'None of them have been rented.'))) return;
+    /* Soft delete only — the rules forbid a hard one, and history should
+       outlive the bike anyway. */
+    ids.forEach(id => { if (window.Cloud && Cloud.ready) Cloud.softDelete('vehicles', id); });
+    DB.d.vehicles = (DB.d.vehicles||[]).filter(v=>!ids.includes(v.id));
+    DB.save(); this._sel = null; this.render();
+    toast('Removed ' + ids.length + ' bike' + (ids.length===1?'':'s'));
   },
 
   docWarn(v){
@@ -2634,7 +2979,8 @@ const R = {
   /* ── RATE CARDS ─────────────────────────────────────────────────── */
   renderRates(){
     const box = document.getElementById('rates-list');
-    box.innerHTML =
+    /* The header is built either way; only the list below it differs. */
+    const hdr =
       /* The centre button used to be the only way to create a rate card. Now
          that it always means Rent out, Rates carries its own — otherwise the
          screen becomes read-only for anyone who has not memorised the old
@@ -2645,6 +2991,9 @@ const R = {
           📷 Read my price list from a photo</button>` : '') +
       `<div class="muted" style="margin:0 2px 12px">Tap a card to edit. Rates are copied onto each
         rental at check-out, so changing a price never re-prices a bike that is already out.</div>` +
+      '';
+    if (this.isWide()) return this.ratesTable(hdr);
+    box.innerHTML = hdr +
       DB.d.rates.map(r=>{
         const n = DB.d.vehicles.filter(v=>v.rateId===r.id).length;
         return `<div class="card tap" onclick="R.editRate('${r.id}')">
@@ -2674,6 +3023,149 @@ const R = {
      fat-finger a price. Photograph it instead — then CONFIRM every figure,
      because a misread 620 as 820 costs money on every rental until someone
      notices. Nothing is saved from this screen without a second tap. */
+  ratesTable(hdr){
+    const box = document.getElementById('rates-list');
+    const list = (DB.d.rates||[]).slice();
+    const ids = list.map(r=>r.id);
+    const n = this.selCount();
+    box.innerHTML = hdr + (n ? this.bulkBar(n + ' rate card' + (n===1?'':'s') + ' selected', [
+        ['R.bulkPrice()', 'Change prices'],
+      ]) : '') +
+      `<div class="dt-tbl"><table>
+        <thead><tr>
+          <th class="selcol" onclick="R.selAll(${JSON.stringify(ids).replace(/"/g,'&quot;')})">
+            ${this.cbox(ids.length && ids.every(i=>this.selHas(i)))}</th>
+          <th>Model</th><th class="num">Deposit</th>
+          ${TIERS.map(t=>`<th class="num">${t.label}</th>`).join('')}
+          <th class="num">Overtime</th><th class="num">Bikes</th>
+        </tr></thead><tbody>
+        ${list.map(r=>{
+          const bikes = (DB.d.vehicles||[]).filter(v=>v.rateId===r.id && !v.deletedAt).length;
+          const sel = this.selHas(r.id);
+          return `<tr class="${sel?'sel':''}" onclick="R.editRate('${r.id}')">
+            <td class="selcol" onclick="event.stopPropagation();R.selToggle('${r.id}')">${this.cbox(sel)}</td>
+            <td class="nm">${esc(r.model)}${this.rateReady(r)?'':' <span class="pill late">SET PRICE</span>'}</td>
+            <td class="num">${r.deposit?money(r.deposit):'—'}</td>
+            ${TIERS.map(t=>{ const v=Number((r.tiers||{})[t.k])||0;
+              return `<td class="num">${v?money(v):'<span class="muted">—</span>'}</td>`; }).join('')}
+            <td class="num">${r.ot?money(r.ot):'—'}</td>
+            <td class="num">${bikes}</td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+  },
+
+  /* ── seasonal pricing ─────────────────────────────────────────────
+     The bulk action that earns its place. Two rules it must never break:
+     a blank tier stays blank, and nothing commits without a preview naming
+     every number that changes. */
+  bulkPrice(){
+    const ids = this.selIds(); if (!ids.length) return;
+    this._bpMode = 'pct'; this._bpVal = 10; this._bpDep = false;
+    this.bulkPriceSheet();
+  },
+  bulkPriceSet(mode){ this._bpMode = mode; this.bulkPriceSheet(); },
+  bulkPriceInput(){
+    const el = document.getElementById('bp-val');
+    this._bpVal = Number(el && el.value) || 0;
+    const d = document.getElementById('bp-dep');
+    this._bpDep = !!(d && d.checked);
+    this.bulkPricePreview();
+  },
+  /* Zero means "we do not sell this package", so it is skipped rather than
+     becoming 0 + 10%, or worse, 0 + ₹50 — which would silently create tiers
+     the shop never meant to offer, across every card at once. */
+  _bpApply(v){
+    v = Number(v)||0;
+    if (!v) return 0;
+    const n = Number(this._bpVal)||0;
+    if (this._bpMode === 'pct') return Math.max(0, Math.round(v * (1 + n/100)));
+    if (this._bpMode === 'flat') return Math.max(0, Math.round(v + n));
+    return Math.max(0, Math.round(n));
+  },
+  bulkPricePreview(){
+    const box = document.getElementById('bp-prev'); if (!box) return;
+    const ids = this.selIds();
+    let changed = 0, skipped = 0;
+    const rows = ids.map(id=>{
+      const r = (DB.d.rates||[]).find(x=>x.id===id); if (!r) return '';
+      const cells = TIERS.map(t=>{
+        const was = Number((r.tiers||{})[t.k])||0;
+        if (!was){ skipped++; return `<td class="num"><span class="skip">not set</span></td>`; }
+        const now = this._bpApply(was);
+        if (now!==was) changed++;
+        return `<td class="num"><span class="was">${was}</span><span class="now">${now}</span></td>`;
+      }).join('');
+      const dw = Number(r.deposit)||0;
+      const dn = this._bpDep ? this._bpApply(dw) : dw;
+      if (this._bpDep && dn!==dw) changed++;
+      return `<tr><td class="nm">${esc(r.model)}</td>${cells}
+        <td class="num">${this._bpDep && dn!==dw
+          ? `<span class="was">${dw}</span><span class="now">${dn}</span>`
+          : `<span class="muted">${dw||'—'} · unchanged</span>`}</td></tr>`;
+    }).join('');
+    box.innerHTML = `<table class="prev">
+      <thead><tr><th>Rate card</th>${TIERS.map(t=>`<th class="num">${t.label}</th>`).join('')}
+        <th class="num">Deposit</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const s = document.getElementById('bp-sum');
+    if (s) s.textContent = changed + ' price' + (changed===1?'':'s') + ' change · ' +
+      skipped + ' blank tier' + (skipped===1?'':'s') + ' skipped' +
+      (this._bpDep ? '' : ' · deposits untouched');
+  },
+  bulkPriceSheet(){
+    const ids = this.selIds();
+    const seg = (k,label,sub) => `<div class="tier ${this._bpMode===k?'on':''}"
+      onclick="R.bulkPriceSet('${k}')"><div class="t">${label}</div><div class="p">${sub}</div></div>`;
+    openSheet(`
+      <div class="sheet-hd"><h2>Change ${ids.length} rate card${ids.length===1?'':'s'}</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Cancel</button></div>
+      <div class="tiers" style="margin-bottom:10px">
+        ${seg('pct','Percent','+ / − %')}
+        ${seg('flat','Flat \u20B9','+ / − \u20B9')}
+        ${seg('set','Set to','\u20B9')}
+      </div>
+      <div class="fld"><label class="lbl">${
+        this._bpMode==='pct' ? 'Change by (%)'
+        : this._bpMode==='flat' ? 'Add or subtract (\u20B9)' : 'Set every priced tier to (\u20B9)'}</label>
+        <input class="in" id="bp-val" type="number" inputmode="numeric"
+          value="${this._bpVal}" oninput="R.bulkPriceInput()"></div>
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <b style="font-size:12.5px">Blank tiers stay blank</b>
+        <div class="muted" style="margin-top:2px">A rate left at zero is one you do not sell, so
+        it is skipped rather than becoming a package you never offered.</div>
+        <label class="row" style="margin-top:9px;gap:8px;cursor:pointer">
+          <input type="checkbox" id="bp-dep" ${this._bpDep?'checked':''}
+            onchange="R.bulkPriceInput()" style="width:18px;height:18px">
+          <span style="font-size:12.5px;font-weight:700">Change deposits too</span></label>
+      </div>
+      <div class="card" style="padding:8px 10px;overflow-x:auto" id="bp-prev"></div>
+      <div class="muted" id="bp-sum" style="margin:2px 2px 10px"></div>
+      <button class="btn" onclick="R.bulkPriceCommit()">Apply to ${ids.length} rate card${
+        ids.length===1?'':'s'}</button>
+      <div class="muted" style="text-align:center;margin-top:8px">Bikes already out keep the price
+        they were rented at.</div>`);
+    this.bulkPricePreview();
+  },
+  bulkPriceCommit(){
+    const ids = this.selIds(); if (!ids.length) return;
+    let n = 0;
+    ids.forEach(id=>{
+      const r = (DB.d.rates||[]).find(x=>x.id===id); if (!r) return;
+      const before = { deposit: r.deposit, tiers: Object.assign({}, r.tiers) };
+      const tiers = Object.assign({}, r.tiers||{});
+      TIERS.forEach(t=>{ tiers[t.k] = this._bpApply(tiers[t.k]); });
+      const dep = this._bpDep ? this._bpApply(r.deposit) : (Number(r.deposit)||0);
+      r.tiers = tiers; r.deposit = dep; n++;
+      if (window.Cloud && Cloud.ready){
+        Cloud.put('rates', id, { tiers, deposit: dep });
+        Cloud.audit('rate.bulk', id, before, { deposit: dep, tiers });
+      }
+    });
+    DB.save(); this._sel = null; closeSheet(); this.render();
+    Haptic.success();
+    toast(n + ' rate card' + (n===1?'':'s') + ' updated');
+  },
+
   scanRates(){
     if (!this.isOwner()) return toast('Only the owner can set prices');
     if (!window.Cloud || !Cloud.ready) return toast('Sign in first');
@@ -5248,6 +5740,12 @@ const Cloud = {
 };
 
 window.Cloud = Cloud;
+/* Sidebar state is restored before the first render so the layout does not
+   flash open and then collapse. */
+R.sideRestore();
+R._wasWide = R.isWide();
+window.addEventListener('resize', () => R.onResize());
+
 Cloud.boot();
 </script>
 </body>
