@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_165_bar';
+    window.HISAABNOW_BUILD = 'v34_167_retailsync';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -12242,6 +12242,20 @@ const App = {
        'catalog'. The new #hnd-services screen now properly handles salon's
        inventory page, so this redirect was incorrectly hijacking the Services
        nav button and routing it to Product Sales instead. */
+
+    /* ── (v34_166) Full-bleed modules must not survive a nav ────────────────
+       On desktop these overlays fill the whole content area (see the inline-
+       module CSS). They are position:fixed at z 100000+, so navigating away
+       leaves them painted on top of the destination: open the Bar, hit New
+       Sale, and you get the billing chrome down the left with the Bar list
+       still covering the product grid — which reads as a broken screen, not
+       an open panel. A nav is a leave; close them. */
+    try {
+      ['lqs-ov','lqe-ov','cige-ov','bve-ov','pi-ov','hn-retail-ov'].forEach(function(_id){
+        var _o = document.getElementById(_id);
+        if (_o && _o.parentNode) _o.parentNode.removeChild(_o);
+      });
+    } catch(e){ console.warn('[nav] module overlay cleanup failed (non-fatal):', e); }
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('pg-' + page);
@@ -53417,7 +53431,28 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
 
   function $(id){ return document.getElementById(id); }
 
-  function svcPrice(s){ return +s.sp || +s.price || 0; }
+  /* (v34_166) Was `+s.sp || +s.price || 0`. Liquor, cigarettes and beverages
+     are SIZED products: _saveLiquor writes sp:0/price:0 deliberately (the money
+     lives in sizes[], one price per pour) and the cigarette editor does the
+     same with spStick/spPack. So a bar owner who had priced every peg saw
+     "from ₹0" on every tile — the one number the tile exists to show.
+     Fall back to the cheapest priced size, which is what "from" means. */
+  function svcPrice(s){
+    var p = +s.sp || +s.price || 0;
+    if (p > 0) return p;
+    try {
+      if (s && Array.isArray(s.sizes) && s.sizes.length){
+        var mn = 0;
+        s.sizes.forEach(function(z){
+          var v = +((z && z.price) || 0);
+          if (v > 0 && (!mn || v < mn)) mn = v;
+        });
+        if (mn > 0) return mn;
+      }
+    } catch(e){}
+    /* Cigarettes carry these even when sizes[] hasn't been built yet. */
+    return +s.spStick || +s.spPack || 0;
+  }
   function svcCat(s){ return (s.cat || s.category || 'Other').trim(); }
 
   function isActive(s){ return s && s.active !== false && !s._deleted; }
@@ -89849,6 +89884,17 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       { cat:'Ice Cream',   emoji:'\uD83C\uDF66' },
       { cat:'Other',       emoji:'\uD83D\uDECD\uFE0F' }
     ],
+    /* (v34_167) Liquor only exists as a chip once the shop actually runs a bar.
+       Without it this sheet — which Retail's "+ Add" opens — had no route to
+       the liquor editor at all, so a brand could only ever be created from
+       inside Bar. Bar is a subset of Retail; the add path should be too. */
+    _resoldCats: function(){
+      var out = this.RESOLD_CATS.slice();
+      var barOn = false;
+      try { barOn = !!(window.hnBarCurrentlyOn && window.hnBarCurrentlyOn() && window.App && typeof App.openLiquorEditor === 'function'); } catch(e){}
+      if (barOn) out.splice(2, 0, { cat:'Liquor', emoji:'\uD83C\uDF7E' });
+      return out;
+    },
     _isSalonCtx: function(){
       try {
         var vk = (window.App && (App._supplyVerticalKey ? App._supplyVerticalKey() : App.vertical)) || '';
@@ -89866,11 +89912,12 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         return;
       }
       this.resoldMode = true;
-      var chosen = (existing && existing.cat && existing.cat !== 'Retail') ? existing.cat : this.RESOLD_CATS[0].cat;
+      var _cats = this._resoldCats();
+      var chosen = (existing && existing.cat && existing.cat !== 'Retail') ? existing.cat : _cats[0].cat;
       this.cat = chosen;
-      var chosenEmoji = (existing && existing.emoji) ? existing.emoji : this.RESOLD_CATS[0].emoji;
+      var chosenEmoji = (existing && existing.emoji) ? existing.emoji : _cats[0].emoji;
       if (chips){
-        chips.innerHTML = this.RESOLD_CATS.map(function(c){
+        chips.innerHTML = _cats.map(function(c){
           return '<button type="button" class="nrp-chip' + (c.cat === chosen ? ' active' : '') +
             '" data-nrp-cat="' + c.cat + '" data-emoji="' + c.emoji + '">' + c.emoji + ' ' + c.cat + '</button>';
         }).join('');
@@ -90061,6 +90108,19 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
           setTimeout(function(){
             try { App.openCigEditor(null, _nm); }
             catch(e3){ console.warn('[NRP] cig handoff failed', e3); }
+          }, 180);
+        }
+
+        /* (v34_167) Same reasoning for liquor: a bottle is bought by the ml and
+           sold by the peg, so it needs the peg-price grid and bottle-size
+           picker, not one sell price. This chip only renders when the bar is
+           on (see _resoldCats). */
+        if (NRP.cat === 'Liquor' && !NRP.editingId
+            && window.App && typeof App.openLiquorEditor === 'function'){
+          NRP.close();
+          setTimeout(function(){
+            try { App.openLiquorEditor(null, true); }
+            catch(e4){ console.warn('[NRP] liquor handoff failed', e4); }
           }, 180);
         }
       });
@@ -99730,6 +99790,10 @@ var KB=[
      localStorage/shopId drift (flag can be stale after multi-device use). */
   function hasActiveBar(){ try { return (Store.list('prods')||[]).some(function(p){ return p&&p.bar===true&&p.active!==false; }); } catch(e){ return false; } }
   function barCurrentlyOn(){ return isBarOn() || hasActiveBar(); }
+  /* (v34_167) Exposed so the resell sheet can decide whether to offer a Liquor
+     chip. It was module-private, which is why Retail's Add button had no way
+     to reach the bar and the door stayed one-way. */
+  window.hnBarCurrentlyOn = barCurrentlyOn;
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function toast(m){ try { if (App.toast) App.toast(m); } catch(e){} }
 
@@ -100188,6 +100252,10 @@ var KB=[
     toast('✓ Cleared '+ex.length+' brands · add your own now');
     try { if(App.renderCatalog) App.renderCatalog(); } catch(e){}
     try { if(document.getElementById('lqs-body')) renderStockBody(); } catch(e){}
+    /* (v34_167) Bar is a subset of Retail — wiping every brand here empties
+       part of that list too, so it has to be told. It was the one mutation in
+       this module that never asked for a retail refresh. */
+    try { if(window.HND && HND.retail && HND.retail.render) HND.retail.render(); } catch(e){}
   };
 
   /* ════════════ Import products from a photo (vision OCR) ════════════
@@ -101359,7 +101427,17 @@ var KB=[
   function openEditor(p){
     try {
       if (p.cig){ if(App.openCigEditor){ App.openCigEditor(p.id); } else { App.openCigStock(); } return; }
-      if (p.bar){ App.openLiquorStock(); return; }
+      /* (v34_167) Was App.openLiquorStock() — which opens the whole Bar list,
+         not the brand you tapped. The banner above this list promises "Tap any
+         item to edit price or stock", and liquor was the one row where that
+         wasn't true. Cigarettes already routed to their own editor by id; do
+         the same. fromBar=true suppresses the Kitchen/Bar switch, which makes
+         no sense arriving from Retail either. */
+      if (p.bar){
+        if (App.openLiquorEditor){ App.openLiquorEditor(p.id, true); }
+        else { App.openLiquorStock(); }
+        return;
+      }
       if (App.openProductSheet){ App.openProductSheet(p.id); return; }
     } catch(e){}
   }
@@ -101424,6 +101502,24 @@ var KB=[
       row.onclick=function(){ App._retailOpenEditor(row.getAttribute('data-rl-id')); };
     });
   }
+
+  /* ── (v34_167) HND.retail, at last ────────────────────────────────────────
+     Three places already ask for it — closeProductSheet(), _saveLiquor() and
+     _lqeDelete() all run `if (window.HND && HND.retail && HND.retail.render)`
+     — and nothing in the file ever assigned it. Guarded by `&&`, so every one
+     of them has been a silent no-op: save or delete a brand with this list
+     open and the list kept showing the old rows. Same shape as the
+     HisaabSync.pushProfileMeta() call that never existed.
+     Renders only when the lens is actually mounted, so the call stays free
+     when it isn't. */
+  try {
+    window.HND = window.HND || {};
+    window.HND.retail = {
+      render: function(){
+        try { if (document.getElementById('rl-list')) renderRetailList(); } catch(e){}
+      }
+    };
+  } catch(e){}
 
   /* ---- Settings entry ---- */
   function injectSettingsRow(){
@@ -103721,6 +103817,16 @@ html[data-shell="desktop"] #lqe-ov #lqe-sheet > div:not(style){
 }
 /* The grab handle is a phone affordance — no sheet to drag on desktop. */
 html[data-shell="desktop"] #lqe-ov #lqe-sheet > div[style*="height:4px"]{ display:none!important; }
+
+/* (v34_167) The Retail lens is its own panel — no inner sheet — but it shipped
+   as position:fixed;inset:0 with an opaque background, so on desktop it painted
+   over the sidebar and topbar entirely: the one module that swallowed the whole
+   console. Same treatment as the rest, and the same 900px reading column. */
+html[data-shell="desktop"] #hn-retail-ov{ left:var(--hnd-sb-w)!important; top:var(--hnd-tb-h)!important; right:0!important; bottom:0!important; }
+html[data-shell="desktop"] #hn-retail-ov > div{
+  padding-left: max(16px, calc((100% - 900px) / 2)) !important;
+  padding-right: max(16px, calc((100% - 900px) / 2)) !important;
+}
 
 /* (v34_125) Full-bleed shell, centred measure. A register stretched across
    1400px puts the supplier name and its amount a hand-span apart and makes
