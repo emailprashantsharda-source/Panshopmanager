@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_184_livereads';
+    window.HISAABNOW_BUILD = 'v34_185_homepills';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -3384,7 +3384,11 @@ html[data-current-role="manager"] body{
     <div class="kpi" onclick="App.nav('sales')" style="cursor:pointer" aria-label="View all bills"><div class="kpi-label-v2" data-i18n="dash.bills">Bills</div><div class="kpi-value-v2" id="kpi-revenue">0</div><div class="kpi-delta-v2" id="kpi-revenue-delta" style="opacity:.5">—</div></div>
     <!-- (v33_29af) Pill 2 — was Bills, now PROFIT (₹ value). No nav target;
          profit is informational. id="kpi-bills" preserved for back-compat. -->
-    <div class="kpi"><div class="kpi-label-v2" data-i18n="dash.profit">Profit</div><div class="kpi-value-v2" id="kpi-bills">₹—</div><div class="kpi-delta-v2" id="kpi-bills-delta" style="opacity:.5">—</div></div>
+    <!-- (v34_185) Slot 2 is now the "where is my money right now" tile and its
+         answer changes by trade — Running for a restaurant, Udhaar for a kirana,
+         Cash in hand for a pan shop. Needs an id on the label and a tap target;
+         both were static before because it only ever said Profit. -->
+    <div class="kpi" id="kpi-tile-2" onclick="App._handleKpi2Tap()" style="cursor:pointer" aria-label="Second KPI"><div class="kpi-label-v2" id="kpi-bills-label" data-i18n="dash.profit">Profit</div><div class="kpi-value-v2" id="kpi-bills">₹—</div><div class="kpi-delta-v2" id="kpi-bills-delta" style="opacity:.5">—</div></div>
     <div class="kpi" id="kpi-tile-3" onclick="App._handleKpi3Tap()" style="cursor:pointer" aria-label="Third KPI">
       <div class="kpi-label-v2" id="kpi-profit-label" data-i18n="dash.margin">Margin</div>
       <div class="kpi-value-v2" id="kpi-profit">—</div>
@@ -12322,6 +12326,10 @@ const App = {
         var _o = document.getElementById(_id);
         if (_o && _o.parentNode) _o.parentNode.removeChild(_o);
       });
+      /* (v34_185) The all-orders board is now reachable from the Running pill,
+         so it needs the same rule — but #hnob is a class-toggled element the
+         module owns and re-renders, not a node to rip out. Ask it to close. */
+      try { if (window.HNTables && HNTables.closeBoard) HNTables.closeBoard(); } catch(e2){}
     } catch(e){ console.warn('[nav] module overlay cleanup failed (non-fatal):', e); }
 
     /* ── (v34_172) Remember where he came from ─────────────────────────────
@@ -17968,10 +17976,34 @@ const App = {
        The id is preserved for back-compat but semantics have moved here.
        Value: today's bill count. Delta: change vs yesterday's bill count. */
     if (revEl) revEl.textContent = todayBills;
-    if (revDelta) revDelta.innerHTML = renderDelta(todayBills, yestBills, false, false);
+    if (revDelta) {
+      /* (v34_185) The average rides along with the count. 40 bills says he was
+         busy; ₹210 a bill says whether to push a starter — and it costs no
+         extra tile. Falls back to the plain delta on a day with no bills. */
+      var _avg = todayBills > 0 ? Math.round(todayRev / todayBills) : 0;
+      var _d = renderDelta(todayBills, yestBills, false, false);
+      revDelta.innerHTML = _avg
+        ? ('<span style="opacity:.8">₹' + _avg.toLocaleString('en-IN') + ' avg</span>'
+           + (_d ? (' <span style="opacity:.55">·</span> ' + _d) : ''))
+        : _d;
+    }
 
     const billsEl = document.getElementById('kpi-bills');
     const billsDelta = document.getElementById('kpi-bills-delta');
+
+    /* ── (v34_185) Slot 2 belongs to the trade ──────────────────────────────
+       Running for a restaurant, Udhaar for a kirana, Cash in hand for a pan
+       shop. _buildPill returns null when the module behind it is off or has
+       no data, and then the Profit block below runs unchanged — so this can
+       never leave the tile blank. */
+    var _plan = this._homePlan();
+    var _p2 = (_plan.s2 === 'stylist' && !_useStaffPill) ? null : this._buildPill(_plan.s2);
+    if (_p2){
+      this._applyPill('kpi-tile-2', 'kpi-bills-label', 'kpi-bills', 'kpi-bills-delta', _p2);
+      this._kpi2Mode = _p2.mode;
+    } else if (_useStaffPill && _plan.s2 === 'stylist'){
+      this._kpi2Mode = 'stylist';
+    } else {
     /* (v33_29af) Pill 2 (id=kpi-bills) NOW SHOWS PROFIT in ₹, not bill count.
        Value: today's profit in rupees (uses todayProf — gross profit before
        commission, matching the legend's old "Gross" semantics). When cost
@@ -17997,6 +18029,8 @@ const App = {
       } else {
         billsDelta.innerHTML = renderDelta(todayProf, yestProf, true, false);
       }
+    }
+    this._kpi2Mode = 'profit';
     }
 
     const profEl = document.getElementById('kpi-profit');
@@ -18297,6 +18331,254 @@ const App = {
                     : (!profitIsAccurate && todaySales.length > 0) ? 'setcost'
                     : (todayCost === 0 && todayRev > 0) ? 'setmargin'  /* (v33_29j) all-zero-cost prompt */
                     : 'margin';
+
+    /* ── (v34_185) Slot 3 for the trades where margin is not the question ────
+       A kirana's margin on a printed-MRP packet barely moves and he knows it;
+       what he needs is what to bring from the mandi. A bar owner's is what is
+       running dry. Runs AFTER the ladder above so the ladder stays the single
+       owner of the margin/setcost/setmargin logic — this only replaces the
+       tile where the plan says something else belongs there.
+
+       Salon is left alone: _useStaffPill already owns slot 3 for it, and two
+       things claiming one tile is how these drift. */
+    try {
+      var _plan3 = this._homePlan();
+      if (_plan3.s3 !== 'margin' && !_useStaffPill && !_useCashTile){
+        var _p3 = this._buildPill(_plan3.s3);
+        if (_p3){
+          this._applyPill('kpi-tile-3', 'kpi-profit-label', 'kpi-profit', 'kpi-profit-delta', _p3);
+          this._kpi3Mode = _p3.mode;
+        }
+      }
+    } catch(e){ console.warn('[home pills] slot 3 failed (non-fatal):', e); }
+  },
+
+  /* ── (v34_185) Home pills, per trade ──────────────────────────────────────
+     Three slots, each asking a fixed question; only the answer changes by
+     vertical.
+
+       1  How busy was I?              Bills, with the average folded in
+       2  Where is my money now?       running / udhaar / cash / stylist / waste
+       3  What about tomorrow?         margin / reorder / sold-out / repeat
+
+     Profit came out of slot 2. Profit and Margin are the same two numbers
+     twice and they go blank together the moment cost prices are missing \u2014
+     which is the normal state for a restaurant that has not entered recipes.
+     A row where two of three tiles read "\u2014" teaches the owner to stop looking.
+     Slot 3 keeps the whole margin ladder for the trades where margin is a
+     decision; the rest get the question they actually have.
+
+     Every number here already exists. Nothing new is computed. */
+  _HOME_PILLS: {
+    restaurant: { s2:'running', s3:'margin'  },
+    cafe:       { s2:'running', s3:'margin'  },
+    bar:        { s2:'running', s3:'barstock'},
+    sweets:     { s2:'udhaar',  s3:'margin'  },
+    bakery:     { s2:'udhaar',  s3:'soldout' },
+    grocery:    { s2:'udhaar',  s3:'reorder' },
+    dairy:      { s2:'udhaar',  s3:'reorder' },
+    stationery: { s2:'udhaar',  s3:'reorder' },
+    pan:        { s2:'cash',    s3:'reorder' },
+    sabzi:      { s2:'waste',   s3:'reorder' },
+    salon:      { s2:'stylist', s3:'repeat'  }
+  },
+  _homePlan(){
+    var v = '';
+    try { v = (window.hnVert ? hnVert() : (this.vertical || '')); } catch(e){ v = this.vertical || ''; }
+    /* Unknown trade keeps today's behaviour rather than guessing at it. */
+    return this._HOME_PILLS[v] || { s2:'udhaar', s3:'margin' };
+  },
+
+  /* Each builder returns {label, value, sub, mode, tone} or null when the
+     data it needs is unavailable \u2014 null falls back to the old tile, so a
+     module that is switched off can never leave a blank pill. */
+  _pillRunning(){
+    var r = null;
+    try { r = (window.HNTables && HNTables.runningSummary) ? HNTables.runningSummary() : null; } catch(e){}
+    if (!r) return null;
+    var T = this._T.bind(this);
+    if (!r.count){
+      return { label:T('dash.running','Running'), value:'\u20b90',
+               sub:T('dash.allSettled','all settled'), mode:'none', tone:'' };
+    }
+    return {
+      label: T('dash.running','Running'),
+      value: '\u20b9' + Number(r.amount||0).toLocaleString('en-IN'),
+      sub: r.count + ' ' + (r.count===1 ? T('dash.tableOne','table') : T('dash.tableMany','tables'))
+           + (r.billed ? (' \u00b7 ' + r.billed + ' ' + T('dash.billed','billed')) : ''),
+      mode:'running', tone:'act'
+    };
+  },
+  _pillUdhaar(){
+    var owed = 0, n = 0;
+    try {
+      if (window.Khata && Khata.totalLena) owed = Number(Khata.totalLena()) || 0;
+      if (window.Khata && Khata.byParty) n = (Khata.byParty('lena') || []).length;
+    } catch(e){ return null; }
+    var T = this._T.bind(this);
+    return {
+      label: T('more.udhaarCredit','Udhaar'),
+      value: '\u20b9' + Math.round(owed).toLocaleString('en-IN'),
+      sub: owed > 0 ? (n + ' ' + T('dash.owe','to collect')) : T('dash.nothingOut','nothing out'),
+      mode:'udhaar', tone: owed > 0 ? 'warn' : ''
+    };
+  },
+  _pillCash(){
+    var bal = null;
+    try { if (window.CashDrawer && CashDrawer.currentBalance) bal = Number(CashDrawer.currentBalance()) || 0; } catch(e){}
+    if (bal == null) return null;
+    var T = this._T.bind(this), set = false;
+    try { set = !!(window.CashDrawer && CashDrawer.hasOpeningToday && CashDrawer.hasOpeningToday()); } catch(e){}
+    return {
+      label: T('dash.cashInHand','Cash in hand'),
+      value: '\u20b9' + Math.round(bal).toLocaleString('en-IN'),
+      sub: set ? T('dash.tapCount','tap to count drawer') : T('dash.setOpening','\u26a0 set opening'),
+      mode:'cash', tone: set ? 'act' : 'warn'
+    };
+  },
+  _pillWaste(){
+    var amt = 0, n = 0;
+    try {
+      /* HNWaste.todayValue() — checked against the module, not assumed. An
+         invented name here would have been guarded into a silent null and the
+         pill would have quietly fallen back forever. */
+      if (!window.HNWaste || !HNWaste.todayValue) return null;
+      amt = Number(HNWaste.todayValue()) || 0;
+      n = (HNWaste.list ? (HNWaste.list(undefined) || []) : []).length;
+    } catch(e){ return null; }
+    var T = this._T.bind(this);
+    return {
+      label: T('dash.waste','Waste'),
+      value: '\u20b9' + Math.round(amt).toLocaleString('en-IN'),
+      sub: amt > 0 ? (n + ' ' + T('dash.wasteQty','entries today')) : T('dash.wasteNone','nothing wasted'),
+      mode:'waste', tone: amt > 0 ? 'bad' : ''
+    };
+  },
+
+  /* Slot 3 \u2014 the tomorrow question. */
+  _pillReorder(){
+    var out = 0, low = 0;
+    try {
+      (Store.list('prods') || []).forEach(function(p){
+        if (!p || p.active === false) return;
+        var st = (typeof window.hnStockState === 'function') ? window.hnStockState(p) : null;
+        if (!st) return;
+        if (st.out) out++; else if (st.low) low++;
+      });
+    } catch(e){ return null; }
+    var T = this._T.bind(this), n = out + low;
+    return {
+      label: T('dash.reorder','Reorder'),
+      value: String(n),
+      sub: n ? (out + ' ' + T('dash.outWord','out') + ' \u00b7 ' + low + ' ' + T('dash.lowWord','low'))
+             : T('cat.kpiAllHealthy','all healthy'),
+      mode:'reorder', tone: out ? 'bad' : (low ? 'warn' : '')
+    };
+  },
+  _pillSoldOut(){
+    var r = this._pillReorder(); if (!r) return null;
+    var out = 0;
+    try {
+      (Store.list('prods') || []).forEach(function(p){
+        if (!p || p.active === false) return;
+        var st = (typeof window.hnStockState === 'function') ? window.hnStockState(p) : null;
+        if (st && st.out) out++;
+      });
+    } catch(e){ return null; }
+    var T = this._T.bind(this);
+    return {
+      label: T('dash.soldOut','Sold out'),
+      value: String(out),
+      sub: out ? T('dash.bakeMore','bake more tomorrow') : T('dash.allOnShelf','all on the shelf'),
+      mode:'reorder', tone: out ? 'warn' : ''
+    };
+  },
+  _pillBarStock(){
+    var lowN = 0;
+    try {
+      (Store.list('prods') || []).forEach(function(p){
+        if (!p || p.active === false || p.bar !== true) return;
+        var st = (typeof window.hnStockState === 'function') ? window.hnStockState(p) : null;
+        if (st && (st.out || st.low)) lowN++;
+      });
+    } catch(e){ return null; }
+    var T = this._T.bind(this);
+    return {
+      label: T('dash.barStock','Bar stock'),
+      value: String(lowN),
+      sub: lowN ? T('dash.belowBottle','below one bottle') : T('cat.kpiAllHealthy','all healthy'),
+      mode:'bar', tone: lowN ? 'warn' : ''
+    };
+  },
+  _pillRepeat(){
+    var total = 0, rep = 0;
+    try {
+      var todays = Store.todaySales() || [];
+      total = todays.length;
+      if (!total) return null;
+      var seen = {};
+      (Store.list('custs') || []).forEach(function(c){ if (c && c.id) seen[c.id] = (Number(c.bills)||0); });
+      todays.forEach(function(b){ if (b && b.custId && (seen[b.custId]||0) > 1) rep++; });
+    } catch(e){ return null; }
+    var T = this._T.bind(this);
+    var pct = total ? Math.round(rep / total * 100) : 0;
+    return {
+      label: T('dash.repeat','Repeat'),
+      value: pct + '%',
+      sub: rep + ' ' + T('dash.ofWord','of') + ' ' + total + ' ' + T('dash.returning','returning'),
+      mode:'repeat', tone: pct >= 50 ? 'good' : ''
+    };
+  },
+  _buildPill(kind){
+    try {
+      switch (kind){
+        case 'running':  return this._pillRunning();
+        case 'udhaar':   return this._pillUdhaar();
+        case 'cash':     return this._pillCash();
+        case 'waste':    return this._pillWaste();
+        case 'reorder':  return this._pillReorder();
+        case 'soldout':  return this._pillSoldOut();
+        case 'barstock': return this._pillBarStock();
+        case 'repeat':   return this._pillRepeat();
+      }
+    } catch(e){ console.warn('[home pills] ' + kind + ' failed', e); }
+    return null;
+  },
+  _applyPill(tileId, labelId, valId, subId, pill){
+    var l = document.getElementById(labelId),
+        v = document.getElementById(valId),
+        d = document.getElementById(subId),
+        t = document.getElementById(tileId);
+    if (!v) return;
+    if (l){ l.removeAttribute('data-i18n'); l.textContent = pill.label; }
+    v.textContent = pill.value;
+    if (d){
+      var col = pill.tone === 'bad'  ? '#C1121F'
+              : pill.tone === 'warn' ? '#B45309'
+              : pill.tone === 'good' ? '#12805C' : '';
+      d.innerHTML = '<span style="opacity:.7' + (col ? (';color:' + col + ';font-weight:700;opacity:1') : '') + '">'
+        + this.escapeHtml(pill.sub) + '</span>';
+    }
+    if (t) t.style.cursor = (pill.mode === 'none') ? 'default' : 'pointer';
+  },
+
+  /* (v34_185) Slot 2 taps follow whatever it is currently showing \u2014 same
+     pattern slot 3 has used since v33_27, not a second mechanism. */
+  _handleKpi2Tap(){
+    var mode = this._kpi2Mode;
+    try { if (window.haptic) haptic.tap(); } catch(e){}
+    if (mode === 'running'){ try { if (window.HNTables && HNTables.openBoard) HNTables.openBoard(); } catch(e){} return; }
+    if (mode === 'udhaar'){ this.nav('udhaar'); return; }
+    if (mode === 'cash'){ try { if (window.CashDrawer) CashDrawer.openSheet(); } catch(e){} return; }
+    if (mode === 'waste'){
+      /* HNWaste has no opener of its own — wastage is entered from the day
+         book, which is the sabzi owner's home screen anyway. */
+      try { if (window.HNDayBook && HNDayBook.open) { HNDayBook.open(); return; } } catch(e){}
+      this.nav('daybook'); return;
+    }
+    if (mode === 'stylist'){ this.nav('staff'); return; }
+    /* 'none' and anything unrecognised: no destination, so do nothing rather
+       than dump him on a screen he did not ask for. */
   },
 
   /* (v33_27 Phase 2) Handle taps on the 3rd KPI tile based on its current mode */
@@ -18315,6 +18597,16 @@ const App = {
     } else if (mode === 'staff') {
       // Navigate to staff
       this.nav('staff');
+    } else if (mode === 'reorder') {
+      /* (v34_185) Straight to the purchase sheet — the point of the pill is
+         that he is about to buy, not that he wants to browse a list. */
+      try { if (window.Purchase && Purchase.open) { Purchase.open(); return; } } catch(e){}
+      this.nav('catalog');
+    } else if (mode === 'bar') {
+      try { if (this.openLiquorStock) { this.openLiquorStock(); return; } } catch(e){}
+      this.nav('catalog');
+    } else if (mode === 'repeat') {
+      this.nav('customers');
     } else if (mode === 'setcost' || mode === 'margin' || mode === 'setmargin') {
       // Navigate to catalog (where they can set cost prices)
       this.nav('catalog');
@@ -93392,6 +93684,20 @@ var KB=[
   function billFirstOn(){ try{ var v=localStorage.getItem('hn_billfirst'); if(v==='1')return true; if(v==='0')return false; }catch(e){} return isEnabled(); }
   function setBillFirst(on){ try{ localStorage.setItem('hn_billfirst', on?'1':'0'); }catch(e){} renderStrip(); }
   function ostatus(o){ return (o&&o.status)||'open'; }
+  /* (v34_185) What is still on the floor, in one call. `billed` counts too:
+     a table that has been handed the bill but hasn't paid is money on the
+     premises, and the more urgent of the two. Settled orders are gone from
+     `orders` already, so anything left here is unpaid by definition. */
+  function runningSummary(){
+    try {
+      var open = orders.filter(function(o){ return ostatus(o) !== 'settled'; });
+      var amt = 0;
+      open.forEach(function(o){
+        try { amt += (+((billTotals(o)||{}).total) || 0); } catch(e){}
+      });
+      return { count: open.length, amount: Math.round(amt), billed: boardDue() };
+    } catch(e){ return { count:0, amount:0, billed:0 }; }
+  }
   function elapsedMin(o){ var t=o&&(o.createdAt||0); if(!t)return 0; return Math.max(0,Math.floor((Date.now()-t)/60000)); }
   function boardDue(){ return orders.filter(function(o){ return ostatus(o)==='billed'; }).length; }
   function stPill(o){ return ostatus(o)==='billed'?'<span class="chip-due">BILL</span>':''; }
@@ -93636,7 +93942,7 @@ var KB=[
       setTimeout(function(){ try{ renderBoard(); }catch(e){} }, 1300);
     }, 90);
   }
-  window.HNTables={ newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, pickType:pickType, dismissSheet:dismissSheet, chooseAlwaysAsk:chooseAlwaysAsk, setDefaultType:setDefault, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, setEnabled:setEnabled, activeChannel:activeChannel, printBill:billActive, billOrder:billOrder, openBoard:openBoard, closeBoard:closeBoard, openFromBoard:openFromBoard, settleStart:settleStart, settleCancel:settleCancel, settlePay:settlePay, settleSplit:settleSplit, boardUpiQrOn:boardUpiQrOn, setBoardUpiQr:setBoardUpiQr, billFirstOn:billFirstOn, setBillFirst:setBillFirst, ostatus:ostatus, syncState:function(){ return { on:_sync.on, sid:_sync.sid, dev:syncDev(), rev:_sync.rev, applied:_sync.applied }; }, _state:function(){ return { orders:orders, activeId:activeId, kots:kots, seq:seq, kotSeq:kotSeq }; } };
+  window.HNTables={ runningSummary:runningSummary, newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, pickType:pickType, dismissSheet:dismissSheet, chooseAlwaysAsk:chooseAlwaysAsk, setDefaultType:setDefault, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, setEnabled:setEnabled, activeChannel:activeChannel, printBill:billActive, billOrder:billOrder, openBoard:openBoard, closeBoard:closeBoard, openFromBoard:openFromBoard, settleStart:settleStart, settleCancel:settleCancel, settlePay:settlePay, settleSplit:settleSplit, boardUpiQrOn:boardUpiQrOn, setBoardUpiQr:setBoardUpiQr, billFirstOn:billFirstOn, setBillFirst:setBillFirst, ostatus:ostatus, syncState:function(){ return { on:_sync.on, sid:_sync.sid, dev:syncDev(), rev:_sync.rev, applied:_sync.applied }; }, _state:function(){ return { orders:orders, activeId:activeId, kots:kots, seq:seq, kotSeq:kotSeq }; } };
 })();
 </script>
 <!-- ============== END Orders/Tables + KOT/KDS ============== -->
