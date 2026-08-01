@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_174_moreui';
+    window.HISAABNOW_BUILD = 'v34_177_settings';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -4516,26 +4516,19 @@ html[data-current-role="manager"] body{
     <div style="width:40px"></div>
   </header>
 
-  <div class="menu-group" style="padding-top:14px">
-    <div class="menu-group-title" data-i18n="settings.subscription">Subscription</div>
-    <div class="menu-card">
-      <div class="menu-item" onclick="App.openSubscription()">
-        <div class="menu-icon" style="background:#EEEEEE;color:var(--p-deep)"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg></div>
-        <div class="menu-text"><div class="menu-label" id="settings-sub-tier" data-i18n="settings.subscription">Subscription</div><div class="menu-sub" id="settings-sub-status" data-i18n="settings.tapToView">Tap to view plans</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
+  <!-- (v34_177) Subscription card removed. My plan sits at the top of More and
+       opens the same screen, and that screen already carries Manage and Restore
+       inside it (see the subscription sheet) — so nothing here had a route of
+       its own to lose. Three rows about billing above the shop's own name was
+       the app talking about itself first.
 
-      <div class="menu-item" onclick="App.openManageSubscription()">
-        <div class="menu-icon" style="background:#E8F5E9;color:#2E7D32"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5V3.5l13.5 8.5L3 20.5zm15-7l-3-2 3-2 3 2-3 2z"/></svg></div>
-        <div class="menu-text"><div class="menu-label" data-i18n="settings.manageSub">Manage subscription</div><div class="menu-sub" data-i18n="settings.opensPlay">View your plan</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-      <div class="menu-item" onclick="App.restorePurchases()">
-        <div class="menu-icon" style="background:#FFF3E0;color:#E65100"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
-        <div class="menu-text"><div class="menu-label" data-i18n="settings.restore">Restore purchases</div><div class="menu-sub" data-i18n="settings.restoreSub">Re-sync your subscription</div></div>
-        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </div>
+       In its place: the modules a shop can switch on. Bar and Cigarettes
+       inject themselves here rather than at the end of the page, where they
+       sat below Delete account — past the destructive actions and the footer,
+       which is where things go to not be found. -->
+  <div class="menu-group" style="padding-top:14px" id="settings-features-group">
+    <div class="menu-group-title" data-i18n="settings.moreFeatures">More features</div>
+    <div id="settings-features"></div>
   </div>
 
   <div class="menu-group">
@@ -6076,13 +6069,21 @@ html[data-current-role="manager"] body{
        returns "Catalog" and wins — so these are separate keys, and the rows
        that still want the old wording keep it. */
     'more.mySubscription':     { en: 'My subscription',         hi: 'मेरा सब्सक्रिप्शन' },
+    'more.myPlan':             { en: 'My plan',                 hi: 'मेरा प्लान' },
+    'settings.moreFeatures':   { en: 'More features',           hi: 'और फीचर' },
+    'more.subStatusFallback':  { en: 'Plan, billing and renewals', hi: 'प्लान, बिलिंग और रिन्यूअल' },
+    'more.tapUpgrade':         { en: 'Tap to upgrade',          hi: 'अपग्रेड करें' },
+    'more.tapSubscribe':       { en: 'Tap to subscribe',        hi: 'सब्सक्राइब करें' },
+    'more.tapRenew':           { en: 'Tap to renew',            hi: 'रिन्यू करें' },
+    'more.tapManage':          { en: 'Tap to manage',           hi: 'मैनेज करें' },
+    'more.trialEndsToday':     { en: 'Trial ends today',        hi: 'ट्रायल आज खत्म' },
+    'more.trialOver':          { en: 'Trial over',              hi: 'ट्रायल खत्म' },
+    'more.planExpired':        { en: 'Plan expired',            hi: 'प्लान खत्म' },
+    'more.renews':             { en: 'renews',                  hi: 'रिन्यू' },
+    'more.trialWord':          { en: 'Trial',                   hi: 'ट्रायल' },
     'more.menuNav':            { en: 'Menu',                    hi: 'मेन्यू' },
     'more.ingredientsNav':     { en: 'Ingredients',             hi: 'सामग्री' },
     'more.logOut':             { en: 'Log out',                 hi: 'लॉग आउट' },
-    'more.aiInsights':         { en: 'AI Insights',             hi: 'AI इनसाइट्स' },
-    'more.aiInsightsSub':      { en: 'Munim read today\u2019s books', hi: 'मुनीम ने आज का हिसाब देखा' },
-    'more.aiInsightsOpen':     { en: 'Open all insights',       hi: 'सारी इनसाइट्स देखें' },
-    'more.aiInsightsEmpty':    { en: 'Make a few bills and I\u2019ll start flagging things here.', hi: 'कुछ बिल बनाइए, फिर मैं यहाँ बातें बताना शुरू करूँगा।' },
     'more.helpSupport':        { en: 'Help & support',           hi: 'मदद और सपोर्ट' },
     'more.helpSub':            { en: 'Tutorials, WhatsApp us',   hi: 'ट्यूटोरियल, WhatsApp करें' },
     'more.aiAdvisor':          { en: 'AI Advisor',               hi: 'AI सलाहकार' },
@@ -15425,72 +15426,99 @@ const App = {
       + '</button>';
   },
 
-  /* ── (v34_174) AI Insights — a card, not a row ────────────────────────
-     A heading over one grey row was the weakest thing on the screen. This
-     shows what Munim actually found today and opens the full drawer, and it
-     is the only bright surface in More so it reads as the highlight.
-     Reads Munim.top() rather than recomputing: two engines answering "what
-     should he know today" is the drift that caused the count-vs-list bugs.
-     With nothing to say it shows one honest line, not three empty ones. */
-  _moreAICSS(){
-    if (document.getElementById('mai-css')) return;
-    var st = document.createElement('style'); st.id = 'mai-css';
+  /* ── (v34_176) My plan — one tap target, honest copy ───────────────────
+     The row already opened the subscription screen, so a nested "Upgrade"
+     button was a second tap target for the same place, a thumb-width from the
+     first. The hint carries it instead — and it changes with the state, because
+     "Tap to upgrade" is the wrong sentence to show a King subscriber and
+     "12 days left" is the wrong sentence to show someone who lapsed in March.
+
+     Reads the same three calls renderMoreMenu() already makes for
+     #more-sub-status, plus hasEverPaid() to tell a new prospect from a lapsed
+     payer. One source; the two lines cannot disagree. */
+  _morePlanCSS(){
+    if (document.getElementById('mpl-css')) return;
+    var st = document.createElement('style'); st.id = 'mpl-css';
     st.textContent =
-        '.mai{position:relative;display:block;width:100%;text-align:left;border:0;padding:0;'
-      + 'border-radius:18px;overflow:hidden;font-family:inherit;cursor:pointer;'
-      + 'background:linear-gradient(135deg,#191308 0%,#2E2109 52%,#4A3308 100%);'
-      + 'box-shadow:0 14px 30px -16px rgba(232,184,75,.75),0 0 0 1px rgba(232,184,75,.28)}'
-      + '.mai::after{content:"";position:absolute;inset:0;pointer-events:none;'
-      + 'background:radial-gradient(120% 90% at 88% 8%,rgba(255,214,120,.30),transparent 58%)}'
-      + '.mai-in{position:relative;z-index:1;padding:16px 16px 15px}'
-      + '.mai-top{display:flex;align-items:center;gap:11px}'
-      + '.mai-em{width:42px;height:42px;border-radius:13px;background:rgba(255,214,120,.15);'
-      + 'display:flex;align-items:center;justify-content:center;font-size:21px;flex:0 0 auto;'
-      + 'box-shadow:inset 0 0 0 1px rgba(255,214,120,.3)}'
-      + '.mai-t{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.02em}'
-      + '.mai-s{font-size:11.5px;font-weight:600;color:#C6B48A;margin-top:2px}'
-      + '.mai-pill{margin-left:auto;background:#F2C879;color:#241703;font-size:10px;font-weight:800;'
-      + 'letter-spacing:.05em;padding:5px 9px;border-radius:99px;flex:0 0 auto}'
-      + '.mai-list{margin-top:13px;display:grid;gap:7px}'
-      + '.mai-row{display:flex;align-items:flex-start;gap:9px;background:rgba(255,255,255,.055);'
-      + 'border:1px solid rgba(255,214,120,.14);border-radius:11px;padding:9px 11px}'
-      + '.mai-e{font-size:14px;flex:0 0 auto;line-height:1.4}'
-      + '.mai-x{font-size:12px;font-weight:600;color:#E4DAC4;line-height:1.45}'
-      + '.mai-x strong,.mai-x b{color:#fff;font-weight:800}'
-      + '.mai-cta{margin-top:12px;display:flex;align-items:center;justify-content:center;gap:7px;'
-      + 'background:#F2C879;color:#241703;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800}'
-      + '@media (prefers-reduced-motion:reduce){.mai{transition:none}}';
+        '.mpl{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-family:inherit;'
+      + 'background:#fff;border:1.5px solid #F0DFBE;border-radius:16px;padding:13px 14px;cursor:pointer;'
+      + 'box-shadow:0 2px 10px -6px rgba(20,16,11,.3)}'
+      + '.mpl:active{background:#FFFDF8}'
+      + '.mpl-ic{width:42px;height:42px;border-radius:12px;flex:0 0 auto;font-size:21px;'
+      + 'background:linear-gradient(140deg,#FDF0CE,#EFC85F);display:flex;align-items:center;justify-content:center;'
+      + 'box-shadow:inset 0 0 0 1px rgba(20,16,11,.06)}'
+      + '.mpl-tx{flex:1;min-width:0}'
+      + '.mpl-l{font-size:15px;font-weight:800;letter-spacing:-.018em;display:block}'
+      + '.mpl-s{font-size:12px;font-weight:600;color:#545454;margin-top:3px;line-height:1.4;display:block}'
+      + '.mpl-cta{font-weight:800;color:#B8860B}'
+      + '.mpl-dot{color:#B8B0A0;font-weight:600}'
+      + '.mpl-cv{color:#B8B0A0;font-size:17px;flex:0 0 auto}'
+      /* Urgency lives in the border and the tile. Colouring the whole card red
+         makes the top of More look broken rather than urgent. */
+      + '.mpl.warn{border-color:#F3D9A8;background:linear-gradient(100deg,#FFFBF2,#fff 55%)}'
+      + '.mpl.warn .mpl-cta{color:#B45309}'
+      + '.mpl.bad{border-color:#F3CBCF;background:linear-gradient(100deg,#FFF9F9,#fff 55%)}'
+      + '.mpl.bad .mpl-ic{background:linear-gradient(140deg,#FDE0E2,#F4A9AE)}'
+      + '.mpl.bad .mpl-cta{color:#C1121F}'
+      + '.mpl.paid{border-color:#EDE6D6}'
+      + '.mpl.paid .mpl-ic{background:linear-gradient(140deg,#DFF3EA,#9FD9C4)}'
+      + '.mpl.paid .mpl-cta{color:#12805C}';
     document.head.appendChild(st);
   },
-  _moreAICard(){
-    this._moreAICSS();
+  _morePlanCard(){
+    this._morePlanCSS();
     var T = this._T.bind(this);
-    var ins = [];
-    try { ins = (window.Munim && Munim.top) ? (Munim.top(3) || []) : []; } catch(e){}
-    var EM = { crisis:'\uD83D\uDD34', problem:'\uD83D\uDCC9', opportunity:'\u2B50', info:'\uD83D\uDCA1' };
-    var rows = ins.map(function(it){
-      /* it.line is engine-built markup (<strong>…), never user input. */
-      return '<div class="mai-row"><span class="mai-e">' + (EM[it.tier] || EM.info) + '</span>'
-        + '<span class="mai-x">' + (it.line || '') + '</span></div>';
-    }).join('');
-    if (!rows){
-      rows = '<div class="mai-row"><span class="mai-e">\uD83D\uDCCA</span><span class="mai-x">'
-        + this.escapeHtml(T('more.aiInsightsEmpty','Make a few bills and I\u2019ll start flagging things here.'))
-        + '</span></div>';
+    var tier = '', days = 0, everPaid = false, name = '', expMs = 0;
+    try {
+      if (window.Subs){
+        tier = Subs.getCurrentTier ? Subs.getCurrentTier() : '';
+        days = Subs.daysLeft ? (Subs.daysLeft() || 0) : 0;
+        everPaid = Subs.hasEverPaid ? !!Subs.hasEverPaid() : false;
+        var cfg = Subs.getTierConfig ? Subs.getTierConfig(tier) : null;
+        name = (cfg && cfg.name) || '';
+        expMs = (Subs._state && Subs._state.paidExpiryMs) || 0;
+      }
+    } catch(e){}
+
+    var dW = days === 1 ? T('more.day','day') : T('more.days','days');
+    var cls = '', status, cta;
+
+    if (tier === 'trial'){
+      cls    = days <= 3 ? 'warn' : '';
+      status = days <= 0 ? T('more.trialEndsToday','Trial ends today')
+                         : T('more.trialWord','Trial') + ' \u00b7 ' + days + ' ' + dW + ' ' + T('more.left','left');
+      cta    = T('more.tapUpgrade','Tap to upgrade');
+    } else if (tier === 'trial-expired' || tier === 'expired'){
+      cls    = 'bad';
+      /* A lapsed payer is not a new prospect. hasEverPaid() already knows. */
+      status = everPaid ? T('more.planExpired','Plan expired') : T('more.trialOver','Trial over');
+      cta    = everPaid ? T('more.tapRenew','Tap to renew') : T('more.tapSubscribe','Tap to subscribe');
+    } else if (tier){
+      cls = 'paid';
+      /* Past ~60 days "340 days left" is noise dressed as information; an
+         annual subscriber wants the date he'll be charged. */
+      if (days > 60 && expMs){
+        var d = new Date(expMs);
+        var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        status = (name || tier) + ' \u00b7 ' + T('more.renews','renews') + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
+      } else {
+        status = (name || tier) + ' \u00b7 ' + days + ' ' + dW + ' ' + T('more.left','left');
+      }
+      cta = T('more.tapManage','Tap to manage');
+    } else {
+      /* Subs not loaded yet — say nothing rather than guess a state. */
+      status = T('more.subStatusFallback','Plan, billing and renewals');
+      cta = '';
     }
-    var pill = ins.length ? '<span class="mai-pill">' + ins.length + ' NEW</span>' : '';
-    return '<div class="menu-group-title">' + this.escapeHtml(T('munim.title','AI insights')) + '</div>'
-      + '<div class="menu-group">'
-      + '<button type="button" class="mai" onclick="try{Munim.openDrawer()}catch(e){}" data-role-min="manager">'
-      +   '<span class="mai-in">'
-      +     '<span class="mai-top"><span class="mai-em">\uD83D\uDCC8</span>'
-      +       '<span><span class="mai-t" style="display:block">' + this.escapeHtml(T('more.aiInsights','AI Insights')) + '</span>'
-      +       '<span class="mai-s" style="display:block">' + this.escapeHtml(T('more.aiInsightsSub','Munim read today\u2019s books')) + '</span></span>'
-      +       pill
-      +     '</span>'
-      +     '<span class="mai-list">' + rows + '</span>'
-      +     '<span class="mai-cta">' + this.escapeHtml(T('more.aiInsightsOpen','Open all insights')) + ' \u2192</span>'
-      +   '</span>'
+
+    return '<div class="menu-group">'
+      + '<button type="button" class="mpl ' + cls + '" onclick="App.openSubscription()" data-role-min="owner">'
+      +   '<span class="mpl-ic">\u2B50</span>'
+      +   '<span class="mpl-tx"><span class="mpl-l">' + this.escapeHtml(T('more.myPlan','My plan')) + '</span>'
+      +     '<span class="mpl-s">' + this.escapeHtml(status)
+      +       (cta ? ' <span class="mpl-dot">\u00b7</span> <span class="mpl-cta">' + this.escapeHtml(cta) + '</span>' : '')
+      +     '</span></span>'
+      +   '<span class="mpl-cv">\u203a</span>'
       + '</button></div>';
   },
 
@@ -15537,12 +15565,8 @@ const App = {
     try { recipeOn = !!this._usesRecipe(v); } catch(e){}
 
     var SEC = [
-      { rows:[
-        { emoji:'\u2B50', tint:'#FFF4DA', label:this._T('more.mySubscription','My subscription'),
-          sub: txt('more-sub-status','Plan, billing and renewals'),
-          on:'App.openSubscription()', role:'owner',
-          tint:'linear-gradient(140deg,#FDF0CE,#EFC85F)' }
-      ]},
+      /* (v34_176) Rendered by _morePlanCard() — it needs the tier, not a row. */
+      { planCard:true, rows:[] },
       { title:this._T('sb.menu','Menu'), rows:[
         { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')" },
         { emoji:'\uD83C\uDF7E', tint:'#F5ECFB', label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
@@ -15591,13 +15615,16 @@ const App = {
           on:'App.openSyncHealth()' },
         { emoji:'\u2753', tint:'#F1EFEA', label:this._T('more.helpSupport','Help & support'), sub:'Tutorials, WhatsApp us', on:'App.openHelp()' }
       ]},
-      /* (v34_174) The heading and the card are emitted by _moreAICard(); this
-         section carries only what sits UNDER it. `aiCard:true` marks where. */
-      { aiCard:true, rows:[
-        { emoji:'\uD83C\uDFA8', tint:'#FFF6E0', label:'Design my bill', sub:'Themes for the bill you send on WhatsApp',
-          on:'try{App.openBillStudio()}catch(e){}', when: has('App.openBillStudio') }
-      ]},
+
+      /* (v34_175) AI Insights is gone from More. It already has two homes — the
+         card at the top of Home on mobile, and its own sidebar row on desktop —
+         and a third copy of the same drawer, rendered as the only bright thing
+         on a list of quiet rows, read as an advert rather than a feature.
+         Design my bill isn't an insight; it is how the bill looks, so it moves
+         next to the other appearance settings. */
       { title:this._T('more.settings','Settings'), rows:[
+        { emoji:'\uD83C\uDFA8', tint:'#FFF6E0', label:'Design my bill', sub:'Themes for the bill you send on WhatsApp',
+          on:'try{App.openBillStudio()}catch(e){}', when: has('App.openBillStudio') },
         /* Settings itself is kept here on purpose. Your list put only Log out
            under this heading, but Settings has no other route on mobile — the
            shop's language, profile and the ingredients toggle all live behind
@@ -15611,15 +15638,8 @@ const App = {
 
     var html = '';
     SEC.forEach(function(sec){
+      if (sec.planCard){ html += self._morePlanCard(); return; }
       var rows = sec.rows.filter(function(r){ return r.when !== false; });
-      if (sec.aiCard){
-        /* The card is the section's headline; the rows follow it. It renders
-           even with nothing under it, because it is never empty itself. */
-        html += self._moreAICard();
-        if (rows.length) html += '<div class="menu-group" style="margin-top:9px">'
-          + rows.map(function(r){ return self._moreRRow(r); }).join('') + '</div>';
-        return;
-      }
       if (!rows.length) return;
       if (sec.title) html += '<div class="menu-group-title">' + self.escapeHtml(sec.title) + '</div>';
       html += '<div class="menu-group">' + rows.map(function(r){ return self._moreRRow(r); }).join('') + '</div>';
@@ -16962,23 +16982,11 @@ const App = {
       }
     } catch(e){ console.warn('[Settings] lang pill update failed:', e); }
 
-    const subTierEl = document.getElementById('settings-sub-tier');
-    const subStatusEl = document.getElementById('settings-sub-status');
-    if (subTierEl && subStatusEl && window.Subs) {
-      const tier = Subs.getCurrentTier();
-      const tCfg = Subs.getTierConfig(tier);
-      const days = Subs.daysLeft();
-      if (tier === 'trial') {
-        subTierEl.textContent = 'Free trial';
-        subStatusEl.textContent = days + ' day' + (days === 1 ? '' : 's') + ' left · tap to upgrade';
-      } else if (tier === 'trial-expired' || tier === 'expired') {
-        subTierEl.textContent = 'Expired';
-        subStatusEl.textContent = 'Tap to renew';
-      } else {
-        subTierEl.textContent = (tCfg.name || 'Pro') + ' plan';
-        subStatusEl.textContent = days + ' day' + (days === 1 ? '' : 's') + ' left';
-      }
-    }
+    /* (v34_177) The settings subscription rows are gone; this wrote into
+       #settings-sub-tier / #settings-sub-status, which no longer exist. It was
+       null-guarded so it degraded to a no-op — which is exactly how HND.retail
+       hid for months. Deleted rather than left to rot. My plan in More is the
+       one place this is computed now, in _morePlanCard(). */
   },
 
   openEditShopName(){
@@ -41096,15 +41104,6 @@ window.Munim = {
 
       return '<div class="ai-bullet">'+ico+'<span>'+it.line+'</span></div>';
     }).join('');
-  },
-
-  /* (v34_174) The More card needs the same three lines the home bullets show.
-     Exposed here rather than recomputed at the call site: two engines answering
-     "what should he know today" is the drift pattern that has caused most of
-     the count-vs-list bugs in this file. */
-  top: function(n){
-    try { return computeMunimInsights().slice(0, n || 3); }
-    catch(e){ return []; }
   },
 
   openDrawer: function(){
@@ -100964,7 +100963,12 @@ var KB=[
       +'  <button id="hn-bar-switch" onclick="App.toggleBar()" style="width:46px;height:27px;border:0;border-radius:99px;position:relative;cursor:pointer;transition:.18s;padding:0"><span id="hn-bar-knob" style="position:absolute;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.18s"></span></button>'
       +'</div>'
       +'<div id="hn-bar-stock-row" style="display:none;border-top:1px solid #F3F0E8"><button onclick="App.openLiquorStock()" style="width:100%;text-align:left;border:0;background:none;padding:13px 14px;font-family:inherit;font-size:13.5px;font-weight:700;color:#7C3AED;cursor:pointer;display:flex;align-items:center;gap:9px">\uD83C\uDF7E Manage liquor stock <span style="margin-left:auto;color:#bbb">\u203a</span></button></div>';
-    pg.appendChild(card);
+    /* (v34_177) Was pg.appendChild — which put a feature toggle below Delete
+       account and the footer. Mount into the More-features group at the top;
+       fall back to the page end if that group ever goes missing, so the toggle
+       is never simply unreachable. */
+    var mount = document.getElementById('settings-features') || pg;
+    mount.appendChild(card);
     syncRow();
   }
   function syncRow(){
@@ -101849,7 +101853,12 @@ var KB=[
       +'  <button id="hn-cig-switch" onclick="App.toggleCig()" style="width:46px;height:27px;border:0;border-radius:99px;position:relative;cursor:pointer;transition:.18s;padding:0"><span id="hn-cig-knob" style="position:absolute;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.18s"></span></button>'
       +'</div>'
       +'<div id="hn-cig-stock-row" style="display:none;border-top:1px solid #F3F0E8"><button onclick="App.openCigStock()" style="width:100%;text-align:left;border:0;background:none;padding:13px 14px;font-family:inherit;font-size:13.5px;font-weight:700;color:#7C3AED;cursor:pointer;display:flex;align-items:center;gap:9px">\uD83D\uDEAC Manage cigarette stock <span style="margin-left:auto;color:#bbb">\u203a</span></button></div>';
-    pg.appendChild(card);
+    /* (v34_177) Was pg.appendChild — which put a feature toggle below Delete
+       account and the footer. Mount into the More-features group at the top;
+       fall back to the page end if that group ever goes missing, so the toggle
+       is never simply unreachable. */
+    var mount = document.getElementById('settings-features') || pg;
+    mount.appendChild(card);
     syncRow();
   }
   function syncRow(){
@@ -102391,22 +102400,12 @@ var KB=[
   } catch(e){}
 
   /* ---- Settings entry ---- */
-  function injectSettingsRow(){
-    var pg=document.getElementById('pg-settings'); if(!pg || !eligible()) return;
-    if(document.getElementById('hn-retail-setting')) return;
-    var card=document.createElement('div');
-    card.id='hn-retail-setting';
-    card.style.cssText='margin:14px 18px;background:#fff;border:1px solid #EFE8D7;border-radius:16px;padding:2px';
-    card.innerHTML='<button onclick="App.openRetailLens()" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 14px;border:0;background:none;cursor:pointer;font-family:inherit;text-align:left">'
-      +'<div style="width:38px;height:38px;border-radius:10px;background:#F3ECFF;display:flex;align-items:center;justify-content:center;font-size:19px">\uD83D\uDECD\uFE0F</div>'
-      +'<div style="flex:1;min-width:0"><div style="font-size:14.5px;font-weight:800">Retail products</div><div style="font-size:11.5px;color:#888;font-weight:600;margin-top:1px">Manage everything you buy \u0026 resell in one place</div></div>'
-      +'<span style="color:#bbb;font-size:18px">\u203a</span>'
-      +'</button>';
-    pg.appendChild(card);
-  }
+  /* (v34_177) The Retail card is gone from Settings. Retail is a place you go,
+     not a preference you set, and it now has its own row in More and its own
+     entry in the desktop sidebar. A third copy buried under the shop profile
+     was the least discoverable of the three. */
 
   function syncNav(){ var el=document.getElementById('hnd-nav-retail'); if(el) el.style.display = eligible() ? '' : 'none'; }
-  var t=0, iv=setInterval(function(){ t++; try{ injectSettingsRow(); }catch(e){} if(t>200) clearInterval(iv); }, 700);
   setInterval(syncNav, 1500); syncNav();
 })();
 </script>
