@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_181_tombstone';
+    window.HISAABNOW_BUILD = 'v34_182_menuchips';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -7855,7 +7855,7 @@ window.getChipsWithCounts = function(mode, tracksStock){
   try {
     var _have = {};
     chips.forEach(function(c){ _have[String(c).toLowerCase()] = 1; });
-    var _skip = { 'all':1, 'low stock':1, 'out':1, 'loose':1, 'inactive':1, '—':1, '':1 };
+    var _skip = { 'all':1, 'low stock':1, 'out':1, 'loose':1, 'inactive':1, '\u2014':1, '':1 };
     var _extra = [];
     Object.keys(byCat).forEach(function(c){
       var lc = String(c).toLowerCase();
@@ -7863,6 +7863,30 @@ window.getChipsWithCounts = function(mode, tracksStock){
       _have[lc] = 1; _extra.push(c);
     });
     if (_extra.length) chips = chips.concat(_extra.sort());
+
+    /* \u2500\u2500 (v34_182) The shop's own categories replace the starter taxonomy \u2500\u2500\u2500\u2500
+       CARD_TYPE_CHIPS is a scaffold for a shop that has nothing yet: eighteen
+       restaurant chips so a new owner can see the shape of a menu. Once he
+       uploads his own \u2014 Snacks-Veg, Sandwich, Gravy, Goan Special \u2014 that
+       scaffold is somebody else's menu. It stayed at the front and pushed his
+       real categories to the end of the scroll, all reading 0.
+
+       "His own" means at least one active product that wasn't seeded. Until
+       then nothing changes, so a fresh shop still gets the full taxonomy.
+       Empty chips are only dropped where the shop has something to replace
+       them with; a category he uses stays even at 0, because he made it. */
+    var _ownsCatalog = false;
+    try {
+      _ownsCatalog = prods.some(function(p){ return p && p.active !== false && !p.seeded; });
+    } catch(e2){}
+    if (_ownsCatalog){
+      var _keepAlways = { 'all':1, 'low stock':1, 'out':1, 'loose':1, 'inactive':1 };
+      chips = chips.filter(function(c){
+        var lc = String(c).toLowerCase();
+        if (_keepAlways[lc]) return true;
+        return (byCat[c] || 0) > 0;
+      });
+    }
   } catch(e){}
 
   var catChips = chips.filter(function(label){
@@ -14760,7 +14784,24 @@ const App = {
       const chips = (typeof window.getChipsWithCounts === 'function')
         ? window.getChipsWithCounts('catalog', tracksStock)
         : (cfg.catalogChips || ['All']);
-      ch.innerHTML = chips.map((c,i)=>`<button class="chip${i===0?' active':''}" data-cat="${String(c).replace(/"/g,'&quot;')}" onclick="App.chipSelect(this)">${window.catDisp?window.catDisp(c):c}</button>`).join('');
+      /* (v34_182) Was `i===0 ? active`, which snapped back to All on every
+         rebuild — so re-rendering after an import or a delete silently changed
+         the filter under the owner. Honour _catChip, and fall back to All only
+         when the chip it names has gone. */
+      const _sel = String(this._catChip || 'All').trim().toLowerCase();
+      let _hit = false;
+      const _html = chips.map((c) => {
+        const _base = String(c).split(' \u00b7 ')[0].trim();
+        const _on = _base.toLowerCase() === _sel;
+        if (_on) _hit = true;
+        return `<button class="chip${_on ? ' active' : ''}" data-cat="${String(c).replace(/"/g,'&quot;')}" onclick="App.chipSelect(this)">${window.catDisp?window.catDisp(c):c}</button>`;
+      }).join('');
+      ch.innerHTML = _html;
+      if (!_hit){
+        this._catChip = 'All';
+        const _first = ch.querySelector('.chip');
+        if (_first) _first.classList.add('active');
+      }
     }
   },
 
@@ -24758,6 +24799,23 @@ const App = {
     } catch(e){}
   },
 
+  /* ── (v34_182) One repaint for "the catalogue changed" ──────────────────
+     Removing starter items and importing a menu each called renderCatalog()
+     — the LIST — and nothing else. The chips, their counts and the
+     remove-starter button are written by renderCatalogScreen() and
+     _mountStarterBtn(), which only nav() was calling. So the work happened,
+     the list updated, and every number around it stayed stale until you left
+     the screen and came back. Anything that adds or removes products calls
+     this instead of picking two of the four by hand. */
+  refreshCatalogUI(){
+    try { this.renderCatalogScreen(); } catch(e){ console.warn('[catalog] screen refresh failed', e); }
+    try { this.renderCatalog(); }       catch(e){ console.warn('[catalog] list refresh failed', e); }
+    try { this._mountStarterBtn(); }    catch(e){}
+    try { this.renderInventoryScreen(); } catch(e){}
+    try { this.renderInventory(); }       catch(e){}
+    try { if (window.HND && HND.cat && HND.cat.render) HND.cat.render(); } catch(e){}
+  },
+
   clearStarter(){
     var list = this._starterUntouched();
     if (!list.length) { this.toast('Nothing to remove'); return; }
@@ -24781,15 +24839,7 @@ const App = {
       try { if (Store.softDelete('prods', p.id, { active: false })) n++; }
       catch(e){ console.warn('[clearStarter] failed on', p && p.id, e); }
     });
-    try { this.renderInventory(); } catch(e){}
-    try { this.renderCatalog(); } catch(e){}
-    try { if (this.renderInventoryScreen) this.renderInventoryScreen(); } catch(e){}
-    try { if (this.renderCatalogScreen) this.renderCatalogScreen(); } catch(e){}
-    /* The banner is written by _mountStarterBtn into #cat-clear-cta and was
-       only refreshed by nav(). Without this it kept offering to remove 168
-       items that were already gone. */
-    try { this._mountStarterBtn(); } catch(e){}
-    try { if (window.HND && HND.cat && HND.cat.render) HND.cat.render(); } catch(e){}
+    this.refreshCatalogUI();
     this.toast(n ? ('Removed ' + n + ' starter item' + (n===1?'':'s'))
                  : 'Could not remove \u2014 please reload and retry');
   },
@@ -101033,8 +101083,11 @@ var KB=[
     toast('\u2713 Added '+added+' products'+(lastCat?(' to '+lastCat):''));
     /* Jump the Menu to the category we just filled, so the owner sees the items
        immediately instead of a stale/empty filter. */
-    try { if(window.HND && HND.cat){ HND.cat.cat = lastCat || 'All'; HND.cat.stockFilter='all'; HND.cat.render(); } } catch(e){}
-    try { if(App.renderCatalog){ App._catChip = lastCat || 'All'; App.renderCatalog(); } } catch(e){}
+    try { if(window.HND && HND.cat){ HND.cat.cat = lastCat || 'All'; HND.cat.stockFilter='all'; } } catch(e){}
+    /* (v34_182) Was renderCatalog() alone — the list repainted, the chips did
+       not, so the owner's new categories only appeared after leaving Menu and
+       coming back. */
+    try { App._catChip = lastCat || 'All'; App.refreshCatalogUI(); } catch(e){}
   };
 
   /* ---- Part 1: inject a Settings row ---- */
@@ -101704,7 +101757,7 @@ var KB=[
         if (chip && chip.click){ chip.click(); return; }
       } catch(ex){}
       try{ if(window.HND && window.HND.cat && window.HND.cat.render){ window.HND.cat.cat='Cigarettes'; window.HND.cat.render(); } }catch(ex){}
-      try{ if(App.renderCatalog){ App._catChip='Cigarettes'; App.renderCatalog(); } }catch(ex){}
+      try{ App._catChip='Cigarettes'; App.refreshCatalogUI(); }catch(ex){}
     };
     _cigeRefresh();
     setTimeout(_cigeRefresh, 80);
@@ -101786,7 +101839,7 @@ var KB=[
     else { try{ Store.add('prods',fields); }catch(ex){} toast('\u2713 '+name+' added'); }
     var ov=document.getElementById('bev-ov'); if(ov) ov.remove();
     try{ if(window.HND&&HND.cat){ HND.cat.cat='Beverages'; HND.cat.render(); } }catch(ex){}
-    try{ if(App.renderCatalog){ App._catChip='Beverages'; App.renderCatalog(); } }catch(ex){}
+    try{ App._catChip='Beverages'; App.refreshCatalogUI(); }catch(ex){}
   };
   App._bevDelete = function(){
     var e=_bevEdit; if(!e.id) return;
