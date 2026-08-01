@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_185_homepills';
+    window.HISAABNOW_BUILD = 'v34_188_waitergate';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -687,22 +687,23 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
        Bulk prices, and Morning/Evening — where they read the same every time.
        Nothing is lost; HNDayBook and HNBulkPrice are untouched. */
     window.HN_SABZI_DAYCARD = false;
-    /* Subtle build badge (bottom-left) so the live build is verifiable at a glance
-       without opening the console — resolves recurring "which build am I on?". */
+    /* (v34_186) The floating build badge is gone. It sat over the bottom-left
+       of every screen, including the nav bar, and it is a developer's answer to
+       "which build am I on?" — not something a shopkeeper should ever see.
+       The build is still verifiable in three places that cost the user nothing:
+       the console line below, the More-screen footer, and the login footer
+       (both pinned by _pinBuildLabels). Also removes any badge left behind in
+       a cached shell from an earlier build. */
     (function(){
-      function addBadge(){
+      function dropBadge(){
         try {
-          if (document.getElementById('hn-build-badge')) return;
-          var b = document.createElement('div');
-          b.id = 'hn-build-badge';
-          b.textContent = window.HISAABNOW_BUILD;
-          b.style.cssText = 'position:fixed;bottom:5px;left:7px;z-index:2147483000;font:600 9.5px/1 ui-monospace,monospace;color:#B7AE9A;background:rgba(255,255,255,.55);padding:2px 6px;border-radius:5px;pointer-events:none;opacity:.55;letter-spacing:.02em';
-          document.body.appendChild(b);
+          var b = document.getElementById('hn-build-badge');
+          if (b && b.parentNode) b.parentNode.removeChild(b);
         } catch(e){}
       }
-      if (document.body) addBadge();
-      document.addEventListener('DOMContentLoaded', addBadge);
-      setTimeout(addBadge, 1500);
+      if (document.body) dropBadge();
+      document.addEventListener('DOMContentLoaded', dropBadge);
+      setTimeout(dropBadge, 1500);
     })();
 
     console.log('%c[HisaabNow] build ' + window.HISAABNOW_BUILD + ' loaded',
@@ -790,7 +791,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
   // ═══════════════════════════════════════════════════════════════════════
   try {
     var _cachedRole = localStorage.getItem('hn_role_cached');
-    if (_cachedRole === 'owner' || _cachedRole === 'manager' || _cachedRole === 'cashier') {
+    if (_cachedRole === 'owner' || _cachedRole === 'manager' || _cachedRole === 'cashier' || _cachedRole === 'waiter') {
       document.documentElement.setAttribute('data-current-role', _cachedRole);
       document.documentElement.setAttribute('data-role-resolved', 'yes');
     }
@@ -2997,6 +2998,17 @@ html[data-current-role="cashier"] [data-role-min="owner"],
 html[data-current-role="manager"] [data-role-min="owner"] {
   display: none !important;
 }
+
+/* (v34_187) A waiter bills and nothing else. He is hidden from everything a
+   cashier is hidden from, plus everything marked cashier-and-above. */
+html[data-current-role="waiter"] [data-role-min="cashier"],
+html[data-current-role="waiter"] [data-role-min="manager"],
+html[data-current-role="waiter"] [data-role-min="owner"] {
+  display: none !important;
+}
+/* Same stripped-down home a cashier gets — no revenue, no profit, no pills. */
+html[data-current-role="waiter"] #cashier-hero { display: block !important; }
+html[data-current-role="waiter"] #kpi-row { display: none !important; }
 
 html[data-current-role="cashier"] #cashier-hero {
   display: block !important;
@@ -5640,6 +5652,8 @@ html[data-current-role="manager"] body{
     'dash.heroSales':       { en: 'Sales',              hi: 'बिक्री'      },
     'dash.heroCost':        { en: 'Cost',               hi: 'लागत'        },
     'dash.profit':          { en: 'Profit',             hi: 'प्रॉफिट' },
+    /* (v34_186) Sub-line on the profit pill. */
+    'dash.marginWord':      { en: 'margin',                  hi: 'मार्जिन' },
     'dash.margin':          { en: 'Margin',             hi: 'मार्जिन' },
     'dash.bills':           { en: 'Bills',              hi: 'बिल' },
     'dash.cash':            { en: 'Cash',               hi: 'कैश' },
@@ -6424,6 +6438,11 @@ html[data-current-role="manager"] body{
     'toast.invalidPhone':    { en: 'Invalid phone',                 hi: 'गलत फोन नंबर' },
     'toast.pageNotFound':    { en: 'Page not found',                hi: 'पेज नहीं मिला' },
     'toast.ownerOnly':       { en: 'Owner only',                    hi: 'सिर्फ मालिक के लिए' },
+    /* (v34_187) */
+    'toast.waiterBillingOnly': { en: 'You can take orders and bill', hi: 'आप ऑर्डर और बिल बना सकते हैं' },
+    /* (v34_188) Used by _roleHint since v34_187 but never defined — _T fell
+       back to the English literal, so a Hindi shop saw an English line. */
+    'staff.loginWaiter':       { en: 'Can take orders and bill \u2014 nothing else', hi: 'सिर्फ ऑर्डर और बिल बना सकते हैं' },
     'toast.notAvailCashier': { en: 'Not available for cashiers',    hi: 'कैशियर के लिए उपलब्ध नहीं' },
     'toast.syncing':         { en: 'Syncing…',                      hi: 'सिंक हो रहा है…' },
     'toast.syncNotAvail':    { en: 'Sync not available',            hi: 'सिंक उपलब्ध नहीं' },
@@ -12300,7 +12319,20 @@ const App = {
 
       const managerOnly = ['staff','customers','expenses','my-biz','udhaar','customer-detail','add-udhaar'];
       const ownerOnly   = ['settings','subscription','multi-store','add-staff'];
-      if (role === 'cashier' && managerOnly.indexOf(page) >= 0) {
+
+      /* ── (v34_187) Waiter: allowlist, not blocklist ────────────────────────
+         Cashier is gated by naming the screens it CANNOT see, which quietly
+         grants every screen nobody remembered to list — catalog, inventory,
+         ingredients, reports, cashflow and coupons are all reachable by a
+         cashier today. For a waiter that is the wrong shape entirely: he
+         should have exactly the billing path and nothing else, and a screen
+         added next month must not silently become his. So it is named the
+         other way round. */
+      const waiterAllowed = ['home','addsale','checkout','sales','more'];
+      if (role === 'waiter' && waiterAllowed.indexOf(page) < 0) {
+        this.toast(this._T('toast.waiterBillingOnly', 'You can take orders and bill'));
+        page = 'addsale';
+      } else if (role === 'cashier' && managerOnly.indexOf(page) >= 0) {
         this.toast(this._T('toast.notAvailCashier', 'Not available for cashiers'));
         page = 'home';
       } else if (role !== 'owner' && ownerOnly.indexOf(page) >= 0) {
@@ -15620,15 +15652,15 @@ const App = {
       /* (v34_176) Rendered by _morePlanCard() — it needs the tier, not a row. */
       { planCard:true, rows:[] },
       { title:this._T('sb.menu','Menu'), rows:[
-        { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')" },
+        { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')", role:'cashier' },
         { emoji:'\uD83C\uDF7E', tint:'#F5ECFB', label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
-          on:'App.openLiquorStock()', when: barOn && has('App.openLiquorStock') },
+          on:'App.openLiquorStock()', role:'cashier', when: barOn && has('App.openLiquorStock') },
         { emoji:'\uD83C\uDF81', tint:'#FFEFF3', label:this._T('nav.makeCombo','Make a combo'), sub:'Bundle items into one offer',
-          on:'try{HNCombo.openBuilder()}catch(e){}', when: has('HNCombo.openBuilder') },
+          on:'try{HNCombo.openBuilder()}catch(e){}', role:'manager', when: has('HNCombo.openBuilder') },
         { emoji:'\uD83E\uDDC2', tint:'#FFF6E0', label:this._T('more.ingredientsNav','Ingredients'), sub:'Raw material & recipe cost',
           on:"App.nav('ingredients')", role:'manager', when: recipeOn },
         { emoji:'\uD83D\uDECD\uFE0F', tint:'#EFF7EC', label:this._T('nav.retail','Retail'), sub:'Cold drinks, cigarettes, liquor',
-          on:'App.openRetailLens()', when: has('App.openRetailLens') }
+          on:'App.openRetailLens()', role:'cashier', when: has('App.openRetailLens') }
       ]},
       { title:this._T('sb.money','Money'), rows:[
         { emoji:'\uD83E\uDD1D', tint:'#E9F6EF', label:this._T('more.udhaarCredit','Udhaar / Credit'), sub:'Customer credit & supplier dues', on:"App.nav('udhaar')", role:'manager' },
@@ -15659,12 +15691,12 @@ const App = {
       ]},
       { title:this._T('sb.support','Support'), rows:[
         { emoji:'\u2728', tint:'#1C1C1C', label:this._T('more.aiAdvisor','AI advisor'), sub:'Chat & ask anything \u00b7 voice',
-          on:'try{HNAdvisor.openChat()}catch(e){}',
+          on:'try{HNAdvisor.openChat()}catch(e){}', role:'manager',
           when: has('HNAdvisor.openChat') },
         { emoji:'\uD83C\uDFAB', tint:'#F1EFEA', label:this._T('nav.openTicket','Open a ticket'), sub:'We\u2019ll come back to you on WhatsApp',
           on:'try{App.openSupport()}catch(e){}', when: has('App.openSupport') },
         { emoji:'\uD83D\uDD04', tint:'#F1EFEA', label:this._T('more.syncHealth','Sync health'), sub: txt('more-sync-health-sub','All sales syncing'),
-          on:'App.openSyncHealth()' },
+          on:'App.openSyncHealth()', role:'cashier' },
         { emoji:'\u2753', tint:'#F1EFEA', label:this._T('more.helpSupport','Help & support'), sub:'Tutorials, WhatsApp us', on:'App.openHelp()' }
       ]},
 
@@ -15676,7 +15708,7 @@ const App = {
          next to the other appearance settings. */
       { title:this._T('more.settings','Settings'), rows:[
         { emoji:'\uD83C\uDFA8', tint:'#FFF6E0', label:'Design my bill', sub:'Themes for the bill you send on WhatsApp',
-          on:'try{App.openBillStudio()}catch(e){}', when: has('App.openBillStudio') },
+          on:'try{App.openBillStudio()}catch(e){}', role:'manager', when: has('App.openBillStudio') },
         /* Settings itself is kept here on purpose. Your list put only Log out
            under this heading, but Settings has no other route on mobile — the
            shop's language, profile and the ingredients toggle all live behind
@@ -15705,7 +15737,32 @@ const App = {
     try { if (window.I18n && I18n.applyAll) I18n.applyAll(); } catch(e){}
   },
 
+  /* ── (v34_188) The half of the permission model nav() cannot see ─────────
+     v34_187 gave the waiter an allowlist inside nav(), which is right for
+     pages — but six modules open as OVERLAYS and never touch nav(): the Bar,
+     the Retail lens, the combo builder, the bill studio, sync health and the
+     business manager. A waiter tapping any of those in More got straight in,
+     allowlist or not. data-role-min hides the row; it does not defend the
+     function behind it, and a row can be reached from a cached shell, a stale
+     render or a deep link.
+
+     Asks AppRole.canAccess, which already ranks waiter below cashier — no
+     second rank table. Returns true when the caller should stop. */
+  _blockedBelow(minRole){
+    try {
+      if (window.AppRole && AppRole.canAccess && !AppRole.canAccess(minRole)){
+        var msg = (AppRole.isWaiter && AppRole.isWaiter())
+          ? this._T('toast.waiterBillingOnly', 'You can take orders and bill')
+          : this._T('toast.notAvailCashier', 'Not available for cashiers');
+        if (this.toast) this.toast(msg);
+        return true;
+      }
+    } catch(e){}
+    return false;
+  },
+
   openBusinessManager(){
+    if (this._blockedBelow('owner')) return;
     if (this._shouldGateBilling()) {
       this._showSubsExpiredGate && this._showSubsExpiredGate();
       return;
@@ -18036,6 +18093,12 @@ const App = {
     const profEl = document.getElementById('kpi-profit');
     const profDelta = document.getElementById('kpi-profit-delta');
     const profLabel = document.getElementById('kpi-profit-label');
+    /* (v34_186) Slot 3 says Profit now. The staff and cash branches below
+       relabel it themselves; this is the default the ladder falls back to. */
+    if (profLabel && !_useStaffPill && !_useCashTile){
+      profLabel.setAttribute('data-i18n', 'dash.profit');
+      profLabel.textContent = this._T('dash.profit', 'Profit');
+    }
 
     let _useStaffPill = false;
     let _todayPerStaff = 0;
@@ -18301,22 +18364,32 @@ const App = {
         profEl.innerHTML = '<span class="hn-setmargin-blink" style="font-size:15px;font-weight:700;color:#92400E">Set margin</span>';
         if (profDelta) profDelta.innerHTML = `<span class="hn-setmargin-blink" style="color:#92400E;font-weight:600;opacity:.85">⚠ Add cost prices →</span>`;
       } else {
-
-        const marginDisplay = Math.round(todayMargin) + '%';
-        profEl.textContent = marginDisplay;
-        if (profDelta && yestProfAccurate && yestRev > 0) {
-
-          const diffPp = todayMargin - yestMargin;
-          if (Math.abs(diffPp) < 0.5) {
-            profDelta.innerHTML = `<span style="opacity:.5">· same as yest.</span>`;
+        /* ── (v34_186) Profit in rupees, not margin percent ──────────────────
+           A shopkeeper reads \u20b9840 without a beat; 34% needs him to hold the
+           revenue in his head and do a sum. The two are the same fact, and
+           the rupee form is the one he can act on \u2014 it is what he takes home.
+           The percent moves to the sub-line, where it costs nothing and still
+           answers "is this a good day or just a busy one".
+           The ladder above is untouched: setcost and setmargin still teach
+           cost entry, and this branch only runs once costs are real. */
+        profEl.textContent = fmtCurrency(todayProf);
+        if (profDelta) {
+          var _mPct = Math.round(todayMargin) + '%';
+          if (yestProfAccurate && yestRev > 0) {
+            var _d = todayProf - yestProf;
+            if (Math.abs(_d) < 1) {
+              profDelta.innerHTML = '<span style="opacity:.75">' + _mPct + '</span>'
+                + ' <span style="opacity:.5">\u00b7 ' + this._T('dash.sameAsYest','same as yest.') + '</span>';
+            } else {
+              var _up = _d >= 0;
+              profDelta.innerHTML = '<span style="opacity:.75">' + _mPct + '</span>'
+                + ' <span style="color:' + (_up ? '#059669' : '#DC2626') + '">'
+                + (_up ? '\u25b2' : '\u25bc') + ' ' + fmtCurrency(Math.abs(_d)) + '</span>';
+            }
           } else {
-            const up = diffPp >= 0;
-            const arrow = up ? '▲' : '▼';
-            const color = up ? '#059669' : '#DC2626';
-            profDelta.innerHTML = `<span style="color:${color}">${arrow} ${Math.abs(Math.round(diffPp))} pp</span> <span class="vs">${this._T("dash.vsYest","vs yest.")}</span>`;
+            profDelta.innerHTML = '<span style="opacity:.75">' + _mPct + '</span>'
+              + ' <span style="opacity:.5">' + this._T('dash.marginWord','margin') + '</span>';
           }
-        } else if (profDelta) {
-          profDelta.innerHTML = `<span style="opacity:.5">·</span>`;
         }
       }
     }
@@ -33698,6 +33771,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
      state from HisaabSync.quarantine and HisaabSync.getStatus.
   ════════════════════════════════════════════════════════════════════════ */
   openSyncHealth(){
+    if (this._blockedBelow('cashier')) return;
     this.nav('sync-health');
     this._renderSyncHealth();
   },
@@ -36631,18 +36705,17 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._refreshLoginToggle();
   },
 
+  /* (v34_187) Both of these listed the login roles again, independently of
+     _isLoginRole(). Three lists that had to agree, and adding Waiter proved
+     they don't — the same shape as VERTICAL_CONFIG vs catalogChips. They now
+     ask the one predicate and the one mapper. */
   _staffLoginLockState(roleName){
-    const lower = String(roleName || '').toLowerCase().trim();
-    if (lower === 'manager') return 'force-on';
-    if (lower === 'cashier') return 'force-on';
-    return null;
+    return this._isLoginRole(roleName) ? 'force-on' : null;
   },
 
   _resolveLoginRole(roleName, toggleOn){
     if (!toggleOn) return null;
-    const lower = String(roleName || '').toLowerCase().trim();
-    if (lower === 'manager') return 'manager';
-    return 'cashier';
+    return this._loginRoleFor(roleName);
   },
 
   _refreshLoginToggle(){
@@ -36686,9 +36759,14 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       btn.style.cursor = 'not-allowed';
       btn.dataset.locked = '1';
       const lower = String(roleSel.name).toLowerCase();
-      sub.textContent = lower === 'manager'
-        ? 'Manager always has login access'
-        : 'Cashier always has login access';
+      /* (v34_187) Waiter is force-on too now, and the line says what he'll
+         actually be able to do — the owner is deciding access here, so tell
+         him the consequence rather than just the fact. */
+      sub.innerHTML = (lower === 'manager' ? 'Manager always has login access'
+                     : lower === 'waiter'  ? 'Waiter always has login access'
+                     : 'Cashier always has login access')
+        + '<br><span style="font-weight:600;color:#0F766E">'
+        + this.escapeHtml(this._staffLoginSubFor(roleSel.name)) + '</span>';
       sub.style.color = '#065F46';
       sub.style.fontWeight = '700';
       return;
@@ -36720,6 +36798,15 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
   },
 
+  /* (v34_187) The toggle's sub-line said "For commission tracking only", which
+     was true when Waiter could not log in. It can now. */
+  _staffLoginSubFor(roleName){
+    var r = String(roleName || '').toLowerCase().trim();
+    if (r === 'waiter')  return this._T('staff.loginWaiter','Can take orders and bill \u2014 nothing else');
+    if (r === 'cashier') return this._T('staff.loginCashier','Can bill and manage the counter');
+    if (r === 'manager') return this._T('staff.loginManager','Can bill, and see stock, udhaar and reports');
+    return this._T('staff.giveLoginSub','For commission tracking only');
+  },
   _toggleStaffLogin(){
     const btn = document.getElementById('staff-login-toggle');
     if (btn && btn.dataset.locked === '1') {
@@ -36884,7 +36971,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const isLoginRole = this._isLoginRole(role.name);
     const cfRole = isLoginRole
-      ? (String(role.name).toLowerCase().trim() === 'manager' ? 'manager' : 'cashier')
+      ? this._loginRoleFor(role.name)
       : String(role.name).toLowerCase().trim();
     const loginAllowed = isLoginRole;
 
@@ -38173,9 +38260,23 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     return Store.list('staff').filter(s => s && !s._deleted);
   },
 
+  /* ── (v34_187) Waiter is a login role ─────────────────────────────────────
+     Only Manager and Cashier counted before, so an owner who picked Waiter got
+     a commission-tracking record and nothing else \u2014 the man could not open the
+     app. The whole point of adding a waiter is that he takes the order at the
+     table. He now gets a login, and the tier below cashier. */
   _isLoginRole(roleName){
     const r = String(roleName || '').toLowerCase().trim();
-    return r === 'manager' || r === 'cashier';
+    return r === 'manager' || r === 'cashier' || r === 'waiter';
+  },
+  /* Which server role a vertical role maps to. Waiter keeps its own value so
+     the device that logs in can tell a waiter from a cashier \u2014 they are not
+     the same person and must not see the same app. */
+  _loginRoleFor(roleName){
+    const r = String(roleName || '').toLowerCase().trim();
+    if (r === 'manager') return 'manager';
+    if (r === 'waiter')  return 'waiter';
+    return 'cashier';
   },
 
   async _callAddStaffMember(shopId, phoneE164, name, role, loginAllowed){
@@ -48389,9 +48490,12 @@ function _computeRole() {
   if (!active) return 'owner';
   if (active._isStaffShop === true && active._staffRole) {
     var role = String(active._staffRole).toLowerCase();
-    if (role === 'cashier' || role === 'manager') return role;
-    log('unknown staff role:', active._staffRole, '— defaulting to cashier');
-    return 'cashier';
+    /* (v34_187) 'waiter' is a real tier now, below cashier. Anything still
+       unrecognised falls to WAITER, not cashier — the safe default for an
+       unknown role is the least access, not the second-most. */
+    if (role === 'cashier' || role === 'manager' || role === 'waiter') return role;
+    log('unknown staff role:', active._staffRole, '— defaulting to waiter');
+    return 'waiter';
   }
   return 'owner';
 }
@@ -48452,9 +48556,13 @@ window.AppRole = {
   isOwner:   function() { return _currentRole === 'owner'; },
   isManager: function() { return _currentRole === 'manager'; },
   isCashier: function() { return _currentRole === 'cashier'; },
+  isWaiter:  function() { return _currentRole === 'waiter'; },
 
   canAccess: function(minRole) {
-    var rank = { 'cashier': 1, 'manager': 2, 'owner': 3 };
+    /* (v34_187) waiter sits below cashier. Fractional so the existing three
+       ranks and every data-role-min="cashier|manager|owner" in the markup keep
+       their exact meaning. */
+    var rank = { 'waiter': 0.5, 'cashier': 1, 'manager': 2, 'owner': 3 };
     var current = rank[_currentRole] || 0;
     var required = rank[String(minRole || '').toLowerCase()] || 0;
     return current >= required;
@@ -97971,6 +98079,7 @@ var KB=[
     },
 
     openBuilder: function(editId){
+      try { if (window.App && App._blockedBelow && App._blockedBelow('manager')) return; } catch(e){}
       this.refreshAll(); // make sure member costs are current before editing
       this._ensureSheet();
       var st = { editId: editId || null, name: '', emoji: '🍔', sel: {}, price: 0, userTyped: false, disc: 15 };
@@ -100856,6 +100965,7 @@ var KB=[
 
   /* ---- Part 2: Liquor stock manager ---- */
   App.openLiquorStock = function(){
+    if (App._blockedBelow && App._blockedBelow('cashier')) return;
     try { if (Store.ensureIds) Store.ensureIds('prods'); } catch(e){}
     var ov=document.getElementById('lqs-ov'); if(ov) ov.remove();
     ov=document.createElement('div'); ov.id='lqs-ov';
@@ -102637,6 +102747,7 @@ var KB=[
   }
 
   App.openRetailLens = function(){
+    if (App._blockedBelow && App._blockedBelow('cashier')) return;
     rlCss();
     RL.filter='all'; RL.bucket='all'; RL.q=''; RL.sort='urgency'; RL.pend={};
     var ov=document.getElementById('hn-retail-ov'); if(ov) ov.remove();
@@ -108999,7 +109110,12 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
 
     // expose a direct helper for any future call site
     app.shareBillImage = function (bill) { return shareImage(bill); };
-    app.openBillStudio = openStudio;
+    /* (v34_188) Wrapped rather than guarded inside openStudio, which is the
+       module's own private function and has other callers. */
+    app.openBillStudio = function(){
+      if (app._blockedBelow && app._blockedBelow('manager')) return;
+      return openStudio.apply(this, arguments);
+    };
     app.__hnRoyalHooked = true;
   }
 
