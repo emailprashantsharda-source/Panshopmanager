@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_179_featfix';
+    window.HISAABNOW_BUILD = 'v34_181_tombstone';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -24727,7 +24727,9 @@ const App = {
   _starterUntouched(){
     try {
       return (Store.list('prods') || []).filter(function(p){
-        if (!p || p._deleted) return false;
+        /* (v34_180) deletedAt too — the rest of the file tests both, and a
+           record tombstoned by another device arrives with only deletedAt. */
+        if (!p || p._deleted || p.deletedAt) return false;
         if (!p.seeded) return false;
         var priced = (Number(p.sp)||0) > 0 || (Number(p.price)||0) > 0 || p.cp != null;
         var stocked = (Number(p.stock)||0) > 0;
@@ -24764,11 +24766,32 @@ const App = {
       + 'Anything you have priced or stocked is kept.\n\n'
       + 'They disappear from both Catalog and Inventory.')) return;
     var n = 0;
-    list.forEach(function(p){ try { Store.remove('prods', p.id); n++; } catch(e){} });
+    /* ── (v34_180) Soft-delete, or the server puts all 168 back ───────────────
+       This used Store.remove() -> Store.delete(), which splices the record out
+       of the local array and leaves nothing behind. HisaabSync is a two-way
+       checkpoint diff: on the next pull the server still holds those rows, sees
+       no local record and no tombstone, and restores every one of them. The
+       shopkeeper watched them vanish and reappear.
+
+       Everything else that must stay deleted already writes a tombstone —
+       khata, staff, customers, quarantine. Store.list() hides _deleted records
+       from every view, and the sync layer reads raw state so the tombstone
+       travels. This was the one delete path that skipped it. */
+    list.forEach(function(p){
+      try { if (Store.softDelete('prods', p.id, { active: false })) n++; }
+      catch(e){ console.warn('[clearStarter] failed on', p && p.id, e); }
+    });
     try { this.renderInventory(); } catch(e){}
     try { this.renderCatalog(); } catch(e){}
     try { if (this.renderInventoryScreen) this.renderInventoryScreen(); } catch(e){}
-    this.toast('Removed ' + n + ' starter item' + (n===1?'':'s'));
+    try { if (this.renderCatalogScreen) this.renderCatalogScreen(); } catch(e){}
+    /* The banner is written by _mountStarterBtn into #cat-clear-cta and was
+       only refreshed by nav(). Without this it kept offering to remove 168
+       items that were already gone. */
+    try { this._mountStarterBtn(); } catch(e){}
+    try { if (window.HND && HND.cat && HND.cat.render) HND.cat.render(); } catch(e){}
+    this.toast(n ? ('Removed ' + n + ' starter item' + (n===1?'':'s'))
+                 : 'Could not remove \u2014 please reload and retry');
   },
 
   renderInventory(){
@@ -33637,8 +33660,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     /* Also remove from local Store so checkpoint doesn't re-enqueue */
     try {
-      if (window.Store && Store.remove) {
-        Store.remove(entry.collection, entry.record.id);
+      if (window.Store && Store.hardDelete) {
+        Store.hardDelete(entry.collection, entry.record.id);
       } else if (window.Store && Store.delete) {
         Store.delete(entry.collection, entry.record.id);
       }
@@ -39191,7 +39214,7 @@ window.App = App;
       try {
         var openings = (window.Store.list('cashOpening') || []).slice();
         var todayStr = window.td();
-        openings.forEach(function(o){ if (o && o.t && o.id && window.tdAt(o.t) === todayStr) { try { window.Store.remove('cashOpening', o.id); } catch(e){} } });
+        openings.forEach(function(o){ if (o && o.t && o.id && window.tdAt(o.t) === todayStr) { try { window.Store.softDelete('cashOpening', o.id); } catch(e){} } });
       } catch(e){}
       try { document.querySelectorAll('.sheet-backdrop').forEach(function(s){ s.remove(); }); } catch(e){}
       if (window.App && window.App.toast) window.App.toast('✓ Opening removed');
@@ -39215,7 +39238,7 @@ window.App = App;
           if (!o || !o.t || !o.id) return;
           var oDate = window.tdAt(o.t);
           if (oDate === todayStr) {
-            try { window.Store.remove('cashOpening', o.id); } catch(e){}
+            try { window.Store.softDelete('cashOpening', o.id); } catch(e){}
           }
         });
         // Add new opening
@@ -46888,7 +46911,12 @@ window.Store = {
 
   get: function(coll, id){
     var a = _arr(coll);
-    return a.find(function(x){ return x.id === id; }) || null;
+    var r = a.find(function(x){ return x.id === id; }) || null;
+    /* (v34_181) Agree with list(): a deleted record is gone. Without this an
+       editor could open a tombstoned row and update() would resurrect it.
+       Store internals (_arr / update / patchByIdOrName) and the sync layer
+       read raw state, so the tombstone itself stays reachable. */
+    return (r && (r._deleted || r.deletedAt)) ? null : r;
   },
 
   filter: function(coll, predicate){
@@ -47008,6 +47036,37 @@ window.Store = {
     if (i < 0) i = a.findIndex(function(x){ return x && (x.id == null || x.id === '') && x.name === id; });
     if (i < 0) return false;
 
+    /* ── (v34_181) Delete writes a tombstone; it no longer splices ────────────
+       Splicing removes the row locally and leaves nothing behind. Every
+       collection in COLLECTION_STATE_MAP is a two-way checkpoint diff, so on
+       the next pull the server still holds the row, finds no local copy and no
+       tombstone, and restores it. That is why 168 starter products came back
+       after being removed \u2014 and the same was true of every other delete in the
+       app: cash entries, expenses, bills, coupons, appointments, khata rows.
+       Thirty-odd call sites, one bug.
+
+       Fixing it here rather than at each call site, for the same reason
+       Store.list() hides tombstones in one place (v33_406): the next delete
+       written by anyone is correct by default. The id-matching ladder above is
+       untouched, and the return value still means "did I find it".
+
+       For collections that never leave the device, use hardDelete(). */
+    a[i] = Object.assign({}, a[i], { _deleted: true, deletedAt: Date.now(), updatedAt: Date.now() });
+    try { a[i]._clientHash = this._computeClientHash(coll, a[i]); } catch(e){}
+    _emit(coll);
+    return true;
+  },
+
+  /* The old behaviour, kept for records that must leave without a trace \u2014
+     quarantine entries, which are local-only push failures: a tombstone for
+     one would be re-enqueued forever. */
+  hardDelete: function(coll, id){
+    if (id == null || id === '' || id === 'undefined' || id === 'null') return false;
+    var a = _arr(coll);
+    var i = a.findIndex(function(x){ return x && x.id != null && x.id !== '' && x.id === id; });
+    if (i < 0) i = a.findIndex(function(x){ return x && x.id != null && x.id !== '' && String(x.id) === String(id); });
+    if (i < 0) i = a.findIndex(function(x){ return x && (x.id == null || x.id === '') && x.name === id; });
+    if (i < 0) return false;
     a.splice(i, 1);
     _emit(coll);
     return true;
@@ -47032,10 +47091,17 @@ window.Store = {
       seen[key] = winner;
     }
     if (!Object.keys(loserIds).length) return false;
-    /* Remove all duplicates in ONE atomic pass (no per-delete _emit → no
-       re-entrant render that could leave a stale row id → "Item not found"). */
-    var kept = a.filter(function(x){ return x && !loserIds[x.id]; });
-    a.length = 0; Array.prototype.push.apply(a, kept);
+    /* Tombstone all duplicates in ONE atomic pass (no per-delete _emit → no
+       re-entrant render that could leave a stale row id → "Item not found").
+       (v34_181) Was a filter that dropped the losers from raw state. This runs
+       on every catalog render, so a hard drop meant the duplicates returned on
+       the next sync and were re-merged, forever. */
+    var stamp = Date.now();
+    for (var d = 0; d < a.length; d++){
+      if (a[d] && loserIds[a[d].id]){
+        a[d] = Object.assign({}, a[d], { _deleted: true, deletedAt: stamp, updatedAt: stamp });
+      }
+    }
     _emit('prods');
     return true;
   },
@@ -47068,6 +47134,25 @@ window.Store = {
     try { a[i]._clientHash = this._computeClientHash(coll, a[i]); } catch(e){}
     _emit(coll);
     return a[i];
+  },
+
+  /* \u2500\u2500 (v34_181) softDelete \u2014 the delete that survives a sync \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+     delete() splices the record out of local state and leaves nothing behind.
+     For a synced collection that is not a delete, it is a local hide: the next
+     checkpoint pull finds the row on the server, no local copy and no
+     tombstone, and puts it straight back \u2014 which is what made 168 starter
+     products reappear after being removed.
+
+     Every call site that had got this right was hand-writing the same patch.
+     One helper instead, so the next one cannot get it wrong. Store.list()
+     already hides tombstoned records from every view, and the sync layer reads
+     raw state, so the tombstone travels and the deletion sticks.
+
+     Use delete() only for collections that never leave the device. */
+  softDelete: function(coll, id, extra){
+    var patch = { _deleted: true, deletedAt: Date.now() };
+    if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) patch[k] = extra[k];
+    return this.update(coll, id, patch);
   },
 
   /* (v33_435) Alias — several call sites use Store.remove(); delegate to delete()
@@ -98606,7 +98691,7 @@ var KB=[
       else ok = window.confirm('Delete this cash entry?');
     } catch(e){ ok = false; }
     if (!ok) return;
-    try { Store.remove('cashAdjust', id); } catch(e){}
+    try { Store.softDelete('cashAdjust', id); } catch(e){}
     try { if (window.HND && HND.mcf && HND.mcf.render) HND.mcf.render(); } catch(e){}
     try { if (window.App && App.toast) App.toast('\u2713 Cash entry deleted'); } catch(e){}
   };
@@ -109347,7 +109432,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
     try {
       if (k && k.id) {
         if (recvd > 0.5) Store.update('khata', k.id, { amount: recvd, status: 'paid', notes: (k.notes || '') + ' | Challan ' + c.no + ' cancelled' });
-        else Store.remove('khata', k.id);
+        else Store.softDelete('khata', k.id);
       }
     } catch (e) {}
     Store.update('challans', id, { state: 'CANCELLED', cancelledT: Date.now() });
@@ -109775,7 +109860,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
       _toast('Godown still has stock \u2014 move it out first'); return;
     }
     if (!window.confirm('Delete this godown?')) return;
-    try { Store.delete ? Store.delete('godowns', id) : Store.remove('godowns', id); } catch (e) {}
+    try { Store.softDelete('godowns', id); } catch (e) {}
     if (_selG === id) _selG = (_godowns()[0] || {}).id || null;
     _closeSheet(); _toast('Godown deleted'); render();
   }
@@ -109877,7 +109962,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
   function delMove(id) {
     if (!_canMng()) { _toast('Only owner/manager can delete a movement'); return; }
     if (!window.confirm('Delete this movement? Stock balances will recompute.')) return;
-    try { Store.delete ? Store.delete('stockmoves', id) : Store.remove('stockmoves', id); } catch (e) {}
+    try { Store.softDelete('stockmoves', id); } catch (e) {}
     _toast('Movement deleted'); render();
   }
 
