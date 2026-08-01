@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_177_settings';
+    window.HISAABNOW_BUILD = 'v34_178_featrows';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -4526,10 +4526,6 @@ html[data-current-role="manager"] body{
        inject themselves here rather than at the end of the page, where they
        sat below Delete account — past the destructive actions and the footer,
        which is where things go to not be found. -->
-  <div class="menu-group" style="padding-top:14px" id="settings-features-group">
-    <div class="menu-group-title" data-i18n="settings.moreFeatures">More features</div>
-    <div id="settings-features"></div>
-  </div>
 
   <div class="menu-group">
     <div class="menu-group-title" data-i18n="settings.businessProfile">Business profile</div>
@@ -4570,6 +4566,14 @@ html[data-current-role="manager"] body{
         <div id="settings-gst-switch" style="width:42px;height:24px;border-radius:99px;background:#E5E7EB;position:relative;flex-shrink:0;transition:background .18s">
           <span id="settings-gst-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .18s"></span>
         </div>
+
+      <!-- (v34_178) Feature toggles land here, directly after Tax and inside the
+           same card as every other setting. They were injected at the end of the
+           page as two standalone purple cards — a different visual language for
+           the same kind of control, which made them read as promotions rather
+           than switches. Same eyebrow, same label, same switch as the rows
+           around them; the module decides whether to render, not how to look. -->
+      <div id="settings-features"></div>
       </div>
 
       <div class="menu-item" id="settings-ingredients-row" onclick="App.toggleIngredients && App.toggleIngredients()" style="cursor:pointer">
@@ -6070,7 +6074,6 @@ html[data-current-role="manager"] body{
        that still want the old wording keep it. */
     'more.mySubscription':     { en: 'My subscription',         hi: 'मेरा सब्सक्रिप्शन' },
     'more.myPlan':             { en: 'My plan',                 hi: 'मेरा प्लान' },
-    'settings.moreFeatures':   { en: 'More features',           hi: 'और फीचर' },
     'more.subStatusFallback':  { en: 'Plan, billing and renewals', hi: 'प्लान, बिलिंग और रिन्यूअल' },
     'more.tapUpgrade':         { en: 'Tap to upgrade',          hi: 'अपग्रेड करें' },
     'more.tapSubscribe':       { en: 'Tap to subscribe',        hi: 'सब्सक्राइब करें' },
@@ -100955,18 +100958,22 @@ var KB=[
     if(document.getElementById('hn-bar-setting')) { syncRow(); return; }
     var card=document.createElement('div');
     card.id='hn-bar-setting';
-    card.style.cssText='margin:14px 18px;background:#fff;border:1px solid #EFE8D7;border-radius:16px;padding:4px 2px';
     card.innerHTML=''
-      +'<div style="display:flex;align-items:center;gap:12px;padding:14px 14px">'
-      +'  <div style="width:38px;height:38px;border-radius:10px;background:#F3ECFF;display:flex;align-items:center;justify-content:center;font-size:19px">\uD83C\uDF78</div>'
-      +'  <div style="flex:1;min-width:0"><div style="font-size:14.5px;font-weight:800">Bar / Liquor menu</div><div style="font-size:11.5px;color:#888;font-weight:600;margin-top:1px">Sell liquor with peg & bottle pricing</div></div>'
-      +'  <button id="hn-bar-switch" onclick="App.toggleBar()" style="width:46px;height:27px;border:0;border-radius:99px;position:relative;cursor:pointer;transition:.18s;padding:0"><span id="hn-bar-knob" style="position:absolute;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.18s"></span></button>'
+      +'<div class="menu-item" onclick="App.toggleBar()" style="cursor:pointer">'
+      +'  <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px">Bar</div>'
+      +'    <div class="menu-label">Bar / Liquor menu</div>'
+      +'    <div class="menu-sub" style="margin-top:2px;font-size:11px;color:#94A3B8">On = sell liquor by the peg and the bottle, with its own stock in ml.</div></div>'
+      +'  <div id="hn-bar-switch" style="width:42px;height:24px;border-radius:99px;background:#E5E7EB;position:relative;flex-shrink:0;transition:background .18s"><span id="hn-bar-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .18s"></span></div>'
       +'</div>'
-      +'<div id="hn-bar-stock-row" style="display:none;border-top:1px solid #F3F0E8"><button onclick="App.openLiquorStock()" style="width:100%;text-align:left;border:0;background:none;padding:13px 14px;font-family:inherit;font-size:13.5px;font-weight:700;color:#7C3AED;cursor:pointer;display:flex;align-items:center;gap:9px">\uD83C\uDF7E Manage liquor stock <span style="margin-left:auto;color:#bbb">\u203a</span></button></div>';
-    /* (v34_177) Was pg.appendChild — which put a feature toggle below Delete
-       account and the footer. Mount into the More-features group at the top;
-       fall back to the page end if that group ever goes missing, so the toggle
-       is never simply unreachable. */
+      +'<div class="menu-item" id="hn-bar-stock-row" onclick="App.openLiquorStock()" style="cursor:pointer;padding-left:26px;display:none;border-bottom:1px solid var(--border)">'
+      +'  <div class="menu-text"><div class="menu-label">Manage liquor stock</div></div>'
+      +'  <span style="color:#B8B0A0;font-size:17px;flex-shrink:0">\u203a</span>'
+      +'</div>';
+    /* (v34_178) Was pg.appendChild — which put a feature toggle below Delete
+       account and the footer, past the destructive actions, which is where
+       things go to not be found. Mount into #settings-features, the slot right
+       after Tax inside the main settings card; fall back to the page end if
+       that slot ever goes missing, so the toggle is never unreachable. */
     var mount = document.getElementById('settings-features') || pg;
     mount.appendChild(card);
     syncRow();
@@ -100975,9 +100982,12 @@ var KB=[
     var on=barCurrentlyOn();
     if(on && !isBarOn()){ setBarOn(true); }   /* self-heal a stale/missing flag */
     var sw=document.getElementById('hn-bar-switch'), knob=document.getElementById('hn-bar-knob'), stock=document.getElementById('hn-bar-stock-row');
-    if(sw){ sw.style.background=on?'#7C3AED':'#E5E7EB'; }
-    if(knob){ knob.style.left=on?'22px':'3px'; }
-    if(stock){ stock.style.display=on?'block':'none'; }
+    /* (v34_178) #10B981 and a translated knob — the same switch the GST,
+       ingredients and auto-print rows use. Two switch designs on one page
+       makes the odd one out look like an advert. */
+    if(sw){ sw.style.background=on?'#10B981':'#E5E7EB'; }
+    if(knob){ knob.style.transform=on?'translateX(18px)':''; }
+    if(stock){ stock.style.display=on?'flex':'none'; }
   }
   var t=0, iv=setInterval(function(){ t++; try{ injectSettingsRow(); }catch(e){} if(t>200) clearInterval(iv); }, 600);
 })();
@@ -101845,18 +101855,22 @@ var KB=[
     if(document.getElementById('hn-cig-setting')){ syncRow(); return; }
     var card=document.createElement('div');
     card.id='hn-cig-setting';
-    card.style.cssText='margin:14px 18px;background:#fff;border:1px solid #EFE8D7;border-radius:16px;padding:4px 2px';
     card.innerHTML=''
-      +'<div style="display:flex;align-items:center;gap:12px;padding:14px 14px">'
-      +'  <div style="width:38px;height:38px;border-radius:10px;background:#F3ECFF;display:flex;align-items:center;justify-content:center;font-size:19px">\uD83D\uDEAC</div>'
-      +'  <div style="flex:1;min-width:0"><div style="font-size:14.5px;font-weight:800">Cigarettes / Tobacco menu</div><div style="font-size:11.5px;color:#888;font-weight:600;margin-top:1px">Sell loose or by pack \u00b7 cost, sell price & stock</div></div>'
-      +'  <button id="hn-cig-switch" onclick="App.toggleCig()" style="width:46px;height:27px;border:0;border-radius:99px;position:relative;cursor:pointer;transition:.18s;padding:0"><span id="hn-cig-knob" style="position:absolute;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.18s"></span></button>'
+      +'<div class="menu-item" onclick="App.toggleCig()" style="cursor:pointer">'
+      +'  <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px">Tobacco</div>'
+      +'    <div class="menu-label">Cigarettes / Tobacco menu</div>'
+      +'    <div class="menu-sub" style="margin-top:2px;font-size:11px;color:#94A3B8">On = sell loose or by pack, with stock counted in sticks.</div></div>'
+      +'  <div id="hn-cig-switch" style="width:42px;height:24px;border-radius:99px;background:#E5E7EB;position:relative;flex-shrink:0;transition:background .18s"><span id="hn-cig-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .18s"></span></div>'
       +'</div>'
-      +'<div id="hn-cig-stock-row" style="display:none;border-top:1px solid #F3F0E8"><button onclick="App.openCigStock()" style="width:100%;text-align:left;border:0;background:none;padding:13px 14px;font-family:inherit;font-size:13.5px;font-weight:700;color:#7C3AED;cursor:pointer;display:flex;align-items:center;gap:9px">\uD83D\uDEAC Manage cigarette stock <span style="margin-left:auto;color:#bbb">\u203a</span></button></div>';
-    /* (v34_177) Was pg.appendChild — which put a feature toggle below Delete
-       account and the footer. Mount into the More-features group at the top;
-       fall back to the page end if that group ever goes missing, so the toggle
-       is never simply unreachable. */
+      +'<div class="menu-item" id="hn-cig-stock-row" onclick="App.openCigStock()" style="cursor:pointer;padding-left:26px;display:none;border-bottom:1px solid var(--border)">'
+      +'  <div class="menu-text"><div class="menu-label">Manage cigarette stock</div></div>'
+      +'  <span style="color:#B8B0A0;font-size:17px;flex-shrink:0">\u203a</span>'
+      +'</div>';
+    /* (v34_178) Was pg.appendChild — which put a feature toggle below Delete
+       account and the footer, past the destructive actions, which is where
+       things go to not be found. Mount into #settings-features, the slot right
+       after Tax inside the main settings card; fall back to the page end if
+       that slot ever goes missing, so the toggle is never unreachable. */
     var mount = document.getElementById('settings-features') || pg;
     mount.appendChild(card);
     syncRow();
@@ -101865,9 +101879,12 @@ var KB=[
     var on=cigCurrentlyOn();
     if(on && !isCigOn()){ setCigOn(true); }   /* self-heal a stale/missing flag */
     var sw=document.getElementById('hn-cig-switch'), knob=document.getElementById('hn-cig-knob'), stock=document.getElementById('hn-cig-stock-row');
-    if(sw){ sw.style.background=on?'#7C3AED':'#E5E7EB'; }
-    if(knob){ knob.style.left=on?'22px':'3px'; }
-    if(stock){ stock.style.display=on?'block':'none'; }
+    /* (v34_178) #10B981 and a translated knob — the same switch the GST,
+       ingredients and auto-print rows use. Two switch designs on one page
+       makes the odd one out look like an advert. */
+    if(sw){ sw.style.background=on?'#10B981':'#E5E7EB'; }
+    if(knob){ knob.style.transform=on?'translateX(18px)':''; }
+    if(stock){ stock.style.display=on?'flex':'none'; }
   }
 
   /* ---- boot ---- */
