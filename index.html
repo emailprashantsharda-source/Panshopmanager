@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_172_navback';
+    window.HISAABNOW_BUILD = 'v34_173_purchboth';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -93515,7 +93515,7 @@ var KB=[
   function rupee(n){ n=Math.round(Number(n)||0); return '₹' + n.toLocaleString('en-IN'); }
   function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
-  var state = { lines: [], supplier: '', phone: '', pay: 'cash', date: todayStr(), inv: '', gst: 0 };
+  var state = { lines: [], supplier: '', phone: '', pay: 'cash', date: todayStr(), inv: '', gst: 0, scope: 'all' };
 
   function T(k,f){ try{ return (window.App && App._T) ? App._T(k,f) : f; }catch(e){ return f; } }
 
@@ -93544,6 +93544,14 @@ var KB=[
       +       T('pur.gstHelp','GST printed on your supplier\u2019s bill. If you are GST-registered you can claim it back, so we keep it out of the cost of goods. Leave blank if unsure.')
       +     '</div></div>'
       +   '<div class="pi-fld"><label class="pi-lbl" id="pi-add-lbl">' + T('pur.addProducts','Add products to this purchase') + '</label>'
+      /* (v34_173) Scope switch — only where the shop genuinely buys two kinds
+         of thing. One merged list of paneer and Pepsi is a jumble; the chips
+         let him say which run this is and keep the dropdown readable. */
+      +     '<div class="pi-pay" id="pi-scope" style="display:none;margin-bottom:8px">'
+      +       '<button class="pi-pay-chip on" id="pi-scope-all" onclick="Purchase._scope(\'all\')">' + T('pur.scopeAll','Everything') + '</button>'
+      +       '<button class="pi-pay-chip" id="pi-scope-raw" onclick="Purchase._scope(\'raw\')">🧂 ' + T('pur.scopeRaw','Raw material') + '</button>'
+      +       '<button class="pi-pay-chip" id="pi-scope-retail" onclick="Purchase._scope(\'retail\')">🛍️ ' + T('pur.scopeRetail','Resold goods') + '</button>'
+      +     '</div>'
       +     '<div class="pi-search-wrap">'
       +       '<input class="pi-in" id="pi-search" placeholder="' + T('pur.searchPh','🔍 Search a product…') + '" oninput="Purchase._search(this.value)" onfocus="Purchase._search(this.value)" autocomplete="off">'
       +       '<div class="pi-dd" id="pi-dd"></div>'
@@ -93585,6 +93593,30 @@ var KB=[
      offered as things to buy from a wholesaler. A salon buys shampoo, colour
      and wax, and those already live in `ingredients` (Supplies). */
   function purchaseUsesIngredients(){ return ['restaurant','cafe','sweets','bakery','salon'].indexOf(purchaseVert())>=0; }
+  /* ── (v34_173) A restaurant buys two different things ──────────────────────
+     purchaseUsesIngredients() was an either/or: recipe verticals searched
+     `ingredients` and nothing else. But a restaurant's supplier run is paneer
+     AND a crate of Thums Up AND a carton of Gold Flake — the resold goods that
+     the Retail and Bar screens track and that the P&L already books as COGS.
+     There was no way to record buying any of them; Stock In offered a raw
+     material search and a create-new-ingredient link, so cold drinks got
+     entered as an ingredient or not at all.
+     state.lines has always carried store:'ing' and store:'prod' side by side
+     and save() writes both, so only the SEARCH was single-source. Salon is
+     excluded: its retail is finished stock it sells over the counter and it
+     already has its own product sheet for that. */
+  function purchaseBuysBoth(){
+    return ['restaurant','cafe','sweets','bakery'].indexOf(purchaseVert()) >= 0;
+  }
+  function retailProdsForPurchase(){
+    try {
+      return activeProds().filter(function(p){
+        return p && p.active !== false
+          && (typeof window.isRetailProd === 'function' ? window.isRetailProd(p)
+              : (p.resold === true || p.kind === 'resold' || p.bar === true || p.cig === true));
+      });
+    } catch(e){ return []; }
+  }
   function purchaseSuggestions(){
     var MAP = {
       cafe: [ {name:'Milk',emoji:'\uD83E\uDD5B',unit:'L'},{name:'Coffee Beans',emoji:'\u2615',unit:'kg'},{name:'Sugar',emoji:'\uD83C\uDF6C',unit:'kg'},{name:'Tea Leaves',emoji:'\uD83C\uDF75',unit:'kg'},{name:'Cocoa Powder',emoji:'\uD83C\uDF6B',unit:'kg'},{name:'Fresh Cream',emoji:'\uD83E\uDD5B',unit:'L'},{name:'Chocolate Syrup',emoji:'\uD83C\uDF6B',unit:'L'},{name:'Paper Cups',emoji:'\uD83E\uDD64',unit:'pcs'},{name:'Ice',emoji:'\uD83E\uDDCA',unit:'kg'},{name:'Vanilla Syrup',emoji:'\uD83C\uDF66',unit:'L'} ],
@@ -93632,6 +93664,21 @@ var KB=[
       });
     }
     return lowStockProds();
+  }
+  /* (v34_173) The resold half of the same question, kept separate because the
+     two lists live in different collections and _addLow has to know which
+     shape it is pushing. Only items with a price — a seeded brand that was
+     never priced was never stocked, so it isn't "out". */
+  function lowRetailItems(){
+    if (!purchaseBuysBoth()) return [];
+    return retailProdsForPurchase().filter(function(p){
+      var priced = (Number(p.sp)||Number(p.price)||Number(p.spPack)||0) > 0;
+      if (!priced) return false;
+      try {
+        var st = (typeof window.hnStockState==='function') ? window.hnStockState(p) : null;
+        return st ? (st.out || st.low) : false;
+      } catch(e){ return false; }
+    });
   }
 
   function pastSuppliers(){
@@ -93715,8 +93762,21 @@ var KB=[
       var _ph=$('pi-phone'); if(_ph) _ph.value=state.phone;
       var _iv=$('pi-inv'); if(_iv) _iv.value='';
       var _gs=$('pi-gst'); if(_gs) _gs.value='';
-      var _se=$('pi-search'); if(_se){ _se.value=''; _se.placeholder = purchaseUsesIngredients() ? '🔍 Search a raw material…' : '🔍 Search a product…'; }
-      var _lbl=$('pi-add-lbl'); if(_lbl){ _lbl.textContent = purchaseUsesIngredients() ? T('pur.addRaw','Add raw materials to this purchase') : T('pur.addProducts','Add products to this purchase'); }
+      var _both = purchaseBuysBoth();
+      state.scope = 'all';
+      var _sc=$('pi-scope'); if(_sc) _sc.style.display = _both ? '' : 'none';
+      ['all','raw','retail'].forEach(function(x){ var c=$('pi-scope-'+x); if(c) c.classList.toggle('on', x==='all'); });
+      var _se=$('pi-search');
+      if(_se){
+        _se.value='';
+        _se.placeholder = _both ? T('pur.searchBoth','\uD83D\uDD0D Search raw material or product\u2026')
+          : (purchaseUsesIngredients() ? '\uD83D\uDD0D Search a raw material\u2026' : '\uD83D\uDD0D Search a product\u2026');
+      }
+      var _lbl=$('pi-add-lbl');
+      if(_lbl){
+        _lbl.textContent = _both ? T('pur.addAny','What did you buy?')
+          : (purchaseUsesIngredients() ? T('pur.addRaw','Add raw materials to this purchase') : T('pur.addProducts','Add products to this purchase'));
+      }
       if ($('pi-date')) $('pi-date').value = state.date;
       ['cash','upi','later'].forEach(function(p){ var c=$('pi-pay-'+p); if(c) c.classList.toggle('on', p==='cash'); });
       $('pi-overlay').classList.add('open');
@@ -93736,12 +93796,42 @@ var KB=[
       state.pay = p;
       ['cash','upi','later'].forEach(function(x){ var c=$('pi-pay-'+x); if(c) c.classList.toggle('on', x===p); });
     },
+    _scope: function(x){
+      state.scope = x || 'all';
+      ['all','raw','retail'].forEach(function(k){ var c=$('pi-scope-'+k); if(c) c.classList.toggle('on', k===state.scope); });
+      var s=$('pi-search'); this._search(s ? s.value : '');
+      if (s) s.focus();
+    },
     _search: function(q){
       var dd = $('pi-dd'); if (!dd) return;
       q = (q||'').trim().toLowerCase();
       var useIng = purchaseUsesIngredients();
+      var both   = purchaseBuysBoth();
+      var scope  = both ? (state.scope || 'all') : (useIng ? 'raw' : 'retail');
       if (!q && !useIng){ closeDD(); return; }
       var html;
+      /* (v34_173) Resold goods, in the same box. Cold drinks, cigarettes and
+         liquor already carry their own stock units, so each row says what a
+         line of it will mean before he taps it. */
+      var retailHtml = '';
+      if (both && scope !== 'raw'){
+        var _rp = retailProdsForPurchase().filter(function(p){ return !q || (p.name||'').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+        retailHtml = _rp.map(function(p){
+          var meta = p.cig ? ('stock ' + Math.floor((Number(p.stockSticks)||0)/(Number(p.packSize)||10)) + ' pk')
+                   : p.bar ? ('stock ' + (Math.round(((Number(p.stockMl)||0)/((typeof window.hnBottleMl==='function')?window.hnBottleMl(p):750))*10)/10) + ' btl')
+                   : ('stock ' + (Number(p.stock)||0) + (p.unit?(' '+p.unit):''));
+          return '<div class="pi-dd-item" onclick="Purchase._add(\'' + esc(p.id) + '\')">'
+            + '<span class="pi-dd-emo">' + (p.emoji||'\uD83D\uDECD\uFE0F') + '</span>'
+            + '<span class="pi-dd-nm">' + esc(p.name) + '</span>'
+            + '<span class="pi-dd-meta">' + meta + '</span></div>';
+        }).join('');
+      }
+      if (both && scope === 'retail'){
+        dd.innerHTML = (retailHtml || '<div class="pi-dd-item" style="color:#8C8577">No resold items match. Add one from Retail.</div>')
+          + '<div class="pi-dd-item pi-dd-new" onclick="Purchase._newItem()">+ Create new resold product</div>';
+        dd.classList.add('show');
+        return;
+      }
       if (useIng){
         var _existing = activeIngredients();
         var _have = {}; _existing.forEach(function(g){ _have[(g.name||'').toLowerCase()] = true; });
@@ -93762,6 +93852,7 @@ var KB=[
             + '<span class="pi-dd-nm">' + esc(s.name) + '</span>'
             + '<span class="pi-dd-meta" style="color:#FF6B35;font-weight:800">+ add</span></div>';
         }).join('');
+        if (retailHtml) html += retailHtml;
         html += '<div class="pi-dd-item pi-dd-new" onclick="Purchase._newItem()">+ Create new ingredient</div>';
       } else {
         var prods = activeProds().filter(function(p){ return (p.name||'').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
@@ -93802,13 +93893,26 @@ var KB=[
       if (state.lines.some(function(l){ return l.pid === pid; })){ closeDD(); var s=$('pi-search'); if(s) s.value=''; return; }
       var p = window.Store && Store.get('prods', pid);
       if (!p) return;
-      state.lines.push({ store:'prod', pid: p.id, name: p.name, emoji: p.emoji||'📦', unit: p.unit||'', qty: '', cost: (p.cp!=null?p.cp:'') });
+      /* (v34_173) Name the unit he is typing quantities in. A cigarette line
+         is packs and a liquor line is bottles; "12" against a blank unit is
+         the kind of ambiguity that turns into a wrong stock count. */
+      var _u = p.cig ? 'pack' : (p.bar ? 'bottle' : (p.unit||''));
+      var _c = p.cig ? (Number(p.cpPack)||'') : (p.cp!=null?p.cp:'');
+      state.lines.push({ store:'prod', pid: p.id, name: p.name, emoji: p.emoji||'\uD83D\uDCE6', unit: _u, qty: '', cost: _c });
       closeDD();
       var s=$('pi-search'); if(s) s.value='';
       renderLines();
     },
     _addLow: function(){
       var useIng = purchaseUsesIngredients();
+      var self = this;
+      lowRetailItems().forEach(function(p){
+        if (!state.lines.some(function(l){ return l.pid === p.id; })){
+          var _u = p.cig ? 'pack' : (p.bar ? 'bottle' : (p.unit||''));
+          var _c = p.cig ? (Number(p.cpPack)||'') : (p.cp!=null?p.cp:'');
+          state.lines.push({ store:'prod', pid:p.id, name:p.name, emoji:p.emoji||'\uD83D\uDECD\uFE0F', unit:_u, qty:'', cost:_c });
+        }
+      });
       lowStockItems().forEach(function(p){
         if (useIng){
           if (!state.lines.some(function(l){ return l.iid === p.id; })){
@@ -93826,8 +93930,13 @@ var KB=[
     },
     _newItem: function(){
       var useIng = purchaseUsesIngredients();
+      /* (v34_173) With two sources in one box, "create new" has to follow the
+         scope he is standing in, or a restaurant asking for a new cold drink
+         gets the ingredient sheet. */
+      var wantRetail = purchaseBuysBoth() && state.scope === 'retail';
       this.close();
       try {
+        if (wantRetail && window.App && App.openProductSheet){ App.openProductSheet(null,{forceRetail:true}); return; }
         if (useIng && window.App && App.openIngredientSheet) App.openIngredientSheet();
         else if (window.App && App.openProductSheet) App.openProductSheet();
       } catch(e){}
@@ -93865,6 +93974,41 @@ var KB=[
         }
         var p = Store.get('prods', l.pid);
         if (!p) return;
+
+        /* ── (v34_173) A cigarette's stock is sticks, a bottle's is ml ────────
+           Adding `qty` to p.stock is right for a crate of Thums Up and wrong
+           for everything the Bar and Tobacco modules own: those keep core
+           `stock` at 0 on purpose so the generic deduct loop skips them, and
+           read stockSticks / stockMl instead. Before this, buying 2 packs of
+           Gold Flake through Stock In moved a field nothing reads and left the
+           stick pool untouched — the purchase recorded, the stock didn't.
+           qty is entered in the unit the line shows: packs for cigarettes,
+           bottles for liquor. */
+        if (p.cig === true){
+          var _ps = Number(p.packSize)||10;
+          var _sticks = (Number(p.stockSticks)||0) + qty*_ps;
+          var _cpPack = cost > 0 ? cost : (Number(p.cpPack)||0);
+          try { Store.update('prods', l.pid, {
+            stockSticks: _sticks,
+            cpPack: _cpPack,
+            cpStick: _cpPack ? Math.round((_cpPack/_ps)*100)/100 : (Number(p.cpStick)||0),
+            status: _sticks<=0 ? 'out' : (_sticks < _ps ? 'low' : 'ok')
+          }); } catch(e){}
+          recLines.push({ pid: l.pid, name: p.name, qty: qty, cost: cost, unit: 'pack' });
+          return;
+        }
+        if (p.bar === true){
+          var _per = (typeof window.hnBottleMl==='function') ? window.hnBottleMl(p) : 750;
+          var _ml = (Number(p.stockMl)||0) + qty*_per;
+          try { Store.update('prods', l.pid, {
+            stockMl: _ml,
+            cp: cost > 0 ? cost : (p.cp!=null?p.cp:null),
+            status: _ml<=0 ? 'out' : (_ml < _per ? 'low' : 'ok')
+          }); } catch(e){}
+          recLines.push({ pid: l.pid, name: p.name, qty: qty, cost: cost, unit: 'bottle' });
+          return;
+        }
+
         var newStock = (Number(p.stock)||0) + qty;
         var newCp = cost > 0 ? cost : (p.cp!=null?p.cp:null);
         var tracks = (p.tracksStock !== false);
