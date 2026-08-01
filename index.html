@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_164_cigadd';
+    window.HISAABNOW_BUILD = 'v34_165_bar';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -5587,7 +5587,9 @@ html[data-current-role="manager"] body{
     /* ── Desktop sidebar nav items (were English-only) ── */
     'nav.retail':        { en: 'Retail',         hi: 'रिटेल'          },
     'nav.makeCombo':     { en: 'Make a Combo',   hi: 'कॉम्बो बनाएं'   },
-    'nav.liquorStock':   { en: 'Liquor Stock',   hi: 'शराब स्टॉक'     },
+    /* (v34_165) "Liquor Stock" named the table, not the room. The section holds
+       liquor, cigarettes and beverages — it is the Bar. */
+    'nav.liquorStock':   { en: 'Bar',            hi: 'बार'           },
     'nav.cashflow':      { en: 'Cashflow',       hi: 'कैशफ्लो'        },
     'nav.subscriptions': { en: 'Subscriptions',  hi: 'सब्सक्रिप्शन'   },
     'nav.campaigns':     { en: 'Campaigns',      hi: 'कैंपेन'         },
@@ -52787,7 +52789,7 @@ html[data-shell="desktop"] .hnd-tb {
         </button>
     <button class="hnd-nav-item" type="button" id="hnd-nav-liquorstock" style="display:none" onclick="try{ if(window.App&&App.openLiquorStock) App.openLiquorStock(); }catch(e){}">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 2h8M9 2v4l-1 2v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V8l-1-2V2M8 12h8"/></svg>
-      <span class="lbl" data-i18n="nav.liquorStock">Liquor Stock</span>
+      <span class="lbl" data-i18n="nav.liquorStock">Bar</span>
     </button>
   </div>
 
@@ -99832,8 +99834,8 @@ var KB=[
     var ov=document.getElementById('lqs-ov'); if(ov) ov.remove();
     ov=document.createElement('div'); ov.id='lqs-ov';
     ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(17,17,17,.45);display:flex;align-items:flex-end;justify-content:center';
-    ov.innerHTML='<div style="background:#fff;width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">'
-      +'<div style="padding:16px 18px;border-bottom:1px solid #EEE;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-size:16px;font-weight:800">\uD83C\uDF7E Liquor stock</div><div style="font-size:12px;color:#888;font-weight:600;margin-top:2px">Buy in bottles \u00b7 sell in pegs \u00b7 auto-deducted</div></div><button onclick="App.openLiquorEditor()" style="border:0;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;border-radius:10px;padding:9px 13px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">+ Add brand</button><button onclick="document.getElementById(\'lqs-ov\').remove()" style="width:30px;height:30px;border:none;background:#F3F4F6;border-radius:8px;font-size:16px;cursor:pointer">\u2715</button></div>'
+    ov.innerHTML='<div id="lqs-sheet" style="background:#fff;width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">'
+      +'<div style="padding:16px 18px;border-bottom:1px solid #EEE;display:flex;align-items:center;gap:10px"><div style="flex:1"><div style="font-size:16px;font-weight:800">\uD83C\uDF7E Bar</div><div style="font-size:12px;color:#888;font-weight:600;margin-top:2px">Buy in bottles \u00b7 sell in pegs \u00b7 auto-deducted</div></div><button onclick="App.openLiquorEditor(null, true)" style="border:0;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;border-radius:10px;padding:9px 13px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit">+ Add brand</button><button onclick="document.getElementById(\'lqs-ov\').remove()" style="width:30px;height:30px;border:none;background:#F3F4F6;border-radius:8px;font-size:16px;cursor:pointer">\u2715</button></div>'
       +'<div id="lqs-body" style="flex:1;overflow-y:auto;padding:12px 14px"></div></div>';
     document.body.appendChild(ov);
     renderStockBody();
@@ -99845,7 +99847,7 @@ var KB=[
       +'<div style="font-size:32px;margin-bottom:6px">🥃</div>'
       +'<div style="color:#555;font-weight:700;font-size:14px">No brands yet</div>'
       +'<div style="color:#999;font-weight:600;font-size:12.5px;margin:4px 0 16px">Add your own liquor with peg & bottle prices.</div>'
-      +'<button onclick="App.openLiquorEditor()" style="border:0;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;border-radius:12px;padding:12px 20px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">+ Add your first brand</button>'
+      +'<button onclick="App.openLiquorEditor(null, true)" style="border:0;background:linear-gradient(135deg,#FF7A45,#EA580C);color:#fff;border-radius:12px;padding:12px 20px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">+ Add your first brand</button>'
       +'</div>'; return; }
     var byCat={}; prods.forEach(function(p){ (byCat[p.cat]=byCat[p.cat]||[]).push(p); });
     var html='';
@@ -99890,7 +99892,7 @@ var KB=[
   }
   function pegTag(name){ var ml=parseMl(name); if(ml===30) return 'छोटा'; if(ml===60) return 'बड़ा'; return ''; }
 
-  App.openLiquorEditor = function(editId){
+  App.openLiquorEditor = function(editId, fromBar){
     /* (v34_003) Stamp ids on legacy/imported rows before we key anything off
        them. ensureIds only ran inside HND.cat.render() (desktop menu), so the
        bar/mobile paths could hand us an id-less row — which rendered a Delete
@@ -99900,7 +99902,12 @@ var KB=[
     var editing = editId ? (function(){ try { return Store.get('prods', editId); } catch(e){ return null; } })() : null;
     _lqEdit = { id: editId||null, type: (editing && editing.cat) || 'Whisky', bottles: 0,
       name: (editing && editing.name) || '', cost: (editing && editing.cp != null ? editing.cp : ''),
-      buyMl: (editing && +editing.buyBottleMl) || 0, prices: {} };
+      buyMl: (editing && +editing.buyBottleMl) || 0, prices: {},
+      /* (v34_165) Opened from the Bar section rather than the Add-item sheet.
+         The Kitchen/Bar switch exists to get back to the food form you came
+         from — offering it here sends a bar owner into the kitchen product
+         wizard from a screen that has nothing to do with it. */
+      fromBar: !!fromBar };
     try { if (editing && Array.isArray(editing.sizes)) editing.sizes.forEach(function(s){ if(s && s.price>0) _lqEdit.prices[s.name]=s.price; }); } catch(e){}
     var ov=document.getElementById('lqe-ov'); if(ov) ov.remove();
     if(!document.getElementById('lqe-anim-style')){
@@ -99928,7 +99935,17 @@ var KB=[
     }).join('');
 
     var brandChipsHtml = brandChips.map(function(b){
-      return '<button type="button" class="lqe-chip brand" onclick="App._lqePickBrand(\''+esc(b).replace(/'/g,"&#39;")+'\')">'+esc(b)+'</button>';
+      /* (v34_165) Was onclick="App._lqePickBrand('"+esc(b).replace(/'/g,"&#39;")+"')".
+         esc() ALREADY turns ' into &#39;, so the second replace was a no-op and
+         the attribute shipped as _lqePickBrand('Officer&#39;s Choice'). The
+         parser decodes entities before the JS is compiled, so what ran was
+         _lqePickBrand('Officer's Choice') — a SyntaxError. Every brand with an
+         apostrophe (Officer's Choice, McDowell's No.1) was a dead chip, while
+         Imperial Blue and 8PM worked, which is what made it look random.
+         Carry the value in a data attribute instead: attribute decoding is the
+         browser's job and it gets it right. */
+      return '<button type="button" class="lqe-chip brand" data-lqe-brand="'+esc(b)+'" ' +
+        'onclick="App._lqePickBrand(this.getAttribute(\'data-lqe-brand\'))">'+esc(b)+'</button>';
     }).join('');
 
     var pegRows = names.map(function(n){
@@ -99999,7 +100016,7 @@ var KB=[
       +'  <button onclick="document.getElementById(\'lqe-ov\').remove()" style="width:36px;height:36px;border-radius:11px;background:#EEEAE0;border:none;color:#7a7365;font-size:16px;cursor:pointer">✕</button>'
       +'</div>'
       +'<div style="flex:1;overflow-y:auto;padding:16px 18px 130px">'
-      +( _lqEdit.id ? '' : (App._kbSegHTML ? App._kbSegHTML('bar') : '') )
+      +( (_lqEdit.id || _lqEdit.fromBar) ? '' : (App._kbSegHTML ? App._kbSegHTML('bar') : '') )
       +( _lqEdit.id ? '' : '<div style="display:flex;gap:8px;margin:0 0 16px">'
           + '<button type="button" class="lqe-chip sel" style="flex:1">\uD83C\uDF7E Liquor</button>'
           + '<button type="button" class="lqe-chip" style="flex:1" onclick="App._barKind(\'cigarette\')">\uD83D\uDEAC Cigarette</button>'
@@ -103677,11 +103694,33 @@ html[data-shell="desktop"] body.hnd-on-exp .hnd-exp-tbl-scroll{ max-height:none 
 html[data-shell="desktop"] #sup-overlay,
 html[data-shell="desktop"] #preg-ov,
 html[data-shell="desktop"] #pi-overlay,
+html[data-shell="desktop"] #lqs-ov,
+html[data-shell="desktop"] #lqe-ov,
 html[data-shell="desktop"] #st-overlay{ left:var(--hnd-sb-w)!important; top:var(--hnd-tb-h)!important; right:0!important; bottom:0!important; align-items:stretch!important; justify-content:stretch!important; padding:0!important; background:#F9FAFB!important; }
 html[data-shell="desktop"] #sup-overlay .sup-sheet,
 html[data-shell="desktop"] #preg-ov .preg,
 html[data-shell="desktop"] #pi-overlay .pi-sheet,
+html[data-shell="desktop"] #lqs-ov #lqs-sheet,
+html[data-shell="desktop"] #lqe-ov #lqe-sheet,
 html[data-shell="desktop"] #st-overlay .st-sheet{ max-width:none!important; width:100%!important; height:100%!important; max-height:none!important; border-radius:0!important; animation:none!important; box-shadow:none!important; }
+
+/* (v34_165) The Bar was a 560px card floating over whatever page happened to be
+   open — tap it from Ingredients and you got half a sheet with Ingredients
+   showing through behind, which reads as a rendering fault rather than a
+   screen. It joins the modules above: fills the content area, shell intact.
+   backdrop-filter is dropped with it; there is nothing behind to blur now. */
+html[data-shell="desktop"] #lqe-ov{ -webkit-backdrop-filter:none!important; backdrop-filter:none!important; }
+html[data-shell="desktop"] #lqs-ov #lqs-sheet,
+html[data-shell="desktop"] #lqe-ov #lqe-sheet{ background:#FFFBF5!important; }
+/* Centred measure — a peg-price row stretched across 1400px puts the pour and
+   its price a hand-span apart. Same 900px column the purchase register uses. */
+html[data-shell="desktop"] #lqs-ov #lqs-sheet > div,
+html[data-shell="desktop"] #lqe-ov #lqe-sheet > div:not(style){
+  padding-left: max(18px, calc((100% - 900px) / 2)) !important;
+  padding-right: max(18px, calc((100% - 900px) / 2)) !important;
+}
+/* The grab handle is a phone affordance — no sheet to drag on desktop. */
+html[data-shell="desktop"] #lqe-ov #lqe-sheet > div[style*="height:4px"]{ display:none!important; }
 
 /* (v34_125) Full-bleed shell, centred measure. A register stretched across
    1400px puts the supplier name and its amount a hand-span apart and makes
