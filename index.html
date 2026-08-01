@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_161_srvlapsed';
+    window.HISAABNOW_BUILD = 'v34_163_menucount';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -15074,18 +15074,6 @@ const App = {
           invSubEl.removeAttribute('data-i18n');
           invSubEl.textContent = _cfgSalon.inventorySub || 'Hair, skin, beauty services you offer';
         }
-      } else if (!_stkOn && window.HNCostMode && HNCostMode.canOffer && HNCostMode.canOffer() && !this._usesRecipe(this.vertical)) {
-        /* (v34_023) café / restaurant with recipe costing off. They have no
-           stock today — correct, a cappuccino has no stock — but they DO have
-           milk, and the only way to track it is the recipe path. Rather than
-           hiding Stock and leaving him to guess, show it and let the tap ask
-           the question. */
-        invEntry.style.display = '';
-        invEntry.setAttribute('onclick', 'HNCostMode.open()');
-        var _invLbl2 = document.getElementById('more-inventory-label');
-        var _invSub2 = document.getElementById('more-inventory-sub');
-        if (_invLbl2){ _invLbl2.removeAttribute('data-i18n'); _invLbl2.textContent = this._T('more.stock', 'Stock'); }
-        if (_invSub2){ _invSub2.removeAttribute('data-i18n'); _invSub2.textContent = this._T('more.stockOffer', 'Track your raw material — see how'); }
       } else if (_stkOn) {
         /* (v34_022) Was salon-only. grocery/pan/stationery/sweets/bakery all
            genuinely have stock and had no way into this screen from More. */
@@ -15101,9 +15089,21 @@ const App = {
           invSubEl.setAttribute('data-i18n', 'more.stockSupplies');
         }
       } else {
-        /* Explicitly hide, even though HTML default is also display:none —
-           in case some prior salon visit set display='' and left it stuck. */
+        /* (v34_162) Restaurant / café never get a Stock row at all. Their stock
+           IS raw material and it lives in Ingredients, which has its own entry
+           gated on _usesRecipe(). v34_023 borrowed this row as the cost-mode
+           chooser's doorway; the moment recipe costing turned on, Stock vanished
+           and Ingredients appeared in its place — one module looking like two,
+           and a dead end for anyone who picked simple costing (pick(false)
+           navigates nowhere, so the row just reopened the same sheet forever).
+           Explicitly hide, even though HTML default is also display:none — in
+           case some prior salon visit set display='' and left it stuck. */
         invEntry.style.display = 'none';
+        /* Reclaim the click target: a previous render may have written
+           onclick="HNCostMode.open()" onto this static node as an inline
+           attribute, and it survives until reload. Same failure v34_154 fixed
+           for the salon branch. */
+        invEntry.setAttribute('onclick', "App.nav('inventory')");
         /* Restore data-i18n attributes so future salon switches re-translate. */
         const invLabel = document.getElementById('more-inventory-label');
         const invSubEl = document.getElementById('more-inventory-sub');
@@ -29263,6 +29263,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
     } else {
       Store.add('prods', fields);
+      /* (v34_163) Remember where it landed — the desktop Menu keeps whatever
+         chip was last tapped, so adding a Cold Drink while sitting on "Combos"
+         saved fine and then showed "no products". See the jump below. */
+      this._justAddedCat = (fields.cat || fields.category || 'Other');
       if (_autoExpAmt > 0 && _autoExpId) {
         const _self2 = this;
         this.toastAction(
@@ -29287,6 +29291,21 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._pickedCat = null;
     this._editingId = null;
     this._wizardStep = 0;
+    /* (v34_163) A thing you just created must be on screen. Set this BEFORE
+       closeProductSheet(), which is what triggers the desktop re-render.
+       stockFilter and search are cleared too — a live "Low margin" pill or a
+       leftover search box would hide the new row just as effectively as the
+       wrong chip did. */
+    try {
+      var _newCat = this._justAddedCat; this._justAddedCat = null;
+      if (_newCat && window.HND && window.HND.cat){
+        HND.cat.cat = _newCat;
+        HND.cat.stockFilter = 'all';
+        HND.cat.search = '';
+        var _tbs = document.getElementById('hnd-tb-prodsearch'); if (_tbs) _tbs.value = '';
+        var _mbs = document.getElementById('hnd-cat-search');    if (_mbs) _mbs.value = '';
+      }
+    } catch(e){ console.warn('[saveProduct] chip jump failed (non-fatal):', e); }
     this.closeProductSheet();
     if (this.current === 'inventory') this.renderInventory();
     if (this.current === 'catalog')   this.renderCatalog();
@@ -55424,6 +55443,10 @@ html[data-shell="desktop"] body.hnd-on-cat #hnd-cat {
 .hnd-topup-x { margin-left:auto; background:#0A0A0A; color:#fff; border:0; border-radius:7px;
   padding:6px 13px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:inherit; }
 .hnd-topup-x:hover { background:#333; }
+/* (v34_163) Dismiss. Quiet on purpose — it sits beside the CTA, not against it. */
+.hnd-topup-no { background:none; border:0; color:#A97F45; font-size:17px; line-height:1;
+  padding:4px 6px; cursor:pointer; font-family:inherit; border-radius:6px; }
+.hnd-topup-no:hover { background:#F3E6CE; color:#7C4A0B; }
 /* (v34_051) the CTA that was missing */
 .hnd-fbar { display:flex; align-items:center; gap:9px; background:#FEF3E2; border:1px solid #F0C088;
   border-radius:9px; padding:9px 13px; margin-bottom:12px; font-size:12.5px; color:#7C4A0B; font-weight:600; }
@@ -56614,9 +56637,17 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
       if (label === 'All') return list.length;
       if (label === 'Loose') return list.filter(function(p){ return self._isLoose(p); }).length;
       return list.filter(function(p){
+        /* (v34_163) `|| 'Other'` was missing here and in filtered(), but cats()
+           has always had it — so a product saved with no category created an
+           "Other" chip (cats() bucketed it there) that then counted 0 and
+           opened an empty table (_count/_filtered passed undefined to
+           _hnCatEq, which returns false for null). The row still counted in
+           "All", so All read 2 while every chip summed to 1: an invisible
+           product the owner can see the tally of but never reach. */
+        var c = (p.cat || p.category || 'Other');
         return window._hnCatEq
-          ? window._hnCatEq((p.cat || p.category), label)
-          : (p.cat || p.category || 'Other') === label;
+          ? window._hnCatEq(c, label)
+          : c === label;
       }).length;
     },
 
@@ -56631,7 +56662,8 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
         list = list.filter(function(p){ return self._isLoose(p); });
       } else if (this.cat !== 'All'){
         list = list.filter(function(p){
-          return window._hnCatEq((p.cat || p.category), Cat.cat);
+          /* (v34_163) Mirrors _count() — see the note there. */
+          return window._hnCatEq((p.cat || p.category || 'Other'), Cat.cat);
         });
       }
       var _sf = this.stockFilter || 'all';
@@ -56739,6 +56771,29 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
         var missing = seeds.filter(function(x){ return !have[norm(x.name)]; });
         if (!missing.length){ el.style.display = 'none'; el.innerHTML = ''; return; }
 
+        /* ── (v34_163) Don't re-offer a list the owner threw away ────────────
+           This banner answers one question: "the starter list grew since your
+           shop was made — want the new rows?" That question only makes sense
+           while the shop still HOLDS some of that list. An owner who deleted
+           every seeded product has already answered it, and a shop that chose
+           the blank slate at onboarding never had them, so nothing was "added
+           after this shop was created" — yet both saw the full 168 offered on
+           every single render, forever, with no way to say no. */
+        var kept = seeds.length - missing.length;
+        if (!kept){ el.style.display = 'none'; el.innerHTML = ''; return; }
+
+        /* And even while it applies, it takes no for an answer. Dismissal is
+           recorded as the missing-count at the time, so a genuinely NEW batch
+           of seeds later still gets one offer. Per shop, per vertical. */
+        var _shop = '';
+        try { _shop = (window.MShop && MShop.activeId && MShop.activeId()) || 'default'; } catch(e){ _shop = 'default'; }
+        var _dk = 'hn_topup_x_' + v + '_' + _shop;
+        var _dn = 0;
+        try { _dn = parseInt(localStorage.getItem(_dk) || '0', 10) || 0; } catch(e){}
+        if (missing.length <= _dn){ el.style.display = 'none'; el.innerHTML = ''; return; }
+        this._topUpKey = _dk;
+        this._topUpN   = missing.length;
+
         /* Name the biggest group — "54 new items" is noise, "54 dairy products"
            is a reason. */
         var byCat = {};
@@ -56754,8 +56809,21 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
           '<span>\uD83C\uDF81 <b>' + what + '</b> were added to the ' + escHtml(v) +
           ' starter list after this shop was created</span>' +
           '<button class="hnd-topup-x" type="button" ' +
-            'onclick="try{if(window.HND&&HND.cat)HND.cat.doTopUp()}catch(e){}">Add them</button>';
+            'onclick="try{if(window.HND&&HND.cat)HND.cat.doTopUp()}catch(e){}">Add them</button>' +
+          '<button class="hnd-topup-no" type="button" aria-label="Dismiss" ' +
+            'onclick="try{if(window.HND&&HND.cat)HND.cat.dismissTopUp()}catch(e){}">\u00D7</button>';
       } catch(e){ el.style.display = 'none'; }
+    },
+
+    /* No is an answer. Records the current missing-count so the offer stays
+       gone until the starter list actually grows again. */
+    dismissTopUp: function(){
+      try {
+        if (this._topUpKey) localStorage.setItem(this._topUpKey, String(this._topUpN || 0));
+        if (window.hnEvent) hnEvent('catalog_topup_dismiss', { n: this._topUpN || 0 });
+      } catch(e){}
+      var el = $('hnd-cat-topup');
+      if (el){ el.style.display = 'none'; el.innerHTML = ''; }
     },
 
     doTopUp: function(){
