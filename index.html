@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_163_menucount';
+    window.HISAABNOW_BUILD = 'v34_164_cigadd';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -89948,6 +89948,37 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       if (brand) payload.brand = brand;
       if (pack)  payload.pack = pack;
 
+      /* ── (v34_164) A Cigarettes row must be born as a cigarette ─────────────
+         The chip normally hands off to openCigEditor, so this only runs when
+         that editor isn't loaded (module absent, or an older shell). Without
+         it the row saves with cig !== true and only becomes a real cigarette
+         later, if and when cigProds() happens to sweep it up.
+         Mapping is deliberate, not guessed: on a form headed "packaged items
+         you buy & sell", the price and the count a shopkeeper types are the
+         PACK price and the number of PACKS. Core `stock` stays 0 so the
+         generic unit-deduct loop skips it and only the stick pool moves. */
+      if (this.resoldMode && this.cat === 'Cigarettes'){
+        var _ps = 10;
+        var _spPack  = sp;
+        var _spStick = _spPack ? Math.round(_spPack / _ps) : 0;
+        payload.cig         = true;
+        payload.packSize    = _ps;
+        payload.hasSizes    = true;
+        payload.unit        = 'stick';
+        payload.sizes       = [
+          { name: 'Loose',            sticks: 1,   price: _spStick, cp: 0 },
+          { name: 'Pack of ' + _ps,   sticks: _ps, price: _spPack,  cp: 0 }
+        ];
+        payload.spPack      = _spPack;
+        payload.spStick     = _spStick;
+        payload.cpPack      = cp;
+        payload.cpStick     = cp ? Math.round((cp / _ps) * 100) / 100 : 0;
+        payload.stockSticks = stock * _ps;
+        payload.stock       = 0;
+        payload.value       = Math.round((stock * _ps) * payload.cpStick);
+        payload.emoji       = payload.emoji || '\uD83D\uDEAC';
+      }
+
       try {
         if (this.editingId && window.Store && Store.update){
           Store.update('prods', this.editingId, payload);
@@ -90008,6 +90039,28 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         document.querySelectorAll('#nrp-type-chips [data-nrp-cat]').forEach(function(c){
           c.classList.toggle('active', c === chip);
         });
+
+        /* ── (v34_164) Cigarettes are not a plain resold row ──────────────────
+           A cigarette is bought by the pack and sold by the stick, so it needs
+           packSize, sizes[], spStick/spPack and stockSticks. This form asks for
+           one sell price and one stock number, and saved neither into those
+           fields — so a brand added here came out with cig !== true and the
+           catalog gave it the generic editor: no loose/pack anything.
+           (Toggling the module in Settings appeared to "fix" it only because
+           cigProds() upgrades cat:'Cigarettes' rows in place — a repair path
+           doing the job of the create path.)
+           Hand off to the editor that asks the right questions instead, and
+           carry whatever name has already been typed. */
+        if (NRP.cat === 'Cigarettes' && !NRP.editingId
+            && window.App && typeof App.openCigEditor === 'function'){
+          var _nm = '';
+          try { _nm = ($('nrp-name').value || '').trim(); } catch(e2){}
+          NRP.close();
+          setTimeout(function(){
+            try { App.openCigEditor(null, _nm); }
+            catch(e3){ console.warn('[NRP] cig handoff failed', e3); }
+          }, 180);
+        }
       });
 
       /* Live margin + save state updates */
@@ -100804,13 +100857,16 @@ var KB=[
      Opened from the catalog Edit action so the owner edits ONE brand, not the
      whole list. Saves robustly via patchByIdOrName. */
   var _cigEdit = null;
-  App.openCigEditor = function(id){
+  App.openCigEditor = function(id, prefillName){
     try { if (Store.ensureIds) Store.ensureIds('prods'); } catch(e){}
     if (id === 'undefined' || id === 'null' || id === '') id = null;
     var ed = null; if(id){ try{ ed = Store.get('prods', id); }catch(e){} }
     _cigEdit = {
       id: id||null,
-      packSize: ed ? (Number(ed.packSize)||10) : 10
+      packSize: ed ? (Number(ed.packSize)||10) : 10,
+      /* (v34_164) Carried over when the resell sheet hands a half-typed name
+         across, so the owner doesn't retype what he just wrote. */
+      prefill: (!id && prefillName) ? String(prefillName) : ''
     };
     var ov=document.getElementById('cige-ov'); if(ov) ov.remove();
     ov=document.createElement('div'); ov.id='cige-ov';
@@ -100833,7 +100889,7 @@ var KB=[
   function renderCigEditor(ed){
     var sheet=document.getElementById('cige-sheet'); if(!sheet) return;
     var ps=_cigEdit.packSize||10;
-    var nm = ed ? (ed.name||'') : '';
+    var nm = ed ? (ed.name||'') : (_cigEdit.prefill || '');
     var spStick = ed ? (Number(ed.spStick)||Number(ed.sp)||0) : 0;
     var spPack  = ed ? (Number(ed.spPack)||0) : 0;
     var cpPack  = ed ? (Number(ed.cpPack)||Number(ed.cp)||0) : 0;
