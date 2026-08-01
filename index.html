@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_173_purchboth';
+    window.HISAABNOW_BUILD = 'v34_174_moreui';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -6071,6 +6071,18 @@ html[data-current-role="manager"] body{
     'more.myBiz':              { en: 'My Businesses',            hi: 'मेरे बिज़नेस' },
     'more.myBizSub':           { en: 'Compare across all your shops', hi: 'सभी दुकानों की तुलना' },
     'more.subscription':       { en: 'Subscription',             hi: 'सब्सक्रिप्शन' },
+    /* (v34_174) The restructured More asks for its own words. Passing a
+       fallback to _T does nothing when the key already resolves — nav.catalog
+       returns "Catalog" and wins — so these are separate keys, and the rows
+       that still want the old wording keep it. */
+    'more.mySubscription':     { en: 'My subscription',         hi: 'मेरा सब्सक्रिप्शन' },
+    'more.menuNav':            { en: 'Menu',                    hi: 'मेन्यू' },
+    'more.ingredientsNav':     { en: 'Ingredients',             hi: 'सामग्री' },
+    'more.logOut':             { en: 'Log out',                 hi: 'लॉग आउट' },
+    'more.aiInsights':         { en: 'AI Insights',             hi: 'AI इनसाइट्स' },
+    'more.aiInsightsSub':      { en: 'Munim read today\u2019s books', hi: 'मुनीम ने आज का हिसाब देखा' },
+    'more.aiInsightsOpen':     { en: 'Open all insights',       hi: 'सारी इनसाइट्स देखें' },
+    'more.aiInsightsEmpty':    { en: 'Make a few bills and I\u2019ll start flagging things here.', hi: 'कुछ बिल बनाइए, फिर मैं यहाँ बातें बताना शुरू करूँगा।' },
     'more.helpSupport':        { en: 'Help & support',           hi: 'मदद और सपोर्ट' },
     'more.helpSub':            { en: 'Tutorials, WhatsApp us',   hi: 'ट्यूटोरियल, WhatsApp करें' },
     'more.aiAdvisor':          { en: 'AI Advisor',               hi: 'AI सलाहकार' },
@@ -15390,43 +15402,21 @@ const App = {
 
      Rows render only when their handler exists, so a shop can never be shown a
      door that opens onto nothing. */
-  _MORE_R_ICON: {
-    menu:'M2 12h20M2 6h20M2 18h20',
-    bar:'M8 2h8M9 2v4l-1 2v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V8l-1-2V2M8 12h8',
-    combo:'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
-    ing:'M12 2v6M5 12V8a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v4M5 12h14M7 22V14M17 22V14M5 22h14',
-    retail:'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0',
-    udhaar:'M20 12V8H6a2 2 0 0 1 0-4h12v4M4 6v12a2 2 0 0 0 2 2h14v-4M18 12a2 2 0 0 0 0 4h4v-4z',
-    sales:'M3 3v18h18M7 15l4-4 3 3 5-6',
-    purchases:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
-    expenses:'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
-    cash:'M2 7h20v10H2zM12 12a2.5 2.5 0 1 0 0 .01M6 7v10M18 7v10',
-    waiter:'M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 21a8 8 0 0 1 16 0M9 13h6',
-    cust:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87',
-    team:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-    supp:'M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 18.5a2 2 0 1 0 0 .01M18.5 18.5a2 2 0 1 0 0 .01',
-    subs:'M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3',
-    camp:'M3 11v3a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1zM19 5a9 9 0 0 1 0 14M16 8.5a5 5 0 0 1 0 7',
-    rep:'M3 3v18h18M8 17V9M13 17V5M18 17v-5',
-    bizmgr:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2',
-    advisor:'M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z',
-    ticket:'M4 5h16a1 1 0 0 1 1 1v3a3 3 0 0 0 0 6v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a3 3 0 0 0 0-6V6a1 1 0 0 1 1-1zM10 7v10',
-    sync:'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15',
-    help:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
-    bill:'M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4',
-    settings:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
-    logout:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
-    plan:'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z'
-  },
+  /* ── (v34_174) Emoji tiles, tinted by section ────────────────────────
+     Twenty-seven identical grey outline icons meant the eye had to read every
+     label to find anything. Emoji are legible at a glance on a phone and need
+     no stroke-weight tuning; the TINT is what carries structure — Money green,
+     People blue, Marketing violet, Reports rose, Support neutral — so colour
+     means something instead of decorating each row on its own. */
   _moreRRow(o){
-    var d = this._MORE_R_ICON[o.icon] || this._MORE_R_ICON.menu;
-    var fill = (o.icon === 'advisor');
+    var tint = o.tint || '#F1EFEA';
+    var dark = (String(tint).toLowerCase() === '#1c1c1c');
     return '<button class="menu-item" onclick="' + o.on + '"'
       + (o.role ? ' data-role-min="' + o.role + '"' : '') + '>'
-      + '<div class="menu-icon"' + (o.iconStyle ? ' style="' + o.iconStyle + '"' : '') + '>'
-      +   '<svg width="20" height="20" viewBox="0 0 24 24" fill="' + (fill?'currentColor':'none')
-      +     '" stroke="' + (fill?'none':'currentColor') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-      +     '<path d="' + d + '"/></svg></div>'
+      + '<div class="menu-icon" style="background:' + tint + ';font-size:19px;line-height:1;'
+      +   'display:flex;align-items:center;justify-content:center;'
+      +   (dark ? 'box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)' : 'box-shadow:inset 0 0 0 1px rgba(20,16,11,.05)')
+      +   '">' + (o.emoji || '\uD83D\uDCE6') + '</div>'
       + '<div class="menu-text"><div class="menu-label' + (o.danger ? '" style="color:#991B1B' : '') + '">'
       +   this.escapeHtml(o.label) + '</div>'
       +   (o.sub ? '<div class="menu-sub">' + this.escapeHtml(o.sub) + '</div>' : '') + '</div>'
@@ -15434,6 +15424,76 @@ const App = {
       + '<svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>'
       + '</button>';
   },
+
+  /* ── (v34_174) AI Insights — a card, not a row ────────────────────────
+     A heading over one grey row was the weakest thing on the screen. This
+     shows what Munim actually found today and opens the full drawer, and it
+     is the only bright surface in More so it reads as the highlight.
+     Reads Munim.top() rather than recomputing: two engines answering "what
+     should he know today" is the drift that caused the count-vs-list bugs.
+     With nothing to say it shows one honest line, not three empty ones. */
+  _moreAICSS(){
+    if (document.getElementById('mai-css')) return;
+    var st = document.createElement('style'); st.id = 'mai-css';
+    st.textContent =
+        '.mai{position:relative;display:block;width:100%;text-align:left;border:0;padding:0;'
+      + 'border-radius:18px;overflow:hidden;font-family:inherit;cursor:pointer;'
+      + 'background:linear-gradient(135deg,#191308 0%,#2E2109 52%,#4A3308 100%);'
+      + 'box-shadow:0 14px 30px -16px rgba(232,184,75,.75),0 0 0 1px rgba(232,184,75,.28)}'
+      + '.mai::after{content:"";position:absolute;inset:0;pointer-events:none;'
+      + 'background:radial-gradient(120% 90% at 88% 8%,rgba(255,214,120,.30),transparent 58%)}'
+      + '.mai-in{position:relative;z-index:1;padding:16px 16px 15px}'
+      + '.mai-top{display:flex;align-items:center;gap:11px}'
+      + '.mai-em{width:42px;height:42px;border-radius:13px;background:rgba(255,214,120,.15);'
+      + 'display:flex;align-items:center;justify-content:center;font-size:21px;flex:0 0 auto;'
+      + 'box-shadow:inset 0 0 0 1px rgba(255,214,120,.3)}'
+      + '.mai-t{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.02em}'
+      + '.mai-s{font-size:11.5px;font-weight:600;color:#C6B48A;margin-top:2px}'
+      + '.mai-pill{margin-left:auto;background:#F2C879;color:#241703;font-size:10px;font-weight:800;'
+      + 'letter-spacing:.05em;padding:5px 9px;border-radius:99px;flex:0 0 auto}'
+      + '.mai-list{margin-top:13px;display:grid;gap:7px}'
+      + '.mai-row{display:flex;align-items:flex-start;gap:9px;background:rgba(255,255,255,.055);'
+      + 'border:1px solid rgba(255,214,120,.14);border-radius:11px;padding:9px 11px}'
+      + '.mai-e{font-size:14px;flex:0 0 auto;line-height:1.4}'
+      + '.mai-x{font-size:12px;font-weight:600;color:#E4DAC4;line-height:1.45}'
+      + '.mai-x strong,.mai-x b{color:#fff;font-weight:800}'
+      + '.mai-cta{margin-top:12px;display:flex;align-items:center;justify-content:center;gap:7px;'
+      + 'background:#F2C879;color:#241703;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800}'
+      + '@media (prefers-reduced-motion:reduce){.mai{transition:none}}';
+    document.head.appendChild(st);
+  },
+  _moreAICard(){
+    this._moreAICSS();
+    var T = this._T.bind(this);
+    var ins = [];
+    try { ins = (window.Munim && Munim.top) ? (Munim.top(3) || []) : []; } catch(e){}
+    var EM = { crisis:'\uD83D\uDD34', problem:'\uD83D\uDCC9', opportunity:'\u2B50', info:'\uD83D\uDCA1' };
+    var rows = ins.map(function(it){
+      /* it.line is engine-built markup (<strong>…), never user input. */
+      return '<div class="mai-row"><span class="mai-e">' + (EM[it.tier] || EM.info) + '</span>'
+        + '<span class="mai-x">' + (it.line || '') + '</span></div>';
+    }).join('');
+    if (!rows){
+      rows = '<div class="mai-row"><span class="mai-e">\uD83D\uDCCA</span><span class="mai-x">'
+        + this.escapeHtml(T('more.aiInsightsEmpty','Make a few bills and I\u2019ll start flagging things here.'))
+        + '</span></div>';
+    }
+    var pill = ins.length ? '<span class="mai-pill">' + ins.length + ' NEW</span>' : '';
+    return '<div class="menu-group-title">' + this.escapeHtml(T('munim.title','AI insights')) + '</div>'
+      + '<div class="menu-group">'
+      + '<button type="button" class="mai" onclick="try{Munim.openDrawer()}catch(e){}" data-role-min="manager">'
+      +   '<span class="mai-in">'
+      +     '<span class="mai-top"><span class="mai-em">\uD83D\uDCC8</span>'
+      +       '<span><span class="mai-t" style="display:block">' + this.escapeHtml(T('more.aiInsights','AI Insights')) + '</span>'
+      +       '<span class="mai-s" style="display:block">' + this.escapeHtml(T('more.aiInsightsSub','Munim read today\u2019s books')) + '</span></span>'
+      +       pill
+      +     '</span>'
+      +     '<span class="mai-list">' + rows + '</span>'
+      +     '<span class="mai-cta">' + this.escapeHtml(T('more.aiInsightsOpen','Open all insights')) + ' \u2192</span>'
+      +   '</span>'
+      + '</button></div>';
+  },
+
   _renderRestaurantMore(){
     var mount = document.getElementById('more-rest-menu');
     if (!mount) return;
@@ -15478,61 +15538,63 @@ const App = {
 
     var SEC = [
       { rows:[
-        { icon:'plan', label:this._T('more.subscription','My subscription'),
+        { emoji:'\u2B50', tint:'#FFF4DA', label:this._T('more.mySubscription','My subscription'),
           sub: txt('more-sub-status','Plan, billing and renewals'),
           on:'App.openSubscription()', role:'owner',
-          iconStyle:'background:linear-gradient(135deg,#FBE4B0,#E8B84B);color:#3A2A05' }
+          tint:'linear-gradient(140deg,#FDF0CE,#EFC85F)' }
       ]},
       { title:this._T('sb.menu','Menu'), rows:[
-        { icon:'menu',   label:this._T('nav.catalog','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')" },
-        { icon:'bar',    label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
+        { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')" },
+        { emoji:'\uD83C\uDF7E', tint:'#F5ECFB', label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
           on:'App.openLiquorStock()', when: barOn && has('App.openLiquorStock') },
-        { icon:'combo',  label:this._T('nav.makeCombo','Make a combo'), sub:'Bundle items into one offer',
+        { emoji:'\uD83C\uDF81', tint:'#FFEFF3', label:this._T('nav.makeCombo','Make a combo'), sub:'Bundle items into one offer',
           on:'try{HNCombo.openBuilder()}catch(e){}', when: has('HNCombo.openBuilder') },
-        { icon:'ing',    label:this._T('nav.supplies','Ingredients'), sub:'Raw material & recipe cost',
+        { emoji:'\uD83E\uDDC2', tint:'#FFF6E0', label:this._T('more.ingredientsNav','Ingredients'), sub:'Raw material & recipe cost',
           on:"App.nav('ingredients')", role:'manager', when: recipeOn },
-        { icon:'retail', label:this._T('nav.retail','Retail'), sub:'Cold drinks, cigarettes, liquor',
+        { emoji:'\uD83D\uDECD\uFE0F', tint:'#EFF7EC', label:this._T('nav.retail','Retail'), sub:'Cold drinks, cigarettes, liquor',
           on:'App.openRetailLens()', when: has('App.openRetailLens') }
       ]},
       { title:this._T('sb.money','Money'), rows:[
-        { icon:'udhaar',    label:this._T('more.udhaarCredit','Udhaar / Credit'), sub:'Customer credit & supplier dues', on:"App.nav('udhaar')", role:'manager' },
-        { icon:'sales',     label:this._T('nav.sales','Sales'), sub:'Every bill you\u2019ve made', on:"App.nav('sales')" },
-        { icon:'purchases', label:'Purchases', sub:'What you bought, from whom',
+        { emoji:'\uD83E\uDD1D', tint:'#E9F6EF', label:this._T('more.udhaarCredit','Udhaar / Credit'), sub:'Customer credit & supplier dues', on:"App.nav('udhaar')", role:'manager' },
+        { emoji:'\uD83E\uDDFE', tint:'#E9F6EF', label:this._T('nav.sales','Sales'), sub:'Every bill you\u2019ve made', on:"App.nav('sales')" },
+        { emoji:'\uD83D\uDCE5', tint:'#E9F6EF', label:'Purchases', sub:'What you bought, from whom',
           on:'try{PurchaseReg.open()}catch(e){}', role:'manager', when: has('PurchaseReg.open') },
-        { icon:'expenses',  label:this._T('nav.expenses','Expenses'), sub:'Track shop costs', on:"App.nav('expenses')", role:'manager' },
-        { icon:'cash',      label:this._T('more.cashflow','Cash flow'), sub:'Cash in hand \u00b7 withdraw \u00b7 deposit', on:"App.nav('cashflow')", role:'manager' },
-        { icon:'waiter',    label:this._T('more.waiterColl','Waiter collection'), sub:'Orders by waiter \u00b7 collect at day end',
+        { emoji:'\uD83D\uDCB8', tint:'#E9F6EF', label:this._T('nav.expenses','Expenses'), sub:'Track shop costs', on:"App.nav('expenses')", role:'manager' },
+        { emoji:'\uD83D\uDCB0', tint:'#E9F6EF', label:this._T('more.cashflow','Cash flow'), sub:'Cash in hand \u00b7 withdraw \u00b7 deposit', on:"App.nav('cashflow')", role:'manager' },
+        { emoji:'\uD83E\uDDD1\u200D\uD83C\uDF73', tint:'#E9F6EF', label:this._T('more.waiterColl','Waiter collection'), sub:'Orders by waiter \u00b7 collect at day end',
           on:'try{Waiters.openTally()}catch(e){}', role:'manager', when: tableOn && has('Waiters.openTally') }
       ]},
       { title:this._T('sb.people','People'), rows:[
-        { icon:'cust', label:this._T('nav.customers','Customers'), sub:'Who buys, how often', on:"App.nav('customers')", role:'manager' },
-        { icon:'team', label:this._T('nav.staff','Team'), sub:'Staff and their performance', on:"App.nav('staff')", role:'manager' },
-        { icon:'supp', label:this._T('more.suppliers','Suppliers'), sub:'Vendors, dues & purchase history',
+        { emoji:'\uD83D\uDC65', tint:'#E9F0FB', label:this._T('nav.customers','Customers'), sub:'Who buys, how often', on:"App.nav('customers')", role:'manager' },
+        { emoji:'\uD83E\uDDD1\u200D\uD83D\uDCBC', tint:'#E9F0FB', label:this._T('nav.staff','Team'), sub:'Staff and their performance', on:"App.nav('staff')", role:'manager' },
+        { emoji:'\uD83D\uDE9A', tint:'#E9F0FB', label:this._T('more.suppliers','Suppliers'), sub:'Vendors, dues & purchase history',
           on:'try{Suppliers.open()}catch(e){}', role:'manager', when: has('Suppliers.open') }
       ]},
       { title:this._T('sb.marketing','Marketing & loyalty'), rows:[
-        { icon:'subs', label:this._T('nav.subscriptions','Subscriptions'), sub:'Customers\u2019 repeating orders',
+        { emoji:'\uD83D\uDD01', tint:'#F3ECFF', label:this._T('nav.subscriptions','Subscriptions'), sub:'Customers\u2019 repeating orders',
           on:"App.nav('subscriptions')", role:'manager', when: !!document.getElementById('pg-subscriptions') },
-        { icon:'camp', label:this._T('nav.campaigns','Campaigns'), sub:'WhatsApp offers to your customers',
+        { emoji:'\uD83D\uDCE3', tint:'#F3ECFF', label:this._T('nav.campaigns','Campaigns'), sub:'WhatsApp offers to your customers',
           on:"App.nav('campaigns')", role:'manager', when: !!document.getElementById('pg-campaigns') }
       ]},
       { title:this._T('sb.reports','Reports'), rows:[
-        { icon:'rep',    label:this._T('more.reports','Reports'), sub:'Daily, weekly, monthly', on:"App.nav('reports')", role:'manager' },
-        { icon:'bizmgr', label:this._T('more.bizManager','My business manager'), sub:'Real-time insights \u00b7 ways to lift profit',
+        { emoji:'\uD83D\uDCCA', tint:'#FDF0F0', label:this._T('more.reports','Reports'), sub:'Daily, weekly, monthly', on:"App.nav('reports')", role:'manager' },
+        { emoji:'\uD83E\uDDE0', tint:'#FDF0F0', label:this._T('more.bizManager','My business manager'), sub:'Real-time insights \u00b7 ways to lift profit',
           on:'App.openBusinessManager()', role:'owner' }
       ]},
       { title:this._T('sb.support','Support'), rows:[
-        { icon:'advisor', label:this._T('more.aiAdvisor','AI advisor'), sub:'Chat & ask anything \u00b7 voice',
+        { emoji:'\u2728', tint:'#1C1C1C', label:this._T('more.aiAdvisor','AI advisor'), sub:'Chat & ask anything \u00b7 voice',
           on:'try{HNAdvisor.openChat()}catch(e){}',
-          iconStyle:'background:linear-gradient(160deg,#1C1C1C,#000);color:#FFC043', when: has('HNAdvisor.openChat') },
-        { icon:'ticket',  label:this._T('nav.openTicket','Open a ticket'), sub:'We\u2019ll come back to you on WhatsApp',
+          when: has('HNAdvisor.openChat') },
+        { emoji:'\uD83C\uDFAB', tint:'#F1EFEA', label:this._T('nav.openTicket','Open a ticket'), sub:'We\u2019ll come back to you on WhatsApp',
           on:'try{App.openSupport()}catch(e){}', when: has('App.openSupport') },
-        { icon:'sync',    label:this._T('more.syncHealth','Sync health'), sub: txt('more-sync-health-sub','All sales syncing'),
+        { emoji:'\uD83D\uDD04', tint:'#F1EFEA', label:this._T('more.syncHealth','Sync health'), sub: txt('more-sync-health-sub','All sales syncing'),
           on:'App.openSyncHealth()' },
-        { icon:'help',    label:this._T('more.helpSupport','Help & support'), sub:'Tutorials, WhatsApp us', on:'App.openHelp()' }
+        { emoji:'\u2753', tint:'#F1EFEA', label:this._T('more.helpSupport','Help & support'), sub:'Tutorials, WhatsApp us', on:'App.openHelp()' }
       ]},
-      { title:this._T('munim.title','AI insights'), rows:[
-        { icon:'bill', label:'Design my bill', sub:'Themes for the bill you send on WhatsApp',
+      /* (v34_174) The heading and the card are emitted by _moreAICard(); this
+         section carries only what sits UNDER it. `aiCard:true` marks where. */
+      { aiCard:true, rows:[
+        { emoji:'\uD83C\uDFA8', tint:'#FFF6E0', label:'Design my bill', sub:'Themes for the bill you send on WhatsApp',
           on:'try{App.openBillStudio()}catch(e){}', when: has('App.openBillStudio') }
       ]},
       { title:this._T('more.settings','Settings'), rows:[
@@ -15541,15 +15603,23 @@ const App = {
            shop's language, profile and the ingredients toggle all live behind
            it, and a heading called Settings that cannot open settings is a
            dead end. Say the word and it goes. */
-        { icon:'settings', label:this._T('more.settings','Settings'), sub:'Business profile, language, currency',
+        { emoji:'\u2699\uFE0F', tint:'#F1EFEA', label:this._T('more.settings','Settings'), sub:'Business profile, language, currency',
           on:"App.nav('settings')", role:'owner' },
-        { icon:'logout',   label:this._T('more.signOut','Log out'), on:'App.signOut()', danger:true }
+        { emoji:'\uD83D\uDEAA', tint:'#FDECEE', label:this._T('more.logOut','Log out'), on:'App.signOut()', danger:true }
       ]}
     ];
 
     var html = '';
     SEC.forEach(function(sec){
       var rows = sec.rows.filter(function(r){ return r.when !== false; });
+      if (sec.aiCard){
+        /* The card is the section's headline; the rows follow it. It renders
+           even with nothing under it, because it is never empty itself. */
+        html += self._moreAICard();
+        if (rows.length) html += '<div class="menu-group" style="margin-top:9px">'
+          + rows.map(function(r){ return self._moreRRow(r); }).join('') + '</div>';
+        return;
+      }
       if (!rows.length) return;
       if (sec.title) html += '<div class="menu-group-title">' + self.escapeHtml(sec.title) + '</div>';
       html += '<div class="menu-group">' + rows.map(function(r){ return self._moreRRow(r); }).join('') + '</div>';
@@ -41026,6 +41096,15 @@ window.Munim = {
 
       return '<div class="ai-bullet">'+ico+'<span>'+it.line+'</span></div>';
     }).join('');
+  },
+
+  /* (v34_174) The More card needs the same three lines the home bullets show.
+     Exposed here rather than recomputed at the call site: two engines answering
+     "what should he know today" is the drift pattern that has caused most of
+     the count-vs-list bugs in this file. */
+  top: function(n){
+    try { return computeMunimInsights().slice(0, n || 3); }
+    catch(e){ return []; }
   },
 
   openDrawer: function(){
