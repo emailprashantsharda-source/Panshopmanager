@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_182_menuchips';
+    window.HISAABNOW_BUILD = 'v34_184_livereads';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -46573,6 +46573,26 @@ function _arr(coll){
   if (!_S()[k]) _S()[k] = [];
   return _S()[k];
 }
+/* ── (v34_184) The read side of the tombstone change ──────────────────────────
+   v34_181 made delete() write a tombstone instead of splicing, so deletions
+   survive a sync. Store.list() already filtered them, but the aggregates that
+   read _arr() directly did not — and those are the ones the dashboard uses.
+   Clear test data on a fresh shop and Bills still read 1: todaySales() counted
+   a bill that had been deleted a second earlier.
+
+   _arr stays raw on purpose. Mutation (update, delete, patchByIdOrName,
+   ensureIds) has to reach a tombstoned record, and the sync layer has to push
+   it. Only the QUERY surface skips them, which is the same split list() made. */
+function _live(coll){
+  var a = _arr(coll);
+  for (var i = 0; i < a.length; i++){
+    if (a[i] && (a[i]._deleted || a[i].deletedAt)){
+      return a.filter(function(r){ return r && !r._deleted && !r.deletedAt; });
+    }
+  }
+  return a;   /* nothing deleted → same array, no copy */
+}
+
 
 function _emit(coll){
 
@@ -46970,7 +46990,7 @@ window.Store = {
   },
 
   filter: function(coll, predicate){
-    return _arr(coll).filter(predicate);
+    return _live(coll).filter(predicate);
   },
 
   /* (Phase 1.5 / v33_163) Find all records whose LIVE fingerprint matches `hash`.
@@ -46979,7 +46999,7 @@ window.Store = {
   findByHash: function(coll, hash){
     if (!hash) return [];
     var self = this;
-    return _arr(coll).filter(function(x){
+    return _live(coll).filter(function(x){
       var h; try { h = self._computeClientHash(coll, x); } catch(e){ h = x._clientHash; }
       return h === hash;
     });
@@ -46996,7 +47016,7 @@ window.Store = {
        hashes (those are still used by the sync layer for cloud dedupe). */
     var self = this;
     var byHash = {};
-    _arr(coll).forEach(function(r){
+    _live(coll).forEach(function(r){
       var h;
       try { h = self._computeClientHash(coll, r); } catch(e){ h = r._clientHash; }
       if (!h) return;
@@ -47236,7 +47256,7 @@ window.Store = {
 
   todaySales: function(){
     var t = (typeof window.td === 'function') ? window.td() : window.td();
-    return _arr('sales').filter(function(s){ return s.date === t; });
+    return _live('sales').filter(function(s){ return s.date === t; });
   },
 
   todayRevenue: function(){
@@ -47296,7 +47316,7 @@ window.Store = {
   },
 
   isEmpty: function(coll){
-    return _arr(coll).length === 0;
+    return _live(coll).length === 0;
   },
 
   /* ═══════════════════════════════════════════════════════════════════════════
@@ -97545,13 +97565,6 @@ var KB=[
 .hnc-create .ci{width:38px;height:38px;border-radius:12px;background:linear-gradient(120deg,#FFC043,#FFB000);color:#3a2600;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-bottom:7px;box-shadow:0 8px 18px -6px rgba(255,176,0,.6)}
 .hnc-create .ct{font-size:11.5px;font-weight:800;letter-spacing:-.01em;color:#000;line-height:1.2}
 /* pinned "Create combo" row on the Menu/Catalog screen */
-.hnc-menu-cta{margin:0 18px 12px;display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:16px;background:linear-gradient(135deg,#FFFBF0,#FFF6E2);border:1.5px solid #FFE2A0;box-shadow:0 6px 18px -10px rgba(184,134,11,.45);cursor:pointer}
-.hnc-menu-cta:active{transform:scale(.99)}
-.hnc-menu-cta .ci{width:40px;height:40px;border-radius:12px;background:linear-gradient(120deg,#FFC043,#FFB000);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto;box-shadow:0 6px 14px -4px rgba(255,176,0,.6)}
-.hnc-menu-cta .ct{flex:1;min-width:0}
-.hnc-menu-cta .ct b{display:block;font-size:14px;font-weight:800;letter-spacing:-.01em;color:#1c1300}
-.hnc-menu-cta .ct span{font-size:11.5px;color:#B8860B;font-weight:600}
-.hnc-menu-cta .arw{color:#B8860B;font-size:20px;font-weight:700;flex:0 0 auto}
 /* combo row decoration in the catalog list */
 .li .hnc-rowbadge{display:inline-block;vertical-align:middle;margin-left:7px;background:#FFF7E0;color:#B8860B;border:1px solid #FFE2A0;font-size:8.5px;font-weight:900;letter-spacing:.06em;padding:2px 6px;border-radius:6px}
 .li .hnc-rowwas{font-size:10.5px;color:#9C9C9C;text-decoration:line-through;font-weight:600;font-variant-numeric:tabular-nums;margin-left:5px}
@@ -97850,23 +97863,19 @@ var KB=[
       } catch(e){}
     },
 
-    /* pinned "Create combo" row on the Menu/Catalog screen — the single,
-       always-visible entry point for building combos (owner setup task). */
+    /* (v34_183) The pinned "Create combo" row is gone from Menu. Building a
+       combo is an occasional setup job, not something to keep a permanent
+       gold banner above the category chips for — it pushed the chips and the
+       products down the screen every single time the owner opened his menu.
+       It has a row in More (Make a combo) and its own entry in the desktop
+       sidebar; both are one tap away.
+
+       Kept as a cleanup so a banner left in a cached render is taken down. */
     injectMenuCTA: function(){
       try {
         var _ex = document.getElementById('hnc-menu-cta');
-        if (!this.isVert()) { if (_ex && _ex.parentNode) _ex.parentNode.removeChild(_ex); return; }
-        var chips = document.getElementById('catalog-chips'); if (!chips || !chips.parentNode) return;
-        if (_ex) return;
-        var row = document.createElement('div');
-        row.id = 'hnc-menu-cta';
-        row.className = 'hnc-menu-cta';
-        row.setAttribute('role', 'button');
-        row.setAttribute('aria-label', 'Create a combo');
-        row.innerHTML = '<div class="ci">★</div><div class="ct"><b>Create combo</b><span>Bundle items into one offer</span></div><div class="arw">›</div>';
-        row.onclick = function(){ HNCombo.openBuilder(); };
-        chips.parentNode.insertBefore(row, chips);
-      } catch(e){ console.warn('[HNCombo] injectMenuCTA', e); }
+        if (_ex && _ex.parentNode) _ex.parentNode.removeChild(_ex);
+      } catch(e){}
     },
 
     /* decorate combo rows in the catalog list: COMBO badge + members + strike */
