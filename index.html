@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_178_featrows';
+    window.HISAABNOW_BUILD = 'v34_179_featfix';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -4566,15 +4566,15 @@ html[data-current-role="manager"] body{
         <div id="settings-gst-switch" style="width:42px;height:24px;border-radius:99px;background:#E5E7EB;position:relative;flex-shrink:0;transition:background .18s">
           <span id="settings-gst-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .18s"></span>
         </div>
-
-      <!-- (v34_178) Feature toggles land here, directly after Tax and inside the
-           same card as every other setting. They were injected at the end of the
-           page as two standalone purple cards — a different visual language for
-           the same kind of control, which made them read as promotions rather
-           than switches. Same eyebrow, same label, same switch as the rows
-           around them; the module decides whether to render, not how to look. -->
-      <div id="settings-features"></div>
       </div>
+
+      <!-- (v34_179) Feature toggles land here — a SIBLING of the Tax row, not a
+           child of it. v34_178 put this div inside the Tax menu-item, which is
+           display:flex, so the whole block became a third flex column beside
+           the label and the switch: "Apply GST on bills" squeezed into a
+           four-line column with the bar card wedged alongside it.
+           Same card as every other setting, directly after Tax. -->
+      <div id="settings-features"></div>
 
       <div class="menu-item" id="settings-ingredients-row" onclick="App.toggleIngredients && App.toggleIngredients()" style="cursor:pointer">
         <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px" data-i18n="settings.ingSection">Product costing</div><div class="menu-label" data-i18n="settings.ingLabel">Track ingredients / recipe</div><div class="menu-sub" style="margin-top:2px;font-size:11px;color:#94A3B8" data-i18n="settings.ingSub">On = products are made from ingredients (recipe → cost). Off = simple billing like a store: each item just has a Sell Price + Cost Price.</div></div>
