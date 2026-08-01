@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_167_retailsync';
+    window.HISAABNOW_BUILD = 'v34_169_margintarget';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -89888,6 +89888,15 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
        Without it this sheet — which Retail's "+ Add" opens — had no route to
        the liquor editor at all, so a brand could only ever be created from
        inside Bar. Bar is a subset of Retail; the add path should be too. */
+    _NAME_PH: {
+      'Cold Drinks':'e.g. Thums Up 250ml',
+      'Water':'e.g. Bisleri 1L',
+      'Cigarettes':'e.g. Gold Flake Kings',
+      'Liquor':'e.g. Royal Challenge',
+      'Snacks':"e.g. Lay's Classic 52g",
+      'Ice Cream':'e.g. Cornetto Butterscotch'
+    },
+    _namePh: function(cat){ return this._NAME_PH[cat] || 'Brand and size \u2014 e.g. Thums Up 250ml'; },
     _resoldCats: function(){
       var out = this.RESOLD_CATS.slice();
       var barOn = false;
@@ -89929,7 +89938,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
       if (t) t.textContent = this.editingId ? 'Edit resold product' : 'Resell a product';
       if (s) s.textContent = 'Cold drinks, cigarettes, packaged items you buy \u0026 sell';
       if (btn) btn.textContent = this.editingId ? (existing && existing.active === false ? 'Activate product' : 'Save changes') : '+ Add to menu';
-      if (nm && !this.editingId) nm.placeholder = 'e.g., Coca-Cola 250ml, Gold Flake Kings';
+      /* (v34_169) A placeholder that shows a BRAND for the chosen category is
+         the cheap half of stopping "Cold Drinks" being saved as a name. The
+         guard in save() is the other half. */
+      if (nm && !this.editingId) nm.placeholder = NRP._namePh(chosen);
     },
 
     updateMargin: function(){
@@ -89961,6 +89973,24 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
     save: function(){
       var name = ($('nrp-name').value || '').trim();
       var sp = +$('nrp-sp').value || 0;
+
+      /* ── (v34_169) A category is not a brand ──────────────────────────────
+         Naming the item after the chip you just tapped produces a row called
+         "Cold Drinks" sitting inside the Cold Drinks group — and a bill line
+         that tells the customer nothing about what he drank. It reads like a
+         data fault later, but it happens here, in one keystroke, because the
+         chip label is the first words on screen. Caught at the source rather
+         than repaired afterwards; nothing already saved is touched. */
+      if (this.resoldMode && this.cat
+          && name.toLowerCase() === String(this.cat).toLowerCase()){
+        try {
+          if (window.App && App.toast){
+            App.toast('"' + this.cat + '" is the category \u2014 give the brand, like Thums Up 250ml');
+          }
+          $('nrp-name').focus(); $('nrp-name').select();
+        } catch(e){}
+        return;
+      }
       var cp = +$('nrp-cp').value || 0;
       var stock = +$('nrp-stock').value || 0;
       var min = +$('nrp-min').value || 0;
@@ -90088,6 +90118,10 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-cart-empty {
         document.querySelectorAll('#nrp-type-chips [data-nrp-cat]').forEach(function(c){
           c.classList.toggle('active', c === chip);
         });
+        try {
+          var _nm = $('nrp-name');
+          if (_nm && !NRP.editingId) _nm.placeholder = NRP._namePh(NRP.cat);
+        } catch(e5){}
 
         /* ── (v34_164) Cigarettes are not a plain resold row ──────────────────
            A cigarette is bought by the pack and sold by the stick, so it needs
@@ -101380,6 +101414,8 @@ var KB=[
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function fmt(n){ return '\u20b9' + Math.round(+n||0).toLocaleString('en-IN'); }
   function shopId(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&(a.shopId||a.id))||'default'; } catch(e){ return 'default'; } }
+  /* (v34_168) The restock action needs to confirm itself. */
+  function toast(m){ try { if (window.App && App.toast) App.toast(m); else console.log(m); } catch(e){} }
 
   function retailProds(){
     try { return (Store.list('prods')||[]).filter(function(p){ return p && p.active!==false && window.isRetailProd(p); }); }
@@ -101396,34 +101432,96 @@ var KB=[
   var BUCKET_ORDER = ['Beverages','Tobacco','Liquor','Snacks'];
   var BUCKET_EMOJI = { Beverages:'\uD83E\uDD64', Tobacco:'\uD83D\uDEAC', Liquor:'\uD83C\uDF7E', Snacks:'\uD83C\uDF6B' };
 
-  function stockInfo(p){
-    /* (v34_008) out/low now come from the shared window.hnStockState so this row
-       and the Menu KPI pills can never disagree. Only `txt` is display-local. */
+  /* ── (v34_169) Margin targets are per category, not one number ─────────────
+     A flat 15% floor (borrowed from the Menu's low-margin chip, which judges
+     food the shop MAKES) flagged every cigarette permanently: Indian cigarette
+     MRP is printed and the trade margin is fixed around 10–20%, so 17% isn't a
+     pricing mistake, it's the whole business. A pill that is always red teaches
+     the owner to stop reading it.
+     Liquor goes the other way — a bar pouring pegs at 25% is leaving money on
+     the counter, and a flat 15% would have called that healthy.
+     The Menu's own 15% chip is untouched; different screen, different question. */
+  var MARGIN_TARGET = { Tobacco:8, Beverages:12, Liquor:25, Snacks:12 };
+  function marginTarget(p){
+    var t = MARGIN_TARGET[bucketOf(p)];
+    return (t == null) ? 15 : t;
+  }
+
+  /* ── (v34_168) One state function, read by the pills, the meter and the row ──
+     stockInfo() and marginPct() answered half the question each and nothing
+     knew what a unit MEANT — so the list showed "50 pcs", "20 pk" and "Out" in
+     one column and left the owner to convert. This returns everything a row
+     needs in the item's own vocabulary: a bar fills in bottles and pegs, a
+     cigarette in packs and loose sticks, everything else in pieces.
+
+     out/low still come from window.hnStockState so this screen, the Menu KPI
+     pills and Stock Take can never disagree. */
+  function rlState(p){
     var S = (typeof window.hnStockState === 'function') ? window.hnStockState(p) : null;
-    if (p.cig){
-      var ps=Number(p.packSize)||10, sticks=Number(p.stockSticks)||0;
-      var packs=Math.floor(sticks/ps), loose=sticks%ps;
-      return { txt: sticks<=0?'Out':(packs+' pk'+(loose?(' \u00b7 '+loose+' loose'):'')),
-               out: S?S.out:(sticks<=0), low: S?S.low:(sticks>0&&sticks<ps) };
+
+    if (p.cig === true){
+      var ps = Number(p.packSize)||10, st = Number(p.stockSticks)||0;
+      var packs = Math.floor(st/ps), loose = st%ps;
+      var cpS = Number(p.cpStick) || ((Number(p.cpPack)&&ps) ? Number(p.cpPack)/ps : 0);
+      var spP = Number(p.spPack)||0, cpP = Number(p.cpPack)||0;
+      return {
+        qty: st, full: ps*20, step: 'pack', stepQty: ps,
+        head: st<=0 ? 'Out of stock' : (packs+' pk'+(loose?(' \u00b7 '+loose+' loose'):'')),
+        unitLine: st<=0 ? 'Reorder by the carton' : (st+' sticks \u00b7 '+ps+' per pack'),
+        rate: (spP&&ps ? '\u20b9'+Math.round(spP/ps)+'/stick \u00b7 '+fmt(spP)+'/pack' : 'No price set'),
+        value: (st/ps) * cpP,
+        out: S?S.out:(st<=0), low: S?S.low:(st>0&&st<ps),
+        margin: (spP>0&&cpP>0) ? Math.round((spP-cpP)/spP*100) : null
+      };
     }
-    if (p.bar){
-      var ml=Number(p.stockMl)||0;
-      var _per=(typeof window.hnBottleMl==='function')?window.hnBottleMl(p):750;
-      var b=ml/_per;   /* (v34_008) was /750 — showed a full beer bottle as 0.9 */
-      return { txt: ml<=0?'Out':(b.toFixed(1)+' btl'),
-               out: S?S.out:(ml<=0), low: S?S.low:(ml>0&&ml<_per) };
+
+    if (p.bar === true){
+      var per = (typeof window.hnBottleMl==='function') ? window.hnBottleMl(p) : 750;
+      var ml = Number(p.stockMl)||0, btl = ml/per;
+      var bada = Math.floor(ml/60), chota = Math.floor(ml/30);
+      /* Peg price lives in sizes[] — sp is deliberately 0 on bar rows. Take the
+         dearest pour as the headline rate; it is the one he quotes. */
+      var top = 0;
+      try { (p.sizes||[]).forEach(function(z){ var v=Number(z&&z.price)||0; if(v>top) top=v; }); } catch(e){}
+      var cpB = Number(p.cp)||0;
+      /* Margin on a bottle = what the whole bottle earns poured as bada pegs. */
+      var perBottle = 0;
+      try {
+        var bd = (p.sizes||[]).filter(function(z){ return /60|bada|large|patiala/i.test(String(z&&z.name||'')); })[0];
+        var pegPrice = Number(bd&&bd.price) || 0;
+        if (pegPrice > 0) perBottle = pegPrice * (per/60);
+      } catch(e){}
+      return {
+        qty: ml, full: per*8, step: 'bottle', stepQty: per,
+        head: ml<=0 ? 'Out of stock' : (btl.toFixed(1)+' bottles'),
+        unitLine: ml<=0 ? 'Reorder by the bottle' : (bada+' bada pegs \u00b7 '+chota+' chota left'),
+        rate: (top>0 ? fmt(top)+'/peg \u00b7 '+(cpB?fmt(cpB)+' a bottle':'cost not set') : 'No pour price set'),
+        value: btl * cpB,
+        out: S?S.out:(ml<=0), low: S?S.low:(ml>0&&ml<per),
+        margin: (perBottle>0&&cpB>0) ? Math.round((perBottle-cpB)/perBottle*100) : null
+      };
     }
-    var st=Number(p.stock)||0, mn=Number(p.min)||0;
-    return { txt: st<=0?'Out':(st+' '+(p.unit||'pcs')),
-             out: S?S.out:(st<=0), low: S?S.low:(st>0&&mn>0&&st<=mn) };
+
+    var q  = (window.hnEffStock ? window.hnEffStock(p) : (Number(p.stock)||0));
+    var mn = Number(p.min)||0;
+    var sp = Number(p.sp||p.price)||0, cp = Number(p.cp)||0;
+    var u  = p.unit || 'pcs';
+    return {
+      qty: q, full: Math.max(mn*4, 40), step: u, stepQty: 1,
+      head: q<=0 ? 'Out of stock' : (q+' '+u),
+      unitLine: q<=0 ? 'Reorder \u2014 nothing on the shelf'
+                     : (mn ? ('Alert set at '+mn+' '+u) : 'No alert set'),
+      rate: (sp>0 ? fmt(sp)+' each \u00b7 '+(cp?fmt(cp)+' cost':'cost not set') : 'No price set'),
+      value: q * cp,
+      out: S?S.out:(q<=0), low: S?S.low:(q>0&&mn>0&&q<=mn),
+      margin: (sp>0&&cp>0) ? Math.round((sp-cp)/sp*100) : null
+    };
   }
-  function marginPct(p){
-    var sp, cp;
-    if (p.cig){ sp=Number(p.spPack)||0; cp=Number(p.cpPack)||0; }
-    else { sp=Number(p.sp||p.price)||0; cp=Number(p.cp)||0; }
-    if (sp>0 && cp>0) return Math.round(((sp-cp)/sp)*100);
-    return null;
-  }
+  function rlHealth(st){ return st.out ? 'out' : (st.low ? 'low' : 'ok'); }
+  /* Kept: a few other places still call these two by name. */
+  function stockInfo(p){ var s=rlState(p); return { txt:s.head, out:s.out, low:s.low }; }
+  function marginPct(p){ return rlState(p).margin; }
+
   function openEditor(p){
     try {
       if (p.cig){ if(App.openCigEditor){ App.openCigEditor(p.id); } else { App.openCigStock(); } return; }
@@ -101443,64 +101541,330 @@ var KB=[
   }
   App._retailOpenEditor = function(id){ var ov=document.getElementById('hn-retail-ov'); if(ov) ov.remove(); var p=null; try{p=Store.get('prods',id);}catch(e){} if(p) openEditor(p); };
 
+  /* ── (v34_168) Retail, rebuilt ────────────────────────────────────────────
+     The old screen listed products. This one answers the two questions an
+     owner opens it with — what do I reorder, and what is actually earning —
+     and lets him finish the first one without leaving.
+
+     State lives here rather than on App so a stray global can't desync the
+     pills from the rows. */
+  var RL = { filter:'all', bucket:'all', q:'', sort:'urgency', pend:{} };
+
+  function rlCss(){
+    if (document.getElementById('rl-css')) return;
+    var st = document.createElement('style'); st.id = 'rl-css';
+    st.textContent =
+      '#hn-retail-ov{--rl-ink:#14100B;--rl-2:#5C5548;--rl-3:#8C8577;--rl-4:#B8B0A0;--rl-line:#EDE6D6;--rl-line2:#F6F1E6;'
+      + '--rl-ok:#12805C;--rl-low:#B45309;--rl-out:#C1121F;--rl-acc:#EA580C;'
+      + 'font-family:inherit;color:var(--rl-ink)}'
+      + '#hn-retail-ov .rl-num{font-variant-numeric:tabular-nums;letter-spacing:-.02em;'
+      + 'font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}'
+      + '#hn-retail-ov .rl-wrap{width:100%;max-width:1000px;margin:0 auto;padding:0 22px}'
+      + '#hn-retail-ov button{font-family:inherit;cursor:pointer}'
+      + '#hn-retail-ov :focus-visible{outline:2.5px solid var(--rl-acc);outline-offset:2px;border-radius:6px}'
+      /* header */
+      + '#hn-retail-ov .rl-hd{display:flex;align-items:flex-start;gap:14px;padding-top:20px}'
+      + '#hn-retail-ov .rl-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--rl-3);margin-bottom:6px}'
+      + '#hn-retail-ov .rl-h1{font-size:26px;font-weight:800;letter-spacing:-.035em;margin:0}'
+      + '#hn-retail-ov .rl-sub{font-size:12.5px;color:var(--rl-2);font-weight:600;margin-top:5px;line-height:1.5;max-width:52ch}'
+      + '#hn-retail-ov .rl-hact{margin-left:auto;display:flex;gap:8px;flex-shrink:0;padding-top:20px}'
+      + '#hn-retail-ov .rl-btn{border:1.5px solid var(--rl-line);background:#fff;color:var(--rl-ink);border-radius:11px;padding:9px 14px;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}'
+      + '#hn-retail-ov .rl-btn:hover{border-color:var(--rl-4)}'
+      + '#hn-retail-ov .rl-btn.pri{background:var(--rl-ink);border-color:var(--rl-ink);color:#fff}'
+      + '#hn-retail-ov .rl-btn.pri:hover{background:#2A231A;border-color:#2A231A}'
+      + '#hn-retail-ov .rl-back{width:36px;height:36px;border-radius:11px;border:1.5px solid var(--rl-line);background:#fff;font-size:17px;color:var(--rl-2);flex:0 0 auto}'
+      /* kpis */
+      + '#hn-retail-ov .rl-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:18px 0 4px}'
+      + '#hn-retail-ov .rl-kpi{position:relative;text-align:left;background:#fff;border:1.5px solid var(--rl-line);border-radius:15px;padding:12px 14px 13px;transition:border-color .15s,transform .15s,box-shadow .15s}'
+      + '#hn-retail-ov .rl-kpi:hover{border-color:var(--rl-4);transform:translateY(-1px);box-shadow:0 4px 14px -8px rgba(20,16,11,.3)}'
+      + '#hn-retail-ov .rl-kpi.on{border-color:var(--rl-ink);box-shadow:0 0 0 3px rgba(20,16,11,.07)}'
+      + '#hn-retail-ov .rl-kpi.on.alert{border-color:var(--rl-out);box-shadow:0 0 0 3px rgba(193,18,31,.09)}'
+      + '#hn-retail-ov .rl-kl{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--rl-3)}'
+      + '#hn-retail-ov .rl-kv{font-size:25px;font-weight:800;letter-spacing:-.04em;margin-top:6px;line-height:1}'
+      + '#hn-retail-ov .rl-kv.ok{color:var(--rl-ok)}#hn-retail-ov .rl-kv.low{color:var(--rl-low)}#hn-retail-ov .rl-kv.out{color:var(--rl-out)}'
+      + '#hn-retail-ov .rl-ks{font-size:11px;font-weight:600;color:var(--rl-3);margin-top:5px}'
+      + '#hn-retail-ov .rl-kx{position:absolute;top:10px;right:11px;font-size:9.5px;font-weight:800;color:var(--rl-4);opacity:0}'
+      + '#hn-retail-ov .rl-kpi.on .rl-kx{opacity:1}'
+      /* tools */
+      + '#hn-retail-ov .rl-tools{display:flex;align-items:center;gap:9px;margin:16px 0 2px;flex-wrap:wrap}'
+      + '#hn-retail-ov .rl-search{position:relative;flex:1;min-width:180px}'
+      + '#hn-retail-ov .rl-search input{width:100%;border:1.5px solid var(--rl-line);background:#fff;border-radius:11px;padding:9px 12px 9px 34px;font-family:inherit;font-size:13px;font-weight:600;color:var(--rl-ink);outline:none}'
+      + '#hn-retail-ov .rl-search input:focus{border-color:var(--rl-acc);box-shadow:0 0 0 3px rgba(234,88,12,.1)}'
+      + '#hn-retail-ov .rl-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--rl-4)}'
+      + '#hn-retail-ov .rl-chips{display:flex;gap:6px;flex-wrap:wrap}'
+      + '#hn-retail-ov .rl-chip{border:1.5px solid var(--rl-line);background:#fff;border-radius:99px;padding:7px 12px;font-size:12px;font-weight:700;color:var(--rl-2);transition:all .14s}'
+      + '#hn-retail-ov .rl-chip:hover{border-color:var(--rl-4)}'
+      + '#hn-retail-ov .rl-chip.on{background:var(--rl-ink);border-color:var(--rl-ink);color:#fff}'
+      + '#hn-retail-ov .rl-chip .n{font-size:10.5px;font-weight:600;color:var(--rl-4);margin-left:4px}'
+      + '#hn-retail-ov .rl-chip.on .n{color:#A69C88}'
+      + '#hn-retail-ov .rl-sort{border:1.5px solid var(--rl-line);background:#fff;border-radius:11px;padding:8px 10px;font-family:inherit;font-size:12px;font-weight:700;color:var(--rl-2);outline:none}'
+      /* reorder bar */
+      + '#hn-retail-ov .rl-re{display:flex;align-items:center;gap:12px;margin:14px 0 0;padding:12px 15px;border-radius:14px;background:linear-gradient(100deg,#FFF6F0,#FFFDFB);border:1.5px solid #F6DACB}'
+      + '#hn-retail-ov .rl-re-ic{width:33px;height:33px;border-radius:10px;background:#FDECEE;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto}'
+      + '#hn-retail-ov .rl-re b{display:block;font-size:13px;font-weight:800;letter-spacing:-.01em}'
+      + '#hn-retail-ov .rl-re span{display:block;font-size:11.5px;font-weight:600;color:var(--rl-2);margin-top:2px}'
+      + '#hn-retail-ov .rl-re .rl-btn{margin-left:auto;flex-shrink:0}'
+      /* groups + rows */
+      + '#hn-retail-ov .rl-grp{display:flex;align-items:baseline;gap:8px;margin:24px 2px 8px}'
+      + '#hn-retail-ov .rl-gt{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--rl-2)}'
+      + '#hn-retail-ov .rl-gn{font-size:10.5px;font-weight:600;color:var(--rl-4)}'
+      + '#hn-retail-ov .rl-gv{margin-left:auto;font-size:11px;font-weight:600;color:var(--rl-3)}'
+      + '#hn-retail-ov .rl-gv b{color:var(--rl-ink);font-weight:700}'
+      + '#hn-retail-ov .rl-row{display:grid;grid-template-columns:42px minmax(0,1.55fr) 126px 84px auto;align-items:center;gap:15px;background:#fff;border:1.5px solid var(--rl-line);border-radius:15px;padding:12px 14px;margin-bottom:8px;transition:border-color .14s,box-shadow .14s}'
+      + '#hn-retail-ov .rl-row:hover{border-color:var(--rl-4);box-shadow:0 5px 18px -12px rgba(20,16,11,.4)}'
+      + '#hn-retail-ov .rl-row.isout{border-color:#F3CBCF;background:linear-gradient(90deg,#FFFAFA,#fff 42%)}'
+      + '#hn-retail-ov .rl-em{width:42px;height:42px;border-radius:12px;background:var(--rl-line2);display:flex;align-items:center;justify-content:center;font-size:20px}'
+      + '#hn-retail-ov .rl-nm{font-size:14px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '#hn-retail-ov .rl-rate{font-size:11px;font-weight:500;color:var(--rl-3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '#hn-retail-ov .rl-mt{font-size:11.5px;font-weight:700;margin-bottom:5px}'
+      + '#hn-retail-ov .rl-mt.ok{color:var(--rl-ok)}#hn-retail-ov .rl-mt.low{color:var(--rl-low)}#hn-retail-ov .rl-mt.out{color:var(--rl-out)}'
+      + '#hn-retail-ov .rl-bar{height:5px;border-radius:99px;background:var(--rl-line);overflow:hidden}'
+      + '#hn-retail-ov .rl-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.2,.7,.3,1)}'
+      + '#hn-retail-ov .rl-fill.ok{background:var(--rl-ok)}#hn-retail-ov .rl-fill.low{background:var(--rl-low)}#hn-retail-ov .rl-fill.out{background:var(--rl-out)}'
+      + '#hn-retail-ov .rl-mu{font-size:10px;font-weight:500;color:var(--rl-4);margin-top:5px}'
+      + '#hn-retail-ov .rl-mg{text-align:right}'
+      + '#hn-retail-ov .rl-mgv{font-size:14.5px;font-weight:700;letter-spacing:-.03em}'
+      + '#hn-retail-ov .rl-mgv.good{color:var(--rl-ok)}#hn-retail-ov .rl-mgv.thin{color:var(--rl-low)}#hn-retail-ov .rl-mgv.none{color:var(--rl-4)}'
+      + '#hn-retail-ov .rl-mgl{font-size:9.5px;font-weight:700;color:var(--rl-4);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}'
+      + '#hn-retail-ov .rl-acts{display:flex;align-items:center;gap:6px}'
+      + '#hn-retail-ov .rl-step{display:flex;align-items:center;border:1.5px solid var(--rl-line);border-radius:10px;overflow:hidden;background:#fff}'
+      + '#hn-retail-ov .rl-step button{width:29px;height:33px;border:0;background:var(--rl-line2);color:var(--rl-2);font-size:15px;font-weight:800;line-height:1}'
+      + '#hn-retail-ov .rl-step button:hover{background:#FFF1E7;color:var(--rl-acc)}'
+      + '#hn-retail-ov .rl-step .v{width:32px;text-align:center;font-size:12.5px;font-weight:700}'
+      + '#hn-retail-ov .rl-add{border:0;background:var(--rl-ink);color:#fff;border-radius:10px;padding:0 12px;height:33px;font-size:12px;font-weight:800}'
+      + '#hn-retail-ov .rl-add:hover{background:var(--rl-acc)}'
+      + '#hn-retail-ov .rl-add[disabled]{background:var(--rl-line);color:var(--rl-4);cursor:not-allowed}'
+      + '#hn-retail-ov .rl-edit{width:33px;height:33px;border:1.5px solid var(--rl-line);background:#fff;border-radius:10px;color:var(--rl-3);display:flex;align-items:center;justify-content:center}'
+      + '#hn-retail-ov .rl-edit:hover{border-color:var(--rl-4);color:var(--rl-ink)}'
+      /* empty */
+      + '#hn-retail-ov .rl-empty{text-align:center;padding:54px 20px}'
+      + '#hn-retail-ov .rl-empty .e{font-size:38px;margin-bottom:12px}'
+      + '#hn-retail-ov .rl-empty .t{font-size:15.5px;font-weight:800;margin-bottom:6px}'
+      + '#hn-retail-ov .rl-empty .s{font-size:12.5px;color:var(--rl-3);font-weight:600;max-width:330px;margin:0 auto 18px;line-height:1.55}'
+      + '@media (max-width:860px){'
+      + '#hn-retail-ov .rl-kpis{grid-template-columns:repeat(2,1fr)}'
+      + '#hn-retail-ov .rl-row{grid-template-columns:38px minmax(0,1fr) auto;gap:11px;row-gap:11px}'
+      + '#hn-retail-ov .rl-meter{grid-column:1/-1}'
+      + '#hn-retail-ov .rl-mg{text-align:left}'
+      + '#hn-retail-ov .rl-hact{width:100%;margin-left:0;padding-top:11px}'
+      + '#hn-retail-ov .rl-wrap{padding:0 15px}}'
+      + '@media (prefers-reduced-motion:reduce){#hn-retail-ov *{transition:none!important}}';
+    document.head.appendChild(st);
+  }
+
   App.openRetailLens = function(){
+    rlCss();
+    RL.filter='all'; RL.bucket='all'; RL.q=''; RL.sort='urgency'; RL.pend={};
     var ov=document.getElementById('hn-retail-ov'); if(ov) ov.remove();
     ov=document.createElement('div'); ov.id='hn-retail-ov';
-    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:#FFFBF5;display:flex;flex-direction:column';
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:#FBF8F2;display:flex;flex-direction:column;overflow-y:auto';
     ov.innerHTML=
-      '<div style="display:flex;align-items:center;gap:12px;padding:18px 16px 10px">'
-      + '<button id="rl-back" style="width:38px;height:38px;border-radius:11px;border:1px solid var(--border,#EDE6D6);background:#fff;font-size:18px;cursor:pointer;font-family:inherit">\u2190</button>'
-      + '<div style="flex:1"><div style="font-size:19px;font-weight:800;letter-spacing:-.02em">Retail products</div><div id="rl-sub" style="font-size:12px;color:#8C8577;font-weight:600;margin-top:1px"></div></div>'
-      + '<button id="rl-add" style="border:0;background:#1A1A1A;color:#fff;border-radius:11px;padding:10px 14px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer">+ Add</button>'
-      + '</div>'
-      + '<div style="padding:2px 16px 8px"><div style="background:linear-gradient(135deg,#F3ECFF,#FFFBF5);border:1px solid #E4D8FF;border-radius:13px;padding:10px 12px;font-size:12px;color:#6D28D9;font-weight:600;line-height:1.45">\uD83D\uDECD\uFE0F Everything you buy \u0026 resell \u2014 cold drinks, cigarettes, liquor \u2014 in one place. Tap any item to edit price or stock.</div></div>'
-      + '<div id="rl-list" style="flex:1;overflow:auto;padding:4px 16px 24px"></div>';
+        '<div class="rl-wrap">'
+      +   '<div class="rl-hd">'
+      +     '<button class="rl-back" id="rl-back" aria-label="Back">\u2190</button>'
+      +     '<div><div class="rl-eyebrow">Bought &amp; resold</div>'
+      +       '<h1 class="rl-h1">Retail</h1>'
+      +       '<p class="rl-sub">Cold drinks, cigarettes and liquor \u2014 everything that leaves the shop exactly as it came in.</p></div>'
+      +     '<div class="rl-hact">'
+      +       '<button class="rl-btn" id="rl-photo">Import from photo</button>'
+      +       '<button class="rl-btn pri" id="rl-add">+ Add item</button>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div class="rl-kpis" id="rl-kpis"></div>'
+      +   '<div class="rl-tools">'
+      +     '<label class="rl-search">'
+      +       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+      +       '<input id="rl-q" type="search" placeholder="Search brand or category" aria-label="Search retail items">'
+      +     '</label>'
+      +     '<div class="rl-chips" id="rl-chips"></div>'
+      +     '<select class="rl-sort" id="rl-sort" aria-label="Sort items">'
+      +       '<option value="urgency">Sort \u00b7 Needs attention</option>'
+      +       '<option value="value">Sort \u00b7 Stock value</option>'
+      +       '<option value="margin">Sort \u00b7 Margin</option>'
+      +       '<option value="name">Sort \u00b7 Name</option>'
+      +     '</select>'
+      +   '</div>'
+      +   '<div id="rl-reorder"></div>'
+      +   '<div id="rl-list" style="padding-bottom:48px"></div>'
+      + '</div>';
     document.body.appendChild(ov);
     document.getElementById('rl-back').onclick=function(){ ov.remove(); };
-    document.getElementById('rl-add').onclick=function(){ ov.remove(); try { if(App.openProductSheet) App.openProductSheet(null,{forceRetail:true}); } catch(e){} };
+    document.getElementById('rl-photo').onclick=function(){
+      ov.remove(); try { if(App.openPhotoImport) App.openPhotoImport('beverages'); } catch(e){}
+    };
+    document.getElementById('rl-add').onclick=function(){
+      ov.remove(); try { if(App.openProductSheet) App.openProductSheet(null,{forceRetail:true}); } catch(e){}
+    };
+    document.getElementById('rl-q').oninput=function(){ RL.q=this.value||''; renderRetailList(); };
+    document.getElementById('rl-sort').onchange=function(){ RL.sort=this.value; renderRetailList(); };
     renderRetailList();
+  };
+
+  App._rlFilter = function(k){ RL.filter = (RL.filter===k && k!=='all') ? 'all' : k; renderRetailList(); };
+  App._rlBucket = function(b){ RL.bucket = b; renderRetailList(); };
+  App._rlReset  = function(){
+    RL.filter='all'; RL.bucket='all'; RL.q='';
+    var q=document.getElementById('rl-q'); if(q) q.value='';
+    renderRetailList();
+  };
+  /* Queue units on the row, commit in one write. Steppers that write straight
+     to Store make a 10-bottle delivery ten sync round-trips. */
+  App._rlBump = function(id,d){
+    RL.pend[id] = Math.max(0,(RL.pend[id]||0) + d);
+    renderRetailList();
+  };
+  App._rlCommit = function(id){
+    var n = RL.pend[id]||0; if(!n) return;
+    var p=null; try{ p=Store.get('prods',id); }catch(e){}
+    if(!p) return;
+    var st = rlState(p), patch = {};
+    if (p.cig === true)      patch.stockSticks = (Number(p.stockSticks)||0) + n*(Number(p.packSize)||10);
+    else if (p.bar === true) patch.stockMl     = (Number(p.stockMl)||0)     + n*st.stepQty;
+    else                     patch.stock       = (Number(p.stock)||0)       + n;
+    try { Store.update('prods', id, patch); } catch(e){ toast('Could not save \u2014 try again'); return; }
+    RL.pend[id] = 0;
+    toast('\u2713 Added ' + n + ' ' + st.step + (n>1?'s':'') + ' \u00b7 ' + p.name);
+    try { if(App.renderCatalog) App.renderCatalog(); } catch(e){}
+    try { if(window.HND && HND.cat && HND.cat.render) HND.cat.render(); } catch(e){}
+    try { if(document.getElementById('lqs-body') && App.openLiquorStock) { /* bar list repaints on its own open */ } } catch(e){}
+    renderRetailList();
+  };
+  /* Hand the short list to Stock In, which is where a purchase actually gets
+     recorded. No second register invented here. */
+  App._rlPurchaseList = function(){
+    var ov=document.getElementById('hn-retail-ov'); if(ov) ov.remove();
+    try {
+      if (window.PurchaseReg && PurchaseReg.open) { PurchaseReg.open(); return; }
+    } catch(e){}
+    try { if (App.nav) App.nav('expenses'); } catch(e){}
   };
 
   function renderRetailList(){
     var listEl=document.getElementById('rl-list'); if(!listEl) return;
-    var prods=retailProds();
-    var sub=document.getElementById('rl-sub');
+    var all = retailProds().map(function(p){ return { p:p, s:rlState(p) }; });
 
-    var groups={}; prods.forEach(function(p){ var b=bucketOf(p); (groups[b]=groups[b]||[]).push(p); });
-    var keys=Object.keys(groups).sort(function(a,b){ var ia=BUCKET_ORDER.indexOf(a), ib=BUCKET_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b); });
-    if (sub) sub.textContent = prods.length + ' item' + (prods.length===1?'':'s') + ' \u00b7 ' + keys.length + ' categor' + (keys.length===1?'y':'ies');
+    /* ── pills ── */
+    var value = all.reduce(function(a,r){ return a + (r.s.value||0); }, 0);
+    var outN  = all.filter(function(r){ return r.s.out; }).length;
+    var lowN  = all.filter(function(r){ return r.s.low; }).length;
+    var withM = all.filter(function(r){ return r.s.margin!=null; });
+    var thinN = withM.filter(function(r){ return r.s.margin < marginTarget(r.p); }).length;
+    var avgM  = withM.length ? Math.round(withM.reduce(function(a,r){ return a+r.s.margin; },0)/withM.length) : null;
 
-    if (!prods.length){
-      listEl.innerHTML='<div style="text-align:center;padding:44px 20px 24px">'
-        +'<div style="font-size:40px;margin-bottom:12px">\uD83D\uDECD\uFE0F</div>'
-        +'<div style="font-size:15.5px;font-weight:800;color:#1A1A1A;margin-bottom:6px">No resold items yet</div>'
-        +'<div style="font-size:13px;color:#8C8577;font-weight:500;line-height:1.55;max-width:300px;margin:0 auto 18px">Add cold drinks, water, packaged snacks \u2014 anything you buy and sell as-is. Cigarettes \u0026 liquor turn on from Settings.</div>'
-        +'<button id="rl-empty-add" style="display:inline-flex;align-items:center;gap:7px;background:#1A1A1A;color:#fff;border:none;border-radius:11px;padding:11px 18px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer">\u2795 Add a resold product</button>'
-        +'</div>';
-      var eb=document.getElementById('rl-empty-add'); if(eb) eb.onclick=function(){ var o=document.getElementById('hn-retail-ov'); if(o) o.remove(); try { if(App.openProductSheet) App.openProductSheet(null,{forceRetail:true}); } catch(e){} };
+    var pill = function(key,label,val,sub,tone,alert){
+      return '<button class="rl-kpi'+(RL.filter===key?' on':'')+(alert?' alert':'')+'" '
+        + 'onclick="App._rlFilter(\'' + key + '\')" aria-pressed="'+(RL.filter===key)+'">'
+        + '<span class="rl-kx">CLEAR \u2715</span>'
+        + '<div class="rl-kl">'+label+'</div>'
+        + '<div class="rl-kv rl-num '+(tone||'')+'">'+val+'</div>'
+        + '<div class="rl-ks">'+sub+'</div></button>';
+    };
+    var kp=document.getElementById('rl-kpis');
+    if (kp) kp.innerHTML =
+        pill('all','Stock value', fmt(value), 'at cost \u00b7 '+all.length+' item'+(all.length===1?'':'s'), '')
+      + pill('out','Out of stock', outN, outN?'not on the shelf':'all stocked', outN?'out':'ok', outN>0)
+      + pill('low','Running low', lowN, lowN?'below your alert':'all healthy', lowN?'low':'ok')
+      + pill('thin','Below target', thinN, (avgM==null ? 'no prices set yet'
+            : (thinN ? 'under its category target \u00b7 avg '+avgM+'%' : 'all on target \u00b7 avg '+avgM+'%')), thinN?'low':'ok');
+
+    /* ── chips ── */
+    var counts={}; all.forEach(function(r){ var b=bucketOf(r.p); counts[b]=(counts[b]||0)+1; });
+    var order = BUCKET_ORDER.concat(Object.keys(counts).filter(function(b){ return BUCKET_ORDER.indexOf(b)<0; }));
+    var ch=document.getElementById('rl-chips');
+    if (ch) ch.innerHTML =
+      ['<button class="rl-chip'+(RL.bucket==='all'?' on':'')+'" onclick="App._rlBucket(\'all\')">All <span class="n">'+all.length+'</span></button>']
+      .concat(order.filter(function(b){ return counts[b]; }).map(function(b){
+        return '<button class="rl-chip'+(RL.bucket===b?' on':'')+'" onclick="App._rlBucket(\''+esc(b).replace(/'/g,'')+'\')">'
+          + (BUCKET_EMOJI[b]||'\uD83D\uDECD\uFE0F') + ' ' + esc(b) + ' <span class="n">'+counts[b]+'</span></button>';
+      })).join('');
+
+    /* ── filter + sort ── */
+    var rows = all.slice();
+    if (RL.bucket!=='all') rows = rows.filter(function(r){ return bucketOf(r.p)===RL.bucket; });
+    if (RL.filter==='out')  rows = rows.filter(function(r){ return r.s.out; });
+    if (RL.filter==='low')  rows = rows.filter(function(r){ return r.s.low; });
+    if (RL.filter==='thin') rows = rows.filter(function(r){ return r.s.margin!=null && r.s.margin < marginTarget(r.p); });
+    var q = String(RL.q||'').trim().toLowerCase();
+    if (q) rows = rows.filter(function(r){
+      return ((r.p.name||'')+' '+bucketOf(r.p)+' '+(r.p.cat||'')).toLowerCase().indexOf(q) >= 0;
+    });
+    var rank=function(r){ return r.s.out?0:(r.s.low?1:2); };
+    rows.sort(function(a,b){
+      if (RL.sort==='value')  return (b.s.value||0)-(a.s.value||0);
+      if (RL.sort==='margin') return (a.s.margin==null?999:a.s.margin)-(b.s.margin==null?999:b.s.margin);
+      if (RL.sort==='name')   return String(a.p.name||'').localeCompare(String(b.p.name||''));
+      return (rank(a)-rank(b)) || String(a.p.name||'').localeCompare(String(b.p.name||''));
+    });
+
+    /* ── reorder bar ── */
+    var re=document.getElementById('rl-reorder');
+    var bad = rows.filter(function(r){ return r.s.out || r.s.low; });
+    if (re) re.innerHTML = !bad.length ? '' :
+      ('<div class="rl-re"><div class="rl-re-ic">\uD83D\uDCCB</div><div>'
+       + '<b>'+bad.length+' item'+(bad.length>1?'s':'')+' need'+(bad.length>1?'':'s')+' reordering</b>'
+       + '<span>'+(bad.filter(function(r){return r.s.out;}).length)+' out of stock \u00b7 '
+       + (bad.filter(function(r){return r.s.low && !r.s.out;}).length)+' running low</span></div>'
+       + '<button class="rl-btn" onclick="App._rlPurchaseList()">Record a purchase</button></div>');
+
+    /* ── empty states ── */
+    if (!all.length){
+      listEl.innerHTML='<div class="rl-empty"><div class="e">\uD83D\uDECD\uFE0F</div>'
+        +'<div class="t">No resold items yet</div>'
+        +'<div class="s">Add cold drinks, water, packaged snacks \u2014 anything you buy and sell as-is. Cigarettes and liquor turn on from Settings.</div>'
+        +'<button class="rl-btn pri" id="rl-empty-add">+ Add a resold product</button></div>';
+      var eb=document.getElementById('rl-empty-add');
+      if(eb) eb.onclick=function(){ var o=document.getElementById('hn-retail-ov'); if(o) o.remove();
+        try { if(App.openProductSheet) App.openProductSheet(null,{forceRetail:true}); } catch(e){} };
+      return;
+    }
+    if (!rows.length){
+      listEl.innerHTML='<div class="rl-empty"><div class="e">\uD83D\uDD0E</div>'
+        +'<div class="t">Nothing matches that</div>'
+        +'<div class="s">Clear the filter, or add the item you were looking for.</div>'
+        +'<button class="rl-btn pri" onclick="App._rlReset()">Show everything</button></div>';
       return;
     }
 
+    /* ── rows ── */
+    var groups={}; rows.forEach(function(r){ var b=bucketOf(r.p); (groups[b]=groups[b]||[]).push(r); });
+    var keys = order.filter(function(b){ return groups[b]; });
     var html='';
     keys.forEach(function(bk){
-      var arr=groups[bk];
-      var em=BUCKET_EMOJI[bk]||'\uD83D\uDECD\uFE0F';
-      html+='<div style="display:flex;align-items:center;gap:7px;margin:16px 4px 8px"><span style="font-size:12px;font-weight:800;color:#8C8577;text-transform:uppercase;letter-spacing:.04em">'+em+' '+esc(bk)+'</span><span style="font-size:11px;color:#B8B0A0;font-weight:700">'+arr.length+'</span></div>';
-      arr.forEach(function(p){
-        var si=stockInfo(p); var mg=marginPct(p);
-        var col=si.out?'#DC2626':(si.low?'#B45309':'#16A34A');
-        html+='<div class="rl-row" data-rl-id="'+esc(p.id)+'" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border,#EDE6D6);border-radius:14px;padding:12px 13px;margin-bottom:9px;cursor:pointer">'
-          +'<div style="width:40px;height:40px;border-radius:11px;background:#F7F3EA;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto">'+(p.emoji||'\uD83D\uDECD\uFE0F')+'</div>'
-          +'<div style="flex:1;min-width:0"><div style="font-size:14.5px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name)+'</div>'
-          +'<div style="font-size:11.5px;font-weight:700;color:'+col+';margin-top:1px">'+esc(si.txt)+(mg!=null?(' <span style="color:#8C8577;font-weight:600">\u00b7 '+mg+'% margin</span>'):'')+'</div></div>'
-          +'<div style="color:#C9C2B4;font-size:20px">\u203a</div>'
-          +'</div>';
+      var g=groups[bk];
+      var gv=g.reduce(function(a,r){ return a+(r.s.value||0); },0);
+      html += '<div class="rl-grp"><span class="rl-gt">'+(BUCKET_EMOJI[bk]||'\uD83D\uDECD\uFE0F')+' '+esc(bk)+'</span>'
+        + '<span class="rl-gn rl-num">'+g.length+'</span>'
+        + '<span class="rl-gv rl-num">stock value <b>'+fmt(gv)+'</b></span></div>';
+      g.forEach(function(r){
+        var p=r.p, s=r.s, h=rlHealth(s);
+        var pct = Math.max(s.out?0:4, Math.min(100, Math.round((s.qty/(s.full||1))*100)));
+        var n = RL.pend[p.id]||0;
+        var tgt = marginTarget(p);
+        var thin = (s.margin!=null && s.margin < tgt);
+        var mc = s.margin==null ? 'none' : (thin ? 'thin' : 'good');
+        var pid = esc(p.id);
+        html += '<div class="rl-row'+(s.out?' isout':'')+'">'
+          + '<div class="rl-em">'+(p.emoji||'\uD83D\uDECD\uFE0F')+'</div>'
+          + '<div><div class="rl-nm">'+esc(p.name)+'</div><div class="rl-rate rl-num">'+esc(s.rate)+'</div></div>'
+          + '<div class="rl-meter"><div class="rl-mt '+h+' rl-num">'+esc(s.head)+'</div>'
+          +   '<div class="rl-bar"><div class="rl-fill '+h+'" style="width:'+pct+'%"></div></div>'
+          +   '<div class="rl-mu rl-num">'+esc(s.unitLine)+'</div></div>'
+          + '<div class="rl-mg"><div class="rl-mgv rl-num '+mc+'">'+(s.margin==null?'\u2014':s.margin+'%')+'</div>'
+          +   '<div class="rl-mgl">'+(thin ? 'target '+tgt+'%' : 'margin')+'</div></div>'
+          + '<div class="rl-acts">'
+          +   '<div class="rl-step">'
+          +     '<button onclick="App._rlBump(\''+pid+'\',-1)" aria-label="One less '+esc(s.step)+'">\u2212</button>'
+          +     '<span class="v rl-num">'+n+'</span>'
+          +     '<button onclick="App._rlBump(\''+pid+'\',1)" aria-label="One more '+esc(s.step)+'">+</button>'
+          +   '</div>'
+          +   '<button class="rl-add"'+(n?'':' disabled')+' onclick="App._rlCommit(\''+pid+'\')">Add '+esc(s.step)+(n>1?'s':'')+'</button>'
+          +   '<button class="rl-edit" onclick="App._retailOpenEditor(\''+pid+'\')" aria-label="Edit '+esc(p.name)+'">'
+          +     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1Z"/></svg>'
+          +   '</button>'
+          + '</div></div>';
       });
     });
     listEl.innerHTML=html;
-    listEl.querySelectorAll('[data-rl-id]').forEach(function(row){
-      row.onclick=function(){ App._retailOpenEditor(row.getAttribute('data-rl-id')); };
-    });
   }
 
   /* ── (v34_167) HND.retail, at last ────────────────────────────────────────
@@ -103823,10 +104187,9 @@ html[data-shell="desktop"] #lqe-ov #lqe-sheet > div[style*="height:4px"]{ displa
    over the sidebar and topbar entirely: the one module that swallowed the whole
    console. Same treatment as the rest, and the same 900px reading column. */
 html[data-shell="desktop"] #hn-retail-ov{ left:var(--hnd-sb-w)!important; top:var(--hnd-tb-h)!important; right:0!important; bottom:0!important; }
-html[data-shell="desktop"] #hn-retail-ov > div{
-  padding-left: max(16px, calc((100% - 900px) / 2)) !important;
-  padding-right: max(16px, calc((100% - 900px) / 2)) !important;
-}
+/* (v34_168) .rl-wrap owns its own 1000px measure and centring, so the shell
+   rule only has to place the panel — no padding override, or the column gets
+   indented twice. */
 
 /* (v34_125) Full-bleed shell, centred measure. A register stretched across
    1400px puts the supplier name and its amount a hand-span apart and makes
