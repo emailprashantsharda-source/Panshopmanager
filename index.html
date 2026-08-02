@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_188_waitergate';
+    window.HISAABNOW_BUILD = 'v34_190_runningfix';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -12317,22 +12317,28 @@ const App = {
     try {
       const role = (window.AppRole && AppRole.getCurrentRole && AppRole.getCurrentRole()) || 'owner';
 
-      const managerOnly = ['staff','customers','expenses','my-biz','udhaar','customer-detail','add-udhaar'];
       const ownerOnly   = ['settings','subscription','multi-store','add-staff'];
 
-      /* ── (v34_187) Waiter: allowlist, not blocklist ────────────────────────
-         Cashier is gated by naming the screens it CANNOT see, which quietly
-         grants every screen nobody remembered to list — catalog, inventory,
-         ingredients, reports, cashflow and coupons are all reachable by a
-         cashier today. For a waiter that is the wrong shape entirely: he
-         should have exactly the billing path and nothing else, and a screen
-         added next month must not silently become his. So it is named the
-         other way round. */
-      const waiterAllowed = ['home','addsale','checkout','sales','more'];
+      /* (v34_189) Cashier joins the waiter on an allowlist. It was on the old
+         `managerOnly` blocklist, which grants everything nobody remembered to
+         name — seven screens had fallen through it: catalog, inventory,
+         ingredients, reports, cashflow, coupons and bulkprice. A counter
+         cashier could re-price the whole menu or read the day's profit, and a
+         screen added next month was his by default. A blocklist fails open.
+
+           waiter   take the order, make the bill
+           cashier  the above, plus look up stock and the day's bookings
+           manager  everything except the owner's four
+
+         Catalog is deliberately not a cashier's — pricing is an owner
+         decision, and the billing screen already lists every product he needs
+         to sell. Inventory is, because "do we have it" is a counter question. */
+      const waiterAllowed  = ['home','addsale','checkout','sales','more'];
+      const cashierAllowed = waiterAllowed.concat(['inventory','appointments','add-appointment']);
       if (role === 'waiter' && waiterAllowed.indexOf(page) < 0) {
         this.toast(this._T('toast.waiterBillingOnly', 'You can take orders and bill'));
         page = 'addsale';
-      } else if (role === 'cashier' && managerOnly.indexOf(page) >= 0) {
+      } else if (role === 'cashier' && cashierAllowed.indexOf(page) < 0) {
         this.toast(this._T('toast.notAvailCashier', 'Not available for cashiers'));
         page = 'home';
       } else if (role !== 'owner' && ownerOnly.indexOf(page) >= 0) {
@@ -15652,7 +15658,7 @@ const App = {
       /* (v34_176) Rendered by _morePlanCard() — it needs the tier, not a row. */
       { planCard:true, rows:[] },
       { title:this._T('sb.menu','Menu'), rows:[
-        { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')", role:'cashier' },
+        { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')", role:'manager' },
         { emoji:'\uD83C\uDF7E', tint:'#F5ECFB', label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
           on:'App.openLiquorStock()', role:'cashier', when: barOn && has('App.openLiquorStock') },
         { emoji:'\uD83C\uDF81', tint:'#FFEFF3', label:this._T('nav.makeCombo','Make a combo'), sub:'Bundle items into one offer',
@@ -93798,10 +93804,27 @@ var KB=[
      `orders` already, so anything left here is unpaid by definition. */
   function runningSummary(){
     try {
+      /* ── (v34_190) Total an order exactly the way the board does ────────────
+         v34_185 summed billTotals(o), which re-prices o.snap.cart through the
+         CURRENT catalog and, for the active order, reads the live cart rather
+         than the saved snapshot. The board card uses the stored o.total, with
+         liveTotals() for the active one. Two ways to total the same order, so
+         Home said Running ₹580 while the board showed ₹0 + ₹420.
+
+         The board's version is the correct one: o.total is what was captured
+         when the order was saved, which is what the customer will be charged.
+         Re-pricing a running table at today's rates would silently change a
+         bill that is already on the table.
+
+         syncActive() first, so the active order's stored total reflects
+         whatever is in the cart right now \u2014 that is the same call renderBoard()
+         makes before it draws. */
+      syncActive();
       var open = orders.filter(function(o){ return ostatus(o) !== 'settled'; });
       var amt = 0;
       open.forEach(function(o){
-        try { amt += (+((billTotals(o)||{}).total) || 0); } catch(e){}
+        var t = (o && o.id === activeId) ? (liveTotals().total || 0) : (+o.total || 0);
+        amt += t;
       });
       return { count: open.length, amount: Math.round(amt), billed: boardDue() };
     } catch(e){ return { count:0, amount:0, billed:0 }; }
