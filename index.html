@@ -634,7 +634,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_190_runningfix';
+    window.HISAABNOW_BUILD = 'v34_191_annual';
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -6092,6 +6092,10 @@ html[data-current-role="manager"] body{
        that still want the old wording keep it. */
     'more.mySubscription':     { en: 'My subscription',         hi: 'मेरा सब्सक्रिप्शन' },
     'more.myPlan':             { en: 'My plan',                 hi: 'मेरा प्लान' },
+    /* (v34_191) Two months is the same 17%, in a unit he can picture. The other
+       subs.* keys in this file are used but never defined, so they fall back to
+       English — this one is defined. */
+    'subs.twoFree':            { en: '2 MONTHS FREE',           hi: '2 महीने फ्री' },
     'more.subStatusFallback':  { en: 'Plan, billing and renewals', hi: 'प्लान, बिलिंग और रिन्यूअल' },
     'more.tapUpgrade':         { en: 'Tap to upgrade',          hi: 'अपग्रेड करें' },
     'more.tapSubscribe':       { en: 'Tap to subscribe',        hi: 'सब्सक्राइब करें' },
@@ -32420,7 +32424,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
   openSubscription(){
     const pitch = this._subPitch; this._subPitch = null;   // 'activation' = opened right after the profit step
-    this._planCycle = 'monthly';   /* (v33_304) default the plan-cards toggle to Monthly */
+    /* (v34_191) Annual is the pre-selected option now. Monthly stays — on day 8
+       of a trial ₹1,990 asks for trust a shopkeeper has not formed yet, and
+       hasEverPaid() exists because people lapse and come back through the cheap
+       door. But defaulting to Monthly made the better deal something he had to
+       discover, and a UPI e-mandate that fails silently churns a customer who
+       never decided to leave. */
+    this._planCycle = 'annual';
     if (pitch) { this._selectedSubCycle = 'monthly'; }       // (v33_304) pre-select Monthly
     const tier = (window.Subs && Subs.getCurrentTier()) || 'trial';
     const tCfg = (window.Subs && Subs.getTierConfig(tier)) || { name: 'Trial', color: '#F59E0B' };
@@ -34307,6 +34317,17 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       + ".hnpc-pill{position:absolute;top:4px;bottom:4px;width:calc(50% - 4px);border-radius:10px;background:linear-gradient(135deg,#E8C24A,#B8860B);transition:left .22s cubic-bezier(.4,0,.2,1)}"
       + ".hnpc-save-badge{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:99px;background:#06C167;color:#fff}"
       + ".hnpc-tog button.on .hnpc-save-badge{background:#1a1300;color:#FACC15}"
+      /* (v34_191) A slow breath, not a blink. Three seconds apart and under 5%
+         of scale — enough for the eye to catch on the way past, quiet enough
+         that it is not still nagging on the fourth read. The sheen passes once
+         per cycle rather than sweeping continuously. */
+      + "@keyframes hnpcBreathe{0%,82%,100%{transform:scale(1)}88%{transform:scale(1.045)}94%{transform:scale(.995)}}"
+      + "@keyframes hnpcSheen{0%,70%{left:-140%}100%{left:140%}}"
+      + ".hnpc-save-badge.pulse{position:relative;overflow:hidden;animation:hnpcBreathe 3s ease-in-out infinite;will-change:transform}"
+      + ".hnpc-save-badge.pulse::after{content:'';position:absolute;top:0;bottom:0;left:-140%;width:55%;"
+      +   "background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:hnpcSheen 3s ease-in-out infinite}"
+      /* Someone who asked the OS to stop moving things gets a static badge. */
+      + "@media (prefers-reduced-motion:reduce){.hnpc-save-badge.pulse{animation:none}.hnpc-save-badge.pulse::after{display:none}}"
       + ".hnpc-card{background:#fff;border:1px solid #E2E2E2;border-radius:20px;padding:18px;margin-bottom:14px;position:relative}"
       + ".hnpc-card.feat{border:2px solid #B8860B;box-shadow:0 14px 36px -14px rgba(184,134,11,.5)}"
       + ".hnpc-badge{position:absolute;top:-11px;left:18px;background:radial-gradient(120% 90% at 50% 0%,#2a2a2a,#000);color:#FACC15;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:5px 11px;border-radius:99px;box-shadow:0 0 0 1px rgba(250,204,21,.35)}"
@@ -34407,7 +34428,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       + '<div class="hnpc-tog">'
       +   '<span class="hnpc-pill" style="left:'+pillLeft+'"></span>'
       +   '<button class="'+(cyc==='monthly'?'on':'')+'" onclick="App._setPlanCycle(\'monthly\')">Monthly</button>'
-      +   '<button class="'+(cyc==='annual'?'on':'')+'" onclick="App._setPlanCycle(\'annual\')">Annual <span class="hnpc-save-badge">SAVE 17%</span></button>'
+      /* (v34_191) "2 MONTHS FREE" over "SAVE 17%". Same arithmetic, but one is a
+         discount rate and the other is time he can picture — and a percentage
+         off is the kind of number a shopkeeper has learned to discount. */
+      +   '<button class="'+(cyc==='annual'?'on':'')+'" onclick="App._setPlanCycle(\'annual\')">Annual <span class="hnpc-save-badge pulse">'+this._T('subs.twoFree','2 MONTHS FREE')+'</span></button>'
       + '</div>';
     var proHighlight = '<li class="hnpc-li" style="background:linear-gradient(90deg,#FFF6DC,#FFFDF6);border:1px solid #F3D57A;border-radius:11px;padding:10px 11px;margin:0 0 10px;align-items:center">'
       + '<svg width="18" height="18" viewBox="0 0 24 24" fill="#B8860B"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>'
@@ -76194,7 +76218,7 @@ html[data-shell="desktop"] #pg-settings .toggle {
         + '<div class="hnd-plans-toggle-wrap">'
           + '<div class="hnd-plans-toggle">'
             + '<button data-pcycle="monthly" id="hnd-plans-toggle-m">Monthly</button>'
-            + '<button data-pcycle="annual" id="hnd-plans-toggle-a">Annual <span class="save">SAVE 17%</span></button>'
+            + '<button data-pcycle="annual" id="hnd-plans-toggle-a">Annual <span class="save pulse">2 MONTHS FREE</span></button>'
           + '</div>'
         + '</div>'
         + '<div class="hnd-plans-grid" id="hnd-plans-grid"></div>';
@@ -76561,6 +76585,23 @@ html[data-shell="desktop"] #pg-settings .toggle {
   font-weight: 800;
 }
 .hnd-plans-toggle button:not(.active) .save { opacity: 0.7; }
+/* (v34_191) Matches the mobile badge exactly — same 3s breath, same single
+   sheen — so the two screens read as one app rather than two teams. */
+@keyframes hndSaveBreathe { 0%,82%,100%{transform:scale(1)} 88%{transform:scale(1.045)} 94%{transform:scale(.995)} }
+@keyframes hndSaveSheen   { 0%,70%{left:-140%} 100%{left:140%} }
+.hnd-plans-toggle .save.pulse {
+  position: relative; overflow: hidden; display: inline-block;
+  animation: hndSaveBreathe 3s ease-in-out infinite; will-change: transform;
+}
+.hnd-plans-toggle .save.pulse::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -140%; width: 55%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.6), transparent);
+  animation: hndSaveSheen 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hnd-plans-toggle .save.pulse { animation: none; }
+  .hnd-plans-toggle .save.pulse::after { display: none; }
+}
 
 .hnd-plans-grid {
   display: grid;
