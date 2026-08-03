@@ -3,14 +3,33 @@
  * shell must never outlive a new build. Cache is the offline fallback
  * only, after NAV_TIMEOUT.
  */
-const SW_VERSION = 'rn_v3_3_0_fastboot';
+const SW_VERSION = 'rn_v3_22_2_glossy';
 const CACHE = 'rentalnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000;
-const SHELL = ['./rentalnow.html'];
+/* './' is what the manifest's start_url resolves to, and what index.html is
+ * served as. There is no second filename to cover: rentalnow.html was the old
+ * name of this app, it went live under the new name on the same day, so no
+ * bookmark to the old one exists and the redirect stub that guarded it has
+ * been deleted rather than maintained. */
+const SHELL = [
+  './',
+  './manifest.webmanifest',
+  './rn-mark.png',
+  './icon-192.png', './icon-512.png',
+  './icon-192-maskable.png', './icon-512-maskable.png',
+  './apple-touch-icon.png', './favicon-32.png'
+];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
+  /* Added one at a time rather than with addAll. addAll is atomic — a single
+   * 404 rejects the whole batch and leaves the cache empty, so one missing
+   * icon would silently cost the app its entire offline shell. */
+  e.waitUntil(
+    caches.open(CACHE).then((c) => Promise.all(
+      SHELL.map((u) => c.add(new Request(u, { cache: 'reload' })).catch(() => {}))
+    )).catch(() => {})
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -42,7 +61,7 @@ self.addEventListener('fetch', (e) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match(req).then((r) => r || caches.match('./rentalnow.html')))
+      }).catch(() => caches.match(req).then((r) => r || caches.match('./')))
     );
     return;
   }
