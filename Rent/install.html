@@ -267,17 +267,26 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
    6% — which is invisible. The result was a flat navy screen with two orphaned
    tiles. All four are fixed below. */
 .hero{background:
-    linear-gradient(180deg,rgba(10,44,67,.82),rgba(7,31,49,.94)),
-    radial-gradient(120% 80% at 78% 6%,#1C6291,#0A2C43 62%);
+    radial-gradient(90% 70% at 50% 0%,rgba(28,98,145,.42),transparent 62%),
+    linear-gradient(170deg,#012346 0%,#001E3A 45%,#001730 100%);
   color:#fff;padding:26px 0 24px;position:relative;overflow:hidden;text-align:center}
-/* Third attempt at these. 6% was invisible; 18% at 78% height turned them into
-   giant wireframes scrawled across the headline. They are decoration, not
-   content: small, low, at the edges, and behind everything. */
-.hero .veh{position:absolute;left:0;right:0;bottom:0;height:44%;pointer-events:none;opacity:.09}
-.hero .veh svg{position:absolute;bottom:4%;height:52%}
-.hero .veh .l{left:-6%}
-.hero .veh .r{right:-6%}
-@media(max-width:560px){ .hero .veh{opacity:.07;height:34%} .hero .veh svg{height:38%} }
+/* The actual bike and car, cut from the reference. Three attempts at drawing
+   them as SVG failed for the same reason each time: an outline reads as a
+   diagram, and this needs to read as a photograph seen through the dark. The
+   inner edge of each is faded to nothing in the PNG itself, so they melt into
+   the middle instead of ending at a visible seam.
+
+   27 KB and 23 KB, half resolution and 128 colours — they are a soft backdrop
+   behind a headline, and a rental yard on one bar of signal should not pay
+   500 KB for atmosphere. */
+.hero .veh{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero .veh img{position:absolute;top:0;height:100%;width:auto;opacity:.85}
+.hero .veh .l{left:0}
+.hero .veh .r{right:0}
+@media(max-width:640px){
+  /* On a phone they sit behind the copy, so they drop back to let it breathe. */
+  .hero .veh img{height:76%;top:6%;opacity:.55}
+}
 .hero .wrap{position:relative;z-index:1}
 .logo{width:92px;height:92px;border-radius:26px;margin:0 auto 13px;overflow:hidden;background:#fff;
   box-shadow:0 18px 40px -14px rgba(0,0,0,.7)}
@@ -304,12 +313,12 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
   display:flex;align-items:center;justify-content:center;margin:0 auto 7px}
 .f5 .ic svg{width:54%;height:54%}
 .f5 b{display:block;font-size:clamp(9.5px,2.6vw,12.5px);font-weight:850;line-height:1.2;
-  letter-spacing:-.015em}
+  letter-spacing:-.015em;min-height:2.4em}
 /* Fixed height, so five tiles line up whatever the copy does. Ragged bottoms
    across a row of five is most of what made the first version look unfinished. */
 .f5 span{display:block;font-size:clamp(8px,2.1vw,10px);color:rgba(255,255,255,.62);
   margin-top:4px;line-height:1.32;min-height:2.6em}
-@media(max-width:420px){ .f5 span{display:none} }
+@media(max-width:480px){ .f5 span{display:none} }
 
 /* ── login, above the fold ────────────────────────────────
    Kept from the reference and the best idea in it: a shop owner who has decided
@@ -400,7 +409,10 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 </head>
 <body>
 
-<div class="hero"><div class="veh" aria-hidden="true"><svg class="l" viewBox="0 0 220 130" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="42" cy="94" r="28"/><circle cx="176" cy="94" r="28"/><path d="M42 94 78 46h34l22 48M112 46l26 4M96 46l-18-14H58"/><path d="M134 94h42M138 50l14 44M150 34h30l6 14"/><path d="M78 60h44l10 22"/></svg><svg class="r" viewBox="0 0 260 120" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 82V60c0-6 5-9 11-10l30-4 22-20c4-4 9-6 15-6h58c7 0 13 3 17 9l16 22 44 8c9 2 15 8 15 16v7c0 4-3 8-8 8h-14"/><path d="M96 82h58M40 82H26"/><circle cx="70" cy="84" r="20"/><circle cx="188" cy="84" r="20"/><path d="M60 46h58M126 44l14 18"/></svg></div><div class="wrap">
+<div class="hero"><div class="veh" aria-hidden="true">
+  <img class="l" src="./hero-bike.png" alt="" loading="eager" decoding="async">
+  <img class="r" src="./hero-car.png" alt="" loading="eager" decoding="async">
+</div><div class="wrap">
   <div class="logo"><img src="./icon-192.png" alt="RentalNow"></div>
   <div class="wm">Rental<i>Now</i></div>
   <div class="tl">The Complete Bike &amp; Car<br>Rental Management App</div>
@@ -410,16 +422,16 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
   </div>
   <h2>Manage your rental business in one app</h2>
   <div class="f5">
-    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.6"/><path d="M3 9.6h18M8 2.4v4M16 2.4v4" /><path d="M8.6 14.4l2.2 2.2 4.4-4.4" stroke-width="2.4"/></svg></div><b>Bookings</b>
-      <span>Held for a date</span></div>
-    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#3B9BE8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.4" cy="16.8" r="3.4"/><circle cx="18" cy="16.8" r="3.4"/><path d="M8.8 16.8h5.8M14.6 16.8 11 8.4h-2M9 5.4h3.2l1.4 3M16.4 8.4h2.6l-1 8.4"/></svg></div><b>Fleet</b>
-      <span>Bikes &amp; cars, one list</span></div>
-    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#2FB56B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.6"/><path d="M2.6 20.4c0-3.6 2.9-5.8 6.4-5.8s6.4 2.2 6.4 5.8"/><circle cx="17.4" cy="9.2" r="2.8"/><path d="M17.4 14.6c2.4 0 4 1.6 4 4"/></svg></div><b>Customers</b>
-      <span>Numbers &amp; history</span></div>
-    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2.6" width="13" height="18.8" rx="2.2"/><path d="M7.6 7.4h6M7.6 11h6M7.6 14.6h3.4"/><circle cx="17.6" cy="16.6" r="4.2" fill="#8B5CF6" stroke="none"/><path d="M15.9 14.8h3.4M15.9 16.6h3.4M18.5 14.8c0 1.2-.9 1.8-2.1 1.8l2.4 2.6" stroke="#fff" stroke-width="1.5"/></svg></div><b>Billing</b>
-      <span>Bills &amp; deposits</span></div>
-    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="12.4" width="4.4" height="8.4" rx="1.2"/><rect x="9.8" y="7.6" width="4.4" height="13.2" rx="1.2"/><rect x="16.4" y="3.2" width="4.4" height="17.6" rx="1.2"/></svg></div><b>Earnings</b>
-      <span>Today, 7d, 30d</span></div>
+    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.6"/><path d="M3 9.6h18M8 2.4v4M16 2.4v4" /><path d="M8.6 14.4l2.2 2.2 4.4-4.4" stroke-width="2.4"/></svg></div><b>Track Bookings</b>
+      <span>Held for a date, converted at pickup</span></div>
+    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#3B9BE8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.4" cy="16.8" r="3.4"/><circle cx="18" cy="16.8" r="3.4"/><path d="M8.8 16.8h5.8M14.6 16.8 11 8.4h-2M9 5.4h3.2l1.4 3M16.4 8.4h2.6l-1 8.4"/></svg></div><b>Manage Fleet</b>
+      <span>Bike &amp; car inventory in one list</span></div>
+    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#2FB56B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.6"/><path d="M2.6 20.4c0-3.6 2.9-5.8 6.4-5.8s6.4 2.2 6.4 5.8"/><circle cx="17.4" cy="9.2" r="2.8"/><path d="M17.4 14.6c2.4 0 4 1.6 4 4"/></svg></div><b>Customer Records</b>
+      <span>Names, numbers &amp; rental history</span></div>
+    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2.6" width="13" height="18.8" rx="2.2"/><path d="M7.6 7.4h6M7.6 11h6M7.6 14.6h3.4"/><circle cx="17.6" cy="16.6" r="4.2" fill="#8B5CF6" stroke="none"/><path d="M15.9 14.8h3.4M15.9 16.6h3.4M18.5 14.8c0 1.2-.9 1.8-2.1 1.8l2.4 2.6" stroke="#fff" stroke-width="1.5"/></svg></div><b>Billing &amp; Deposits</b>
+      <span>Bills on WhatsApp, deposits tracked</span></div>
+    <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="12.4" width="4.4" height="8.4" rx="1.2"/><rect x="9.8" y="7.6" width="4.4" height="13.2" rx="1.2"/><rect x="16.4" y="3.2" width="4.4" height="17.6" rx="1.2"/></svg></div><b>Daily Earnings</b>
+      <span>Track income &amp; daily reports</span></div>
   </div>
 </div></div>
 
