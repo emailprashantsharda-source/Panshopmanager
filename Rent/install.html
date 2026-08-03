@@ -271,7 +271,7 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 .hero{background:
     radial-gradient(90% 70% at 50% 0%,rgba(28,98,145,.42),transparent 62%),
     linear-gradient(170deg,#012346 0%,#001E3A 45%,#001730 100%);
-  color:#fff;padding:18px 0 18px;position:relative;overflow:hidden;text-align:center}
+  color:#fff;padding:16px 0 34px;position:relative;overflow:hidden;text-align:center}
 /* The actual bike and car, cut from the reference. Three attempts at drawing
    them as SVG failed for the same reason each time: an outline reads as a
    diagram, and this needs to read as a photograph seen through the dark. The
@@ -282,12 +282,13 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
    behind a headline, and a rental yard on one bar of signal should not pay
    500 KB for atmosphere. */
 .hero .veh{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.hero .veh img{position:absolute;top:0;height:100%;width:auto;opacity:.85}
+.hero .veh img{position:absolute;top:0;height:auto;width:auto;max-height:86%;
+  max-width:38%;opacity:.85}
 .hero .veh .l{left:0}
 .hero .veh .r{right:0}
 @media(max-width:640px){
   /* On a phone they sit behind the copy, so they drop back to let it breathe. */
-  .hero .veh img{height:76%;top:6%;opacity:.55}
+  .hero .veh img{max-height:60%;max-width:44%;top:4%;opacity:.5}
 }
 .hero .wrap{position:relative;z-index:1}
 .logo{width:74px;height:74px;border-radius:21px;margin:0 auto 10px;overflow:hidden;background:#fff;
@@ -329,15 +330,11 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
    Kept from the reference and the best idea in it: a shop owner who has decided
    in four seconds can type his number in the next four, instead of hunting for
    an Install button first. */
-.loginwrap{background:linear-gradient(180deg,#071F31 0,#071F31 46%,var(--bg) 46%);padding-bottom:2px}
-/* This was white text sitting on .loginwrap, whose gradient turns cream at
-   46% — so the strip landed on the cream half and only the emoji survived.
-   It now carries its own navy, which cannot drift out of step with whatever
-   is behind it. */
-.trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;
-  padding:14px 16px 16px;font-size:clamp(11.5px,3.1vw,13px);font-weight:750;
-  color:rgba(255,255,255,.9);background:#071F31}
-.trust span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+/* The card now overlaps the hero rather than sitting below it — the login is
+   the point of this page, and every pixel between the fold and the OTP button
+   is a pixel a decided shop owner has to scroll past. */
+.loginwrap{background:linear-gradient(180deg,#071F31 0,#071F31 34%,var(--bg) 34%);
+  padding-bottom:2px;margin-top:-26px;position:relative;z-index:2}
 .loginc{background:var(--card);border-radius:18px;padding:19px;
   box-shadow:0 18px 40px -18px rgba(10,44,67,.55)}
 .lrow{display:flex;align-items:center;gap:12px;margin-bottom:14px}
@@ -446,23 +443,6 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 </div></div>
 
 <div class="loginwrap"><div class="wrap">
-  <!-- (5) A trust strip above the login, as asked — but NOT "Trusted by 500+
-       Rental Businesses" or a star rating. You have neither 500 shops nor a
-       single review, and inventing both on the page where a shopkeeper decides
-       to hand over his phone number is a misleading advertisement under the
-       Consumer Protection Act 2019 and the ASCI code. It is also the one lie
-       a prospect can check.
-
-       These four are true today, and every one of them answers a real doubt:
-       nobody can see your data, it works without signal, nothing to install
-       from a store, and you can leave. That is what trust is made of before
-       you have customers to point at. -->
-  <div class="trust">
-    <span>&#128274; Your data, your account</span>
-    <span>&#128246; Works without signal</span>
-    <span>&#8377; 14 days free, no card</span>
-    <span>&#10003; Cancel any time</span>
-  </div>
   <div class="loginc">
     <div class="lrow"><div class="b">&#128241;</div>
       <div><b>Mobile number</b><span>We send a one-time code by SMS</span></div></div>
