@@ -208,6 +208,17 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   text-decoration:underline;margin-top:13px;cursor:pointer}
 .wl-foot{text-align:center;font-size:11.5px;color:var(--t4);margin-top:12px}
 
+/* ── bike / car picker inside the add sheet ───────────────
+   Only rendered for a shop that said it rents both; a single-kind shop is
+   never asked, which is the whole reason the question exists at signup. */
+.kindrow{display:flex;gap:9px;margin-bottom:12px}
+.kbtn{flex:1;background:var(--card);border:2px solid var(--bd);border-radius:12px;
+  padding:11px 6px;text-align:center;cursor:pointer;transition:border-color .12s,background .12s}
+.kbtn.on{border-color:var(--p);background:var(--p-50)}
+.kbtn.on.car{border-color:var(--tl,#0E7490);background:#E0F2FE}
+.kbtn .e{font-size:22px;display:block;line-height:1.1}
+.kbtn b{font-size:13px;font-weight:850;display:block;margin-top:2px}
+
 /* ── what do you rent ─────────────────────────────────────
    Big targets: this is the first thing a shop touches, often on a phone
    propped against a till. */
@@ -843,7 +854,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_23_2_logo';
+const BUILD = 'rn_v3_23_4_audit';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -935,6 +946,15 @@ function rentKind(){
    the assumption. And a shop that answered 'bike' and owns one car must not
    be told it has 12 bikes. */
 function fleetKind(){
+  /* A shop that answered "Both" stays 'both' for ever. It used to be derived
+     from the fleet alone, so the first bike added flipped a mixed yard back to
+     'bike' — the app renamed itself the moment the shop started using it, and
+     the Add sheet stopped offering cars entirely.
+     
+     The fleet can only ESCALATE the answer, never narrow it: a shop that said
+     'bike' and buys a car becomes 'both'. It cannot un-say 'both'. */
+  const said = rentKind();
+  if (said === 'both') return 'both';
   const v = (window.DB && DB.d && DB.d.vehicles) || [];
   let bike = false, car = false;
   for (const x of v){
@@ -942,14 +962,25 @@ function fleetKind(){
     (x.kind === 'car') ? (car = true) : (bike = true);
     if (bike && car) return 'both';
   }
-  if (car) return 'car';
-  if (bike) return 'bike';
-  return rentKind() === 'both' ? 'both' : rentKind();
+  if (bike && car) return 'both';
+  if (car && said !== 'bike') return 'car';
+  if (car) return 'both';          /* a bike shop that bought a car */
+  if (bike) return said === 'car' ? 'both' : 'bike';
+  return said;
 }
 /* noun()  -> 'bike'    'car'     'vehicle'
    noun(1) -> 'bikes'   'cars'    'vehicles'
    Capitalised variants for sentence starts, because 'Add a bike' and
    'add a bike' both occur and neither should be assembled by hand. */
+/* The picture that goes with the words. A car shop seeing a motorcycle on its
+   empty-fleet screen is the same failure as reading "bike" — it just fails in
+   a medium nobody greps for. */
+function kindEmoji(kind){
+  const k = kind || fleetKind();
+  return k === 'car' ? '\u{1F697}' : (k === 'both' ? '\u{1F697}\u{1F6F5}' : '\u{1F6F5}');
+}
+window.kindEmoji = kindEmoji;
+
 function noun(plural, kind){
   const k = kind || fleetKind();
   const w = k === 'car' ? 'car' : (k === 'both' ? 'vehicle' : 'bike');
@@ -2119,7 +2150,8 @@ const R = {
         <div class="tx"><b>${title}</b><span>${sub}</span></div></div>`;
     return `
       <div class="wl">
-        <div class="wl-ring">${fleetKind()==='car' ? '\u{1F697}' : '\u{1F6F5}'}</div>
+        <div class="wl-ring" style="${fleetKind()==='both'?'font-size:26px;letter-spacing:-2px':''}"
+          >${kindEmoji()}</div>
         <h2>Welcome, ${esc(who)}</h2>
         <p>Let\u2019s get your shop ready. Two minutes, and you can rent a ${noun()} out today.</p>
       </div>
@@ -2371,7 +2403,7 @@ const R = {
 
     const banner = ob + seg + pick + (this.obDone() ? this.ratesBanner() : '') + this.trialBanner();
     if (!open.length){
-      box.innerHTML = banner + `<div class="empty"><div class="e">🛵</div>
+      box.innerHTML = banner + `<div class="empty"><div class="e">${kindEmoji()}</div>
           <b>Nothing is out right now</b>
           <span>Every ${noun()} is in the yard.</span>
           <div style="margin-top:18px"><button class="btn y" onclick="R.checkoutStart()">
@@ -2439,7 +2471,7 @@ const R = {
       /* One action. This used to read "Your rate card lists 0 models" and offer
          "+ Create 0 bikes from my rate card" — copy written when rate cards
          shipped pre-seeded, which now offers to create nothing. */
-      box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
+      box.innerHTML = `<div class="empty"><div class="e">${kindEmoji()}</div>
         <b>No ${noun(1)} yet</b>
         <span>Add the ${noun(1)} you actually own. Each one gets its own row, and you can
           give it a number plate.</span>
@@ -2655,6 +2687,7 @@ const R = {
     DB.d.rates.forEach(rc => {
       if (DB.d.vehicles.some(v => v.rateId === rc.id)) return;
       const rec = { name: rc.model, regNo: '', rateId: rc.id, model: rc.model,
+                    kind: fleetKind()==='car' ? 'car' : 'bike',
                     status: 'available', cost: 0, insExpiry: '', pucExpiry: '', odo: 0 };
       if (window.Cloud && Cloud.ready) Cloud.put('vehicles', Cloud.nid('v'), rec);
       else DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec));
@@ -2921,11 +2954,21 @@ const R = {
     const src = k==='car' ? (window.CAR_SUGGESTIONS||[]) : (window.MODEL_SUGGESTIONS||[]);
     const chips = src.map(m =>
       `<span class="chip" onclick="R.pickModel('${esc(m)}')">${esc(m)}</span>`).join('');
+    /* A shop that rents both must be asked which one. A shop that rents one
+       kind is not — that was the whole point of asking at signup. */
+    const pick = rentKind()==='both' ? `
+      <div class="kindrow">
+        <div class="kbtn ${k==='bike'?'on':''}" onclick="R.setAddKind('bike')">
+          <span class="e">\u{1F6F5}</span><b>Bike</b></div>
+        <div class="kbtn ${k==='car'?'on car':''}" onclick="R.setAddKind('car')">
+          <span class="e">\u{1F697}</span><b>Car</b></div>
+      </div>` : '';
     openSheet(`
       <div class="sheet-hd"><h2>Add your first ${noun(0,k)}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
 
-      <div class="fld"><label class="lbl">${Noun()} name <span class="req">*</span></label>
+      ${pick}
+      <div class="fld"><label class="lbl">${Noun(0,k)} name <span class="req">*</span></label>
         <input class="in" id="fb-name" placeholder="${k==='car'?'Swift':'Activa 5G'}" autocomplete="off"></div>
       <div class="muted" style="margin:-4px 2px 6px">Common models \u2014 tap to fill, or type your own</div>
       <div class="chips" id="fb-chips">${chips}</div>
@@ -2947,6 +2990,20 @@ const R = {
       <div class="muted" style="text-align:center;margin-top:9px">You can add more bikes and more
         rates any time.</div>`);
   },
+  /* Re-opens the sheet so the chips, placeholder and heading all follow. The
+     name field is kept if the shop already typed one. */
+  setAddKind(k){
+    if (this._addKind === k) return;
+    const el = document.getElementById('fb-name');
+    this._keepName = el ? el.value : '';
+    this._addKind = k;
+    Haptic.tap();
+    this.firstBike();
+    const el2 = document.getElementById('fb-name');
+    if (el2 && this._keepName) el2.value = this._keepName;
+    this._keepName = '';
+  },
+
   pickModel(m){
     const el = document.getElementById('fb-name') || document.getElementById('v-name');
     if (el){ el.value = m; }
@@ -2959,6 +3016,9 @@ const R = {
     Haptic.tap();
   },
   saveFirstBike(){
+    /* _addKind, not a local — saveFirstBike runs from an onclick long after
+       firstBike() returned, so the k it computed is out of scope. */
+    const k = this._addKind || (rentKind()==='car' ? 'car' : 'bike');
     const g = i => document.getElementById(i);
     const name = (g('fb-name').value||'').trim();
     const reg  = (g('fb-reg').value||'').trim().toUpperCase();
@@ -2977,7 +3037,7 @@ const R = {
     if (window.Cloud && Cloud.ready){
       const rid = Cloud.nid('rc');
       const vid = Cloud.nid('v');
-      const vehRec = { name, regNo: reg, rateId: rid, model: name,
+      const vehRec = { name, regNo: reg, rateId: rid, model: name, kind: k,
         status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 };
       /* BUG FIX: local state was left empty until the Firestore listener echoed
          back, so render() ran with zero bikes and painted the welcome screen
@@ -3003,7 +3063,7 @@ const R = {
       const rid = DB.id('rc');
       DB.d.rates.push(Object.assign({ id: rid }, rateRec));
       DB.d.vehicles.push({ id: DB.id('v'), name, regNo: reg, rateId: rid, model: name,
-        status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 });
+        kind: k, status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 });
     }
     DB.save();
     Haptic.success();
@@ -3068,6 +3128,14 @@ const R = {
     const g = i => document.getElementById(i);
     const old = id ? DB.d.vehicles.find(x=>x.id===id) : null;
     const rec = {
+      /* Recorded on every vehicle, not just the first — without it a mixed
+         shop's second car saves as a bike.
+         
+         An EDIT keeps whatever the vehicle already was. Deriving it here would
+         mean opening a car to fix its number plate and saving it back as a
+         bike, which is data loss with no error message. */
+      kind: old ? (old.kind || 'bike')
+                : (this._addKind || (fleetKind()==='car' ? 'car' : 'bike')),
       name, regNo: reg, rateId, model: rc?rc.model:'',
       status: g('v-status') ? g('v-status').value : (old?old.status:'available'),
       cost: g('v-cost') ? (Number(g('v-cost').value)||0) : (old?old.cost:0),
@@ -3097,7 +3165,8 @@ const R = {
       } else { writeVeh(); }
     } else if (id){ Object.assign(DB.d.vehicles.find(x=>x.id===id), rec); }
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
-    DB.save(); closeSheet(); this.render(); toast(id?'Bike updated':'Bike added');
+    DB.save(); closeSheet(); this.render();
+    toast(Noun() + (id ? ' updated' : ' added'));
   },
 
   /* ── clean up the old seeder's leftovers ─────────────────────────
@@ -3463,6 +3532,11 @@ const R = {
       if (!(DB.d.vehicles||[]).some(v => v.rateId === rid)){
         const wv = await Cloud.put('vehicles', 'v_'+rid, {
           name: rec.model, regNo:'', rateId: rid, model: rec.model,
+          /* Photographing a car price list was creating bikes. A scan cannot
+             know the kind on its own, so it follows what the shop said it
+             rents; a mixed yard defaults to bike and can change it per
+             vehicle afterwards. */
+          kind: rentKind()==='car' ? 'car' : 'bike',
           status:'available', cost:0, insExpiry:'', pucExpiry:'', odo:0 });
         if (!wv.ok){ failed = wv; break; }
       }
@@ -4625,7 +4699,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <div class="bill-veh">
           <div><div class="bill-veh-n">${esc(v?vLabel(v):((r.rateSnapshot&&r.rateSnapshot.model)||'Vehicle'))}</div>
           ${v&&v.regNo?`<div class="muted">${esc(v.regNo)}</div>`:''}</div>
-          <div style="font-size:30px">🛵</div></div>
+          <div style="font-size:30px">${kindEmoji()}</div></div>
         <div class="bill-grid">
           <div><span>Customer</span><b>${esc(r.customerName||'—')}</b></div>
           <div><span>Phone</span><b>${esc(r.customerPhone||'—')}</b></div>
