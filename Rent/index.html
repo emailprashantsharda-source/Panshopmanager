@@ -13,9 +13,9 @@
      the one that carries a Chrome badge on the icon and does not open
      standalone. That cost HisaabNow a week; it is not repeated here. -->
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=23">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png?v=23">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -438,9 +438,10 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   display:flex;align-items:center;justify-content:center;
   border:1px solid rgba(255,255,255,.2);margin:0 auto 16px;overflow:hidden}
 .gate-mark img{width:100%;height:100%;object-fit:cover;display:block}
-/* The mark carries its own navy plate, so the frosted tile behind it would
-   show as a rim. */
-.gate-mark{background:none;border:0}
+/* The mark is navy and orange on white, so it needs a white plate of its own
+   rather than the frosted tile — on the dark gate that tile read as a grey
+   halo around the artwork. */
+.gate-mark{background:#fff;border:0;box-shadow:0 12px 30px -12px rgba(0,0,0,.5)}
 .gate-h1{font-size:31px;font-weight:850;letter-spacing:-.035em;margin-bottom:5px}
 /* Now in amber, matching the wordmark on the brand sheet. */
 .gate-h1 span{color:var(--y)}
@@ -574,7 +575,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   }
   .side-brand{display:flex;align-items:center;gap:11px;padding:4px 4px 18px;
     border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px}
-  .side-brand img{width:42px;height:42px;border-radius:12px;flex:0 0 auto}
+  .side-brand img{width:42px;height:42px;border-radius:12px;flex:0 0 auto;background:#fff}
   .side-brand b{font-size:16.5px;font-weight:900;letter-spacing:-.025em;line-height:1.2;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .side-brand b span{display:block;font-size:11px;font-weight:700;color:#8FAEC4;
@@ -841,7 +842,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_22_2_glossy';
+const BUILD = 'rn_v3_23_1_logo';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
