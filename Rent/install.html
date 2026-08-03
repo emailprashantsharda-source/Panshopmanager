@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>RentalNow — run your bike rental from your phone</title>
+<title>RentalNow — the complete bike &amp; car rental management app</title>
 <meta name="description" content="Rent out bikes, take them back, settle deposits and see today's earnings. Built for Indian bike and scooter rental shops. Works without signal.">
 <meta name="theme-color" content="#0A2C43">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -259,152 +259,251 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
   html{scroll-behavior:auto}
   *,*:after,*:before{animation:none !important;transition:none !important}
 }
+
+/* ── hero ─────────────────────────────────────────────────
+   Silhouettes bled into the navy rather than photographs. A stock car and a
+   superbike make this read as a consumer rental marketplace — which is the
+   product a shop owner is NOT looking for, and the exact confusion the login
+   tagline was corrected away from. */
+.hero{background:
+    linear-gradient(180deg,rgba(10,44,67,.88),rgba(7,31,49,.96)),
+    radial-gradient(120% 80% at 80% 8%,#1C6291,#0A2C43 62%);
+  color:#fff;padding:34px 0 26px;position:relative;overflow:hidden;text-align:center}
+.hero:before,.hero:after{content:'';position:absolute;font-size:190px;opacity:.06;line-height:1;
+  pointer-events:none}
+.hero:before{content:'\1F3CD\FE0F';left:-34px;top:52px}
+.hero:after{content:'\1F697';right:-34px;top:66px}
+.hero .wrap{position:relative;z-index:1}
+.logo{width:88px;height:88px;border-radius:25px;margin:0 auto 14px;overflow:hidden;background:#fff;
+  box-shadow:0 16px 36px -14px rgba(0,0,0,.65)}
+.logo img{width:100%;height:100%;display:block}
+.wm{font-size:clamp(34px,9vw,46px);font-weight:900;letter-spacing:-.04em;line-height:1.04}
+.wm i{font-style:normal;color:var(--y)}
+.tl{font-size:clamp(15px,3.6vw,18px);font-weight:650;opacity:.9;margin-top:8px;line-height:1.35}
+.pills{display:flex;justify-content:center;flex-wrap:wrap;gap:7px 18px;margin-top:16px;
+  font-size:13px;font-weight:700;opacity:.88}
+.pills span{display:flex;align-items:center;gap:6px}
+.hero h2{font-size:clamp(17px,4.4vw,21px);font-weight:875;letter-spacing:-.025em;margin:26px 0 14px}
+.f5{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+.f5 .c{text-align:center}
+.f5 .ic{width:100%;aspect-ratio:1;border-radius:15px;background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.13);display:flex;align-items:center;justify-content:center;
+  font-size:clamp(19px,5vw,26px);margin-bottom:7px}
+.f5 b{display:block;font-size:clamp(10px,2.6vw,12px);font-weight:850;line-height:1.25}
+.f5 span{display:block;font-size:clamp(8.5px,2.2vw,10px);color:rgba(255,255,255,.62);
+  margin-top:2px;line-height:1.3}
+
+/* ── login, above the fold ────────────────────────────────
+   Kept from the reference and the best idea in it: a shop owner who has decided
+   in four seconds can type his number in the next four, instead of hunting for
+   an Install button first. */
+.loginwrap{background:linear-gradient(180deg,#071F31 0,#071F31 46%,var(--bg) 46%);padding-bottom:2px}
+.loginc{background:var(--card);border-radius:18px;padding:19px;
+  box-shadow:0 18px 40px -18px rgba(10,44,67,.55)}
+.lrow{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.lrow .b{width:44px;height:44px;border-radius:13px;background:#EAF2F8;display:flex;
+  align-items:center;justify-content:center;font-size:20px;flex:0 0 auto}
+.lrow b{display:block;font-size:16px;font-weight:875;letter-spacing:-.02em}
+.lrow span{display:block;font-size:12px;color:var(--t3)}
+.lin{display:flex;align-items:center;border:1.5px solid var(--bd);border-radius:12px;overflow:hidden}
+.lin .cc{padding:0 12px;font-size:14.5px;font-weight:850;color:var(--t2);
+  border-right:1.5px solid var(--bd);align-self:stretch;display:flex;align-items:center}
+.lin input{flex:1;border:0;outline:0;padding:14px 13px;font-size:15.5px;font-family:inherit;
+  background:transparent;min-width:0}
+.lin:focus-within{border-color:var(--y)}
+.priv{font-size:11.5px;color:var(--t3);text-align:center;margin-top:10px}
+.trio{display:flex;background:var(--card);border:1px solid var(--bd);border-radius:15px;
+  margin-top:14px;overflow:hidden}
+.trio .t{flex:1;padding:14px 9px;text-align:center;border-left:1px solid #F1EEE7}
+.trio .t:first-child{border-left:0}
+.trio .e{font-size:20px}
+.trio b{display:block;font-size:12.5px;font-weight:850;margin-top:4px}
+.trio span{display:block;font-size:10.5px;color:var(--t3);line-height:1.35;margin-top:2px}
+
+/* ── real screens ─────────────────────────────────────────
+   Every number and every state below exists in the app today. Nothing here is
+   aspirational, which is the only defensible way to screenshot a product. */
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sc{background:var(--card);border:1px solid var(--bd);border-radius:15px;padding:13px}
+.sc .h{font-size:13.5px;font-weight:875;display:flex;align-items:center;gap:6px;justify-content:center}
+.sc .s{font-size:11px;color:var(--t3);line-height:1.35;margin:3px 0 10px;text-align:center}
+.shot{background:#FBF9F5;border:1px solid #EFEBE2;border-radius:11px;padding:8px}
+.shot .sh{font-size:9px;font-weight:850;color:var(--t3);display:flex;justify-content:space-between;
+  padding-bottom:6px;border-bottom:1px solid #EFEBE2;letter-spacing:.04em}
+.shot .r{padding:6px 0;border-bottom:1px solid #F4F1EA;display:flex;justify-content:space-between;
+  align-items:center;gap:6px}
+.shot .r:last-child{border-bottom:0}
+.shot .n{font-size:10.5px;font-weight:850}
+.shot .m{font-size:9px;color:var(--t3)}
+.stag{font-size:7.5px;font-weight:900;padding:2px 6px;border-radius:99px;white-space:nowrap}
+.stag.ok{background:var(--ok-t,#E7F9F0);color:#048A45}
+.stag.out{background:#E8F0F7;color:var(--navy)}
+.stag.late{background:#FDECEA;color:var(--dg,#E11900)}
+
+/* ── install ──────────────────────────────────────────────
+   Its own block, and deliberately AFTER the proof: installing is a decision
+   made once convinced, not on arrival. */
+.inst{background:var(--card);border:1px solid var(--bd);border-radius:17px;padding:17px}
+.inst .top{display:flex;gap:13px;align-items:center;margin-bottom:13px}
+.inst .ic{width:56px;height:56px;border-radius:16px;overflow:hidden;background:#fff;flex:0 0 auto;
+  box-shadow:0 10px 24px -10px rgba(0,0,0,.4)}
+.inst .ic img{width:100%;height:100%;display:block}
+.inst b{display:block;font-size:15px;font-weight:875;letter-spacing:-.02em}
+.inst .top span{display:block;font-size:12px;color:var(--t3)}
+
+/* ── steps ───────────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.step{text-align:center}
+.step .n{width:30px;height:30px;border-radius:99px;background:var(--navy);color:#fff;
+  font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;
+  margin:0 auto 8px}
+.step b{display:block;font-size:13px;font-weight:875}
+.step span{display:block;font-size:11px;color:var(--t3);line-height:1.4;margin-top:3px}
+
+/* ── whatsapp ─────────────────────────────────────────────
+   Full-width band, not a floating bubble — those get swiped away. In this
+   market WhatsApp is not support, it is how business is done. */
+.wa{background:#0E7C4A;color:#fff}
+.wa .in{display:flex;align-items:center;gap:14px;padding:20px 0}
+.wa .ic{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.16);display:flex;
+  align-items:center;justify-content:center;font-size:24px;flex:0 0 auto}
+.wa b{display:block;font-size:15.5px;font-weight:875;letter-spacing:-.02em}
+.wa span{display:block;font-size:12.5px;opacity:.85}
+.wa a{background:#fff;color:#0E7C4A;border-radius:12px;padding:12px 18px;font-size:14px;
+  font-weight:900;text-decoration:none;white-space:nowrap}
+@media(max-width:560px){
+  .three{grid-template-columns:1fr}
+  .f5{grid-template-columns:repeat(3,1fr)}
+  .f5 .c:nth-child(4),.f5 .c:nth-child(5){grid-column:span 1}
+  .wa .in{flex-wrap:wrap}
+}
+
+.ctr{text-align:center}
+.ctr .lede{margin-left:auto;margin-right:auto}
 </style>
 </head>
 <body>
+<div class="hero"><div class="wrap">
+  <div class="logo"><img src="./icon-192.png" alt="RentalNow"></div>
+  <div class="wm">Rental<i>Now</i></div>
+  <div class="tl">The complete bike &amp; car<br>rental management app</div>
+  <div class="pills">
+    <span>&#128197; Bookings</span><span>&#128203; Fleet</span>
+    <span>&#128101; Customers</span><span>&#8377; Payments</span>
+  </div>
+  <h2>Run your whole shop from one app</h2>
+  <div class="f5">
+    <div class="c"><div class="ic">&#128197;</div><b>Bookings</b>
+      <span>Held for a date, converted at pickup</span></div>
+    <div class="c"><div class="ic">&#128757;</div><b>Fleet</b>
+      <span>Bikes and cars, one list</span></div>
+    <div class="c"><div class="ic">&#129534;</div><b>Deposits</b>
+      <span>Whose money you hold</span></div>
+    <div class="c"><div class="ic">&#128241;</div><b>Bills</b>
+      <span>Sent on WhatsApp</span></div>
+    <div class="c"><div class="ic">&#128200;</div><b>Earnings</b>
+      <span>Today, 7 days, 30 days</span></div>
+  </div>
+</div></div>
 
-<!-- ══════════ HERO ══════════ -->
-<div class="hero">
-  <div class="wrap">
-    <nav class="nav">
-      <img src="./icon-192.png" alt="">
-      <b>RentalNow</b>
-      <a href="#pricing">Pricing</a>
-    </nav>
+<div class="loginwrap"><div class="wrap">
+  <div class="loginc">
+    <div class="lrow"><div class="b">&#128241;</div>
+      <div><b>Mobile number</b><span>We send a one-time code by SMS</span></div></div>
+    <div class="lin"><span class="cc">+91</span>
+      <input id="lg-phone" type="tel" inputmode="numeric" maxlength="10"
+        placeholder="Enter your mobile number"></div>
+    <a class="btn" style="width:100%;margin-top:11px" href="./" id="lg-go">Continue with OTP
+      &#8594;</a>
+    <div class="priv">&#128274; We never share your number with anyone.</div>
+  </div>
+  <div class="trio">
+    <div class="t"><div class="e">&#128737;</div><b>Secure login</b>
+      <span>No password to remember</span></div>
+    <div class="t"><div class="e">&#128246;</div><b>Works offline</b>
+      <span>Rent out on zero bars</span></div>
+    <div class="t"><div class="e">&#9889;</div><b>2-minute setup</b>
+      <span>Add a vehicle, start renting</span></div>
+  </div>
+</div></div>
 
-    <div class="hero-grid">
-      <div>
-        <div class="plate"><div class="ind"><span>IND</span><i></i></div>
-          <div class="txt reg">DL 3S AB 1234</div><span class="rivet"></span></div>
-        <p class="audience">For bike rental shops</p>
-        <h1>Which bike is out.<br>Whose deposit you're<br><em>still holding.</em></h1>
-        <p class="lede" style="margin-top:16px">Every rental, return, deposit and rupee — on the
-          phone in your pocket. Built for Indian bike and scooter rental shops, not adapted from
-          something else.</p>
-        <div class="cta-row">
-          <button class="btn" id="go">Install app</button>
-          <a class="btn line" href="./">Open in browser</a>
-        </div>
-        <p class="cta-note">Free for 14 days · No card · Works without signal</p>
+<section><div class="wrap">
+  <div class="ctr"><h2>Everything you need to run a rental shop</h2></div>
+  <div class="three" style="margin-top:18px">
+    <div class="sc">
+      <div class="h">&#128197; Bookings</div>
+      <div class="s">Held for a date, before the customer arrives</div>
+      <div class="shot">
+        <div class="sh"><span>TODAY</span><span>2</span></div>
+        <div class="r"><div><div class="n">An Activa 5G</div>
+          <div class="m">Meena K.</div></div><span class="stag out">10:00 AM</span></div>
+        <div class="r"><div><div class="n">A Swift</div>
+          <div class="m">Vikram T.</div></div><span class="stag out">4:30 PM</span></div>
+        <div class="sh" style="margin-top:7px"><span>15 AUG</span><span>1</span></div>
+        <div class="r"><div><div class="n">A Pulsar 150</div>
+          <div class="m">Neha R. &middot; token &#8377;500</div></div><span class="stag ok">HELD</span></div>
       </div>
-
-      <div>
-        <div class="phone" aria-hidden="true">
-          <div class="ph-top">
-            <div class="ph-av"></div>
-            <div class="ph-t"><b>Sharma Bike Rentals</b><span>Out Now</span></div>
-          </div>
-          <div class="ph-body">
-            <div class="ph-kpis">
-              <div class="ph-kpi"><div class="ph-l">Out</div><div class="ph-v">7</div></div>
-              <div class="ph-kpi warn"><div class="ph-l">Late</div><div class="ph-v">1</div></div>
-              <div class="ph-kpi"><div class="ph-l">Today</div><div class="ph-v">₹4,150</div></div>
-            </div>
-            <div class="ph-kpis"><div class="ph-kpi dep" style="text-align:left;padding:9px 11px">
-              <div class="ph-l">Deposits held</div><div class="ph-v">₹14,000</div></div></div>
-            <div class="ph-card">
-              <div class="ph-r1"><b>Activa 6G</b><span class="ph-pill late">OVERDUE 2h 15m</span></div>
-              <div class="ph-m">DL 3S AB 1234 · Rohit Verma</div>
-              <div class="ph-d">Due 1:30 pm · 12 hr · deposit ₹2,000</div>
-            </div>
-            <div class="ph-card">
-              <div class="ph-r1"><b>Jupiter 125</b><span class="ph-pill out">OUT</span></div>
-              <div class="ph-m">DL 8S CX 4471 · Meena K.</div>
-              <div class="ph-d">Due 7:00 pm · 6 hr · deposit ₹1,500</div>
-            </div>
-            <div class="ph-card" style="margin-bottom:2px">
-              <div class="ph-r1"><b>Pulsar 150</b><span class="ph-pill out">OUT</span></div>
-              <div class="ph-m">DL 1S PQ 9032 · Aman S.</div>
-              <div class="ph-d">Due tomorrow 9:00 am · 24 hr · deposit ₹3,000</div>
-            </div>
-          </div>
-        </div>
+    </div>
+    <div class="sc">
+      <div class="h">&#128203; Fleet</div>
+      <div class="s">Bikes and cars in one list</div>
+      <div class="shot">
+        <div class="sh"><span>14 VEHICLES</span><span>5 OUT</span></div>
+        <div class="r"><div><div class="n">Activa 6G</div>
+          <div class="m">DL 3S AB 1234</div></div><span class="stag out">OUT</span></div>
+        <div class="r"><div><div class="n">Swift &mdash; white</div>
+          <div class="m">DL 3C AB 1234</div></div><span class="stag ok">FREE</span></div>
+        <div class="r"><div><div class="n">Pulsar 150</div>
+          <div class="m">PUC expired</div></div><span class="stag late">BLOCKED</span></div>
+      </div>
+    </div>
+    <div class="sc">
+      <div class="h">&#128200; Money</div>
+      <div class="s">Earnings, and deposits kept apart</div>
+      <div class="shot">
+        <div class="sh"><span>TODAY</span><span>&#8377;4,150</span></div>
+        <div class="r"><div><div class="n">Rent &#8377;3,800</div>
+          <div class="m">Overtime &#8377;250 &middot; fuel &#8377;100</div></div></div>
+        <div class="r"><div><div class="n">Cash &#8377;2,600</div>
+          <div class="m">UPI &#8377;1,550</div></div></div>
+        <div class="r" style="background:#FFF4E0;border-radius:8px;padding:7px;border:0">
+          <div><div class="n">Deposits held &#8377;14,000</div>
+          <div class="m">not your money</div></div></div>
       </div>
     </div>
   </div>
-</div>
+</div></section>
 
-<!-- ══════════ THE PROBLEM ══════════ -->
-<div class="pain">
-  <div class="wrap">
-    <div class="eyebrow">The register can't answer these</div>
-    <h2>Three questions that cost you money every week</h2>
-    <div class="pain-grid">
-      <div class="pain-c">
-        <div class="q">"Deposit kitna tha?"</div>
-        <p>The customer says ₹1,500. Your notebook says ₹2,000, in handwriting from four days ago.
-          Whoever argues louder wins, and it is usually not you.</p>
-      </div>
-      <div class="pain-c">
-        <div class="q">"Bas thoda late hua"</div>
-        <p>Three hours late is overtime you are owed. Nobody at the counter does that maths while
-          a customer is standing there in a hurry.</p>
-      </div>
-      <div class="pain-c">
-        <div class="q">"Aaj ka kitna bana?"</div>
-        <p>You cannot tell, because ₹40,000 of deposits is sitting in the same drawer as the
-          rent. Deposit is not income. It is money you owe back.</p>
-      </div>
+<section style="background:#F0ECE3;padding-top:30px"><div class="wrap">
+  <div class="ctr"><h2>Put it on your phone</h2></div>
+  <div class="inst" style="margin-top:16px;max-width:520px;margin-left:auto;margin-right:auto">
+    <div class="top">
+      <div class="ic"><img src="./icon-192.png" alt=""></div>
+      <div><b>Install RentalNow</b>
+        <span>Opens full screen. Works with no signal.</span></div>
     </div>
+    <button class="btn" id="hero-cta" style="width:100%">&#11123; Install app</button>
+    <a class="btn line ink" href="./" style="width:100%;margin-top:9px">Open in browser</a>
+    <div class="priv">No Play Store. No download. About 300&nbsp;KB.</div>
   </div>
-</div>
+</div></section>
 
-<!-- ══════════ HOW IT WORKS ══════════ -->
-<section>
-  <div class="wrap">
-    <div class="eyebrow">Three screens, that's the whole app</div>
-    <h2>Rent out. Take back. See the money.</h2>
-    <p class="lede">A counter boy learns it in one afternoon. That is the actual design brief.</p>
-    <div class="steps">
-      <div class="step"><div class="n">1</div>
-        <h3>Out</h3>
-        <p>Pick the bike, pick the hours, take the deposit. Rate comes off your own price
-          card — 3, 6, 12, 24 hours or a week. One screen, one tap to confirm.</p></div>
-      <div class="step"><div class="n">2</div>
-        <h3>Back</h3>
-        <p>Overtime, damage and fuel worked out for you. Deposit settled on the spot and the
-          bill goes to the customer on WhatsApp before he rides away.</p></div>
-      <div class="step"><div class="n">3</div>
-        <h3>Money</h3>
-        <p>Today's earnings and the deposits you are still holding, kept apart — because one
-          is yours and the other is not.</p></div>
-    </div>
+<section><div class="wrap">
+  <div class="ctr"><h2>Three screens. That is the whole app.</h2>
+    <p class="lede">A counter boy learns it in one afternoon. That was the design brief.</p></div>
+  <div class="steps" style="margin-top:20px">
+    <div class="step"><div class="n">1</div><b>Rent out</b>
+      <span>Pick the vehicle, pick the hours, take the deposit.</span></div>
+    <div class="step"><div class="n">2</div><b>Take it back</b>
+      <span>Overtime worked out, deposit settled, bill sent on WhatsApp.</span></div>
+    <div class="step"><div class="n">3</div><b>See the money</b>
+      <span>What today earned, and what deposits you are holding.</span></div>
   </div>
-</section>
-
-<!-- ══════════ FEATURES ══════════ -->
-<section style="background:#F5F1E9">
-  <div class="wrap">
-    <div class="eyebrow">What's inside</div>
-    <h2>Everything a rental shop actually needs</h2>
-    <div class="feat">
-      <div class="f"><div class="ic">📵</div><h3>Works with no signal</h3>
-        <p>Rent out and take back with zero bars. Everything uploads by itself when the network
-          comes back.</p></div>
-      <div class="f"><div class="ic">🧾</div><h3>Deposit ledger</h3>
-        <p>Every rupee taken and returned, per bike, per customer. Deposit is never counted as
-          revenue.</p></div>
-      <div class="f"><div class="ic">⏱</div><h3>Overtime, automatic</h3>
-        <p>Per-hour overtime off your own rate card, applied the moment a bike is late. No mental
-          arithmetic at the counter.</p></div>
-      <div class="f"><div class="ic">🛡</div><h3>Insurance &amp; PUC alerts</h3>
-        <p>A bike with expired insurance or PUC cannot be rented out. The app blocks it before it
-          reaches the road.</p></div>
-      <div class="f"><div class="ic">📷</div><h3>Rates from a photo</h3>
-        <p>Photograph your printed price list and it reads the rates in. No typing forty models by
-          hand.</p></div>
-      <div class="f"><div class="ic">👥</div><h3>Staff with limits</h3>
-        <p>Counter staff rent out and take back. Only you see the money and the settings. Every
-          action is logged.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════ PRICING ══════════ -->
+</div></section>
 <section id="pricing" style="background:#F5F1E9">
   <div class="wrap">
     <div class="eyebrow">What it costs</div>
-    <h2>Pick by how many bikes you have</h2>
+    <h2>Pick by how many vehicles you have</h2>
     <p class="lede">That is the only thing that changes the price. Every plan has every feature,
       unlimited staff and unlimited rentals.</p>
 
@@ -491,6 +590,13 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
     <p class="cta-note" id="hint"></p>
   </div>
 </div>
+
+<div class="wa"><div class="wrap in">
+  <div class="ic">&#128172;</div>
+  <div style="flex:1"><b>Any questions?</b>
+    <span>We usually reply within a few minutes.</span></div>
+  <a id="wa-band" href="#" target="_blank" rel="noopener">WhatsApp</a>
+</div></div>
 
 <footer>
   <div class="wrap">RentalNow · <a href="./">Open the app</a> ·
@@ -587,6 +693,20 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 
   var t='RentalNow — I want to know more about the bike rental app';
   document.getElementById('wa').href='https://wa.me/'+WA+'?text='+encodeURIComponent(t);
+  var wb=document.getElementById('wa-band');
+  if(wb) wb.href='https://wa.me/'+WA+'?text='+encodeURIComponent(t);
+
+  /* The number typed here is carried into the app so the shop does not type it
+     twice. The app reads ?ph= and prefills its own field; if it ever stops
+     doing so the link still works, it just asks again. */
+  var lp=document.getElementById('lg-phone'), lg=document.getElementById('lg-go');
+  function sync(){
+    var v=(lp.value||'').replace(/[^0-9]/g,'').slice(-10);
+    lg.href='./'+(v.length===10?'?ph='+v:'');
+  }
+  if(lp&&lg){ lp.addEventListener('input',sync);
+    lp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ sync(); lg.click(); } });
+    sync(); }
   document.getElementById('wa2').href='https://wa.me/'+WA+'?text='+encodeURIComponent(t);
   paint();
 })();
