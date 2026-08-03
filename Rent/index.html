@@ -29,6 +29,10 @@
   /* Bookings are a third state — neither out nor available — so they get their
      own colour rather than borrowing the navy that means "on the road". */
   --vi:#5B21B6; --vi-tint:#EDE9FE; --vi-bd:#C4B5FD;
+  /* The brand sheet's mid-blue. It was already in the app as a literal inside
+     three gradients; naming it means the next person changing the brand blue
+     changes it once instead of hunting for hex strings. */
+  --p-mid:#1C6291;
   --t1:#0A0A0A; --t2:#454545; --t3:#6B6B6B; --t4:#9C9C9C;
   --bg:#FBF7F0; --card:#FFFFFF; --bd:#E4E0D8;
   --shadow-sm:0 1px 2px rgba(0,0,0,.05);
@@ -203,6 +207,19 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .wl-link{text-align:center;font-size:12.5px;font-weight:800;color:var(--p);
   text-decoration:underline;margin-top:13px;cursor:pointer}
 .wl-foot{text-align:center;font-size:11.5px;color:var(--t4);margin-top:12px}
+
+/* ── what do you rent ─────────────────────────────────────
+   Big targets: this is the first thing a shop touches, often on a phone
+   propped against a till. */
+.kind-opt{display:flex;align-items:center;gap:12px;background:var(--card);
+  border:2px solid var(--bd);border-radius:14px;padding:15px 13px;margin-bottom:9px;
+  cursor:pointer;transition:border-color .12s,background .12s}
+.kind-opt.on{border-color:var(--p);background:var(--p-50)}
+.kind-opt .e{font-size:28px;line-height:1;flex:0 0 auto}
+.kind-opt .tx{flex:1;min-width:0}
+.kind-opt .tx b{display:block;font-size:15px;font-weight:875;letter-spacing:-.02em}
+.kind-opt .tx span{display:block;font-size:12px;color:var(--t3);margin-top:1px}
+.kind-opt .tick{font-size:17px;color:var(--p);font-weight:900}
 
 /* ── suggestion chips ──────────────────────────────────────
    These were rendered with class="chip", which did not exist in this
@@ -421,8 +438,17 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   display:flex;align-items:center;justify-content:center;
   border:1px solid rgba(255,255,255,.2);margin:0 auto 16px;overflow:hidden}
 .gate-mark img{width:100%;height:100%;object-fit:cover;display:block}
-.gate-h1{font-size:31px;font-weight:850;letter-spacing:-.035em;margin-bottom:4px}
-.gate-sub{opacity:.72;font-size:14.5px;margin:0 auto 24px;font-weight:500;max-width:300px}
+/* The mark carries its own navy plate, so the frosted tile behind it would
+   show as a rim. */
+.gate-mark{background:none;border:0}
+.gate-h1{font-size:31px;font-weight:850;letter-spacing:-.035em;margin-bottom:5px}
+/* Now in amber, matching the wordmark on the brand sheet. */
+.gate-h1 span{color:var(--y)}
+/* Caps and tracked out, the way the sheet sets it. A three-word tagline in
+   caps reads as a statement; the same words in sentence case read as a
+   subtitle nobody finishes. */
+.gate-sub{opacity:.75;font-size:13px;margin:0 auto 24px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase}
 .gate-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
   border-radius:20px;padding:18px 16px 16px;backdrop-filter:blur(10px)}
 .gate-card .lbl{color:rgba(255,255,255,.82)}
@@ -690,7 +716,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
      two can never disagree about which page is current. -->
 <aside class="side" id="side">
   <div class="side-brand">
-    <img src="./icon-192.png" alt="">
+    <img src="./rn-mark.png" alt="">
     <b id="side-biz">—<span id="side-plan">Trial</span></b>
   </div>
   <button class="nv" id="sv-out" onclick="R.nav('out')">
@@ -775,9 +801,13 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <!-- The app's own icon rather than the scooter emoji. On Windows that
          emoji renders as a red moped in the system font — a colour that appears
          nowhere else in the product, on the first screen anyone sees. -->
-    <div class="gate-mark"><img src="./icon-192.png" alt=""></div>
-    <h1 class="gate-h1">RentalNow</h1>
-    <p class="gate-sub">Every bike, every deposit, every device.</p>
+    <!-- rn-mark.png, not icon-192.png. The two are different assets on purpose:
+         the PWA icon is still the scooter until a high-resolution RN mark
+         exists, and pointing this at the icon would drag the scooter back onto
+         the first screen anyone sees. -->
+    <div class="gate-mark"><img src="./rn-mark.png" alt=""></div>
+    <h1 class="gate-h1">Rental<span>Now</span></h1>
+    <p class="gate-sub">Cars. Bikes. Freedom.</p>
 
     <div class="gate-card"><div id="gate-body"></div></div>
 
@@ -811,7 +841,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_20_3_bookline';
+const BUILD = 'rn_v3_22_2_glossy';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -871,7 +901,64 @@ const MODEL_SUGGESTIONS = [
   'Access 125','Splendor','HF Deluxe','Discover','NS Pulsar','TVS Sports',
   'Suzuki Hayate'
 ];
+const CAR_SUGGESTIONS = [
+  'Swift','Baleno','WagonR','i20','Grand i10','Tiago',
+  'Ertiga','Innova','Scorpio','Bolero','Nexon','Creta'
+];
 window.MODEL_SUGGESTIONS = MODEL_SUGGESTIONS;
+window.CAR_SUGGESTIONS = CAR_SUGGESTIONS;
+
+/* ══════════════════════════════════════════════════════════════════════
+   WHAT THIS SHOP CALLS ITS VEHICLES
+
+   One question at signup writes shop.rentKind — 'bike', 'car' or 'both'.
+   It decides vocabulary and which fields a form asks for, and nothing else.
+   It is not an entitlement, it gates nothing, and it never hides a vehicle
+   the shop already owns.
+
+   ABSENT MEANS BIKE. Every shop created before this reads exactly as it did
+   before — no migration, no backfill, and noun() returns the same strings
+   these screens were hard-coded with, which is how the change is testable:
+   a bike shop's rendered HTML should be byte-identical to yesterday's.
+   ══════════════════════════════════════════════════════════════════════ */
+function rentKind(){
+  try {
+    const k = window.Cloud && Cloud.shop && Cloud.shop.rentKind;
+    if (k === 'car' || k === 'both') return k;
+  } catch(e){}
+  return 'bike';
+}
+/* What to call the fleet as a whole. A shop that owns both gets 'vehicle'
+   whatever it answered at signup — the fleet is the fact, rentKind is only
+   the assumption. And a shop that answered 'bike' and owns one car must not
+   be told it has 12 bikes. */
+function fleetKind(){
+  const v = (window.DB && DB.d && DB.d.vehicles) || [];
+  let bike = false, car = false;
+  for (const x of v){
+    if (x.deletedAt) continue;
+    (x.kind === 'car') ? (car = true) : (bike = true);
+    if (bike && car) return 'both';
+  }
+  if (car) return 'car';
+  if (bike) return 'bike';
+  return rentKind() === 'both' ? 'both' : rentKind();
+}
+/* noun()  -> 'bike'    'car'     'vehicle'
+   noun(1) -> 'bikes'   'cars'    'vehicles'
+   Capitalised variants for sentence starts, because 'Add a bike' and
+   'add a bike' both occur and neither should be assembled by hand. */
+function noun(plural, kind){
+  const k = kind || fleetKind();
+  const w = k === 'car' ? 'car' : (k === 'both' ? 'vehicle' : 'bike');
+  return plural ? w + 's' : w;
+}
+function Noun(plural, kind){
+  const w = noun(plural, kind);
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+window.noun = noun; window.Noun = Noun;
+window.rentKind = rentKind; window.fleetKind = fleetKind;
 
 /* Still used by seedCatalogue(), the MANUAL "create the whole model list"
    button in Rates. It is no longer called at signup. */
@@ -1124,7 +1211,7 @@ const R = {
       if (t.daysLeft > 5) return '';
       return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
         <b style="font-size:13.5px">${t.daysLeft} day${t.daysLeft===1?'':'s'} left in your trial</b>
-        <div class="muted" style="margin-top:3px">After that you can still take bikes back and
+        <div class="muted" style="margin-top:3px">After that you can still take ${noun(1)} back and
         settle deposits — only renting out pauses.</div></div>`;
     }
     /* Expired: returns MUST keep working. Locking the shop out entirely would
@@ -1172,7 +1259,7 @@ const R = {
           <div class="grow">
             <b style="font-size:13.5px">${d} day${d===1?'':'s'} left in your ${esc(name)}</b>
             <div class="muted" style="margin-top:3px">Ends ${esc(ends)}. Renting out pauses after
-            that — taking bikes back and refunding deposits never does.</div>
+            that — taking ${noun(1)} back and refunding deposits never does.</div>
           </div>
           <span class="pill warn">DUE</span>
         </div>
@@ -1935,7 +2022,7 @@ const R = {
         <div class="row"><b class="grow" style="font-size:13.5px">Your shop is set up \u{1F389}</b>
           <button class="btn ghost sm" onclick="R.obDismiss()">Got it</button></div>
         <div class="muted" style="margin-top:3px">Add the rest of your bikes whenever you have a
-        minute \u2014 Fleet, then Add a bike.</div></div>`;
+        minute \u2014 Fleet, then Add a ${noun()}.</div></div>`;
     }
     const pct = (o.bikes?33:4) + (o.priced?33:0) + (o.rented?34:0);
     const step = (n,label,state) => `<div class="row" style="gap:9px;padding:5px 0;font-size:13px;
@@ -1951,7 +2038,7 @@ const R = {
     const s3 = o.rented ? 'done' : ((o.bikes&&o.priced) ? 'now' : 'todo');
     let cta;
     if (!o.bikes)       cta = `<button class="btn" style="background:var(--y);color:#0A0A0A"
-                                onclick="R.firstBike()">Add your first bike</button>`;
+                                onclick="R.firstBike()">Add your first ${noun()}</button>`;
     else if (!o.priced) cta = `<button class="btn" style="background:var(--y);color:#0A0A0A"
                                 onclick="R.nav('rates')">Set what you charge</button>`;
     else                cta = `<button class="btn" style="background:var(--y);color:#0A0A0A"
@@ -1965,7 +2052,7 @@ const R = {
         o.bikes ? (o.priced ? 'One step left.' : 'Two steps left.') : 'Three steps. About two minutes.'}</div>
       <div style="height:5px;border-radius:99px;background:rgba(255,255,255,.18);margin:11px 0 10px;overflow:hidden">
         <i style="display:block;height:100%;width:${pct}%;background:var(--y);border-radius:99px"></i></div>
-      ${step(1, o.bikes ? (o.nBikes===1?'1 bike added':o.nBikes+' bikes added') : 'Add your first bike', s1)}
+      ${step(1, o.bikes ? (o.nBikes===1?'1 '+noun()+' added':o.nBikes+' '+noun(1)+' added') : 'Add your first bike', s1)}
       ${step(2, o.priced ? 'Prices set' : 'Check the prices', s2)}
       ${step(3, o.rented ? 'First rental done' : 'Rent it out', s3)}
       <div style="margin-top:11px">${cta}</div></div>`;
@@ -1973,6 +2060,55 @@ const R = {
   /* The first screen after a new shop signs in. Deliberately the only thing on
      it: a shop that owns nothing has exactly one useful next action, and every
      extra card on this screen is a chance to pick the wrong one. */
+  /* ── what do you rent? ────────────────────────────────────────────
+     Asked once, straight after the shop exists. Ninety-odd percent of yards
+     rent one kind, so asking here means never asking again on the screen
+     they use forty times a week.
+
+     Shown only when rentKind is unset AND the shop owns nothing — an
+     existing shop must never meet this screen. */
+  needsKind(){
+    if (!(window.Cloud && Cloud.ready && Cloud.shop)) return false;
+    if (Cloud.shop.rentKind) return false;
+    if (!this.isOwner()) return false;
+    return !((DB.d.vehicles||[]).filter(v=>!v.deletedAt).length);
+  },
+  askKind(){
+    const opt = (k, ic, title, eg) => `
+      <div class="kind-opt ${this._kindPick===k?'on':''}" onclick="R.pickKind('${k}')">
+        <span class="e">${ic}</span>
+        <div class="tx"><b>${title}</b><span>${eg}</span></div>
+        ${this._kindPick===k?'<span class="tick">\u2713</span>':''}
+      </div>`;
+    return `
+      <div class="wl" style="padding-top:20px">
+        <h2>What do you rent out?</h2>
+        <p>So the app uses your words and asks the right questions.</p>
+      </div>
+      <div style="margin-top:16px">
+        ${opt('bike','\u{1F6F5}','Bikes &amp; scooters','Activa, Jupiter, Pulsar')}
+        ${opt('car','\u{1F697}','Cars','Swift, Ertiga, Innova')}
+        ${opt('both','\u{1F6F5}\u{1F697}','Both','A mixed yard')}
+      </div>
+      <button class="btn y" style="margin-top:14px" onclick="R.saveKind()">Continue</button>
+      <div class="wl-foot">You can change this later, and adding a car to a bike shop just works.</div>`;
+  },
+  _kindPick: 'bike',
+  pickKind(k){ this._kindPick = k; Haptic.tap(); this.render(); },
+  saveKind(){
+    const k = this._kindPick || 'bike';
+    if (window.Cloud && Cloud.ready){
+      Cloud.putShop({ rentKind: k }).then(w => {
+        /* A rejection here means the rules whitelist has not been deployed.
+           Say so rather than silently pretending it saved — the app would then
+           call cars bikes for ever and nobody would know why. */
+        if (w && !w.ok) toast('Could not save that \u2014 ' + Cloud.explainWrite(w.code));
+      });
+    }
+    Haptic.success();
+    this.render();
+  },
+
   welcome(){
     const who = (Cloud.shopName||'').trim().split(/\s+/)[0] || 'there';
     const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
@@ -1981,16 +2117,16 @@ const R = {
         <div class="tx"><b>${title}</b><span>${sub}</span></div></div>`;
     return `
       <div class="wl">
-        <div class="wl-ring">\u{1F6F5}</div>
+        <div class="wl-ring">${fleetKind()==='car' ? '\u{1F697}' : '\u{1F6F5}'}</div>
         <h2>Welcome, ${esc(who)}</h2>
-        <p>Let\u2019s get your shop ready. Two minutes, and you can rent a bike out today.</p>
+        <p>Let\u2019s get your shop ready. Two minutes, and you can rent a ${noun()} out today.</p>
       </div>
       <div class="wl-steps">
-        ${step(1,'Add your first bike','Name it and set what you charge','now')}
+        ${step(1,'Add your first '+noun(),'Name it and set what you charge','now')}
         ${step(2,'Check it looks right','Deposit, 24-hour rate, overtime','')}
         ${step(3,'Rent it out','Your first customer, on the app','')}
       </div>
-      <button class="btn y" style="margin-top:14px" onclick="R.firstBike()">Add your first bike</button>
+      <button class="btn y" style="margin-top:14px" onclick="R.firstBike()">Add your first ${noun()}</button>
       ${this.isOwner() ? `<div class="wl-link" onclick="R.scanRates()">I have a printed rate card
         \u2014 photograph it</div>` : ''}
       <div class="wl-foot">${t && t.paid ? esc(this.planLabel(t)) + ' active'
@@ -2194,7 +2330,11 @@ const R = {
     const kp = document.getElementById('out-kpis');
     if (kp) kp.style.display = noBikes ? 'none' : '';
     if (noBikes && this.isManager()){
-      box.innerHTML = this.welcome();
+      /* The question first, then the welcome. Both are full-screen and both
+         belong to a shop that owns nothing; showing them together would be two
+         primary actions on one screen, which is the thing the welcome rework
+         set out to remove. */
+      box.innerHTML = this.needsKind() ? this.askKind() : this.welcome();
       return;
     }
 
@@ -2231,9 +2371,9 @@ const R = {
     if (!open.length){
       box.innerHTML = banner + `<div class="empty"><div class="e">🛵</div>
           <b>Nothing is out right now</b>
-          <span>Every bike is in the yard.</span>
+          <span>Every ${noun()} is in the yard.</span>
           <div style="margin-top:18px"><button class="btn y" onclick="R.checkoutStart()">
-            Rent out a bike</button></div></div>`;
+            Rent out a ${noun()}</button></div></div>`;
       return;
     }
     open.sort((a,b)=> a.dueAt - b.dueAt);
@@ -2284,25 +2424,25 @@ const R = {
           onclick="R.clearStarters()">Remove ${junk} unpriced bike${junk===1?'':'s'} I never added</button>` : ''}
       </div>` : '') +
       `<div class="muted" style="margin:0 2px 10px">
-        One bike per row. Rename it, add a vehicle number, or add a second bike
+        One ${noun()} per row. Rename it, add a vehicle number, or add a second ${noun()}
         of the same model from Rates.</div>
       <button class="btn" style="margin-bottom:12px" onclick="R.editVehicle()">
-        + Add a bike</button>` +
+        + Add a ${noun()}</button>` +
       /* Only offered when there genuinely are priced rate cards with no bike
          against them. With no seeding that is a real, useful state — a shop that
          photographed its price list and now wants a bike per model. */
       (missing ? `<button class="btn ghost" style="margin-bottom:12px" onclick="R.fillFromRates()">
-          + Add ${missing} missing bike${missing===1?'':'s'} from your rate card</button>` : '');
+          + Add ${missing} missing ${missing===1?noun():noun(1)} from your rate card</button>` : '');
     if (!DB.d.vehicles.length){
       /* One action. This used to read "Your rate card lists 0 models" and offer
          "+ Create 0 bikes from my rate card" — copy written when rate cards
          shipped pre-seeded, which now offers to create nothing. */
       box.innerHTML = `<div class="empty"><div class="e">🏍️</div>
-        <b>No bikes yet</b>
-        <span>Add the bikes you actually own. Each one gets its own row, and you can
+        <b>No ${noun(1)} yet</b>
+        <span>Add the ${noun(1)} you actually own. Each one gets its own row, and you can
           give it a number plate.</span>
         <div style="margin-top:18px"><button class="btn y" onclick="R.firstBike()">
-          Add your first bike</button></div>
+          Add your first ${noun()}</button></div>
         ${this.isOwner() ? `<div style="margin-top:9px"><button class="btn ghost"
           onclick="R.scanRates()">\u{1F4F7} Photograph my printed rate card</button></div>` : ''}
       </div>`;
@@ -2366,7 +2506,7 @@ const R = {
                  because the whole card already opens the bike editor, and a
                  thumb aiming at this should not land there instead. -->
             <div class="muted" style="margin-top:4px;color:var(--danger)">
-              Rate not set \u2014 this bike cannot go out.
+              Rate not set \u2014 this ${noun()} cannot go out.
               <span style="font-weight:850;text-decoration:underline"
                 onclick="event.stopPropagation();R.editRate('${rc.id}')">Set rate</span>
             </div>` : ''}
@@ -2417,7 +2557,7 @@ const R = {
         <thead><tr>
           <th class="selcol" onclick="R.selAll(${JSON.stringify(ids).replace(/"/g,'&quot;')})">
             ${this.cbox(ids.length && ids.every(i=>this.selHas(i)))}</th>
-          <th>Bike</th><th>Number</th><th>Rate card</th>
+          <th>${Noun()}</th><th>Number</th><th>Rate card</th>
           <th class="num">Deposit</th><th class="num">Rentals</th>
           <th class="num">Earned</th><th class="num">Idle days</th>
           <th>Papers</th><th>Status</th>
@@ -2518,13 +2658,13 @@ const R = {
       else DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec));
       made++;
     });
-    if (!made) return toast('Every rate card already has a bike');
+    if (!made) return toast('Every rate card already has a ${noun()}');
     DB.save(); this.render();
     toast(made + ' bike' + (made===1?'':'s') + ' added from your rate card');
   },
 
   editVehicle(id, preRate){
-    if (!this.isManager()) return toast('Ask the owner or manager to change bikes');
+    if (!this.isManager()) return toast('Ask the owner or manager to change ${noun(1)}');
     const v = id ? DB.d.vehicles.find(x=>x.id===id) : null;
     const sel = v ? v.rateId : (preRate||'');
     const opts = DB.d.rates.map(r=>
@@ -2538,13 +2678,13 @@ const R = {
       }</option>`).join('');
     const anyReady = (DB.d.rates||[]).some(r => this.rateReady(r));
     openSheet(`
-      <div class="sheet-hd"><h2>${v?'Edit bike':'Add bike'}</h2>
+      <div class="sheet-hd"><h2>${v?'Edit '+noun():'Add '+noun()}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
-      <div class="fld"><label class="lbl">Bike name <span class="req">*</span></label>
+      <div class="fld"><label class="lbl">${Noun()} name <span class="req">*</span></label>
         <input class="in" id="v-name" value="${esc(v?(v.name||v.regNo||''):'')}"
-          placeholder="Activa 3G — red"></div>
+          placeholder="${fleetKind()==='car'?'Swift — white':'Activa 3G — red'}"></div>
       ${v ? '' : `<div class="muted" style="margin:-4px 2px 6px">Common models \u2014 tap to fill, or type your own</div>
-      <div class="chips" style="margin-bottom:12px">${(window.MODEL_SUGGESTIONS||[]).map(m=>
+      <div class="chips" style="margin-bottom:12px">${((fleetKind()==='car'?window.CAR_SUGGESTIONS:window.MODEL_SUGGESTIONS)||[]).map(m=>
         `<span class="chip" onclick="R.pickModel('${esc(m)}')">${esc(m)}</span>`).join('')}</div>`}
       <div class="fld"><label class="lbl">Vehicle no. <span class="muted">optional</span></label>
         <input class="in" id="v-reg" value="${esc(v?(v.regNo||''):'')}"
@@ -2560,7 +2700,7 @@ const R = {
         <div id="v-newrate" style="display:none">
           <div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-top:10px;padding:13px 12px">
             <b style="font-size:13.5px">Price for this model</b>
-            <div class="muted" style="margin:2px 0 4px">Every bike you point at this rate card
+            <div class="muted" style="margin:2px 0 4px">Every ${noun()} you point at this rate card
               charges the same.</div>
             ${this.rateFields('vnr', null)}
           </div>
@@ -2772,14 +2912,19 @@ const R = {
      are real and stay in Rates — a shop that needs them will go looking, and
      one that does not should not have to type five zeros to open for business. */
   firstBike(){
-    const chips = (window.MODEL_SUGGESTIONS||[]).map(m =>
+    /* Which list depends on what the shop said it rents. A car yard offered
+       Activa and Jupiter would conclude the app is not for it. */
+    const k = this._addKind || (rentKind()==='car' ? 'car' : 'bike');
+    this._addKind = k;
+    const src = k==='car' ? (window.CAR_SUGGESTIONS||[]) : (window.MODEL_SUGGESTIONS||[]);
+    const chips = src.map(m =>
       `<span class="chip" onclick="R.pickModel('${esc(m)}')">${esc(m)}</span>`).join('');
     openSheet(`
-      <div class="sheet-hd"><h2>Add your first bike</h2>
+      <div class="sheet-hd"><h2>Add your first ${noun(0,k)}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
 
-      <div class="fld"><label class="lbl">Bike name <span class="req">*</span></label>
-        <input class="in" id="fb-name" placeholder="Activa 5G" autocomplete="off"></div>
+      <div class="fld"><label class="lbl">${Noun()} name <span class="req">*</span></label>
+        <input class="in" id="fb-name" placeholder="${k==='car'?'Swift':'Activa 5G'}" autocomplete="off"></div>
       <div class="muted" style="margin:-4px 2px 6px">Common models \u2014 tap to fill, or type your own</div>
       <div class="chips" id="fb-chips">${chips}</div>
 
@@ -2789,12 +2934,12 @@ const R = {
 
       <div class="card" style="background:var(--y-tint);border-color:var(--y-bd);padding:13px 12px">
         <b style="font-size:13.5px">What do you charge for it?</b>
-        <div class="muted" style="margin:2px 0 4px">This becomes the rate card for every bike of
+        <div class="muted" style="margin:2px 0 4px">This becomes the rate card for every ${noun()} of
           this model you add later.</div>
         ${this.rateFields('fb', null)}
       </div>
 
-      <button class="btn" onclick="R.saveFirstBike()">Save bike &amp; price</button>
+      <button class="btn" onclick="R.saveFirstBike()">Save ${noun()} &amp; price</button>
       ${this.isOwner() ? `<button class="btn ghost" style="margin-top:9px" onclick="closeSheet();R.scanRates()">
         \u{1F4F7} I have a printed rate card \u2014 photograph it</button>` : ''}
       <div class="muted" style="text-align:center;margin-top:9px">You can add more bikes and more
@@ -2815,7 +2960,7 @@ const R = {
     const g = i => document.getElementById(i);
     const name = (g('fb-name').value||'').trim();
     const reg  = (g('fb-reg').value||'').trim().toUpperCase();
-    if (!name) return toast('Bike name is required');
+    if (!name) return toast(Noun()+' name is required');
     const rt = this.readRate('fb');
     if (!rt) return;
     const dep = rt.deposit, d24 = rt.tiers.h24;
@@ -2883,7 +3028,7 @@ const R = {
     const name = document.getElementById('v-name').value.trim();
     const reg  = document.getElementById('v-reg').value.trim().toUpperCase();
     let rateId = document.getElementById('v-rate').value;
-    if (!name) return toast('Bike name is required');
+    if (!name) return toast(Noun()+' name is required');
     if (!rateId) return toast('Choose a rate card');
 
     /* "+ New rate" creates the card first, then falls through to the normal
@@ -2916,7 +3061,7 @@ const R = {
     if (reg && DB.d.vehicles.some(x=>x.regNo===reg && x.id!==id))
       return toast('That vehicle number already exists');
     if (!reg && DB.d.vehicles.some(x=>x.name===name && x.id!==id))
-      return toast('A bike with that name already exists — add a number or change the name');
+      return toast('A '+noun()+' with that name already exists — add a number or change the name');
     const rc = DB.d.rates.find(r=>r.id===rateId);
     const g = i => document.getElementById(i);
     const old = id ? DB.d.vehicles.find(x=>x.id===id) : null;
@@ -3006,7 +3151,7 @@ const R = {
     /* soft delete only — nothing is ever destroyed */
     if (window.Cloud && Cloud.ready) Cloud.softDelete('vehicles', id);
     DB.d.vehicles = DB.d.vehicles.filter(x=>x.id!==id);
-    DB.save(); closeSheet(); this.render(); toast('Bike removed');
+    DB.save(); closeSheet(); this.render(); toast(Noun()+' removed');
   },
 
   /* ── RATE CARDS ─────────────────────────────────────────────────── */
@@ -3352,7 +3497,7 @@ const R = {
         onclick="R.more('r-wk',this)">Weekend prices <span class="muted">— optional</span></button>
       <div id="r-wk" style="display:none">
         <div class="muted" style="margin:0 2px 12px">Leave blank to charge the same all week.
-        Used when the bike goes out on Saturday or Sunday, and frozen for that rental.</div>
+        Used when the ${noun()} goes out on Saturday or Sunday, and frozen for that rental.</div>
         <div class="two">
           <div class="fld"><label class="lbl">Deposit</label>
             <input class="in" id="rw-dep" type="number" inputmode="numeric"
@@ -3398,12 +3543,12 @@ const R = {
   checkoutStart(){
     if (!this.canRentOut()) return toast('Trial ended — returns still work. Tap "Talk to us" to continue.');
     const avail = DB.d.vehicles.filter(v=>v.status==='available');
-    if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a bike first — rates are only prices, not bikes'); }
+    if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a '+noun()+' first — rates are only prices, not '+noun(1)); }
     if (!avail.length){
       /* Say what to do, not just what is wrong. With everything out, the next
          useful action is taking one back. */
       this.nav('out');
-      return toast('Every bike is out — check one in to free it up');
+      return toast('Every '+noun()+' is out — check one in to free it up');
     }
     openSheet(`
       <div class="sheet-hd"><h2>Rent out</h2>
@@ -3615,7 +3760,7 @@ const R = {
         </div>
         <div class="card" style="background:var(--vi-tint);border-color:var(--vi-bd)">
           <div class="line"><span>Holding</span><b>A ${esc(r.model)}</b></div>
-          <div class="line"><span>Preferred bike</span><b>${esc(vSub(v))||esc(vLabel(v))}</b></div>
+          <div class="line"><span>Preferred ${noun()}</span><b>${esc(vSub(v))||esc(vLabel(v))}</b></div>
           <div class="line"><span>Pickup</span><b>${fmtDT(outAt)}</b></div>
           <div class="line"><span>Back by</span><b>${fmtDT(due)}</b></div>
           <div class="line tot"><span>Rent locked at</span><b>${money(r.tiers[this._tier])}</b></div>
@@ -3717,7 +3862,7 @@ const R = {
     const vid  = document.getElementById('c-veh').value;
     const name = document.getElementById('c-name').value.trim();
     const ph   = document.getElementById('c-phone').value.replace(/\D/g,'').slice(-10);
-    if (!vid || !this._tier) return toast('Choose bike and duration');
+    if (!vid || !this._tier) return toast('Choose '+noun()+' and duration');
     if (!name) return toast('Customer name is required');
     if (ph && ph.length !== 10) return toast('Phone must be 10 digits, or leave it blank');
 
@@ -4615,6 +4760,8 @@ const Install = {
     const el = document.createElement('div');
     el.id = 'rn-install';
     el.innerHTML =
+      /* icon-192 is now the RN mark too, so this banner and the home-screen
+         result finally agree. */
       '<img class="ii" src="./icon-192.png" alt="">' +
       '<div class="it"><b>' + (ios ? 'Add RentalNow to your home screen'
                                    : 'Install RentalNow') + '</b>' +
@@ -5142,6 +5289,29 @@ const Cloud = {
 
   /* ── writes ───────────────────────────────────────────────────── */
   p(coll, id){ return doc(db,'rn_shops',this.shopId,coll,id); },
+
+  /* The shop document itself. Nothing wrote to it after creation until now —
+     the app set it once and never touched it again, which is why the rules
+     whitelist for updates is so small. merge:true so a patch cannot wipe
+     fields the webhook owns, and the same {ok,code} shape as put() so callers
+     handle a refusal identically.
+
+     A permission-denied here almost certainly means the field is not in
+     rnShopEditableFields(). Worth knowing, because the failure is otherwise
+     invisible: the local copy updates, the screen looks right, and the change
+     is gone on the next reload. */
+  async putShop(patch){
+    if (!this.shopId) return { ok:false, code:'no-shop' };
+    this.pending++; this.chip();
+    try {
+      await setDoc(doc(db,'rn_shops',this.shopId), patch, { merge:true });
+      this.shop = Object.assign({}, this.shop||{}, patch);
+      return { ok:true };
+    } catch(e){
+      console.error('putShop', e);
+      return { ok:false, code:(e&&e.code)||'unknown', msg:(e&&e.message)||'' };
+    } finally { this.pending = Math.max(0,this.pending-1); this.chip(); }
+  },
   nid(pre){ return pre+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); },
 
   /* ── trial / entitlement ──────────────────────────────────────
