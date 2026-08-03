@@ -742,7 +742,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   <button class="nv" id="sv-money" onclick="R.nav('money')">
     <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg></span><span class="tx">Money</span><span class="ct"></span></button>
   <button class="side-cta" onclick="R.topAction()"><span class="p">+</span>
-    <span class="tx"> Rent out a bike</span></button>
+    <span class="tx" id="side-cta-tx"> Rent out</span></button>
   <button class="side-tog" onclick="R.sideToggle()">
     <span class="a">&#171;</span><span class="tx"> Collapse</span></button>
 </aside>
@@ -863,7 +863,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_23_6_ph';
+const BUILD = 'rn_v3_23_7_kind';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2009,6 +2009,8 @@ const R = {
     setTx('sv-out-c',   openN||'');
     setTx('sv-book-c',  held||'');
     setTx('sv-fleet-c', (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length||'');
+    const sct = document.getElementById('side-cta-tx');
+    if (sct) sct.textContent = ' Rent out a ' + noun();
     const sb = document.getElementById('side-biz');
     if (sb) sb.firstChild && (sb.firstChild.nodeValue = (window.Cloud && Cloud.shopName) || 'RentalNow');
     const sp = document.getElementById('side-plan');
@@ -2721,14 +2723,31 @@ const R = {
         this.rateReady(r) ? 'dep ' + money(r.deposit) : 'rate not set'
       }</option>`).join('');
     const anyReady = (DB.d.rates||[]).some(r => this.rateReady(r));
+    /* An existing vehicle keeps whatever it is; a new one follows the picker,
+       or the shop's single answer if it only rents one kind. */
+    const ek = v ? (v.kind || 'bike')
+                 : (this._addKind || (rentKind()==='car' ? 'car' : 'bike'));
+    this._addKind = ek;
     openSheet(`
-      <div class="sheet-hd"><h2>${v?'Edit '+noun():'Add '+noun()}</h2>
+      <div class="sheet-hd"><h2>${v?'Edit '+noun(0,ek):'Add '+noun(0,ek)}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
-      <div class="fld"><label class="lbl">${Noun()} name <span class="req">*</span></label>
+      ${(!v && rentKind()==='both') ? `
+        <!-- A mixed shop must be asked, on EVERY vehicle and not just the
+             first. This sheet is the one used from the second vehicle onward,
+             and it never had the picker — so a shop that answered "both" was
+             offered Activa and Jupiter for ever and could not add a car at
+             all. -->
+        <div class="kindrow">
+          <div class="kbtn ${ek==='bike'?'on':''}" onclick="R.setEditKind('bike')">
+            <span class="e">\u{1F6F5}</span><b>Bike</b></div>
+          <div class="kbtn ${ek==='car'?'on car':''}" onclick="R.setEditKind('car')">
+            <span class="e">\u{1F697}</span><b>Car</b></div>
+        </div>` : ''}
+      <div class="fld"><label class="lbl">${Noun(0,ek)} name <span class="req">*</span></label>
         <input class="in" id="v-name" value="${esc(v?(v.name||v.regNo||''):'')}"
-          placeholder="${fleetKind()==='car'?'Swift — white':'Activa 3G — red'}"></div>
+          placeholder="${ek==='car'?'Swift — white':'Activa 3G — red'}"></div>
       ${v ? '' : `<div class="muted" style="margin:-4px 2px 6px">Common models \u2014 tap to fill, or type your own</div>
-      <div class="chips" style="margin-bottom:12px">${((fleetKind()==='car'?window.CAR_SUGGESTIONS:window.MODEL_SUGGESTIONS)||[]).map(m=>
+      <div class="chips" style="margin-bottom:12px">${((ek==='car'?window.CAR_SUGGESTIONS:window.MODEL_SUGGESTIONS)||[]).map(m=>
         `<span class="chip" onclick="R.pickModel('${esc(m)}')">${esc(m)}</span>`).join('')}</div>`}
       <div class="fld"><label class="lbl">Vehicle no. <span class="muted">optional</span></label>
         <input class="in" id="v-reg" value="${esc(v?(v.regNo||''):'')}"
@@ -3079,6 +3098,20 @@ const R = {
     closeSheet();
     toast(name + ' added at ' + money(d24) + ' for 24 hr');
     this.render();
+  },
+
+  /* Reopens the sheet so the heading, placeholder and chips all follow, and
+     keeps whatever the shop already typed. */
+  setEditKind(k){
+    if (this._addKind === k) return;
+    const el = document.getElementById('v-name');
+    const keep = el ? el.value : '';
+    const reg  = (document.getElementById('v-reg')||{}).value || '';
+    this._addKind = k;
+    Haptic.tap();
+    this.editVehicle();
+    const n2 = document.getElementById('v-name'); if (n2 && keep) n2.value = keep;
+    const r2 = document.getElementById('v-reg');  if (r2 && reg)  r2.value = reg;
   },
 
   rateSel(){
