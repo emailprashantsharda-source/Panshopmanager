@@ -29,6 +29,9 @@ window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();win
   --max:1080px;
 }
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+/* The headline and the fifth tile were being cut off at the right edge.
+   Whatever overflows, this page must never scroll sideways on a phone. */
+html,body{max-width:100%;overflow-x:hidden}
 html{scroll-behavior:smooth}
 body{background:var(--cream);color:var(--t1);line-height:1.55;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
@@ -57,13 +60,12 @@ h3{font-size:17px;font-weight:850;letter-spacing:-.02em}
 .cta-row{display:flex;gap:11px;flex-wrap:wrap;margin-top:26px}
 .cta-note{font-size:13px;color:var(--t3);margin-top:13px}
 
-/* ── hero ── */
-.hero{background:radial-gradient(120% 90% at 12% 0%,#1C6291 0%,#12466A 45%,#0A2C43 100%);
-  color:#fff;padding:26px 0 0;overflow:hidden;position:relative}
-.hero:before{content:'';position:absolute;right:-120px;top:-90px;width:340px;height:340px;
-  border-radius:50%;background:rgba(255,255,255,.045)}
-.hero:after{content:'';position:absolute;left:-90px;bottom:120px;width:260px;height:260px;
-  border-radius:50%;background:rgba(245,166,35,.07)}
+/* The original hero rule lived here and was never removed when the page was
+   redesigned — two .hero{} blocks in one stylesheet, the later one winning on
+   background and padding while this one's two decorative circles kept
+   rendering. Those pale discs are the ghostly rings in the screenshots. Same
+   hazard as everywhere else in this codebase: two definitions of one thing,
+   and only one of them gets updated. */
 .nav{display:flex;align-items:center;gap:11px;position:relative;z-index:2}
 .nav img{width:38px;height:38px;border-radius:11px}
 .nav b{font-size:17px;font-weight:875;letter-spacing:-.03em;flex:1}
@@ -269,7 +271,7 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 .hero{background:
     radial-gradient(90% 70% at 50% 0%,rgba(28,98,145,.42),transparent 62%),
     linear-gradient(170deg,#012346 0%,#001E3A 45%,#001730 100%);
-  color:#fff;padding:26px 0 24px;position:relative;overflow:hidden;text-align:center}
+  color:#fff;padding:18px 0 18px;position:relative;overflow:hidden;text-align:center}
 /* The actual bike and car, cut from the reference. Three attempts at drawing
    them as SVG failed for the same reason each time: an outline reads as a
    diagram, and this needs to read as a photograph seen through the dark. The
@@ -288,12 +290,12 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
   .hero .veh img{height:76%;top:6%;opacity:.55}
 }
 .hero .wrap{position:relative;z-index:1}
-.logo{width:92px;height:92px;border-radius:26px;margin:0 auto 13px;overflow:hidden;background:#fff;
+.logo{width:74px;height:74px;border-radius:21px;margin:0 auto 10px;overflow:hidden;background:#fff;
   box-shadow:0 18px 40px -14px rgba(0,0,0,.7)}
 .logo img{width:100%;height:100%;display:block}
-.wm{font-size:clamp(36px,10vw,50px);font-weight:900;letter-spacing:-.04em;line-height:1.02}
+.wm{font-size:clamp(31px,8.4vw,44px);font-weight:900;letter-spacing:-.04em;line-height:1.02}
 .wm i{font-style:normal;color:var(--y)}
-.tl{font-size:clamp(15.5px,4vw,19px);font-weight:700;opacity:.94;margin-top:7px;line-height:1.32}
+.tl{font-size:clamp(16px,4.4vw,20px);font-weight:700;opacity:.94;margin-top:7px;line-height:1.3}
 .pills{display:flex;justify-content:center;margin-top:14px;
   font-size:clamp(10px,2.9vw,13.5px);font-weight:750;opacity:.9}
 /* No wrap. Four items wrapping to 3+1 left "Payments" alone under an orphan
@@ -302,18 +304,21 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
   border-left:1px solid rgba(255,255,255,.22);white-space:nowrap}
 .pills span:first-child{border-left:0}
 .pills svg{width:clamp(13px,3.6vw,16px);height:clamp(13px,3.6vw,16px);flex:0 0 auto}
-.hero h2{font-size:clamp(18px,4.8vw,23px);font-weight:875;letter-spacing:-.025em;margin:24px 0 14px}
+.hero h2{font-size:clamp(17.5px,4.8vw,23px);font-weight:875;letter-spacing:-.025em;
+  margin:16px auto 12px;max-width:22ch;line-height:1.25}
 
 /* Five across, always. They shrink rather than wrap — an orphan row of two is
    worse than a slightly smaller tile, and at 360px each still gets 62px. */
 .f5{display:flex;gap:clamp(5px,1.6vw,11px)}
 .f5 .c{flex:1 1 0;min-width:0;text-align:center}
-.f5 .ic{width:100%;aspect-ratio:1;max-height:64px;border-radius:14px;
-  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);
+.f5 .ic{width:100%;aspect-ratio:1;max-height:58px;border-radius:13px;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.17);
+  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
   display:flex;align-items:center;justify-content:center;margin:0 auto 7px}
 .f5 .ic svg{width:54%;height:54%}
-.f5 b{display:block;font-size:clamp(9.5px,2.6vw,12.5px);font-weight:850;line-height:1.2;
-  letter-spacing:-.015em;min-height:2.4em}
+.f5 b{display:block;font-size:clamp(10.5px,3vw,13.5px);font-weight:850;line-height:1.22;
+  letter-spacing:-.015em;min-height:2.44em}
 /* Fixed height, so five tiles line up whatever the copy does. Ragged bottoms
    across a row of five is most of what made the first version look unfinished. */
 .f5 span{display:block;font-size:clamp(8px,2.1vw,10px);color:rgba(255,255,255,.62);
@@ -325,6 +330,14 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
    in four seconds can type his number in the next four, instead of hunting for
    an Install button first. */
 .loginwrap{background:linear-gradient(180deg,#071F31 0,#071F31 46%,var(--bg) 46%);padding-bottom:2px}
+/* This was white text sitting on .loginwrap, whose gradient turns cream at
+   46% — so the strip landed on the cream half and only the emoji survived.
+   It now carries its own navy, which cannot drift out of step with whatever
+   is behind it. */
+.trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;
+  padding:14px 16px 16px;font-size:clamp(11.5px,3.1vw,13px);font-weight:750;
+  color:rgba(255,255,255,.9);background:#071F31}
+.trust span{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .loginc{background:var(--card);border-radius:18px;padding:19px;
   box-shadow:0 18px 40px -18px rgba(10,44,67,.55)}
 .lrow{display:flex;align-items:center;gap:12px;margin-bottom:14px}
@@ -415,12 +428,9 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 </div><div class="wrap">
   <div class="logo"><img src="./icon-192.png" alt="RentalNow"></div>
   <div class="wm">Rental<i>Now</i></div>
-  <div class="tl">The Complete Bike &amp; Car<br>Rental Management App</div>
-  <div class="pills">
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.6"/><path d="M3 9.6h18M8 2.4v4M16 2.4v4" /><path d="M8.6 14.4l2.2 2.2 4.4-4.4" stroke-width="2.4"/></svg> Bookings</span><span><svg viewBox="0 0 24 24" fill="none" stroke="#3B9BE8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.4" cy="16.8" r="3.4"/><circle cx="18" cy="16.8" r="3.4"/><path d="M8.8 16.8h5.8M14.6 16.8 11 8.4h-2M9 5.4h3.2l1.4 3M16.4 8.4h2.6l-1 8.4"/></svg> Fleet</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="#2FB56B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.6"/><path d="M2.6 20.4c0-3.6 2.9-5.8 6.4-5.8s6.4 2.2 6.4 5.8"/><circle cx="17.4" cy="9.2" r="2.8"/><path d="M17.4 14.6c2.4 0 4 1.6 4 4"/></svg> Customers</span><span><svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2.6" width="13" height="18.8" rx="2.2"/><path d="M7.6 7.4h6M7.6 11h6M7.6 14.6h3.4"/><circle cx="17.6" cy="16.6" r="4.2" fill="#8B5CF6" stroke="none"/><path d="M15.9 14.8h3.4M15.9 16.6h3.4M18.5 14.8c0 1.2-.9 1.8-2.1 1.8l2.4 2.6" stroke="#fff" stroke-width="1.5"/></svg> Payments</span>
-  </div>
-  <h2>Manage your rental business in one app</h2>
+  <div class="tl">Bike &amp; Car Rental Management</div>
+  
+  <h2>Everything you need to run your rental business</h2>
   <div class="f5">
     <div class="c"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.6"/><path d="M3 9.6h18M8 2.4v4M16 2.4v4" /><path d="M8.6 14.4l2.2 2.2 4.4-4.4" stroke-width="2.4"/></svg></div><b>Track Bookings</b>
       <span>Held for a date, converted at pickup</span></div>
@@ -436,14 +446,30 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
 </div></div>
 
 <div class="loginwrap"><div class="wrap">
+  <!-- (5) A trust strip above the login, as asked — but NOT "Trusted by 500+
+       Rental Businesses" or a star rating. You have neither 500 shops nor a
+       single review, and inventing both on the page where a shopkeeper decides
+       to hand over his phone number is a misleading advertisement under the
+       Consumer Protection Act 2019 and the ASCI code. It is also the one lie
+       a prospect can check.
+
+       These four are true today, and every one of them answers a real doubt:
+       nobody can see your data, it works without signal, nothing to install
+       from a store, and you can leave. That is what trust is made of before
+       you have customers to point at. -->
+  <div class="trust">
+    <span>&#128274; Your data, your account</span>
+    <span>&#128246; Works without signal</span>
+    <span>&#8377; 14 days free, no card</span>
+    <span>&#10003; Cancel any time</span>
+  </div>
   <div class="loginc">
     <div class="lrow"><div class="b">&#128241;</div>
       <div><b>Mobile number</b><span>We send a one-time code by SMS</span></div></div>
     <div class="lin"><span class="cc">+91</span>
       <input id="lg-phone" type="tel" inputmode="numeric" maxlength="10"
         placeholder="Enter your mobile number"></div>
-    <a class="btn" style="width:100%;margin-top:11px" href="./" id="lg-go">Continue with OTP
-      &#8594;</a>
+    <a class="btn" style="width:100%;margin-top:11px" href="./" id="lg-go">Get started &#8594;</a>
     <div class="priv">&#128274; We never share your number with anyone.</div>
   </div>
   <div class="trio">
