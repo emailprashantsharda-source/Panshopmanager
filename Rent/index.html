@@ -717,7 +717,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
      two can never disagree about which page is current. -->
 <aside class="side" id="side">
   <div class="side-brand">
-    <img src="./rn-mark.png" alt="">
+    <img src="./icon-192.png?v=23" alt="">
     <b id="side-biz">—<span id="side-plan">Trial</span></b>
   </div>
   <button class="nv" id="sv-out" onclick="R.nav('out')">
@@ -802,11 +802,12 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <!-- The app's own icon rather than the scooter emoji. On Windows that
          emoji renders as a red moped in the system font — a colour that appears
          nowhere else in the product, on the first screen anyone sees. -->
-    <!-- rn-mark.png, not icon-192.png. The two are different assets on purpose:
-         the PWA icon is still the scooter until a high-resolution RN mark
-         exists, and pointing this at the icon would drag the scooter back onto
-         the first screen anyone sees. -->
-    <div class="gate-mark"><img src="./rn-mark.png" alt=""></div>
+    <!-- icon-192.png, not a separate rn-mark.png. That second file existed only
+         while the PWA icon was still the scooter and the login needed a
+         different image; now they are the same artwork, so one file is right.
+         Two files meant two things to upload, and the one nobody uploaded is
+         the one that 404'd on the first screen anyone sees. -->
+    <div class="gate-mark"><img src="./icon-192.png?v=23" alt=""></div>
     <h1 class="gate-h1">Rental<span>Now</span></h1>
     <p class="gate-sub">Cars. Bikes. Freedom.</p>
 
@@ -842,7 +843,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_23_1_logo';
+const BUILD = 'rn_v3_23_2_logo';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
