@@ -4,15 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>RentalNow — the complete bike &amp; car rental management app</title>
-<meta name="description" content="Rent out bikes, take them back, settle deposits and see today's earnings. Built for Indian bike and scooter rental shops. Works without signal.">
+<meta name="description" content="Bookings, fleet, deposits, bills and daily earnings for bike and car rental shops. Works without signal. 14 days free.">
 <meta name="theme-color" content="#0A2C43">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
-<meta property="og:title" content="RentalNow — run your bike rental from your phone">
-<meta property="og:description" content="Rent out, take back, deposits, daily earnings. Works without signal.">
-<meta property="og:image" content="./icon-512.png">
+<!-- What WhatsApp, Facebook and LinkedIn show when the link is shared.
+     These were still the bike-only copy from before cars existed, and the
+     image was a RELATIVE path — crawlers do not resolve those, which is why
+     the preview arrived with no picture at all. Absolute URLs only. -->
+<meta property="og:site_name" content="RentalNow">
+<meta property="og:title" content="RentalNow — bike &amp; car rental management">
+<meta property="og:description" content="Bookings, fleet, deposits, bills and daily earnings — for bike and car rental shops. Works without signal. 14 days free, no card.">
+<meta property="og:url" content="https://app.hisaabnow.com/Rent/install.html">
+<meta property="og:image" content="https://app.hisaabnow.com/Rent/icon-512.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="RentalNow">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="en_IN">
+<!-- Twitter reads its own tags and ignores og: for the card type. -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RentalNow — bike &amp; car rental management">
+<meta name="twitter:description" content="Bookings, fleet, deposits, bills and daily earnings — for bike and car rental shops. Works without signal.">
+<meta name="twitter:image" content="https://app.hisaabnow.com/Rent/icon-512.png">
 <script>
 /* Caught in <head> because Chrome fires this once and never replays it. */
 window.__bip=null;

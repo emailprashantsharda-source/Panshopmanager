@@ -5,7 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0F3D5C">
 <title>RentalNow</title>
-<meta name="description" content="Rent out bikes, take them back, hold and refund deposits, and see what the yard earned today. Works offline.">
+<meta name="description" content="Bookings, fleet, deposits, bills and daily earnings for bike and car rental shops. Works without signal.">
+<!-- The app itself gets share tags too: shops paste this URL into WhatsApp
+     groups to invite their own staff, and a bare link with no preview looks
+     like spam. Absolute URLs — a crawler will not resolve a relative one. -->
+<meta property="og:site_name" content="RentalNow">
+<meta property="og:title" content="RentalNow — bike &amp; car rental management">
+<meta property="og:description" content="Bookings, fleet, deposits, bills and daily earnings — for bike and car rental shops. Works without signal.">
+<meta property="og:url" content="https://app.hisaabnow.com/Rent/">
+<meta property="og:image" content="https://app.hisaabnow.com/Rent/icon-512.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_IN">
 
 <!-- Installability. The manifest and the service worker must both be real
      files at stable same-origin URLs. Generating either from a blob at
@@ -863,7 +876,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_23_7_kind';
+const BUILD = 'rn_v3_23_8_share';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
