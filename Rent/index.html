@@ -695,6 +695,17 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .pm-v{font-size:21px;font-weight:850;letter-spacing:-.03em;margin-top:3px;
   font-variant-numeric:tabular-nums}
 .pm-s{font-size:11px;color:var(--t3);font-weight:650;margin-top:3px}
+/* .pm-note existed in the markup with no styling at all — it rendered as
+   plain unstyled text, easy to miss entirely, which is exactly the piece
+   meant to stop a negative "In the drawer" figure from reading as a bug.
+   .short marks the box itself so the colour tells the story before anyone
+   reads a word: green (money genuinely in hand) turns amber the moment the
+   number goes negative, matching how the card should have looked all along. */
+.pm-box.cash.short{background:var(--y-tint);border-color:var(--y-bd)}
+.pm-box.cash.short .pm-l{color:#95610A}
+.pm-note{margin-top:9px;padding-top:9px;border-top:1px dashed #E0D6B0;
+  font-size:11.5px;line-height:1.5;color:var(--t2)}
+.pm-note b{color:var(--t1)}
 .mn-liab{background:var(--y-tint);border-color:var(--y-bd)}
 .mn-liab-l{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#95610A}
 .mn-liab-v{font-size:26px;font-weight:850;letter-spacing:-.03em;color:#7A4E08;
@@ -876,7 +887,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_23_9_onboard';
+const BUILD = 'rn_v3_24_3_drawer';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1032,6 +1043,29 @@ const TIERS = [
   { k:'d7',  label:'7 days',hours:168 },
 ];
 const tierOf = k => TIERS.find(t => t.k === k);
+
+/* ── manual duration ──────────────────────────────────────────────
+   The counter is priced by fixed packages (3hr/6hr/12hr/24hr/7day). A
+   customer wanting 9 hours has no button to press. Manual duration does
+   not invent a new price: it books the largest PRICED package that fits
+   inside the requested hours (never bigger — nobody pays for hours they
+   did not ask for) and lets the rest run as ordinary overtime, exactly as
+   already happens when any rental simply comes back late. Zero new
+   pricing logic; quote() and every settle-time calculation are unaware
+   this ever happened. */
+function anchorTierFor(tiers, hours){
+  const priced = TIERS.filter(t => Number(tiers[t.k]) > 0).sort((a,b)=>a.hours-b.hours);
+  if (!priced.length) return null;
+  let anchor = priced[0];                 /* minimum package, if hours is even shorter */
+  for (const t of priced){ if (t.hours <= hours) anchor = t; }
+  return anchor.k;
+}
+/* What a person should be told this rental's duration was. r.tier is always
+   a real, priced package — the thing actually charged — so settle-time
+   money lines keep showing it. This is only for the few places that describe
+   the BOOKING itself, where the true manual hours are the honest answer;
+   showing "6 hr" for a rental booked as 9 would read as a mistake. */
+function tierLabel(r){ return r.manualHours ? fmtDur(r.manualHours) + ' (manual)' : tierOf(r.tier).label; }
 
 /* ═══════════════════════════════════════════════════════════════════
    PRICING ENGINE
@@ -2463,7 +2497,7 @@ const R = {
               ${[esc(v.regNo||''), esc(r.customerName||'—'), esc(r.customerPhone||'')].filter(Boolean).join(' · ')}
             </div>
             <div class="muted" style="margin-top:4px">
-              Due ${fmtDT(r.dueAt)} · ${tierOf(r.tier).label} · deposit ${money(r.depositHeld)}
+              Due ${fmtDT(r.dueAt)} · ${tierLabel(r)} · deposit ${money(r.depositHeld)}
             </div>
           </div>
           <div style="text-align:right">
@@ -3770,7 +3804,19 @@ const R = {
               <div class="t">${t.label}</div>
               <div class="p">${tv>0?money(tv):'not set'}</div></div>`;
           }).join('')}
+          <div class="tier" data-t="manual" onclick="R.coPick('manual')">
+            <div class="t">Manual</div>
+            <div class="p">Set hours</div></div>
         </div></div>
+      <!-- Revealed only when Manual is picked. Priced by anchorTierFor(): the
+           largest package that fits inside the hours typed, plus ordinary
+           overtime for anything past it — the exact math a late return
+           already uses, so nothing downstream needed to change. -->
+      <div id="c-manual" style="display:none;margin:-2px 0 12px">
+        <label class="lbl">Hours <span class="req">*</span></label>
+        <input class="in" id="c-manual-hrs" type="number" inputmode="decimal" min="0.5" step="0.5"
+          placeholder="e.g. 9" oninput="R.coManualInput()">
+      </div>
       <div class="two">
         <div class="fld"><label class="lbl" id="c-dep-l">Deposit taken</label>
           <input class="in" id="c-dep" type="number" inputmode="numeric" value="${r.deposit}" oninput="R.coSummary()"></div>
@@ -3787,7 +3833,7 @@ const R = {
         <div class="fld"><label class="lbl">Of that, how much in cash?</label>
           <input class="in" id="c-cash" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
       </div>`;
-    this._tier = null; this.coSummary();
+    this._tier = null; this._tierManual = false; this._manualHours = null; this.coSummary();
   },
 
   /* Cash and UPI have to be separable or "net cash in drawer" is a guess.
@@ -3818,13 +3864,42 @@ const R = {
   },
 
   coPick(k){
+    if (k === 'manual'){
+      const anyPriced = Object.values(this._coTiers||{}).some(v => Number(v) > 0);
+      if (!anyPriced){
+        Haptic.error();
+        return toast('Set at least one price under Rates first');
+      }
+      this._tierManual = true; this._tier = null;   /* set once valid hours exist */
+      document.querySelectorAll('#c-tiers .tier').forEach(el=>
+        el.classList.toggle('on', el.dataset.t==='manual'));
+      const box = document.getElementById('c-manual');
+      if (box) box.style.display = '';
+      this.coSummary();
+      return;
+    }
     if (!(Number((this._coTiers||{})[k]) > 0)){
       Haptic.error();
       return toast(tierOf(k).label + ' has no price yet \u2014 set it under Rates first');
     }
+    this._tierManual = false; this._manualHours = null;
+    const box = document.getElementById('c-manual');
+    if (box) box.style.display = 'none';
     this._tier = k;
     document.querySelectorAll('#c-tiers .tier').forEach(el=>
       el.classList.toggle('on', el.dataset.t===k));
+    this.coSummary();
+  },
+
+  /* Reruns on every keystroke: the anchor package can change mid-typing (5hr
+     anchors to a priced 3hr tier, 5.5hr might reach a priced 6hr tier if one
+     existed) and the preview has to track it live, the same way changing the
+     pickup date already re-derives everything else on this screen. */
+  coManualInput(){
+    const el = document.getElementById('c-manual-hrs');
+    const h = Number(el && el.value) || 0;
+    this._manualHours = h > 0 ? h : null;
+    this._tier = this._manualHours ? anchorTierFor(this._coTiers||{}, this._manualHours) : null;
     this.coSummary();
   },
 
@@ -3839,7 +3914,9 @@ const R = {
     const outAt = dtParse(outEl && outEl.value, Date.now());
     const r = rateFor(DB.d.rates.find(x=>x.id===v.rateId), outAt);
     const t = tierOf(this._tier);
-    const due = outAt + t.hours*HOUR;
+    /* Manual duration decides the actual due-back time; the anchor tier only
+       decides what is charged right now (see anchorTierFor()). */
+    const due = outAt + (this._manualHours || t.hours)*HOUR;
     const dep = Number(document.getElementById('c-dep').value)||0;
     const adv = Number(document.getElementById('c-adv').value)||0;
 
@@ -3854,6 +3931,19 @@ const R = {
        the market for sixteen days. */
     const future = this.isFuture(outAt);
     this._bookMode = future;
+    /* Manual duration is a walk-in feature only. A booking holds a MODEL for
+       a window weeks out — "how many hours exactly" is not a question that
+       makes sense before the customer has even arrived, and bookSave() never
+       learned a manualHours field. Refuse cleanly rather than let a booking
+       silently save with the wrong due date. */
+    if (future && this._tierManual){
+      box.innerHTML = `<div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
+        <b style="font-size:12.5px;color:var(--danger)">Manual duration isn't available for advance bookings</b>
+        <div class="muted" style="margin-top:3px">Pick one of the packages above, or come back to this once
+        the customer has arrived.</div></div>`;
+      btn.disabled = true; btn.textContent = 'Pick a package for a booking';
+      return;
+    }
     /* Same field, different meaning: a future pickup takes a token against a
        no-show, not a deposit. Nobody holds five thousand rupees of someone's
        money for sixteen days. */
@@ -3931,10 +4021,21 @@ const R = {
           ${esc(t.label)} leaves them without a bike. A shorter package may still fit.</div>
       </div>` : '';
 
+    /* Manual duration books at the anchor package's flat price, exactly as a
+       fixed tier does — the customer is not charged overtime up front for
+       hours that have not happened yet. Only the wording changes, to say
+       what was actually agreed at the counter rather than only what will be
+       charged for it. */
+    const manualNote = (this._manualHours && this._manualHours > t.hours)
+      ? `<div class="muted" style="margin-top:2px">${fmtDur(this._manualHours - t.hours)} beyond the
+         ${t.label} package \u2014 settles as overtime when it comes back, same as any late return.</div>`
+      : '';
     box.innerHTML = warn + `<div class="card" style="background:var(--p-50);border-color:#D9E2EA">
+      ${this._manualHours ? `<div class="line"><span>Agreed duration</span><b>${fmtDur(this._manualHours)}</b></div>` : ''}
       <div class="line"><span>Due back</span><b>${fmtDT(due)}</b></div>
-      <div class="line"><span>Rent for ${t.label}</span><b>${money(r.tiers[this._tier])}</b></div>
+      <div class="line"><span>Rent for ${t.label}${this._manualHours?' package':''}</span><b>${money(r.tiers[this._tier])}</b></div>
       <div class="line"><span>Overtime after that</span><b>${money(r.ot)}/hr</b></div>
+      ${manualNote}
       <div class="line"><span>Deposit held <span class="muted">(refundable)</span></span><b>${money(dep)}</b></div>
       <div class="line tot"><span>Collect now</span><b>${money(dep + adv)}</b></div>
       <div class="muted" style="margin-top:6px">Of this, ${money(dep)} is not your money — it goes to Deposits held.</div>
@@ -4027,7 +4128,12 @@ const R = {
       id: DB.id('r'), vehicleId: vid, status: 'open',
       customerName: name, customerPhone: ph,
       customerKyc: (document.getElementById('c-kyc')||{value:''}).value.trim(),
-      outAt: now, dueAt: now + t.hours*HOUR, tier: this._tier,
+      outAt: now, dueAt: now + (this._manualHours || t.hours)*HOUR, tier: this._tier,
+      /* r.tier stays the anchor package — settlement, overtime and every
+         money line downstream reads it unchanged. manualHours is carried
+         only so a human being reading the bill later sees what was actually
+         agreed, not the package it happened to be priced against. */
+      manualHours: this._manualHours || null,
       /* Snapshot, never a live lookup: a price change tomorrow must not
          re-price a bike that is already on the road. */
       rateSnapshot: { model: r.model, deposit: r.deposit, ot: r.ot,
@@ -4114,7 +4220,7 @@ const R = {
 Vehicle: ${vLabel(v)}${v.regNo?' ('+v.regNo+')':''}
 Out: ${fmtDT(r.outAt)}
 Due back: *${fmtDT(r.dueAt)}*
-Package: ${t.label} — ${money(r.rateSnapshot.tiers[r.tier])}
+Package: ${tierLabel(r)} — ${money(r.rateSnapshot.tiers[r.tier])}
 Deposit held: ${money(r.depositHeld)} (refundable)
 Late return: ${money(r.rateSnapshot.ot)} per hour
 
@@ -4136,7 +4242,7 @@ Please return on time to get your full deposit back.`;
         <div class="row"><b class="grow" style="font-size:16px">${esc(vLabel(v))}</b>
           <span class="pill ${now>r.dueAt?'late':'ok'}">${now>r.dueAt?'LATE':'ON TIME'}</span></div>
         <div class="muted" style="margin-top:3px">${esc(r.customerName)} · ${esc(r.customerPhone)}</div>
-        <div class="muted" style="margin-top:5px">Out ${fmtDT(r.outAt)} · booked ${tierOf(r.tier).label}</div>
+        <div class="muted" style="margin-top:5px">Out ${fmtDT(r.outAt)} · booked ${tierLabel(r)}</div>
       </div>
       <div class="fld"><label class="lbl">Date &amp; time in</label>
         <input class="in" id="i-in" type="datetime-local" value="${dtLocal(now)}" onchange="R.ciCalc()"></div>
@@ -4321,12 +4427,26 @@ Please return on time to get your full deposit back.`;
         revenue: patch.revenue, refund: patch.depositRefunded,
         collected: patch.balanceCollected, extraHours: patch.extraHours });
       /* The deposit-in and any pickup payment were already booked on the
-         check-out day, so only what moves TODAY is added here. */
+         check-out day, so only what moves TODAY is added here.
+
+         Two different days, on purpose. A rental out at 10pm and back at
+         4am settles on the calendar day AFTER it happened — everything used
+         to land there, so a shop's whole night's business quietly showed up
+         as tomorrow's earnings and yesterday looked like it earned nothing.
+
+         REVENUE is a fact about the rental: it belongs to the day the
+         rental happened, which is check-out day (r.dayKey). CASH MOVEMENT
+         is a fact about the drawer: money that changes hands at 4am
+         genuinely arrived in the till at 4am, on today's date, and the
+         reconciliation feature depends on that being true. So the two are
+         rolled up to two different day-documents rather than one. */
       const _coll = Number(patch.balanceCollected)||0;
       const _ref  = Number(patch.depositRefunded)||0;
       const _refCash = patch.refundMode === 'upi' ? 0 : _ref;
+      const revenueDay = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+      Cloud.rollup(revenueDay, { revenue: patch.revenue, rentals: 1 });
       Cloud.rollup(new Date(patch.settledAt).toISOString().slice(0,10), {
-        revenue:     patch.revenue,
+        rentals:     0,          /* already counted above, on the day the rental happened */
         collected:   _coll,
         depositsOut: _ref,
         outstanding: Number(patch.unpaid)||0,
@@ -4383,7 +4503,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
       <div class="card"><div class="row"><b class="grow">${esc(v?vLabel(v):'')}</b>
         <span class="pill out">${esc(r.customerName||'')}</span></div>
-        <div class="muted" style="margin-top:4px">Booked ${tierOf(r.tier).label} ·
+        <div class="muted" style="margin-top:4px">Booked ${tierLabel(r)} ·
         due ${fmtDT(r.dueAt)}</div></div>
       <div class="fld"><label class="lbl">Change package to</label>
         <div class="tiers" id="ex-tiers">
@@ -4524,10 +4644,16 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       unpaid: newOut, editedAt: Date.now(), editedBy: Cloud.uid });
     if (!w.ok) return toast(Cloud.explainWrite(w.code));
 
-    /* Correct the day this bill was settled on, by the difference only. */
+    /* Two days, matching where each figure actually lives (see the note in
+       checkinSave). Correcting revenue on the settle day, after the fix that
+       moved revenue to check-out day, would silently create a permanent
+       mismatch: the check-out day stays wrong by the old amount forever,
+       and the settle day goes wrong by the correction instead. */
+    const revDay = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+    await Cloud.rollupDelta(revDay, { revenue: rev - oldRev });
     const dk = new Date(r.settledAt||Date.now()).toISOString().slice(0,10);
     await Cloud.rollupDelta(dk, {
-      revenue: rev - oldRev, collected: newColl - oldColl,
+      collected: newColl - oldColl,
       depositsOut: ref - (Number(r.depositRefunded)||0), outstanding: newOut - oldOut });
     Cloud.audit('bill.edit', id,
       { revenue: oldRev, collected: oldColl, refund: r.depositRefunded },
@@ -4547,18 +4673,44 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         voidedAt: Date.now(), voidedBy: Cloud.uid, status: 'void' });
       if (!w.ok) return toast(Cloud.explainWrite(w.code));
       /* A rental touches two days — the deposit went in on pickup day, the
-         rent and refund landed on settle day. Reverse each where it happened,
-         or one day is left overstated and the other understated. */
+         balance and refund landed on settle day. Reverse each where it
+         happened, or one day is left overstated and the other understated.
+
+         rentals and revenue are credited on CHECK-OUT day (see the note in
+         checkinSave), so they reverse there too — not on settle day, where
+         they used to live before that fix.
+
+         cashIn/upiIn/cashOut/upiOut were never reversed here at all — only
+         the combined `collected` figure was. That left "In the drawer" wrong
+         after every single void: the money was told to leave the till record
+         a second time (via `collected` going negative) without ever being
+         told which half of the till — cash or UPI — it should come out of. A
+         voided rental that was paid entirely in UPI would still show as
+         missing cash. The reversal must split exactly the way the original
+         credit did: r.outCash / r.inCash record the actual cash amounts
+         directly; the deposit refund only ever went one way or the other
+         (see the cash/upi toggle on i-rm, no split field exists for it), so
+         it reverses by r.refundMode, matching cancelRental's own pattern. */
+      const refundWasCash = (r.refundMode || 'cash') !== 'upi';
       const dk = new Date(r.settledAt||Date.now()).toISOString().slice(0,10);
       await Cloud.rollupDelta(dk, {
-        rentals: -1, revenue: -(Number(r.revenue)||0),
         collected: -(Number(r.balanceCollected)||0),
         depositsOut: -(Number(r.depositRefunded)||0),
-        outstanding: -(Number(r.unpaid)||0) });
+        outstanding: -(Number(r.unpaid)||0),
+        cashIn:  -(Number(r.inCash)||0),
+        upiIn:   -Math.max(0, (Number(r.balanceCollected)||0) - (Number(r.inCash)||0)),
+        cashOut: refundWasCash ? -(Number(r.depositRefunded)||0) : 0,
+        upiOut:  refundWasCash ? 0 : -(Number(r.depositRefunded)||0),
+      });
       const ok2 = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+      const inTotal = (Number(r.depositHeld)||0) + (Number(r.advancePaid)||0);
       await Cloud.rollupDelta(ok2, {
+        rentals: -1, revenue: -(Number(r.revenue)||0),
         depositsIn: -(Number(r.depositHeld)||0),
-        collected: -(Number(r.advancePaid)||0) });
+        collected: -(Number(r.advancePaid)||0),
+        cashIn:  -(Number(r.outCash)||0),
+        upiIn:   -Math.max(0, inTotal - (Number(r.outCash)||0)),
+      });
       Cloud.audit('bill.void', id, { revenue:r.revenue }, null);
       this._closed = null;
       Haptic.success(); closeSheet(); this.render(); toast('Bill voided');
@@ -4635,8 +4787,13 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       this._closed = [];
       Cloud.recentClosed(400).then(rows => { this._closed = rows; if (this.page==='money') this.renderMoney(); });
     }
+    /* Filtered by outAt, not settledAt — for the same reason revenue now rolls
+       up to check-out day. A rental out at 10pm and back at 4am belongs to
+       the day it happened, not the day the paperwork closed; filtering by
+       settledAt put it on the wrong side of a "Yesterday" / "Today" boundary
+       exactly when a shop is most likely to check. */
     const inRange = closed.filter(x => !x.voidedAt && x.status !== 'cancelled'
-      && (this._period==='all' || (x.settledAt >= rng.start && x.settledAt <= rng.end)));
+      && (this._period==='all' || (x.outAt >= rng.start && x.outAt <= rng.end)));
 
     const per = DB.d.vehicles.map(v=>{
       const rs = inRange.filter(x=>x.vehicleId===v.id);
@@ -4680,10 +4837,16 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         ${legacy ? `<div class="muted" style="margin-bottom:10px">These rentals were recorded before
           payment mode was tracked, so the split is not known for them.</div>` : ''}
         <div class="pm-split">
-          <div class="pm-box cash">
+          <div class="pm-box cash${netCash<0?' short':''}">
             <div class="pm-l">\u{1F4B5} In the drawer</div>
             <div class="pm-v">${money(netCash)}</div>
             <div class="pm-s">${money(cashIn)} in · ${money(cashOut)} out</div>
+            ${netCash<0 ? `<div class="pm-note"><b>Nothing is missing.</b> Of the ${money(cashOut)}
+              that left the drawer ${esc(rng.label.toLowerCase())}, ${money(Math.min(cashOut,depOut))}
+              was a deposit refund \u2014 giving back money a customer had already handed you on an
+              earlier day. That money was counted as income back then, not now, so the drawer looks
+              light on paper even though nothing is actually wrong. Keep enough change on hand to
+              cover it.</div>` : ''}
           </div>
           <div class="pm-box upi">
             <div class="pm-l">\u{1F4F2} To your bank</div>
