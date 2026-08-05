@@ -895,7 +895,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_24_7_nounsweep';
+const BUILD = 'rn_v3_25_1_backcompat';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1134,6 +1134,31 @@ function quote(rate, tierKey, hoursActual){
     basis: 'overtime', straight,
     alt: cands.length ? cands[0] : null
   };
+}
+
+/* ── kilometres (cars, optional) ──────────────────────────────────
+   Charges nothing unless three things are all true: the rate card has km
+   terms, the shop actually recorded an odometer at pickup, and it recorded
+   one at return. Any one missing and this returns null — a shop that never
+   measures distance must never be charged for it, silently or otherwise.
+
+   The included allowance is PER DAY on the rate card, but a rental is not
+   always a whole number of days — ceil(hoursActual/24) rounds the quota UP
+   in the customer's favour, the same direction quote() already rounds
+   overtime hours. A 3-hour rental still gets a full day's km; nobody is
+   accused of exceeding an allowance they arguably still had. */
+function kmCharge(rateSnapshot, odoOut, odoIn, hoursActual){
+  const inc = Number(rateSnapshot && rateSnapshot.kmIncluded) || 0;
+  const per = Number(rateSnapshot && rateSnapshot.kmExtra) || 0;
+  if (!inc && !per) return null;                       /* no km terms on this card */
+  const out = Number(odoOut) || 0, back = Number(odoIn) || 0;
+  if (!(out > 0) || !(back > 0)) return null;           /* nothing measured, nothing charged */
+  const driven = back - out;
+  if (driven < 0) return null;                          /* a typo, not a negative distance */
+  const days = Math.max(1, Math.ceil((Number(hoursActual)||0) / 24));
+  const allowed = inc * days;
+  const over = Math.max(0, driven - allowed);
+  return { driven, allowed, over, charge: per > 0 ? over * per : 0 };
 }
 
 /* ── time helpers ─────────────────────────────────────────────────── */
@@ -2833,7 +2858,7 @@ const R = {
             <b style="font-size:13.5px">Price for this model</b>
             <div class="muted" style="margin:2px 0 4px">Every ${noun()} you point at this rate card
               charges the same.</div>
-            ${this.rateFields('vnr', null)}
+            ${this.rateFields('vnr', null, ek)}
           </div>
         </div>
         ${anyReady ? '' : `
@@ -2901,7 +2926,7 @@ const R = {
      Only 24 hr and overtime are required. The rest are the tiers this shop
      may simply not rent by, and demanding five numbers before a bike can
      exist is what made the old screen feel like paperwork. */
-  rateFields(pfx, rc){
+  rateFields(pfx, rc, kind){
     rc = rc || {};
     const t = rc.tiers || {};
     /* No placeholder. A grey "700" sitting right-aligned in a price field is
@@ -2910,10 +2935,10 @@ const R = {
        complete, and got told to enter the 24-hour rate. Example prices live in
        the hint line underneath instead, where they cannot be mistaken for
        data. */
-    const row = (id, label, val, req) => `
+    const row = (id, label, val, req, unit) => `
       <div class="rt-row">
         <label class="rt-l" for="${pfx}-${id}">${label}${req?' <span class="req">*</span>':''}</label>
-        <div class="rt-in"><span>\u20B9</span>
+        <div class="rt-in"><span>${unit||'\u20B9'}</span>
           <input id="${pfx}-${id}" type="number" inputmode="numeric" enterkeyhint="next"
             value="${val?val:''}"></div>
       </div>`;
@@ -2928,6 +2953,16 @@ const R = {
         ${row('d7','7 days',   t.d7,  false)}
         <div class="rt-sep">If they are late</div>
         ${row('ot','Overtime / hour', rc.ot, true)}
+        <!-- Cars only, and optional even there. A scooter's wear tracks time,
+             not distance, so metering one is a tax on the ninety percent to
+             serve the ten — same reasoning as every other kind-gated field in
+             this app. Blank means unlimited, matching how every hourly tier
+             already behaves: absent is "not sold that way", never zero. -->
+        ${kind==='car' ? `
+        <div class="rt-sep">Kilometres \u2014 optional</div>
+        ${row('kmi','Included per day', rc.kmIncluded, false, 'km')}
+        ${row('kme','After that, per km', rc.kmExtra, false)}
+        ` : ''}
         <!-- No example figures anywhere on this form. A number printed near an
              empty price box gets read as the price, whether it sits inside the
              box or under it. Every rate here comes from the shop and nowhere
@@ -2954,8 +2989,13 @@ const R = {
     const d24 = n('h24'), ot = n('ot');
     if (!(d24 > 0)) { flag('h24'); Haptic.error(); toast('Enter what you charge for 24 hours'); return null; }
     if (!(ot > 0))  { flag('ot');  Haptic.error(); toast('Enter the overtime rate \u2014 it is what late returns cost you'); return null; }
-    return { deposit: n('dep'), ot: ot,
+    /* km fields only exist in the markup for a car, and even then they are
+       optional — n() already returns 0 for a blank box, which is exactly
+       "unlimited" once quote()/the checkout preview reads it. */
+    const out = { deposit: n('dep'), ot: ot,
              tiers: { h3:n('h3'), h6:n('h6'), h12:n('h12'), h24:d24, d7:n('d7') } };
+    if (g('kmi') || g('kme')){ out.kmIncluded = n('kmi'); out.kmExtra = n('kme'); }
+    return out;
   },
 
   /* ══════════════════════════════════════════════════════════════════
@@ -3081,7 +3121,7 @@ const R = {
         <b style="font-size:13.5px">What do you charge for it?</b>
         <div class="muted" style="margin:2px 0 4px">This becomes the rate card for every ${noun()} of
           this model you add later.</div>
-        ${this.rateFields('fb', null)}
+        ${this.rateFields('fb', null, k)}
       </div>
 
       <button class="btn" onclick="R.saveFirstBike()">Save ${noun()} &amp; price</button>
@@ -3123,7 +3163,7 @@ const R = {
     const name = (g('fb-name').value||'').trim();
     const reg  = (g('fb-reg').value||'').trim().toUpperCase();
     if (!name) return toast(Noun()+' name is required');
-    const rt = this.readRate('fb');
+    const rt = this.readRate('fb', k);
     if (!rt) return;
     const dep = rt.deposit, d24 = rt.tiers.h24;
     /* Deposit of zero is a legitimate choice — plenty of shops take none — so
@@ -3133,7 +3173,8 @@ const R = {
     /* Same persistence path saveVehicle() and saveRate() use — Cloud.put when
        signed in, local push otherwise. Written by hand rather than reused
        because the rate card must land before the vehicle that points at it. */
-    const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot };
+    const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot, kind: k,
+      ...(k==='car' ? { kmIncluded: rt.kmIncluded||0, kmExtra: rt.kmExtra||0 } : {}) };
     if (window.Cloud && Cloud.ready){
       const rid = Cloud.nid('rc');
       const vid = Cloud.nid('v');
@@ -3207,13 +3248,21 @@ const R = {
     if (!name) return toast(Noun()+' name is required');
     if (!rateId) return toast('Choose a rate card');
 
+    /* Same expression saveVehicle() uses below for the vehicle record itself —
+       computed once here because the "+ New rate" branch needs to know the
+       kind BEFORE the vehicle record exists, to read and tag the right km
+       fields on the rate card it is about to create. */
+    const old0 = id ? DB.d.vehicles.find(x=>x.id===id) : null;
+    const vKind = old0 ? (old0.kind || 'bike') : (this._addKind || (fleetKind()==='car' ? 'car' : 'bike'));
+
     /* "+ New rate" creates the card first, then falls through to the normal
        save with its id. Doing it here rather than in a second sheet keeps the
        name and number the shop already typed. */
     if (rateId === '__new'){
-      const rt = this.readRate('vnr');
+      const rt = this.readRate('vnr', vKind);
       if (!rt) return;
-      const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot };
+      const rateRec = { model: name, deposit: rt.deposit, tiers: rt.tiers, ot: rt.ot, kind: vKind,
+        ...(vKind==='car' ? { kmIncluded: rt.kmIncluded||0, kmExtra: rt.kmExtra||0 } : {}) };
       if (window.Cloud && Cloud.ready){
         rateId = Cloud.nid('rc');
         /* BUG FIX: this used to fire the rate write and carry straight on to the
@@ -3240,16 +3289,17 @@ const R = {
       return toast('A '+noun()+' with that name already exists — add a number or change the name');
     const rc = DB.d.rates.find(r=>r.id===rateId);
     const g = i => document.getElementById(i);
-    const old = id ? DB.d.vehicles.find(x=>x.id===id) : null;
+    const old = old0;
     const rec = {
       /* Recorded on every vehicle, not just the first — without it a mixed
          shop's second car saves as a bike.
          
          An EDIT keeps whatever the vehicle already was. Deriving it here would
          mean opening a car to fix its number plate and saving it back as a
-         bike, which is data loss with no error message. */
-      kind: old ? (old.kind || 'bike')
-                : (this._addKind || (fleetKind()==='car' ? 'car' : 'bike')),
+         bike, which is data loss with no error message. Same value as vKind
+         above — computed once, reused, so the rate card and the vehicle it
+         belongs to can never disagree about what kind of thing this is. */
+      kind: vKind,
       name, regNo: reg, rateId, model: rc?rc.model:'',
       status: g('v-status') ? g('v-status').value : (old?old.status:'available'),
       cost: g('v-cost') ? (Number(g('v-cost').value)||0) : (old?old.cost:0),
@@ -3667,11 +3717,35 @@ const R = {
   editRate(id){
     if (!this.isOwner()) return toast('Only the owner can change prices');
     const r = id ? DB.d.rates.find(x=>x.id===id) : null;
+    /* An existing rate card keeps whatever it was tagged — the same rule
+       vehicles follow.
+
+       rate.kind is new in this build. Every rate card created before it —
+       including a real car's — has no kind field at all, only the vehicles
+       pointing at it do (vehicle.kind has existed since Phase 1). Defaulting
+       an unset rate card straight to 'bike' would hide the km section on a
+       shop's EXISTING car rate card forever, on the very release meant to
+       let them use it. So an unset kind is inferred from any vehicle already
+       pointing at this rate card before falling back to 'bike'. */
+    const ek = r ? (r.kind || (DB.d.vehicles.some(v=>v.rateId===r.id && v.kind==='car') ? 'car' : 'bike'))
+                 : (this._addRateKind || (rentKind()==='car' ? 'car' : 'bike'));
+    this._addRateKind = ek;
     openSheet(`
-      <div class="sheet-hd"><h2>${r?'Edit rate card':'New rate card'}</h2>
+      <div class="sheet-hd"><h2>${r?'Edit rate card':'New '+noun()+' rate card'}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
-      <div class="fld"><label class="lbl">Model <span class="req">*</span></label>
-        <input class="in" id="r-model" value="${esc(r?r.model:'')}" placeholder="Activa 3G"></div>
+      ${(!r && rentKind()==='both') ? `
+        <!-- A shop that rents both must say which, for a NEW card only — same
+             rule as the vehicle picker: asked once, not on every screen, and
+             never for something that already has an answer. -->
+        <div class="kindrow">
+          <div class="kbtn ${ek==='bike'?'on':''}" onclick="R.setRateKind('bike')">
+            <span class="e">\u{1F6F5}</span><b>Bike</b></div>
+          <div class="kbtn ${ek==='car'?'on car':''}" onclick="R.setRateKind('car')">
+            <span class="e">\u{1F697}</span><b>Car</b></div>
+        </div>` : ''}
+      <div class="fld"><label class="lbl">${Noun(0,ek)} model <span class="req">*</span></label>
+        <input class="in" id="r-model" value="${esc(r?r.model:'')}"
+          placeholder="${ek==='car'?'Swift':'Activa 3G'}"></div>
       <div class="two">
         <div class="fld"><label class="lbl">Deposit <span class="req">*</span></label>
           <input class="in" id="r-dep" type="number" inputmode="numeric" value="${r?r.deposit:''}" placeholder="₹"></div>
@@ -3682,6 +3756,19 @@ const R = {
       ${TIERS.map(t=>`<div class="fld"><label class="lbl">${t.label}</label>
         <input class="in" id="r-${t.k}" type="number" inputmode="numeric"
           value="${r?r.tiers[t.k]:''}" placeholder="₹"></div>`).join('')}
+
+      <!-- Cars only, and optional even there — same reasoning as rateFields():
+           a scooter's wear tracks time, not distance, and metering one would
+           tax every bike shop to serve the minority that needs it. Blank
+           means unlimited, the same rule the hourly tiers already use. -->
+      ${ek==='car' ? `
+      <div class="sec-hd" style="margin-top:6px">Kilometres — optional</div>
+      <div class="fld"><label class="lbl">Included per day</label>
+        <input class="in" id="r-kmi" type="number" inputmode="numeric"
+          value="${r&&r.kmIncluded?r.kmIncluded:''}" placeholder="km"></div>
+      <div class="fld"><label class="lbl">After that, per km</label>
+        <input class="in" id="r-kme" type="number" inputmode="numeric"
+          value="${r&&r.kmExtra?r.kmExtra:''}" placeholder="₹"></div>` : ''}
 
       <button type="button" class="btn ghost" style="margin:4px 0 12px"
         onclick="R.more('r-wk',this)">Weekend prices <span class="muted">— optional</span></button>
@@ -3700,21 +3787,49 @@ const R = {
           <input class="in" id="rw-${t.k}" type="number" inputmode="numeric"
             value="${r&&r.weekend&&r.weekend.tiers?(r.weekend.tiers[t.k]||''):''}" placeholder="₹"></div>`).join('')}
       </div>
-      <button class="btn" onclick="R.saveRate('${id||''}')">${r?'Save changes':'Add rate card'}</button>
+      <button class="btn" onclick="R.saveRate('${id||''}')">${r?'Save changes':'Add '+noun()+' rate card'}</button>
     `);
+  },
+
+  /* Reopens the sheet so the heading, placeholder and km section all follow,
+     and keeps whatever the shop already typed — same pattern as
+     setEditKind()/setAddKind() on the vehicle form. */
+  setRateKind(k){
+    if (this._addRateKind === k) return;
+    const g = i => document.getElementById(i);
+    const keep = { model:(g('r-model')||{}).value, dep:(g('r-dep')||{}).value, ot:(g('r-ot')||{}).value,
+      h3:(g('r-h3')||{}).value, h6:(g('r-h6')||{}).value, h12:(g('r-h12')||{}).value,
+      h24:(g('r-h24')||{}).value, d7:(g('r-d7')||{}).value };
+    this._addRateKind = k;
+    Haptic.tap();
+    this.editRate();
+    Object.keys(keep).forEach(id=>{ const el=document.getElementById('r-'+id);
+      if (el && keep[id]) el.value = keep[id]; });
   },
 
   saveRate(id){
     const model = document.getElementById('r-model').value.trim();
-    if (!model) return toast('Model name is required');
+    if (!model) return toast(Noun()+' model is required');
     const tiers = {};
     for (const t of TIERS) tiers[t.k] = Number(document.getElementById('r-'+t.k).value)||0;
     const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
     const wt = {}; TIERS.forEach(t=>{ wt[t.k] = g('rw-'+t.k); });
     const anyWk = Object.keys(wt).some(k=>wt[k]>0);
+    /* An existing card keeps its own kind; a new one is whatever the picker
+       (or the shop's single answer) said — same expression editRate() uses
+       to decide which fields to show, so the two can never disagree. */
+    const old = id ? DB.d.rates.find(x=>x.id===id) : null;
+    /* Same inference as editRate() above, and it must be — saveRate() is
+       what WRITES kind onto the record. If this resolved differently to a
+       'car' rate card than the sheet that rendered its edit form did, saving
+       would permanently stamp kind:'bike' onto a car, having shown the km
+       fields the whole time the shop was editing it. */
+    const ek = old ? (old.kind || (DB.d.vehicles.some(v=>v.rateId===old.id && v.kind==='car') ? 'car' : 'bike'))
+                   : (this._addRateKind || (rentKind()==='car' ? 'car' : 'bike'));
     const rec = {
       model, deposit: Number(document.getElementById('r-dep').value)||0,
-      ot: Number(document.getElementById('r-ot').value)||0, tiers,
+      ot: Number(document.getElementById('r-ot').value)||0, tiers, kind: ek,
+      ...(ek==='car' ? { kmIncluded: g('r-kmi'), kmExtra: g('r-kme') } : {}),
       weekend: anyWk ? { deposit: g('rw-dep'), ot: g('rw-ot'), tiers: wt } : null
     };
     if (window.Cloud && Cloud.ready){
@@ -3726,7 +3841,7 @@ const R = {
       Object.assign(DB.d.rates.find(x=>x.id===id), rec);
       DB.d.vehicles.forEach(v=>{ if (v.rateId===id) v.model = model; });
     } else DB.d.rates.push(Object.assign({ id: DB.id('rc') }, rec));
-    DB.save(); closeSheet(); this.render(); toast('Rate card saved');
+    DB.save(); closeSheet(); this.render(); toast(Noun()+' rate card saved');
   },
 
   /* ── CHECK-OUT ──────────────────────────────────────────────────── */
@@ -3839,6 +3954,16 @@ const R = {
         <input class="in" id="c-manual-hrs" type="number" inputmode="decimal" min="0.5" step="0.5"
           placeholder="e.g. 9" oninput="R.coManualInput()">
       </div>
+      <!-- Informational only, same as the overtime rate below it — nothing is
+           known about actual distance until the car comes back, so nothing
+           is charged here. -->
+      ${(r.kmIncluded || r.kmExtra) ? `<div class="card" style="background:var(--tl-tint,#E0F2FE);
+          border-color:var(--tl-bd,#A5D8F0);margin-bottom:11px">
+        <b style="font-size:12.5px">${r.kmIncluded||0} km included per day</b>
+        <div class="muted" style="margin-top:2px">${r.kmExtra?money(r.kmExtra)+' for every km after that.':
+          'No charge past that \u2014 kilometres beyond it are free.'}
+          ${r.kmIncluded?'Record the odometer at pickup and return to have this counted.':''}</div>
+      </div>` : ''}
       <div class="two">
         <div class="fld"><label class="lbl" id="c-dep-l">Deposit taken</label>
           <input class="in" id="c-dep" type="number" inputmode="numeric" value="${r.deposit}" oninput="R.coSummary()"></div>
@@ -4180,9 +4305,12 @@ const R = {
          agreed, not the package it happened to be priced against. */
       manualHours: this._manualHours || null,
       /* Snapshot, never a live lookup: a price change tomorrow must not
-         re-price a bike that is already on the road. */
+         re-price a bike that is already on the road. km terms freeze the
+         same way — a shop that raises its per-km rate next week must not
+         reach back into a car that is already out. */
       rateSnapshot: { model: r.model, deposit: r.deposit, ot: r.ot,
-                      tiers: Object.assign({}, r.tiers), weekend: !!r._weekend },
+                      tiers: Object.assign({}, r.tiers), weekend: !!r._weekend,
+                      kmIncluded: Number(r.kmIncluded)||0, kmExtra: Number(r.kmExtra)||0 },
       depositHeld: Number(document.getElementById('c-dep').value)||0,
       advancePaid: Number(document.getElementById('c-adv').value)||0,
       outPayMode: this.pmGet('c-pm'),
@@ -4260,12 +4388,16 @@ const R = {
     const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
     const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
     const t = tierOf(r.tier);
+    const rs = r.rateSnapshot || {};
+    const kmLine = (rs.kmIncluded || rs.kmExtra)
+      ? `\nKm included: ${rs.kmIncluded||0} per day${rs.kmExtra?', then '+money(rs.kmExtra)+'/km':''}`
+      : '';
     const msg =
 `*Rental confirmed*
 Vehicle: ${vLabel(v)}${v.regNo?' ('+v.regNo+')':''}
 Out: ${fmtDT(r.outAt)}
 Due back: *${fmtDT(r.dueAt)}*
-Package: ${tierLabel(r)} — ${money(r.rateSnapshot.tiers[r.tier])}
+Package: ${tierLabel(r)} — ${money(r.rateSnapshot.tiers[r.tier])}${kmLine}
 Deposit held: ${money(r.depositHeld)} (refundable)
 Late return: ${money(r.rateSnapshot.ot)} per hour
 
@@ -4362,9 +4494,15 @@ Please return on time to get your full deposit back.`;
     const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
     const dmg = g('i-dmg'), fuelc = g('i-fuelc'), other = g('i-other');
 
+    /* Cars only, and only if both odometer readings exist — see kmCharge()
+       for why. Computed here, once, so the preview and the amount actually
+       charged at save can never disagree. */
+    const km = kmCharge(r.rateSnapshot, r.odoOut, g('i-odo'), hrs);
+    this._ci.km = km;
+
     const useAlt = this._ci.useAlt && q.alt;
     const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
-    const charges = rentTotal + dmg + fuelc + other;
+    const charges = rentTotal + dmg + fuelc + other + (km ? km.charge : 0);
     const due = charges - (Number(r.advancePaid)||0);
     /* Part payment is normal at a counter — the customer pays what they have
        and the rest is chased. Booking the full amount as collected would
@@ -4393,6 +4531,10 @@ Please return on time to get your full deposit back.`;
         <div class="line"><span>Rent · ${tierOf(r.tier).label}</span><b>${money(q.rent)}</b></div>
         ${q.overtime>0 && !useAlt ? `<div class="line"><span>Overtime · ${q.hoursOver} hr × ${money(r.rateSnapshot.ot)}</span>
           <b class="neg">${money(q.overtime)}</b></div>`:''}
+        ${km && km.over>0 ? `<div class="line"><span>Extra km · ${km.over} × ${money(r.rateSnapshot.kmExtra)}</span>
+          <b class="neg">${money(km.charge)}</b></div>`:''}
+        ${km && !km.over ? `<div class="muted" style="margin:2px 0 4px">${km.driven} km driven,
+          ${km.allowed} included \u2014 no extra km charge.</div>`:''}
         ${useAlt ? `<div class="line"><span>Switched to ${q.alt.label} package</span>
           <b class="pos">${money(q.alt.total - q.rent)}</b></div>`:''}
         ${dmg?`<div class="line"><span>Damage</span><b class="neg">${money(dmg)}</b></div>`:''}
@@ -4427,14 +4569,15 @@ Please return on time to get your full deposit back.`;
 
   async checkinSave(){
     this.ciCalc();
-    const { id, hrs, q, inAt } = this._ci;
+    const { id, hrs, q, inAt, km } = this._ci;
     const r = DB.d.rentals.find(x=>x.id===id); if (!r) return;
     const v = DB.d.vehicles.find(x=>x.id===r.vehicleId);
     const g = i => Number((document.getElementById(i)||{value:0}).value)||0;
     const dmg = g('i-dmg'), fuelc = g('i-fuelc'), other = g('i-other');
     const useAlt = this._ci.useAlt && q.alt;
     const rentTotal = useAlt ? q.alt.total : (q.rent + q.overtime);
-    const charges = rentTotal + dmg + fuelc + other;
+    const kmAmt = km ? km.charge : 0;
+    const charges = rentTotal + dmg + fuelc + other + kmAmt;
     const due = charges - (Number(r.advancePaid)||0);
     const _unpaid = Math.max(0, this._ci.unpaid || 0);
     const refund = Math.max(0, (Number(r.depositHeld)||0) - _unpaid);
@@ -4443,8 +4586,12 @@ Please return on time to get your full deposit back.`;
       status: 'closed', returnedAt: inAt, settledAt: Date.now(),
       hoursUsed: Math.round(hrs*100)/100, extraHours: q.hoursOver||0,
       odoIn: g('i-odo'),
+      /* Distance driven and the km charge, recorded even at zero — a car with
+         km terms and a shop that skipped the odometer should show "not
+         measured" on the bill, not silently look identical to a bike. */
+      kmDriven: km ? km.driven : null, kmOver: km ? km.over : null,
       fuelIn: (document.getElementById('i-fuel')||{value:''}).value,
-      charges: { rent: rentTotal, overtime: useAlt?0:q.overtime, damage: dmg, fuel: fuelc, other },
+      charges: { rent: rentTotal, overtime: useAlt?0:q.overtime, damage: dmg, fuel: fuelc, other, km: kmAmt },
       /* Revenue is rent + recoveries ONLY. The deposit never enters this
          number; it is refunded, or forfeited into `forfeited` below. */
       revenue: charges,
