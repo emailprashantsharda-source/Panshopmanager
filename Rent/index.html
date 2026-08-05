@@ -703,6 +703,8 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    number goes negative, matching how the card should have looked all along. */
 .pm-box.cash.short{background:var(--y-tint);border-color:var(--y-bd)}
 .pm-box.cash.short .pm-l{color:#95610A}
+.pm-box.upi.short{background:var(--y-tint);border-color:var(--y-bd)}
+.pm-box.upi.short .pm-l{color:#95610A}
 .pm-note{margin-top:9px;padding-top:9px;border-top:1px dashed #E0D6B0;
   font-size:11.5px;line-height:1.5;color:var(--t2)}
 .pm-note b{color:var(--t1)}
@@ -887,7 +889,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_24_3_drawer';
+const BUILD = 'rn_v3_24_4_upidrawer';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -4848,10 +4850,15 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
               light on paper even though nothing is actually wrong. Keep enough change on hand to
               cover it.</div>` : ''}
           </div>
-          <div class="pm-box upi">
+          <div class="pm-box upi${netUpi<0?' short':''}">
             <div class="pm-l">\u{1F4F2} To your bank</div>
             <div class="pm-v">${money(netUpi)}</div>
             <div class="pm-s">${money(upiIn)} in · ${money(upiOut)} out</div>
+            ${netUpi<0 ? `<div class="pm-note"><b>Nothing is missing.</b> Of the ${money(upiOut)}
+              sent out ${esc(rng.label.toLowerCase())}, ${money(Math.min(upiOut,depOut))} was a
+              deposit refund \u2014 sending back money a customer had already paid you on an
+              earlier day. That money was counted as income back then, not now, so this figure
+              looks light on paper even though nothing is actually wrong.</div>` : ''}
           </div>
         </div>
         <div class="line tot" style="margin-top:12px"><span>Total money movement</span>
