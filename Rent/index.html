@@ -391,6 +391,12 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    a free rental waiting to be taken. */
 .tier.off{opacity:.45;border-style:dashed;cursor:not-allowed}
 .tier.off .p{color:var(--t4);font-weight:750;font-size:12.5px}
+/* Manual made checkout's tier row six items instead of five. flex:1 alone
+   fits five across a phone width, so the sixth wrapped onto its own line and,
+   being the only thing on that line, stretched edge to edge — a full-width
+   card where a tile belonged. Scoped to #c-tiers only: the extend-rental
+   grid (#ex-tiers) still has five items and stays a single clean row. */
+#c-tiers .tier{flex:1 1 30%}
 
 /* ── sheet ─────────────────────────────────────────────── */
 .ov{
@@ -889,7 +895,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_24_4_upidrawer';
+const BUILD = 'rn_v3_24_6_hoursdays';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -3807,15 +3813,25 @@ const R = {
               <div class="p">${tv>0?money(tv):'not set'}</div></div>`;
           }).join('')}
           <div class="tier" data-t="manual" onclick="R.coPick('manual')">
-            <div class="t">Manual</div>
-            <div class="p">Set hours</div></div>
+            <div class="t">Custom</div>
+            <div class="p">Set duration</div></div>
         </div></div>
-      <!-- Revealed only when Manual is picked. Priced by anchorTierFor(): the
-           largest package that fits inside the hours typed, plus ordinary
+      <!-- Revealed only when Custom is picked. Priced by anchorTierFor(): the
+           largest package that fits inside the duration typed, plus ordinary
            overtime for anything past it — the exact math a late return
-           already uses, so nothing downstream needed to change. -->
+           already uses, so nothing downstream needed to change.
+
+           Hours or days, not hours only: a customer taking a bike for four
+           days used to mean typing 96 into an "Hours" box, which nobody does
+           reliably in their head at a counter. The toggle just changes what
+           the number means before it is turned into hours internally —
+           everything past coManualInput() still works in hours alone. -->
       <div id="c-manual" style="display:none;margin:-2px 0 12px">
-        <label class="lbl">Hours <span class="req">*</span></label>
+        <label class="lbl">Duration <span class="req">*</span></label>
+        <div class="pm" id="c-manual-unit" style="margin-bottom:7px">
+          <button type="button" class="on" data-u="hours" onclick="R.coManualUnit('hours')">Hours</button>
+          <button type="button" data-u="days" onclick="R.coManualUnit('days')">Days</button>
+        </div>
         <input class="in" id="c-manual-hrs" type="number" inputmode="decimal" min="0.5" step="0.5"
           placeholder="e.g. 9" oninput="R.coManualInput()">
       </div>
@@ -3835,7 +3851,8 @@ const R = {
         <div class="fld"><label class="lbl">Of that, how much in cash?</label>
           <input class="in" id="c-cash" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
       </div>`;
-    this._tier = null; this._tierManual = false; this._manualHours = null; this.coSummary();
+    this._tier = null; this._tierManual = false; this._manualHours = null;
+    this._manualUnit = 'hours'; this.coSummary();
   },
 
   /* Cash and UPI have to be separable or "net cash in drawer" is a guess.
@@ -3896,13 +3913,35 @@ const R = {
   /* Reruns on every keystroke: the anchor package can change mid-typing (5hr
      anchors to a priced 3hr tier, 5.5hr might reach a priced 6hr tier if one
      existed) and the preview has to track it live, the same way changing the
-     pickup date already re-derives everything else on this screen. */
+     pickup date already re-derives everything else on this screen.
+
+     The number typed means hours or days depending on coManualUnit()'s last
+     toggle; converted to hours here, once, so every line below this — the
+     anchor, the due-back time, quote(), the eventual rental record — still
+     deals in a single unit and never has to ask which one the person meant. */
   coManualInput(){
     const el = document.getElementById('c-manual-hrs');
-    const h = Number(el && el.value) || 0;
+    const raw = Number(el && el.value) || 0;
+    const mult = this._manualUnit === 'days' ? 24 : 1;
+    const h = raw > 0 ? raw * mult : 0;
     this._manualHours = h > 0 ? h : null;
     this._tier = this._manualHours ? anchorTierFor(this._coTiers||{}, this._manualHours) : null;
     this.coSummary();
+  },
+
+  /* Switching units re-reads whatever number is already in the box rather
+     than clearing it — typing "3", then realising it should have been days
+     rather than hours, should not throw the number away. */
+  coManualUnit(u){
+    if (this._manualUnit === u) return;
+    this._manualUnit = u;
+    const box = document.getElementById('c-manual-unit');
+    if (box) box.querySelectorAll('button').forEach(b =>
+      b.classList.toggle('on', b.dataset.u === u));
+    const el = document.getElementById('c-manual-hrs');
+    if (el) el.placeholder = u === 'days' ? 'e.g. 3' : 'e.g. 9';
+    Haptic.tap();
+    this.coManualInput();
   },
 
   coSummary(){
