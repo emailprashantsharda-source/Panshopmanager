@@ -876,7 +876,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_23_8_share';
+const BUILD = 'rn_v3_23_9_onboard';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2055,10 +2055,23 @@ const R = {
   obState(){
     const veh   = (DB.d.vehicles||[]).filter(v=>!v.deletedAt);
     const rates = (DB.d.rates||[]);
+    /* DB.d.rentals is bound to a LIVE listener scoped to status=='open' —
+       deliberately, so it never grows with the age of the business (see
+       Cloud.open()). That means the instant a shop's first rental is
+       settled, DB.d.rentals goes straight back to empty, and reading
+       "rented" off its length made the whole onboarding card reappear —
+       forever, for every shop, the moment they closed their first rental.
+       The step needed something that stays true once true. Cloud already
+       writes a rollup to /daily on every settle, so any row there at all
+       means a rental has happened at some point; that document does not
+       depend on which rentals are still open. */
+    const everRented = (DB.d.daily||[]).length > 0
+      || (DB.d.rentals||[]).length > 0
+      || (function(){ try { return localStorage.getItem('rn_ever_rented')==='1'; } catch(e){ return false; } })();
     return {
       bikes:   veh.length > 0,
       priced:  rates.some(r => this.rateReady(r)),
-      rented:  (DB.d.rentals||[]).length > 0,
+      rented:  everRented,
       nBikes:  veh.length,
       firstReady: (veh.find(v => { const rc = rates.find(r=>r.id===v.rateId);
                                    return rc && this.rateReady(rc); }) || null)
@@ -4083,6 +4096,9 @@ const R = {
         DB.d.customers.push({ id: DB.id('c'), name, phone: ph, kyc: rental.customerKyc });
       DB.save();
     }
+    /* Set the instant a rental exists, not derived from anything that can
+       later go back to empty — see obState() for what happens without it. */
+    try { localStorage.setItem('rn_ever_rented','1'); } catch(e){}
     Haptic.success();
     closeSheet(); this.nav('out');
     toast('Rented out · ' + vLabel(v));
