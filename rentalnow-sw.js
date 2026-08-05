@@ -3,7 +3,7 @@
  * shell must never outlive a new build. Cache is the offline fallback
  * only, after NAV_TIMEOUT.
  */
-const SW_VERSION = 'rn_v3_22_2_glossy';
+const SW_VERSION = 'rn_v3_24_7_nounsweep';
 const CACHE = 'rentalnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000;
 /* './' is what the manifest's start_url resolves to, and what index.html is
@@ -14,7 +14,6 @@ const NAV_TIMEOUT = 4000;
 const SHELL = [
   './',
   './manifest.webmanifest',
-  './rn-mark.png',
   './icon-192.png', './icon-512.png',
   './icon-192-maskable.png', './icon-512-maskable.png',
   './apple-touch-icon.png', './favicon-32.png'
