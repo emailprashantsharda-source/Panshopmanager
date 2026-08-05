@@ -895,7 +895,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_24_6_hoursdays';
+const BUILD = 'rn_v3_24_7_nounsweep';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -1585,7 +1585,7 @@ const R = {
         <button class="btn ghost sm" onclick="closeSheet()">Cancel</button></div>
       <div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
         <b style="font-size:13.5px;color:var(--danger)">This cannot be undone</b>
-        <div class="muted" style="margin-top:4px">Every bike, rate card, rental, customer
+        <div class="muted" style="margin-top:4px">Every ${noun()}, rate card, rental, customer
         and deposit record for <b>${esc(name)}</b> is erased, on every device, for everyone
         signed in to it. There is no recovery from inside the app.</div></div>
       <div class="fld"><label class="lbl">Type <b>${esc(name)}</b> to confirm</label>
@@ -1706,7 +1706,7 @@ const R = {
         <button class="${yearly?'on':''}" onclick="R.setBilling('y')">Yearly <span>2 months free</span></button>
       </div>
 
-      <div class="muted" style="margin:0 2px 12px">You have <b>${fleet}</b> bike${fleet===1?'':'s'}.</div>
+      <div class="muted" style="margin:0 2px 12px">You have <b>${fleet}</b> ${noun(fleet!==1)}.</div>
 
       <div style="margin:0 2px 14px">
         <div class="row" style="gap:8px">
@@ -1737,7 +1737,7 @@ const R = {
           label = t.subEnds ? 'Active until ' + fmtDay(t.subEnds) : 'Your current plan';
           dis = 'disabled';
         } else if (tooSmall){
-          label = 'Too small for ' + fleet + ' bike' + (fleet===1?'':'s');
+          label = 'Too small for ' + fleet + ' ' + noun(fleet!==1);
           dis = 'disabled';
         } else if (curRank >= 0 && rank > curRank){
           cls = ''; label = 'Upgrade to ' + p.name;
@@ -2383,7 +2383,7 @@ const R = {
 
   bookNoShow(id){
     const b = (DB.d.bookings||[]).find(x=>x.id===id); if (!b) return;
-    if (!confirm('Mark ' + b.customerName + ' as a no-show?\n\nThe bike is freed for anyone else. ' +
+    if (!confirm('Mark ' + b.customerName + ' as a no-show?\n\nThe ' + noun() + ' is freed for anyone else. ' +
       (b.token ? 'The ' + money(b.token) + ' token stays with you unless you refund it yourself.'
                : 'No token was taken.'))) return;
     this._bookSet(id, { status:'noshow', closedAt: Date.now() });
@@ -2530,11 +2530,11 @@ const R = {
     const junk = this.starterJunk().length;
     const hdr = (pending ? `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd);margin-bottom:11px">
         <b style="font-size:13.5px">${pending} rate card${pending===1?'':'s'} still at \u20B90</b>
-        <div class="muted" style="margin-top:3px">A bike cannot be rented out until its rate is
+        <div class="muted" style="margin-top:3px">A ${noun()} cannot be rented out until its rate is
         set. Photograph your printed price list and the app can read them in.</div>
         <button class="btn sm" style="margin-top:10px;width:100%" onclick="R.nav('rates')">Open Rates</button>
         ${junk && this.isOwner() ? `<button class="btn ghost sm" style="margin-top:8px;width:100%"
-          onclick="R.clearStarters()">Remove ${junk} unpriced bike${junk===1?'':'s'} I never added</button>` : ''}
+          onclick="R.clearStarters()">Remove ${junk} unpriced ${noun(junk!==1)} I never added</button>` : ''}
       </div>` : '') +
       `<div class="muted" style="margin:0 2px 10px">
         One ${noun()} per row. Rename it, add a vehicle number, or add a second ${noun()}
@@ -2661,7 +2661,7 @@ const R = {
     const ids = list.map(v=>v.id);
     const n = this.selCount();
 
-    box.innerHTML = hdr + (n ? this.bulkBar(n + ' bike' + (n===1?'':'s') + ' selected', [
+    box.innerHTML = hdr + (n ? this.bulkBar(n + ' ' + noun(n!==1) + ' selected', [
         ['R.bulkStatus(\'maintenance\')', 'Mark unavailable'],
         ['R.bulkStatus(\'available\')',   'Mark available'],
         ['R.bulkRetire()',                'Retire', 'dg'],
@@ -2720,7 +2720,7 @@ const R = {
       if (window.Cloud && Cloud.ready) Cloud.put('vehicles', id, { status: st });
     });
     DB.save(); this._sel = null; this.render();
-    toast(ids.length + ' bike' + (ids.length===1?'':'s') + ' marked ' + st);
+    toast(ids.length + ' ' + noun(ids.length!==1) + ' marked ' + st);
   },
 
   bulkRetire(){
@@ -2728,7 +2728,7 @@ const R = {
     const out = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id && r.status==='open'));
     if (out.length) return toast(out.length + ' of these are out — check them in first');
     const withHist = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id));
-    if (!confirm('Remove ' + ids.length + ' bike' + (ids.length===1?'':'s') + '?\n\n' +
+    if (!confirm('Remove ' + ids.length + ' ' + noun(ids.length!==1) + '?\n\n' +
       (withHist.length ? withHist.length + ' of them have rental history, which is kept.'
                        : 'None of them have been rented.'))) return;
     /* Soft delete only — the rules forbid a hard one, and history should
@@ -2736,7 +2736,7 @@ const R = {
     ids.forEach(id => { if (window.Cloud && Cloud.ready) Cloud.softDelete('vehicles', id); });
     DB.d.vehicles = (DB.d.vehicles||[]).filter(v=>!ids.includes(v.id));
     DB.save(); this._sel = null; this.render();
-    toast('Removed ' + ids.length + ' bike' + (ids.length===1?'':'s'));
+    toast('Removed ' + ids.length + ' ' + noun(ids.length!==1));
   },
 
   docWarn(v){
@@ -2843,7 +2843,7 @@ const R = {
              shop find out at the counter. Adding the bike is still allowed —
              building the fleet first is a legitimate order of work. -->
         <div class="muted" style="margin-top:7px;color:var(--danger);line-height:1.5">
-          None of your rate cards have prices yet, so this bike will not be
+          None of your rate cards have prices yet, so this ${noun(0,ek)} will not be
           rentable until you set one.
           <span style="font-weight:850;text-decoration:underline"
             onclick="closeSheet();R.nav('rates')">Set prices first</span>
@@ -2870,8 +2870,12 @@ const R = {
         <div class="muted" style="margin:-4px 2px 12px;font-size:11.5px">
           Leave the dates blank if you do not want expiry warnings.</div>
       </div>
-      <button class="btn" onclick="R.saveVehicle('${id||''}')">${v?'Save changes':'Add bike'}</button>
-      ${v?`<button class="btn ghost" style="margin-top:9px" onclick="R.delVehicle('${id}')">Remove bike</button>`:''}
+      <!-- Same function as the heading above it, and the heading already reads
+           the vehicle's kind correctly — these two buttons were the one part
+           of this sheet that never got swept. A car shop saw "Add car" at the
+           top and "Add bike" at the very button it had to press. -->
+      <button class="btn" onclick="R.saveVehicle('${id||''}')">${v?'Save changes':'Add '+noun(0,ek)}</button>
+      ${v?`<button class="btn ghost" style="margin-top:9px" onclick="R.delVehicle('${id}')">Remove ${noun(0,ek)}</button>`:''}
     `);
   },
 
@@ -3302,7 +3306,7 @@ const R = {
     if (!this.isOwner()) return toast('Only the owner can do this');
     const junk = this.starterJunk();
     if (!junk.length) return toast('Nothing to remove');
-    if (!confirm('Remove ' + junk.length + ' unpriced bike' + (junk.length===1?'':'s') +
+    if (!confirm('Remove ' + junk.length + ' unpriced ' + noun(junk.length!==1) +
       ' that have never been rented?\n\nRate cards for them go too. Nothing with rental ' +
       'history is touched.')) return;
     const rids = new Set();
@@ -3322,13 +3326,13 @@ const R = {
     const ids = new Set(junk.map(v => v.id));
     DB.d.vehicles = (DB.d.vehicles||[]).filter(v => !ids.has(v.id));
     DB.save(); this.render();
-    toast('Removed ' + junk.length + ' unpriced bike' + (junk.length===1?'':'s'));
+    toast('Removed ' + junk.length + ' unpriced ' + noun(junk.length!==1));
   },
 
   delVehicle(id){
     if (DB.d.rentals.some(r=>r.vehicleId===id && r.status==='open'))
       return toast('This vehicle is out — check it in first');
-    if (!confirm('Remove this bike? Past rentals stay in your records.')) return;
+    if (!confirm('Remove this ' + noun() + '? Past rentals stay in your records.')) return;
     /* soft delete only — nothing is ever destroyed */
     if (window.Cloud && Cloud.ready) Cloud.softDelete('vehicles', id);
     DB.d.vehicles = DB.d.vehicles.filter(x=>x.id!==id);
@@ -3349,7 +3353,7 @@ const R = {
         <button class="btn ghost" style="margin-bottom:12px" onclick="R.scanRates()">
           📷 Read my price list from a photo</button>` : '') +
       `<div class="muted" style="margin:0 2px 12px">Tap a card to edit. Rates are copied onto each
-        rental at check-out, so changing a price never re-prices a bike that is already out.</div>` +
+        rental at check-out, so changing a price never re-prices a ${noun()} that is already out.</div>` +
       '';
     if (this.isWide()) return this.ratesTable(hdr);
     box.innerHTML = hdr +
@@ -3358,7 +3362,7 @@ const R = {
         return `<div class="card tap" onclick="R.editRate('${r.id}')">
           <div class="row" style="margin-bottom:8px">
             <b class="grow" style="font-size:15.5px">${esc(r.model)}</b>
-            ${this.rateReady(r) ? `<span class="pill ok">${n} bike${n===1?'':'s'}</span>`
+            ${this.rateReady(r) ? `<span class="pill ok">${n} ${noun(n!==1)}</span>`
                                 : `<span class="pill late">SET PRICE</span>`}
           </div>
           <div class="row" style="gap:6px;flex-wrap:wrap">
@@ -4059,7 +4063,7 @@ const R = {
           ${fmtDT(clash.fromAt)}</b>
         <div class="muted" style="margin-top:3px">${esc(clash.customerName)}${
           clash.token?', token '+money(clash.token)+' taken':''}. Renting this one for
-          ${esc(t.label)} leaves them without a bike. A shorter package may still fit.</div>
+          ${esc(t.label)} leaves them without a ${noun()}. A shorter package may still fit.</div>
       </div>` : '';
 
     /* Manual duration books at the anchor package's flat price, exactly as a
@@ -4208,7 +4212,7 @@ const R = {
           return toast(vLabel(v) + ' was just rented by someone else — pick another bike');
         if (res.reason === 'cancelled') return toast('Check-out cancelled');
         if (res.reason === 'missing')
-          return toast('That bike is not in your account yet — open Fleet and add it');
+          return toast('That ' + noun() + ' is not in your account yet — open Fleet and add it');
         return toast('Could not rent out — check your connection and try again');
       }
       if (ph) Cloud.put('customers', 'ph_'+ph, { name, phone: ph, kyc: rental.customerKyc });
@@ -4603,11 +4607,11 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
       <div class="card" style="background:var(--danger-tint);border-color:var(--danger)">
         <b style="font-size:13.5px;color:var(--danger)">This rental never happened</b>
-        <div class="muted" style="margin-top:4px">${esc(v?vLabel(v):'The bike')} goes back to available
+        <div class="muted" style="margin-top:4px">${esc(v?vLabel(v):'The '+noun())} goes back to available
         and the ${money(r.depositHeld)} deposit is returned in full. No rent is recorded.
-        Use this for a mistaken entry — if the customer actually took the bike, check it in instead.</div></div>
+        Use this for a mistaken entry — if the customer actually took the ${noun()}, check it in instead.</div></div>
       <div class="fld"><label class="lbl">Reason <span class="muted">optional</span></label>
-        <input class="in" id="cx-why" placeholder="Wrong bike selected"></div>
+        <input class="in" id="cx-why" placeholder="Wrong ${noun()} selected"></div>
       <button class="btn d" onclick="R.cancelGo('${esc(id)}')">Cancel this rental</button>`);
   },
   async cancelGo(id){
@@ -6280,7 +6284,7 @@ const Cloud = {
   },
   explain(){
     window.alert(!this.online
-      ? 'You are offline.\n\nReturns and edits are saved on this device and upload automatically.\nRenting out waits for signal, so the same bike is never given to two customers.'
+      ? 'You are offline.\n\nReturns and edits are saved on this device and upload automatically.\nRenting out waits for signal, so the same ' + noun() + ' is never given to two customers.'
       : (this.pending>0 ? 'Saving your changes…' : 'Everything is saved to your account.'));
   },
 
