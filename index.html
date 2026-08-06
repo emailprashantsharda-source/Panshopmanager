@@ -1,6 +1,85 @@
 <!doctype html>
 <html lang="en" data-auth="unknown" data-role-resolved="no" translate="no">
 <head>
+<!-- ============================================================
+     HisaabNow Root Fix · Kill stale cross-outlet vertical override
+     ─────────────────────────────────────────────────────────────
+     BUG (reported 6 Aug 2026): a global, non-shop-scoped key,
+     localStorage['hnd_vertical_override'], is read with top
+     priority by ~8 separate legacy patches (Steps BB/CC/DD/GG/etc,
+     see grep for 'hnd_vertical_override') to decide which vertical
+     label ("Cafe", "Salon", ...) to render in the sidebar shop
+     pill — ABOVE MShop.getActive().profession, the real per-shop
+     source of truth. It is written by the "Change shop type" mini
+     pill but is never cleared or scoped per shopId, so once set
+     (e.g. 'cafe' on an early test shop) it silently pins every
+     outlet's sidebar label forever, including brand-new outlets
+     created later with a different profession (e.g. a new Salon
+     outlet still showed "Cafe"). One of those legacy patches
+     (Step GG, later in <body>) even copies the stale value back
+     into the live MShop.getActive() object every few seconds,
+     which is why simply clearing the key once was not sufficient.
+
+     The "Switch outlet" modal is unaffected by this bug because it
+     reads shop records directly from MShop/Firestore and never
+     consults this key — which is why it always showed the correct
+     name/vertical while the dashboard did not.
+
+     The override key is also functionally redundant: every code
+     path that writes it already persists the corrected profession
+     onto the shop record itself (mshop_shops_cache + Firestore),
+     so MShop.getActive().profession is always correct on its own.
+
+     FIX: neutralize the key everywhere, permanently, before any
+     other script (including the ones above) can read or write it.
+     This is a single, minimal, easily-auditable change instead of
+     touching 8+ scattered call sites across a 112k-line file — the
+     approach that produced this bug in the first place. Every
+     existing read site's fallback chain (MShop → App.vertical → S)
+     already does the right thing once this key is inert.
+============================================================ -->
+<script>
+(function(){
+  var DEAD_KEY = 'hnd_vertical_override';
+  try {
+    var _getItem    = Storage.prototype.getItem;
+    var _setItem    = Storage.prototype.setItem;
+    var _removeItem = Storage.prototype.removeItem;
+
+    Storage.prototype.getItem = function(key){
+      if (this === window.localStorage && key === DEAD_KEY) return null;
+      return _getItem.call(this, key);
+    };
+    Storage.prototype.setItem = function(key, value){
+      if (this === window.localStorage && key === DEAD_KEY) {
+        /* Silently swallow writes — override mechanism is retired.
+           Log once per session so this is visible in support/debug
+           consoles rather than failing invisibly. */
+        if (!window.__hndOverrideWriteLogged) {
+          window.__hndOverrideWriteLogged = true;
+          console.log('[HND root-fix] ignored write to retired key "' + DEAD_KEY + '" (would have caused stale cross-outlet vertical label)');
+        }
+        return;
+      }
+      return _setItem.call(this, key, value);
+    };
+    Storage.prototype.removeItem = function(key){
+      return _removeItem.call(this, key);
+    };
+
+    /* Clean up any value already sitting from a previous session */
+    _removeItem.call(window.localStorage, DEAD_KEY);
+  } catch(e){
+    /* If Storage.prototype can't be patched for any reason, fall back
+       to a best-effort one-time removal so at least old sessions
+       self-heal on next load. */
+    try { localStorage.removeItem(DEAD_KEY); } catch(e2){}
+    console.warn('[HND root-fix] could not install override kill-switch, fell back to one-time removal', e);
+  }
+})();
+</script>
+<!-- ══════════ END · HisaabNow Root Fix (vertical override) ══════════ -->
+
 <!-- Microsoft Clarity (app behaviour: session recordings + heatmaps) -->
 <script type="text/javascript">
   (function(c,l,a,r,i,t,y){
