@@ -9,9 +9,22 @@
  * "wait for the whole 3.8MB before anything renders" experience.
  *
  * DEPLOY RULE: bump SW_VERSION every deploy (set it to window.HISAABNOW_BUILD).
+ *
+ * (Aug 2026) Both this file's SW_VERSION and index.html's HISAABNOW_BUILD are
+ * now auto-stamped with a timestamp (format v34_auto_YYYYMMDD_HHMM, IST) at
+ * the moment a build is generated, instead of a manually-chosen name someone
+ * has to remember to change. This guarantees the two files are always in
+ * sync AND always differ from whatever was previously deployed, so the
+ * service-worker update check (index.html registers with
+ * updateViaCache:'none' and polls reg.update() every 30s) always has a real
+ * byte difference to detect. If you hand-edit either file outside of that
+ * process, re-stamp both with a fresh matching timestamp before shipping —
+ * identical SW_VERSION strings across two different deploys is what causes
+ * "the build isn't updating" (the browser sees byte-identical sw.js and
+ * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_193_authtrial';
+const SW_VERSION  = 'v34_auto_20260806_1920';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000; /* ms before falling back to cached HTML */
 
