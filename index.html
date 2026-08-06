@@ -713,7 +713,24 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260806_1956';
+    window.HISAABNOW_BUILD = 'v34_auto_20260806_2021';
+
+    /* ══════════════════════════════════════════════════════════════════
+       TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
+       While true, both the billing-block and the full-screen "Subscribe
+       to unlock" overlay are disabled entirely, regardless of trial/
+       subscription status — see _shouldGateBilling() for the single
+       point this actually takes effect.
+       IMPORTANT LIMIT: this only affects what the CLIENT shows/allows.
+       It cannot and does not change Firestore's own server-side
+       subscription check — if the shop's trial is genuinely expired,
+       writes will still be rejected server-side and quarantine as
+       permission-denied, exactly as before. This switch removes the
+       paywall interrupting a live demo; it does not make an expired
+       shop's data actually reach the cloud. Turn this back to false
+       once the demo is done.
+       ═══════════════════════════════════════════════════════════════ */
+    window.DEMO_DISABLE_LOCKS = true;
 
     /* (v34_098) Master switch for the auto-starting first-run tours — the
        HNAdvisor welcome dock and both HNTour2 voice journeys (welcome +
@@ -34474,6 +34491,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
      is no longer paid is gated immediately, because they already had their
      runway and then some. */
   _shouldGateBilling(){
+    /* (Aug 2026 — TEMPORARY DEMO OVERRIDE) Set to false to restore normal
+       gating after the demo. This must be the FIRST line in this function —
+       every check below it is intentionally bypassed while this is true.
+       See the matching switch in isTrialExpired() (search this file for
+       DEMO_DISABLE_LOCKS) — both need to be flipped back together. */
+    if (window.DEMO_DISABLE_LOCKS === true) return false;
+
     if (this._isPaidUser()) return false;
     try { if (window.Subs && Subs.hasEverPaid && Subs.hasEverPaid()) return true; } catch(e){}
     /* (Aug 2026 fix) ROOT CAUSE of a confusing, silent billing failure: this
@@ -76515,7 +76539,10 @@ html[data-shell="desktop"] #pg-settings .toggle {
   function isTrialExpired(){
     try {
       /* Match mobile: allow 20 free bills, then lock. App._shouldGateBilling()
-         is true only when not paid AND the 20 free bills are used up. */
+         is true only when not paid AND the 20 free bills are used up.
+         (Aug 2026) This also means the DEMO_DISABLE_LOCKS switch inside
+         _shouldGateBilling() covers this lock screen automatically — no
+         separate switch needed here. */
       if (window.App && typeof App._shouldGateBilling === 'function') return App._shouldGateBilling();
       if (!window.Subs) return false;
       if (typeof Subs.isPaid === 'function' && Subs.isPaid()) return false;
