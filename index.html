@@ -15745,7 +15745,11 @@ const App = {
         { emoji:'\uD83C\uDF7E', tint:'#F5ECFB', label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
           on:'App.openLiquorStock()', role:'cashier', when: barOn && has('App.openLiquorStock') },
         { emoji:'\uD83C\uDF81', tint:'#FFEFF3', label:this._T('nav.makeCombo','Make a combo'), sub:'Bundle items into one offer',
-          on:'try{HNCombo.openBuilder()}catch(e){}', role:'manager', when: has('HNCombo.openBuilder') },
+          /* (Aug 2026 fix) was gated only on the function existing, not on
+             whether combos make sense for this vertical — showed the food
+             combo builder (burger/pizza emoji picker) on Salon etc. */
+          on:'try{HNCombo.openBuilder()}catch(e){}', role:'manager',
+          when: has('HNCombo.openBuilder') && !!(window.HNCombo && HNCombo.isVert && HNCombo.isVert()) },
         { emoji:'\uD83E\uDDC2', tint:'#FFF6E0', label:this._T('more.ingredientsNav','Ingredients'), sub:'Raw material & recipe cost',
           on:"App.nav('ingredients')", role:'manager', when: recipeOn },
         { emoji:'\uD83D\uDECD\uFE0F', tint:'#EFF7EC', label:this._T('nav.retail','Retail'), sub:'Cold drinks, cigarettes, liquor',
@@ -31616,9 +31620,42 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(ex){} }
   },
 
-  openApptEdit(idx){
-    const a = APPTS[idx];
+  /* (Aug 2026 fix) Shared resolver for appointment edit/save/delete.
+     ROOT CAUSE of "Edit button not working" on desktop: the desktop
+     Appointments screen (#hnd-appts) computes its click index against
+     Store.list('appts').filter(!_deleted && !deletedAt) — a DIFFERENT,
+     potentially shorter array than the global APPTS = Store.list('appts')
+     (unfiltered) that openApptEdit/saveApptEdit/deleteAppt index into.
+     Any shop with even one soft-deleted or otherwise filtered-out
+     appointment record shifts every index after it, so the desktop Edit
+     button could silently open the wrong appointment — or none, if the
+     computed index landed past the end of APPTS.
+     Fix: accept either the appointment's real id (preferred, unambiguous)
+     or a legacy numeric APPTS index (still supported for the mobile card
+     list, which indexes APPTS directly and was never affected). */
+  _apptByRef(ref){
+    try {
+      if (typeof ref === 'string' && ref !== '') {
+        var fresh = (window.Store && Store.list && Store.list('appts')) || [];
+        var hit = fresh.find(function(x){ return x && x.id === ref; })
+               || (Array.isArray(window.APPTS) && APPTS.find(function(x){ return x && x.id === ref; }));
+        if (hit) return hit;
+        /* Legacy callers sometimes stringify a numeric index — fall back */
+        var n = parseInt(ref, 10);
+        if (!isNaN(n) && Array.isArray(window.APPTS) && APPTS[n]) return APPTS[n];
+        return null;
+      }
+      return (Array.isArray(window.APPTS) && APPTS[ref]) || null;
+    } catch(e){ return null; }
+  },
+
+  openApptEdit(ref){
+    const a = this._apptByRef(ref);
     if (!a) { this.toast(this._T('toast.apptNotFound', 'Appointment not found')); return; }
+    /* Delete/Save inside the sheet must resolve the SAME record even if
+       APPTS gets refreshed while the sheet is open — thread the id, not
+       whatever ref this call happened to receive. */
+    const safeId = String(a.id || '').replace(/'/g, "\\'");
     const body = `
       <div style="padding:16px;background:linear-gradient(135deg,#FCE7F3,#fff);border-radius:14px;margin-bottom:16px;border:1px solid #FBCFE8">
         <div style="font-size:12px;font-weight:700;color:#9D174D;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${a.type === 'walkin' ? 'Walk-in' : 'Booked'} · ${this.escapeHtml(a.time)}</div>
@@ -31652,16 +31689,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       </div>
 
       <div class="ps-actions">
-        <button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteAppt(${idx})" data-i18n="btn.delete">Delete</button>
-        <button type="button" class="ps-btn ps-btn-primary" onclick="App.saveApptEdit(${idx})" data-i18n="btn.saveChanges">Save changes</button>
+        <button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteAppt('${safeId}')" data-i18n="btn.delete">Delete</button>
+        <button type="button" class="ps-btn ps-btn-primary" onclick="App.saveApptEdit('${safeId}')" data-i18n="btn.saveChanges">Save changes</button>
       </div>
     `;
     this.openInfoSheet({ title: 'Edit appointment', sub: a.time + ' · ' + a.svc, bodyHTML: body });
     this._apptType = a.type;
   },
 
-  saveApptEdit(idx){
-    const a = APPTS[idx]; if (!a) return;
+  saveApptEdit(ref){
+    const a = this._apptByRef(ref); if (!a) return;
     const fields = {
       name: (document.getElementById('ae-name')||{}).value || a.name,
       time: (document.getElementById('ae-time')||{}).value || a.time,
@@ -31676,8 +31713,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     if (window.Munim && typeof Munim.refresh === 'function') { try { Munim.refresh(); } catch(ex){} }
   },
 
-  async deleteAppt(idx){
-    const a = APPTS[idx]; if (!a) return;
+  async deleteAppt(ref){
+    const a = this._apptByRef(ref); if (!a) return;
     if (!await this.confirm({title: 'Cancel appointment for "' + a.name + '"?', confirmText: 'Cancel appointment', dangerous: true, cancelText: 'Keep'})) return;
     Store.delete('appts', a.id);
     this.toast(this._T('toast.cancelledPrefix','Cancelled') + ' · ' + a.name);
@@ -53777,7 +53814,7 @@ html[data-shell="desktop"] .hnd-tb {
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
       <span class="lbl" data-i18n="nav.retail">Retail</span>
     </button>
-    <button class="hnd-nav-item" type="button" onclick="try{ if(window.HNCombo&&HNCombo.openBuilder) HNCombo.openBuilder(); }catch(e){}">
+    <button class="hnd-nav-item" type="button" data-hnd-nav="combo" onclick="try{ if(window.HNCombo&&HNCombo.openBuilder) HNCombo.openBuilder(); }catch(e){}">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
       <span class="lbl" data-i18n="nav.makeCombo">Make a Combo</span>
     </button>
@@ -60655,9 +60692,15 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
       e.stopPropagation();
       var aid = edit.getAttribute('data-ap-edit');
       try {
-        var all = safeList('appts');
-        var idx = isNaN(parseInt(aid, 10)) ? all.findIndex(function(x){ return x.id === aid; }) : parseInt(aid, 10);
-        if (idx >= 0 && window.App && App.openApptEdit) App.openApptEdit(idx);
+        /* (Aug 2026 fix) Used to convert aid into a numeric index against
+           safeList('appts') (filtered) and pass that into App.openApptEdit,
+           which reads the UNFILTERED global APPTS array — any soft-deleted
+           appointment anywhere in the shop's history shifted every index
+           after it out of alignment, silently opening the wrong record or
+           none at all. openApptEdit now resolves directly by id (or by a
+           legacy numeric index as fallback), so just pass aid straight
+           through. */
+        if (window.App && App.openApptEdit) App.openApptEdit(aid);
       } catch(err){ console.warn('[HND.appts] edit failed', err); }
       return;
     }
@@ -60683,7 +60726,10 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
       var cardId = card.getAttribute('data-ap-id');
       var cardIdx = parseInt(card.getAttribute('data-ap-idx'), 10);
       if (window.App && App.openApptEdit){
-        if (!isNaN(cardIdx) && cardIdx >= 0) App.openApptEdit(cardIdx);
+        /* (Aug 2026 fix) Prefer the real id (unambiguous); only fall back
+           to the filtered-list index for the rare id-less legacy record. */
+        if (cardId) App.openApptEdit(cardId);
+        else if (!isNaN(cardIdx) && cardIdx >= 0) App.openApptEdit(cardIdx);
       }
       return;
     }
@@ -69765,6 +69811,15 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
          `prods` (93157, 93234), so a salon buying shampoo and colour is a
          first-class case, not an accident. */
       purchases:     true,
+      /* (Aug 2026 fix) "Make a Combo" was visible for every vertical because
+         no rule key ever gated it (data-hnd-nav="combo" was only just added).
+         HNCombo.isVert() has always restricted the feature itself to
+         cafe/restaurant/sweets/bakery — bundling food items into a combo
+         doesn't map to a salon's services or a kirana's SKUs — but nothing
+         enforced that on the nav row, so a Salon owner could open "New combo"
+         and see a burger/pizza/coffee emoji picker with "e.g. Lunch combo".
+         Mirror HNCombo.isVert()'s own definition here. */
+      combo:         foodPrep,
       /* Always-on */
       home: true, sales: true, customers: true, catalog: true, expenses: true, reports: true, settings: true
     };
@@ -70742,6 +70797,10 @@ html[data-shell="desktop"] #pg-home {
          `prods` (93157, 93234), so a salon buying shampoo and colour is a
          first-class case, not an accident. */
       purchases:     true,
+      /* (Aug 2026 fix) See matching comment in visibilityRules() above this
+         file — "Make a Combo" had no rule key in either filter, so it was
+         visible for every vertical including Salon. Mirror HNCombo.isVert(). */
+      combo:         foodPrep,
       /* (v34_042) Same allowlist that gates tables/KOT and the mobile More
          entry — TABLE_VERTS_ON, exported in v34_024. One source of truth. */
       waiters:       (function(){ try { return !!(window.isTableVert && isTableVert(v)); } catch(e){ return false; } })(),
@@ -98223,6 +98282,12 @@ var KB=[
 
     openBuilder: function(editId){
       try { if (window.App && App._blockedBelow && App._blockedBelow('manager')) return; } catch(e){}
+      /* (Aug 2026 fix) Belt-and-suspenders: the nav rows that call this are
+         now gated by isVert(), but guard the entry point itself too, so a
+         stale cached sidebar / More-menu render, a deep link, or a future
+         caller can't open the food-combo builder on a vertical it doesn't
+         apply to (e.g. Salon) — regardless of what's rendering the button. */
+      if (!this.isVert()) return;
       this.refreshAll(); // make sure member costs are current before editing
       this._ensureSheet();
       var st = { editId: editId || null, name: '', emoji: '🍔', sel: {}, price: 0, userTyped: false, disc: 15 };
