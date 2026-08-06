@@ -12543,6 +12543,23 @@ const App = {
       if (_s2) _s2.style.display = 'none';
     }
 
+    /* (Aug 2026 fix) "Team → Home shows a blank page" root cause: nothing
+       below this point was wrapped in try/catch. App.nav is also wrapped
+       by several desktop modules (Dashboard's Step D, Appointments, etc.),
+       each of which only reveals its own desktop overlay (e.g. #hnd-dash
+       for Home — #pg-home is unconditionally hidden on desktop in its
+       favour) via a setTimeout AFTER calling through to this function. If
+       any single page's render call below throws — Team's or Home's or
+       any other — the exception propagates out of nav() entirely and
+       every wrapper's setTimeout cleanup is skipped, so the destination
+       page's desktop overlay never gets revealed: a fully blank screen
+       with no visible error unless DevTools happens to be open.
+       Wrapping the whole per-page dispatch means one page's renderer
+       misbehaving can no longer take down navigation to every other
+       page — worst case that page's content is incomplete, logged to
+       console, but the shell (sidebar, desktop overlay swap) still
+       works and the next nav still gets a clean run. */
+    try {
     if (page === 'sales') {
       /* (v34_077) Cement Sales tab = challan register. Render the challan
          worklist into #pg-sales (nav bar stays); hide the normal bills content.
@@ -12635,6 +12652,12 @@ const App = {
       if (dt) dt.textContent = 'Today';
       const tt = document.getElementById('appt-time-text');
       if (tt) tt.textContent = 'Pick time';
+    }
+    } catch(navRenderErr) {
+      /* Never let one page's render failure blank every subsequent page.
+         Surface it loudly in console (this is exactly the kind of error
+         someone should screenshot/report) instead of failing silently. */
+      console.error('[App.nav] render failed for page "' + page + '" — page shell still swapped, but its content may be incomplete:', navRenderErr);
     }
 
     window.scrollTo({top:0, behavior:'smooth'});
@@ -18016,6 +18039,19 @@ const App = {
 
   renderHomeKpiPills(todaySales, todayRev, todayProf, profitIsAccurate){
 
+    /* (Aug 2026 fix) ROOT CAUSE of App.renderHome() throwing on every single
+       nav to Home ("ReferenceError: Cannot access '_useStaffPill' before
+       initialization"): both of these were declared with `let` far below
+       their first use in this function (line ~18173/18214 used them,
+       declaration was at ~18219/18301). `let`/`const` are block-scoped but
+       NOT hoisted the way `var` is — referencing them before the `let`
+       line executes throws immediately, in every browser, every time.
+       Hoisting the declarations here (their later occurrences below are
+       now plain assignments, not re-declarations) fixes it without
+       changing any of the actual pill-selection logic. */
+    let _useStaffPill = false;
+    let _useCashTile = false;
+
     let _roleResolved = 'no';
     try { _roleResolved = document.documentElement.getAttribute('data-role-resolved') || 'no'; } catch(e){}
     if (_roleResolved !== 'yes') {
@@ -18193,7 +18229,7 @@ const App = {
       profLabel.textContent = this._T('dash.profit', 'Profit');
     }
 
-    let _useStaffPill = false;
+    _useStaffPill = false;
     let _todayPerStaff = 0;
     let _activeStylistsToday = 0;
     try {
@@ -18275,7 +18311,7 @@ const App = {
        - User has engaged with CashDrawer feature (any opening or adjust)
        This way the third tile becomes useful immediately for cash-tracking
        shopkeepers without forcing them to enter product costs first. */
-    let _useCashTile = false;
+    _useCashTile = false;
     let _cashBalance = 0;
     let _cashSetToday = false;
     try {
@@ -42721,6 +42757,29 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     }
     setLoginStatus('Sending OTP…', false);
     try {
+      /* (Aug 2026 fix) ROOT CAUSE of intermittent "auth/internal-error" on
+         sign-in, especially on slow connections: the mid-2026 SMS-fraud fix
+         turned on App Check enforcement for the Identity Toolkit API (the
+         endpoint signInWithPhoneNumber hits), but this call never waited
+         for window.kfAppCheckReady before firing — only verifyOTP's later
+         Firestore write did. On a fast connection the App Check token
+         resolves before the user finishes typing their number, so it's
+         invisible; on a slow one (this was seen on an 11.8 KB/s connection)
+         the token isn't ready yet, the server rejects the unattested
+         request, and Firebase Auth surfaces that rejection as the generic
+         "auth/internal-error" — which then doesn't even map to a clear
+         message (see friendlyError's fallback case). Bounded to 6s so a
+         genuinely broken App Check config can't hang login indefinitely;
+         if it times out we proceed anyway and let the real error (if any)
+         surface normally, same as before this fix. */
+      if (window.kfAppCheckReady) {
+        try {
+          await Promise.race([
+            window.kfAppCheckReady,
+            new Promise(function(resolve){ setTimeout(resolve, 6000); })
+          ]);
+        } catch (e) { /* non-fatal — proceed to sign-in either way */ }
+      }
       setupRecaptcha();
       const result = await signInWithPhoneNumber(auth, '+91' + phone, window.recaptchaVerifier);
       window.confirmationResult = result;
@@ -43447,6 +43506,13 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     if (code.includes('operation-not-allowed')) return { text: 'Phone auth not enabled. Contact support.', recoverable: false };
     if (code.includes('captcha') || code.includes('recaptcha')) return { text: 'Security check error. Tap Try Again.', recoverable: true, hardReset: true };
     if (code.includes('quota')) return { text: 'Daily OTP limit reached. Try tomorrow.', recoverable: false };
+    /* (Aug 2026 fix) internal-error is Firebase Auth's catch-all when the
+       server rejects the request for a reason the client SDK doesn't have
+       a specific code for — most often a missing/expired App Check token
+       or a stale reCAPTCHA widget, both of which a full reload fixes by
+       forcing a fresh token/widget on the next attempt. hardReset:true so
+       "Try Again" reloads on the FIRST tap instead of the second. */
+    if (code.includes('internal-error')) return { text: 'Sign-in hiccup — often a slow connection. Tap Try Again.', recoverable: true, hardReset: true };
     return { text: 'An error occurred: ' + (code || 'unknown'), recoverable: true };
   }
 </script>
@@ -70032,6 +70098,14 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
 
   window.HND = window.HND || {};
   window.HND.applySidebar = applyToSidebar;
+  /* (Aug 2026 fix) applySidebarFixed() in the later "Step M" block calls
+     setNavLabel() directly, but that function is private to THIS IIFE —
+     top-level `function` declarations inside (function(){...})() never
+     leak to other script blocks, only to window if explicitly attached.
+     That call threw "setNavLabel is not defined" every time it ran,
+     which silently broke per-vertical sidebar label overrides (e.g.
+     Salon's "Supplies" vs Cafe's "Ingredients") on every single nav. */
+  window.HND.setNavLabel = setNavLabel;
 })();
 </script>
 <!-- =================== END Step L block =================== -->
@@ -70864,7 +70938,36 @@ html[data-shell="desktop"] #pg-home {
     ['catalog','staff','appointments','ingredients'].forEach(function(key){
       var item = sb.querySelector('.hnd-nav-item[data-hnd-nav="' + key + '"]');
       if (!item) return;
-      setNavLabel(item, labels[key] || null);
+      /* (Aug 2026 fix) setNavLabel lives in a different IIFE (Step L) and
+         is only reachable via window.HND.setNavLabel. Inline fallback
+         mirrors its exact behaviour in case Step L hasn't loaded yet. */
+      if (window.HND && typeof window.HND.setNavLabel === 'function') {
+        window.HND.setNavLabel(item, labels[key] || null);
+      } else {
+        /* Fallback mirrors Step L's setNavLabel exactly (same data-i18n-was
+           stash convention) in case Step L hasn't attached to window.HND yet. */
+        var _lblEl = item.querySelector('.lbl');
+        if (_lblEl) {
+          var _text = labels[key] || null;
+          if (_text) {
+            if (!_lblEl.hasAttribute('data-i18n-was')) {
+              _lblEl.setAttribute('data-i18n-was', _lblEl.getAttribute('data-i18n') || '');
+            }
+            _lblEl.removeAttribute('data-i18n');
+            _lblEl.textContent = _text;
+          } else {
+            var _was = _lblEl.getAttribute('data-i18n-was');
+            if (_was) {
+              _lblEl.setAttribute('data-i18n', _was);
+              _lblEl.removeAttribute('data-i18n-was');
+              try {
+                var _t = (window.App && App._T) ? App._T(_was, _lblEl.textContent) : null;
+                if (_t) _lblEl.textContent = _t;
+              } catch(e){}
+            }
+          }
+        }
+      }
     });
 
     /* Hide empty groups */
