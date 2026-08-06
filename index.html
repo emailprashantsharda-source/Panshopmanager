@@ -43983,6 +43983,39 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           log('quarantine.retry: cloud check failed, proceeding with retry', key, checkErr && checkErr.code);
         }
 
+        /* (Aug 2026 fix) ROOT CAUSE of "Retry" not actually fixing
+           permission-denied sales records: the Firestore rule for creating
+           a sale is `request.resource.data.createdByUid == request.auth.uid`
+           (see the (v34_039) comment elsewhere in this file for the exact
+           rule text). If createdByUid was stamped wrong at the moment the
+           bill was first created — e.g. kfAuth.currentUser wasn't ready yet
+           and _getBillCreatorMeta() fell back to a stale cached uid, the
+           same class of race this file's other (v33_299) fix targeted, just
+           via the fallback path that fix didn't close — that wrong value is
+           frozen into entry.record forever. Retry just re-sends that exact
+           same record, so it fails again with the identical error, every
+           time, even after whatever caused the original mismatch is long
+           resolved. Refreshing creator metadata with LIVE current values
+           right before re-enqueueing lets Retry actually self-heal instead
+           of deterministically repeating the same rejection. Scoped to
+           'sales' only — the one collection this metadata applies to. */
+        if (entry.collection === 'sales' && entry.record && ('createdByUid' in entry.record)) {
+          try {
+            var _a = (window.App) || null;
+            var _freshMeta = (_a && typeof _a._getBillCreatorMeta === 'function') ? _a._getBillCreatorMeta() : null;
+            if (_freshMeta && _freshMeta.createdByUid) {
+              if (entry.record.createdByUid !== _freshMeta.createdByUid) {
+                log('quarantine.retry: refreshing stale createdByUid before resend', key, 'old=', entry.record.createdByUid, 'new=', _freshMeta.createdByUid);
+              }
+              entry.record.createdByUid  = _freshMeta.createdByUid;
+              entry.record.createdByRole = _freshMeta.createdByRole;
+              entry.record.createdByName = _freshMeta.createdByName;
+            }
+          } catch(metaErr) {
+            log('quarantine.retry: creator-metadata refresh skipped (non-fatal)', metaErr && metaErr.message);
+          }
+        }
+
         /* Re-enqueue with reset attempts so head-of-line skip doesn't
            immediately re-skip the record */
         Outbox.enqueue({
