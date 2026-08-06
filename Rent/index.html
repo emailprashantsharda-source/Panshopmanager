@@ -513,6 +513,17 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 /* ── PAY MODE ──────────────────────────────────────────────────────
    Two taps at a counter, so it has to be a single glance: a segmented
    control, never a dropdown. */
+/* Yes/no facts about a vehicle. A toggle rather than a dropdown because the
+   overwhelming majority of small fleets answer no, and a default costs nobody
+   a tap. */
+.sw{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);
+  border-radius:12px;padding:11px;cursor:pointer}
+.sw .tog{width:40px;height:23px;border-radius:99px;background:#D6D1C7;flex:0 0 auto;
+  position:relative;transition:background .16s}
+.sw .tog.on{background:var(--success)}
+.sw .tog i{position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:99px;
+  background:#fff;transition:left .16s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw .tog.on i{left:19.5px}
 .pm{display:flex;gap:6px;background:var(--p-50);border:1px solid var(--bd);
   border-radius:12px;padding:4px}
 .pm button{flex:1;border:0;background:none;border-radius:9px;padding:9px 4px;
@@ -895,7 +906,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_25_1_backcompat';
+const BUILD = 'rn_v3_26_0_phase3';
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2777,6 +2788,15 @@ const R = {
     const now = Date.now();
     if (v.insExpiry && new Date(v.insExpiry).getTime() < now) return 'insurance';
     if (v.pucExpiry && new Date(v.pucExpiry).getTime() < now) return 'PUC';
+    /* Commercial-only, and only when the date was actually set. Guarded on
+       v.commercial as well as on the date so that turning the toggle OFF
+       stops a stale fitness date from blocking a car the shop has since
+       re-registered as private — otherwise the only way to unblock it would
+       be to clear a field that is no longer visible. */
+    if (v.commercial){
+      if (v.fitnessExpiry && new Date(v.fitnessExpiry).getTime() < now) return 'fitness';
+      if (v.permitExpiry  && new Date(v.permitExpiry).getTime()  < now) return 'permit';
+    }
     return '';
   },
 
@@ -2894,6 +2914,55 @@ const R = {
         </div>
         <div class="muted" style="margin:-4px 2px 12px;font-size:11.5px">
           Leave the dates blank if you do not want expiry warnings.</div>
+
+        <!-- Cars only. Fitness and permit apply to COMMERCIAL vehicles; a
+             private self-drive car has neither, so two permanently-blank date
+             fields on every car is exactly the clutter that made the original
+             rate form unusable. Asked once, and the dates appear only if the
+             answer is yes.
+
+             An absent commercial flag means off, so no existing car gains a field
+             or a new way to be blocked. -->
+        ${ek==='car' ? `
+        <div class="sw" style="margin-bottom:11px">
+          <div class="tog${v&&v.commercial?' on':''}" id="v-comm-t"
+            onclick="R.toggleCommercial()"><i></i></div>
+          <div><b style="font-size:12.5px;display:block">Runs on a commercial permit</b>
+            <span class="muted">Yellow-plate / tourist taxi</span></div>
+        </div>
+        <div id="v-comm" style="display:${v&&v.commercial?'':'none'}">
+          <div class="two">
+            <div class="fld"><label class="lbl">Fitness expiry</label>
+              <input class="in" id="v-fit" type="date" value="${v?(v.fitnessExpiry||''):''}"></div>
+            <div class="fld"><label class="lbl">Permit expiry
+              <span class="muted">optional</span></label>
+              <input class="in" id="v-permit" type="date" value="${v?(v.permitExpiry||''):''}"></div>
+          </div>
+        </div>
+
+        <!-- The three questions a customer actually asks on the phone. Colour,
+             year and chassis number are fleet-management fields; this is a
+             counter app. All optional — a shop that fills none loses nothing,
+             and they surface in the vehicle picker where they pay off. -->
+        <div class="muted" style="margin:4px 2px 6px;font-weight:800;letter-spacing:.05em;
+          text-transform:uppercase;font-size:9.5px">The car</div>
+        <div class="fld"><label class="lbl">Transmission</label>
+          <div class="pm" id="v-trans">
+            <button type="button" class="${!v||v.transmission!=='automatic'?'on':''}"
+              data-m="manual" onclick="R.pmPick('v-trans','manual')">Manual</button>
+            <button type="button" class="${v&&v.transmission==='automatic'?'on':''}"
+              data-m="automatic" onclick="R.pmPick('v-trans','automatic')">Automatic</button>
+          </div></div>
+        <div class="two">
+          <div class="fld"><label class="lbl">Seats</label>
+            <input class="in" id="v-seats" type="number" inputmode="numeric"
+              value="${v?(v.seats||''):''}" placeholder="5"></div>
+          <div class="fld"><label class="lbl">Fuel</label>
+            <select class="in" id="v-fuel">
+              ${['','Petrol','Diesel','CNG','Electric'].map(s=>
+                `<option value="${s}" ${v&&v.fuelType===s?'selected':''}>${s||'—'}</option>`).join('')}
+            </select></div>
+        </div>` : ''}
       </div>
       <!-- Same function as the heading above it, and the heading already reads
            the vehicle's kind correctly — these two buttons were the one part
@@ -3306,6 +3375,19 @@ const R = {
       insExpiry: g('v-ins') ? g('v-ins').value : (old?old.insExpiry:''),
       pucExpiry: g('v-puc') ? g('v-puc').value : (old?old.pucExpiry:''),
       odo: old ? (old.odo||0) : 0,
+      /* Car-only fields. Read from the form when it rendered them (a car), and
+         otherwise carried straight through from the existing record — so
+         editing a car while the More-details panel is collapsed cannot wipe
+         its fitness date, and a bike never gains fields it has no use for. */
+      ...(vKind==='car' ? {
+        commercial: !!(g('v-comm-t') && g('v-comm-t').classList.contains('on')),
+        fitnessExpiry: g('v-fit') ? g('v-fit').value : (old?(old.fitnessExpiry||''):''),
+        permitExpiry:  g('v-permit') ? g('v-permit').value : (old?(old.permitExpiry||''):''),
+        transmission:  g('v-trans') ? (this.pmGet('v-trans')==='automatic' ? 'automatic' : 'manual')
+                                    : (old?(old.transmission||'manual'):'manual'),
+        seats:         g('v-seats') ? (Number(g('v-seats').value)||0) : (old?(old.seats||0):0),
+        fuelType:      g('v-fuel') ? g('v-fuel').value : (old?(old.fuelType||''):''),
+      } : {}),
     };
     if (window.Cloud && Cloud.ready){
       const vid = id || Cloud.nid('v');
@@ -3861,7 +3943,18 @@ const R = {
       <div class="fld"><label class="lbl">Vehicle <span class="req">*</span></label>
         <select class="in" id="c-veh" onchange="R.coTiers()">
           <option value="">— choose —</option>
-          ${avail.map(v=>`<option value="${v.id}">${esc(vLabel(v))}${v.regNo?' · '+esc(v.regNo):''}</option>`).join('')}
+          ${avail.map(v=>{
+            /* "Do you have an automatic?" and "will seven of us fit?" are the
+               two questions asked at the counter, and they were answerable
+               only by walking out to the yard. Appended to the option text
+               rather than given their own column because a <select> has no
+               columns — and only when the shop actually filled them in. */
+            const spec = [ v.transmission==='automatic' ? 'Automatic' : '',
+                           v.seats ? v.seats+' seats' : '',
+                           v.fuelType || '' ].filter(Boolean).join(', ');
+            return `<option value="${v.id}">${esc(vLabel(v))}${v.regNo?' · '+esc(v.regNo):''}${
+              spec?' · '+esc(spec):''}</option>`;
+          }).join('')}
         </select></div>
       <div id="c-rateblock"></div>
       <div class="fld"><label class="lbl">Customer name <span class="req">*</span></label>
@@ -3871,10 +3964,14 @@ const R = {
       <div class="fld"><label class="lbl">Date &amp; time out</label>
         <input class="in" id="c-out" type="datetime-local" value="${dtLocal(this._prefillOut || Date.now())}" onchange="R.coSummary()"></div>
 
-      <button type="button" class="btn ghost" style="margin:4px 0 12px"
+      <button type="button" class="btn ghost" style="margin:4px 0 12px" id="c-more-btn"
         onclick="R.more('c-more',this)">More details <span class="muted">— optional</span></button>
       <div id="c-more" style="display:none">
-        <div class="fld"><label class="lbl">DL / Aadhaar no.</label>
+        <!-- Label and requirement are set by coTiers() once a vehicle is
+             chosen: a licence is compulsory to hand over a car and merely
+             useful on a bike, and the app cannot know which until it knows
+             the vehicle. -->
+        <div class="fld"><label class="lbl" id="c-kyc-l">DL / Aadhaar no.</label>
           <input class="in" id="c-kyc" placeholder="ID number"></div>
         <div class="muted" style="margin:-6px 2px 12px;font-size:11.5px">
           Record the number only. Do not keep photos of Aadhaar or DL on the phone.</div>
@@ -3980,6 +4077,27 @@ const R = {
         <div class="fld"><label class="lbl">Of that, how much in cash?</label>
           <input class="in" id="c-cash" type="number" inputmode="numeric" value="0" oninput="R.coSummary()"></div>
       </div>`;
+    /* A licence is compulsory to hand over a car and merely useful on a bike.
+       Because it becomes required, it must also be VISIBLE — leaving it inside
+       a collapsed "More details" panel and then refusing to save is how a shop
+       ends up staring at a button that will not work. So the panel opens
+       itself for a car. */
+    const isCar = (v.kind === 'car');
+    const kl = document.getElementById('c-kyc-l');
+    if (kl) kl.innerHTML = isCar
+      ? 'Driving licence no. <span class="req">*</span>'
+      : 'DL / Aadhaar no.';
+    const kin = document.getElementById('c-kyc');
+    if (kin) kin.placeholder = isCar ? 'Licence number' : 'ID number';
+    if (isCar){
+      const panel = document.getElementById('c-more');
+      const btn = document.getElementById('c-more-btn');
+      if (panel && panel.style.display === 'none'){
+        panel.style.display = '';
+        if (btn) btn.innerHTML = 'Hide details <span class="muted">— optional</span>';
+      }
+    }
+
     this._tier = null; this._tierManual = false; this._manualHours = null;
     this._manualUnit = 'hours'; this.coSummary();
   },
@@ -3989,13 +4107,31 @@ const R = {
      drawer with nothing having come in — that is the case that quietly
      breaks a reconciliation, so split is a first-class option, not an
      afterthought. */
+  /* Reveals the two commercial-only date fields. Reads its state from the
+     element rather than a variable so it survives the sheet being re-rendered
+     by the Bike/Car picker mid-edit. */
+  toggleCommercial(){
+    const t = document.getElementById('v-comm-t');
+    const box = document.getElementById('v-comm');
+    if (!t || !box) return;
+    const on = !t.classList.contains('on');
+    t.classList.toggle('on', on);
+    box.style.display = on ? '' : 'none';
+    Haptic.tap();
+  },
+
   pmPick(box, m){
     const el = document.getElementById(box); if (!el) return;
     el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
     const sp = document.getElementById(box === 'c-pm' ? 'c-split' : (box === 'i-pm' ? 'i-split' : null));
     if (sp) sp.style.display = (m === 'split') ? '' : 'none';
     Haptic.tap();
-    if (box === 'c-pm') this.coSummary(); else this.ciCalc(1);
+    /* Only the two payment boxes recalculate a bill. This used to be an
+       else-branch straight into ciCalc(), so the moment any OTHER segmented
+       control reused this helper — the vehicle form's Manual/Automatic — it
+       would run a check-in calculation against a rental that is not open. */
+    if (box === 'c-pm') this.coSummary();
+    else if (box === 'i-pm' || box === 'i-rm') this.ciCalc(1);
   },
   pmGet(box){
     const el = document.getElementById(box);
@@ -4280,6 +4416,23 @@ const R = {
     if (!vid || !this._tier) return toast('Choose '+noun()+' and duration');
     if (!name) return toast('Customer name is required');
     if (ph && ph.length !== 10) return toast('Phone must be 10 digits, or leave it blank');
+
+    /* Handing a car to someone without a licence is the shop's liability, not
+       the rider's — the one field on this screen that protects the shop rather
+       than the bill. Cars only: making it compulsory on a scooter would just
+       teach counter staff to type a full stop into the box.
+
+       New rentals only. Nothing already open or settled is re-validated, so
+       no existing rental can become unsettleable. */
+    {
+      const _v = DB.d.vehicles.find(x=>x.id===vid);
+      const _kyc = ((document.getElementById('c-kyc')||{value:''}).value||'').trim();
+      if (_v && _v.kind === 'car' && !_kyc){
+        const el = document.getElementById('c-kyc'); if (el) el.focus();
+        Haptic.error();
+        return toast('Driving licence number is required to hand over a car');
+      }
+    }
 
     const v = DB.d.vehicles.find(x=>x.id===vid);
     const outEl = document.getElementById('c-out');
