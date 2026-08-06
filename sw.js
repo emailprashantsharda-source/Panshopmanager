@@ -24,7 +24,7 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20260806_1920';
+const SW_VERSION  = 'v34_auto_20260806_1956';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 4000; /* ms before falling back to cached HTML */
 
@@ -51,7 +51,22 @@ function fetchWithTimeout(req, ms) {
   return new Promise(function (resolve, reject) {
     var done = false;
     var timer = setTimeout(function () { if (!done) { done = true; reject(new Error('timeout')); } }, ms);
-    fetch(req).then(function (res) {
+    /* (Aug 2026 fix) ROOT CAUSE of "the build isn't updating" surviving even
+       a full app-storage clear, on BOTH the installed TWA and a plain
+       browser tab: fetch(req) here had no explicit cache directive, so this
+       "network-first" logic was still subject to ordinary HTTP caching —
+       if the host serving these files sets any Cache-Control lifetime
+       (which static hosts commonly do by default), this call could be
+       silently satisfied from the browser's own HTTP disk cache instead of
+       a genuine network round-trip. That's a layer BELOW both the service
+       worker's own Cache API (which "activate" already purges old versions
+       of) and the app-specific storage a user can clear from Settings —
+       clearing either of those does nothing to it, which is exactly why
+       neither helped. Reconstructing the request with cache:'no-store'
+       forces a real network fetch every time, ignoring any HTTP cache
+       entirely, so "network-first" now actually means network-first. */
+    var freshReq = new Request(req.url, { cache: 'no-store' });
+    fetch(freshReq).then(function (res) {
       if (done) return; done = true; clearTimeout(timer); resolve(res);
     }).catch(function (err) {
       if (done) return; done = true; clearTimeout(timer); reject(err);
