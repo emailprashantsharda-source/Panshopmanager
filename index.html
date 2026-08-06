@@ -69980,8 +69980,29 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
     return out;
   }
 
-  /* Apply visibility + labels to the sidebar */
+  /* (Aug 2026 fix) ROOT CAUSE of the sidebar "vibrating" between different
+     item counts: this function is triggered from ~6 independent, uncoordinated
+     places during boot (immediate calls, +60ms, +200ms, a 2000ms poll, plus
+     Step N's own separate +120ms/+100ms/250ms-for-30s/500ms×15 triggers for
+     its sibling applySidebarFixed()). Vertical/shop data is still settling
+     during that window (Firestore fetch in flight, stale localStorage cache
+     vs fresh MShop data), so an EARLIER call using stale data can finish
+     AFTER a LATER call that had correct data — painting the wrong state last.
+     Debouncing collapses any burst of calls into one, using whatever data is
+     freshest at the moment the burst goes quiet — eliminating the visible
+     flicker without needing to touch/coordinate the many trigger call sites,
+     since they all still call this exact function name unchanged. */
+  var __applyToSidebarTimer = null;
   function applyToSidebar(){
+    if (__applyToSidebarTimer) clearTimeout(__applyToSidebarTimer);
+    __applyToSidebarTimer = setTimeout(function(){
+      __applyToSidebarTimer = null;
+      _doApplyToSidebar();
+    }, 150);
+  }
+
+  /* Apply visibility + labels to the sidebar */
+  function _doApplyToSidebar(){
     if (document.documentElement.getAttribute('data-shell') !== 'desktop') return;
     var sb = document.querySelector('.hnd-sb');
     if (!sb) return;
@@ -70813,7 +70834,23 @@ html[data-shell="desktop"] #pg-home {
     return { v: v, cfg: cfg };
   }
 
+  /* (Aug 2026 fix) Same debounce as Step L's applyToSidebar — see that
+     comment for the full explanation. This function has even MORE
+     independent triggers (boot ×15 @ 500ms, fastVerticalWatch every 250ms
+     for 30s, nav hook @ +120ms, khata/prods Store events, shellchange
+     @ +100ms), so it's the bigger contributor to the visible flicker.
+     All existing callers still call `applySidebarFixed()` by the same
+     name — only the actual DOM work moves to _doApplySidebarFixed. */
+  var __applySidebarFixedTimer = null;
   function applySidebarFixed(){
+    if (__applySidebarFixedTimer) clearTimeout(__applySidebarFixedTimer);
+    __applySidebarFixedTimer = setTimeout(function(){
+      __applySidebarFixedTimer = null;
+      _doApplySidebarFixed();
+    }, 150);
+  }
+
+  function _doApplySidebarFixed(){
     if (document.documentElement.getAttribute('data-shell') !== 'desktop') return;
     var sb = document.querySelector('.hnd-sb');
     if (!sb) return;
