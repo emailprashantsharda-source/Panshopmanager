@@ -879,6 +879,36 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
   setTimeout(function(){
     try {
       if (document.documentElement.getAttribute('data-role-resolved') === 'yes') return;
+
+      /* (Aug 2026 fix) ROOT CAUSE of owners AND managers both getting stuck
+         on "Cashier": AppRole.refresh() is only ever called from inside
+         MShop's bootstrap(user, options) — twice, both wrapped in their own
+         try/catch. If bootstrap() is still awaiting Firestore (slow network,
+         a brand-new shop's extra writes, a staff member's first-time
+         membership rehydration) past this 4s mark, NEITHER call has run yet
+         and this safety-net was the ONLY thing that ever touches role state
+         — permanently, since nothing here re-checked afterward. Confirmed
+         via instrumented local testing: AppRole's own "role changed/
+         unchanged" log line never appeared at all — refresh() truly never
+         ran, not just ran late.
+         Before blindly forcing cashier, check whether MShop's active shop
+         is ALREADY available. If bootstrap has actually finished loading
+         shop data by now and only the refresh() call itself was skipped or
+         hasn't fired yet, we can resolve the REAL role immediately instead
+         of guessing wrong — same computation AppRole.refresh() would do,
+         just triggered from here too. If shop data genuinely isn't ready,
+         we still fall back to the conservative cashier default exactly as
+         before — the original security intent (never show owner/manager
+         UI, even briefly, to someone who isn't) is unchanged. */
+      var _shopReady = false;
+      try { _shopReady = !!(window.MShop && window.MShop.getActive && window.MShop.getActive()); } catch(e){}
+
+      if (_shopReady && window.AppRole && typeof window.AppRole.refresh === 'function') {
+        console.warn('[HisaabNow] role resolution stalled, but shop data is already available — resolving the real role instead of defaulting to cashier');
+        window.AppRole.refresh();
+        return;
+      }
+
       // v33.8 #3 Fix B: default to 'cashier', not 'owner'. If role resolution
       // genuinely fails, the SAFER outcome is to show fewer features (cashier)
       // than the actual user is entitled to, until AppRole.refresh corrects it.
@@ -892,6 +922,17 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
       console.warn('[HisaabNow] role resolution stalled — applying safety-net default (cashier)');
       document.documentElement.setAttribute('data-role-resolved', 'yes');
       document.documentElement.setAttribute('data-current-role', 'cashier');
+
+      /* (Aug 2026 fix) Keep AppRole's own internal state in sync with the
+         DOM we just forced — see AppRole._forceRole's own comment for why
+         this split-brain state was a real, separate bug from the stall
+         itself: everything outside the visible UI that asks AppRole for
+         the role (not just what's on screen) needs to agree with it. */
+      try {
+        if (window.AppRole && typeof window.AppRole._forceRole === 'function') {
+          window.AppRole._forceRole('cashier');
+        }
+      } catch(e){}
 
       if (window.App && typeof window.App.renderHome === 'function') {
         window.App.renderHome();
@@ -48769,6 +48810,22 @@ window.AppRole = {
   isManager: function() { return _currentRole === 'manager'; },
   isCashier: function() { return _currentRole === 'cashier'; },
   isWaiter:  function() { return _currentRole === 'waiter'; },
+
+  /* (Aug 2026 fix) Lets the boot-time safety-net (index.html, ~line 880)
+     apply its conservative default WITHOUT creating a split-brain state.
+     Before this existed, the safety-net wrote data-current-role="cashier"
+     straight to the DOM but never touched this module's own _currentRole
+     — so AppRole.getCurrentRole()/isOwner()/isCashier(), which the rest of
+     the app uses for actual access decisions (not just the visible badge),
+     kept reporting the stale module-load default ('owner') even while the
+     screen showed "Cashier". Routing the default through here keeps both
+     in agreement. Any later real refresh() call still freely overrides
+     this — it's provisional, not authoritative. */
+  _forceRole: function(role) {
+    _currentRole = role;
+    _applyToDom(_currentRole);
+    try { localStorage.setItem('hn_role_cached', _currentRole); } catch(e){}
+  },
 
   canAccess: function(minRole) {
     /* (v34_187) waiter sits below cashier. Fractional so the existing three
