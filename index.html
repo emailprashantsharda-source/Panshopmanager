@@ -4182,7 +4182,7 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.navBack('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" id="staff-title" data-i18n="nav.staffLbl">Staff</div>
-    <button class="icon-btn" onclick="App.nav('add-staff')" data-role-min="owner"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <button class="icon-btn" onclick="App.nav('add-staff')" data-role-min="manager"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
   </header>
 
   <div class="stat-strip three" id="staff-stats">
@@ -5181,7 +5181,7 @@ html[data-current-role="manager"] body{
   </div>
 </div>
 
-<div class="page" id="pg-add-staff" data-role-min="owner">
+<div class="page" id="pg-add-staff" data-role-min="manager">
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.nav('staff')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="hdr-title" data-i18n="staff.addTitle">Add Staff</div>
@@ -12441,7 +12441,14 @@ const App = {
     try {
       const role = (window.AppRole && AppRole.getCurrentRole && AppRole.getCurrentRole()) || 'owner';
 
-      const ownerOnly   = ['settings','subscription','multi-store','add-staff'];
+      const ownerOnly   = ['settings','subscription','multi-store'];
+      /* (Aug 2026 fix) 'add-staff' removed from this list — managers now get
+         full staff-management access (add/edit/remove/promote), matching
+         the read-only-by-design restriction being lifted per owner request.
+         See the matching change to data-role-min on #pg-add-staff and its
+         nav icon-button, plus the _r !== 'owner' guards further down this
+         file that also needed updating for this to actually take effect
+         end-to-end, not just at the page-open level. */
 
       /* (v34_189) Cashier joins the waiter on an allowlist. It was on the old
          `managerOnly` blocklist, which grants everything nobody remembered to
@@ -31600,13 +31607,12 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
       <div class="ps-actions">
         ${(function(){
-          // b13: only owner can Remove or Edit staff. Manager has read-only
-          // access to the staff list (sees commission breakdown, performance)
-          // but not roster management. The Add Staff + button is also gated
-          // to owner via data-role-min="owner" on the icon-btn.
+          // (Aug 2026 fix) Managers now get full staff-management access,
+          // same as owner — was previously read-only-by-design for managers
+          // (b13). Only cashier/waiter remain excluded from this action.
           let _r = 'owner';
           try { if (window.AppRole && AppRole.getCurrentRole) _r = AppRole.getCurrentRole(); } catch(e){}
-          if (_r !== 'owner') return '<div style="text-align:center;font-size:12px;color:var(--t3);font-weight:600;padding:8px">Only the owner can edit or remove staff</div>';
+          if (_r !== 'owner' && _r !== 'manager') return '<div style="text-align:center;font-size:12px;color:var(--t3);font-weight:600;padding:8px">Only the owner or manager can edit or remove staff</div>';
           return `<button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteStaff(${idx})" style="flex:0 0 auto" data-i18n="btn.remove">Remove</button>
                   <button type="button" class="ps-btn ps-btn-primary" onclick="App.editStaffFromDetail(${idx})">Edit details</button>`;
         })()}
@@ -31655,8 +31661,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     try {
       let _r = 'owner';
       if (window.AppRole && AppRole.getCurrentRole) _r = AppRole.getCurrentRole();
-      if (_r !== 'owner') {
-        this.toast(this._T('toast.onlyOwnerRmStaff', 'Only the shop owner can remove staff'));
+      if (_r !== 'owner' && _r !== 'manager') {
+        this.toast(this._T('toast.onlyOwnerRmStaff', 'Only the owner or manager can remove staff'));
         return;
       }
     } catch(e){}
@@ -34470,6 +34476,25 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   _shouldGateBilling(){
     if (this._isPaidUser()) return false;
     try { if (window.Subs && Subs.hasEverPaid && Subs.hasEverPaid()) return true; } catch(e){}
+    /* (Aug 2026 fix) ROOT CAUSE of a confusing, silent billing failure: this
+       function only ever checked the 15-free-bill COUNT, never the trial's
+       actual CALENDAR expiry — even though isTrialExpired() (a separate
+       function elsewhere in this file) is literally named for that and
+       simply delegates back to this same function, assuming it already
+       covered it. It didn't. A shop that used fewer than 15 bills but whose
+       trial window had elapsed by date was told "12 free bills left" and
+       allowed to keep billing client-side — while Firestore's own,
+       correctly date-based subscription check rejected every one of those
+       writes server-side with permission-denied. The bill "saved" locally,
+       the toast said bills remained, and it silently never reached the
+       cloud. getAccurateDaysLeft() already computes the correct calendar
+       answer (it's what the diagnostic panel's "Trial expired · 0 days
+       left" comes from) — it just was never consulted here. Wiring it in
+       makes the client refuse up front, matching what the server already
+       enforces, instead of quarantining doomed writes after the fact. */
+    try {
+      if (typeof window.HND_getAccurateDaysLeft === 'function' && window.HND_getAccurateDaysLeft() <= 0) return true;
+    } catch(e){}
     return this._freeBillsUsed() >= this._FREE_BILLS;
   },
   _freeBillNudgeAfterSale(){
@@ -37149,8 +37174,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     try {
       let _r = 'owner';
       if (window.AppRole && AppRole.getCurrentRole) _r = AppRole.getCurrentRole();
-      if (_r !== 'owner') {
-        this.toast(this._T('toast.onlyOwnerStaff', 'Only the shop owner can add or edit staff'));
+      if (_r !== 'owner' && _r !== 'manager') {
+        this.toast(this._T('toast.onlyOwnerStaff', 'Only the owner or manager can add or edit staff'));
         return;
       }
     } catch(e){}
@@ -38576,7 +38601,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
       var _isManager = false;
       try { _isManager = !!(window.AppRole && window.AppRole.getCurrentRole && window.AppRole.getCurrentRole() === 'manager'); } catch(e){}
-      sheetSub.textContent = _isManager ? 'Add cashiers · edit names' : 'Multi-device · Owner controls';
+      sheetSub.textContent = _isManager ? 'Add staff · full access' : 'Multi-device · Owner controls';
     }
     const sheetIcon = document.querySelector('#ps-drawer .ps-hdr-icon');
     if (sheetIcon) sheetIcon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>';
@@ -38666,7 +38691,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
       var _isManager = false;
       try { _isManager = !!(window.AppRole && window.AppRole.getCurrentRole && window.AppRole.getCurrentRole() === 'manager'); } catch(e){}
-      sheetSub.textContent = _isManager ? 'Add cashiers · edit names' : 'Multi-device · Owner controls';
+      sheetSub.textContent = _isManager ? 'Add staff · full access' : 'Multi-device · Owner controls';
     }
     const sheetIcon = document.querySelector('#ps-drawer .ps-hdr-icon');
     if (sheetIcon) sheetIcon.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>';
@@ -38681,7 +38706,11 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     let canAddManagerRole = true;
     try {
       if (window.AppRole && typeof window.AppRole.getCurrentRole === 'function') {
-        canAddManagerRole = (window.AppRole.getCurrentRole() === 'owner');
+        /* (Aug 2026 fix) Managers now have full staff-management access,
+           same as owner — including being able to promote a new hire
+           straight to Manager, not just Cashier/Waiter. */
+        var _r0 = window.AppRole.getCurrentRole();
+        canAddManagerRole = (_r0 === 'owner' || _r0 === 'manager');
       }
     } catch(e){}
 
