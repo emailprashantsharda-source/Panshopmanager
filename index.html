@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1153';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1204';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -5904,6 +5904,9 @@ html[data-current-role="manager"] body{
     'dash.bookedToday':     { en: 'booked',             hi: 'बुक हुआ' },
     'dash.times':           { en: 'times',              hi: 'बार' },
     'dash.today':           { en: 'today',              hi: 'आज' },
+    'dash.perStylist':      { en: 'Per Stylist',        hi: 'प्रति स्टाइलिस्ट' },
+    'dash.stylistSing':     { en: 'stylist',             hi: 'स्टाइलिस्ट' },
+    'dash.stylistPl':       { en: 'stylists',            hi: 'स्टाइलिस्ट' },
     'dash.grossProfitToday':{ en: 'Gross Profit Today', hi: 'आज का Gross प्रॉफिट' },
     'dash.loadingProfit':   { en: "Loading today's profit…", hi: 'प्रॉफिट लोड हो रहा है…' },
     'dash.cafeOverview':    { en: "Here's your café overview for today.", hi: 'आज की रिपोर्ट यहां है।' },
@@ -18311,21 +18314,38 @@ const App = {
 
     /* ── (v34_185) Slot 2 belongs to the trade ──────────────────────────────
        Running for a restaurant, Udhaar for a kirana, Cash in hand for a pan
-       shop. _buildPill returns null when the module behind it is off or has
-       no data, and then the Profit block below runs unchanged — so this can
-       never leave the tile blank. */
+       shop, Stylist for a salon. _buildPill returns null when the module
+       behind it is off or has no data, and then the Profit block below runs
+       unchanged — so this can never leave the tile blank.
+       (Aug 2026 fix) This used to be gated on `_plan.s2 === 'stylist' &&
+       !_useStaffPill` — but _useStaffPill is declared false at the top of
+       this function and not actually computed until AFTER this line runs,
+       so that condition was always true for salon, every render, regardless
+       of data. _buildPill(_plan.s2) already returns null on its own when a
+       kind has nothing to show (see each _pillX above), so the extra gate
+       here was redundant even before it was broken — removing it lets
+       'stylist' get a fair, direct try like every other kind. */
     var _plan = this._homePlan();
-    var _p2 = (_plan.s2 === 'stylist' && !_useStaffPill) ? null : this._buildPill(_plan.s2);
+    var _p2 = this._buildPill(_plan.s2);
     if (_p2){
       this._applyPill('kpi-tile-2', 'kpi-bills-label', 'kpi-bills', 'kpi-bills-delta', _p2);
       this._kpi2Mode = _p2.mode;
-    } else if (_useStaffPill && _plan.s2 === 'stylist'){
-      this._kpi2Mode = 'stylist';
     } else {
     /* (v33_29af) Pill 2 (id=kpi-bills) NOW SHOWS PROFIT in ₹, not bill count.
        Value: today's profit in rupees (uses todayProf — gross profit before
        commission, matching the legend's old "Gross" semantics). When cost
        prices aren't accurate, show "—" + nudge. */
+    /* (Aug 2026 fix) This branch always updated the VALUE (kpi-bills) but
+       never the LABEL (kpi-bills-label) — so whatever label a previous
+       render had left behind (e.g. "Running", if the vertical briefly
+       resolved as restaurant/cafe before settling) stayed on screen
+       forever, under a freshly-computed Profit number that no longer
+       matched it. Reset it explicitly every time this branch runs. */
+    var billsLabelEl = document.getElementById('kpi-bills-label');
+    if (billsLabelEl){
+      billsLabelEl.setAttribute('data-i18n', 'dash.profit');
+      billsLabelEl.textContent = this._T('dash.profit', 'Profit');
+    }
     if (billsEl) {
       if (!profitIsAccurate && todaySales.length > 0) {
         billsEl.textContent = '—';
@@ -18863,6 +18883,46 @@ const App = {
       mode:'repeat', tone: pct >= 50 ? 'good' : ''
     };
   },
+  /* (Aug 2026 fix) _HOME_PILLS has always declared salon's slot 2 as
+     'stylist' — a restaurant's "what's cooking right now" has no salon
+     equivalent, so the plan correctly asked for stylist coverage instead.
+     But _buildPill()'s switch never had a matching case, so this kind
+     silently fell through to null on every render, no matter what the
+     shop's data looked like. Slot 2 then dropped into the generic Profit
+     fallback, which only ever writes the VALUE (kpi-bills), never the
+     LABEL (kpi-bills-label) — so a salon that had shown "Running" even
+     once (e.g. mid-onboarding, before its vertical was fully resolved)
+     kept that stale label forever after, with a fresh Profit-ish number
+     sitting under it. Independent of _useStaffPill (a separate, narrower
+     heuristic that only fires when NO cost/commission data exists at all,
+     and which already owns a different tile — slot 3's "Per Staff" ladder,
+     see the comment above the slot-3 block below) — this only needs a
+     stylist to have been tapped on at least one of today's bills, so it
+     works from day one regardless of whether cost prices are set up yet. */
+  _pillStylist(){
+    var total = 0;
+    var staffSet = {};
+    var staffCount = 0;
+    try {
+      var todays = Store.todaySales() || [];
+      todays.forEach(function(b){
+        if (!b) return;
+        total += Number(b.total || b.amt || 0);
+        if (Array.isArray(b.items)) b.items.forEach(function(it){
+          if (it && it.staffId && !staffSet[it.staffId]){ staffSet[it.staffId] = true; staffCount++; }
+        });
+      });
+    } catch(e){ return null; }
+    if (staffCount === 0) return null;  /* no stylist tapped on any bill yet — let Profit fallback show instead */
+    var T = this._T.bind(this);
+    var perStylist = Math.round(total / staffCount);
+    return {
+      label: T('dash.perStylist','Per Stylist'),
+      value: '\u20b9' + perStylist.toLocaleString('en-IN'),
+      sub: staffCount + ' ' + (staffCount === 1 ? T('dash.stylistSing','stylist') : T('dash.stylistPl','stylists')) + ' ' + T('dash.today','today'),
+      mode:'stylist', tone:''
+    };
+  },
   _buildPill(kind){
     try {
       switch (kind){
@@ -18874,6 +18934,7 @@ const App = {
         case 'soldout':  return this._pillSoldOut();
         case 'barstock': return this._pillBarStock();
         case 'repeat':   return this._pillRepeat();
+        case 'stylist':  return this._pillStylist();
       }
     } catch(e){ console.warn('[home pills] ' + kind + ' failed', e); }
     return null;
