@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1440';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1456';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -4241,14 +4241,18 @@ html[data-current-role="manager"] body{
 <div class="page" id="pg-packs">
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.navBack('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
-    <div class="hdr-title">Packs</div>
-    <div style="width:40px"></div>
+    <div class="hdr-title">Subscription Packs</div>
+    <button data-role-min="manager" onclick="window.HND && HND.subs && HND.subs.openPackBuilder && HND.subs.openPackBuilder()" aria-label="Create pack" style="height:36px;padding:0 14px;background:var(--p,#FF6B35);border:none;border-radius:99px;display:inline-flex;align-items:center;gap:5px;color:#fff;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:-.01em;cursor:pointer;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add</button>
   </header>
-  <div style="padding:42px 20px;text-align:center">
-    <div style="font-size:54px;margin-bottom:18px">📦</div>
-    <div style="font-size:18px;font-weight:700;margin-bottom:10px;color:var(--t1)">Subscription packs</div>
-    <div style="font-size:13.5px;color:var(--t2);line-height:1.5;max-width:300px;margin:0 auto 24px">Open HisaabNow on desktop or tablet to create subscription packs (5 Facials, Unlimited Threading, etc.) and sell them to your customers.</div>
-  </div>
+  <!-- (fix) Was a static dead-end stub telling everyone to "Open HisaabNow
+       on desktop" — even though the actual pack builder and sell modal
+       (window.HND.subs.openPackBuilder / openSellModal) are shell-agnostic
+       and already work fine on mobile; only the desktop LIST container
+       (#hnd-packs) was gated to desktop CSS. This mounts a real mobile-native
+       list instead, reusing that same working save/sell logic. Rendered by
+       the script block right after the RENTALNOW section (search
+       "MOBILE PACKS LIST"). -->
+  <div id="mob-packs-list" style="padding:16px 18px 40px"></div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════
@@ -15578,6 +15582,15 @@ const App = {
       if (_wEntry) {
         var _isTv = false;
         try { _isTv = !!(window.isTableVert && isTableVert(window.hnVert ? hnVert() : this.vertical)); } catch(e){}
+        /* (Aug 2026 fix) Explicit salon exclusion, independent of isTableVert.
+           TABLE_VERTS_ON includes 'cafe' — and this.vertical/hnVert() can be
+           a stale cached value left over from before a shop's real profession
+           synced (the exact bug that showed Waiter Collection on a salon shop
+           whose local vertical cache had drifted to 'cafe'). _isSalonShop is
+           computed above from the ACTIVE shop's cardType, the same
+           actively-reconciled source Retail/Services already trust — so this
+           can't show for salon even if this.vertical is wrong again later. */
+        if (_isSalonShop) _isTv = false;
         _wEntry.style.display = _isTv ? '' : 'none';
       }
     } catch(e){ console.warn('[more] waiters gate failed (non-fatal):', e); }
@@ -49103,6 +49116,18 @@ function _applyToDom(role) {
     if (roleEl) {
 
       var label = role.charAt(0).toUpperCase() + role.slice(1);
+      /* (Aug 2026 fix) roleEl was born with data-i18n="staff.cashierRole"
+         hardcoded in the markup, and this function set textContent directly
+         without ever clearing it. The app has a MutationObserver-driven i18n
+         system elsewhere that re-applies whatever data-i18n key is still
+         present on an element it notices changed — so this correctly wrote
+         "Manager" for an instant, then got silently overwritten back to
+         "Cashier" (the literal translation of staff.cashierRole) the moment
+         the observer fired. Diagnostics reading AppRole/DOM state directly
+         showed the correct role throughout, which is what made this so
+         confusing — only the visible banner text was wrong, and only
+         because of this one missing removeAttribute call. */
+      roleEl.removeAttribute('data-i18n');
       roleEl.textContent = label;
     }
     if (shopEl) {
@@ -65755,6 +65780,119 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
 </script>
 <!-- =================== END Subscription Engine block =================== -->
 
+<!-- ════════════════════════════════════════════════════════════
+     MOBILE PACKS LIST (Aug 2026 fix)
+     ────────────────────────────────────────────────────────────
+     #hnd-packs (the desktop pack catalog container) is CSS-gated to
+     html[data-shell="desktop"] — so pg-packs on mobile used to be a
+     dead-end stub telling everyone to switch devices, even though
+     window.HND.subs.openPackBuilder()/openSellModal() build shell-agnostic
+     modals that already work fine on mobile. This renders a mobile-native
+     list into #mob-packs-list (added to pg-packs' markup) using the same
+     underlying data (HND.subEngine.allPacks()) and the same working
+     create/edit/sell functions — no new save logic, just a real place to
+     reach the logic that already existed.
+════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  'use strict';
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+  function fmtINR(n){ try { return '\u20b9' + Math.round(+n||0).toLocaleString('en-IN'); } catch(e){ return '\u20b9' + (n||0); } }
+
+  function render(){
+    var slot = document.getElementById('mob-packs-list');
+    if (!slot) return;
+    if (!window.HND || !window.HND.subEngine){ setTimeout(render, 200); return; }
+
+    var packs = [];
+    try { packs = window.HND.subEngine.allPacks() || []; } catch(e){}
+
+    if (!packs.length){
+      slot.innerHTML = ''
+        + '<div style="padding:36px 12px;text-align:center">'
+        +   '<div style="font-size:48px;margin-bottom:14px">\ud83d\udce6</div>'
+        +   '<div style="font-size:16px;font-weight:800;color:var(--t1);margin-bottom:8px">No subscription packs yet</div>'
+        +   '<div style="font-size:13px;color:var(--t2);line-height:1.5;max-width:280px;margin:0 auto 20px">Create packs like "5 Facials for \u20b93,000" or "Unlimited Threading for 1 month". Customers pay upfront, you get committed revenue + repeat visits.</div>'
+        +   '<button onclick="window.HND.subs.openPackBuilder()" style="background:var(--p,#FF6B35);color:#fff;border:none;padding:12px 22px;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">+ Create your first pack</button>'
+        + '</div>';
+      return;
+    }
+
+    var html = packs.map(function(pack){
+      var savings = { marketValue: 0, savings: 0, pct: 0 };
+      try { savings = window.HND.subEngine.packSavings(pack); } catch(e){}
+      var inactive = pack.active === false;
+      var contentsHtml = (pack.contents || []).map(function(c){
+        if (c.kind === 'unlimited') return '<div style="font-size:12.5px;color:var(--t2);display:flex;gap:6px;align-items:center;margin-top:3px"><span style="color:#0F8A45;font-weight:800">\u221e</span> Unlimited <b style="color:var(--t1)">' + esc(c.name) + '</b></div>';
+        return '<div style="font-size:12.5px;color:var(--t2);display:flex;gap:6px;align-items:center;margin-top:3px"><span style="color:#0F8A45;font-weight:800">\u2713</span> <b style="color:var(--t1)">' + (c.count || 0) + 'x</b> ' + esc(c.name) + '</div>';
+      }).join('');
+
+      return '<div style="background:#fff;border:1.5px solid var(--border-strong,#EFE8D7);border-radius:16px;padding:16px;margin-bottom:14px' + (inactive ? ';opacity:.6' : '') + '">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">'
+        +   '<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+        +     '<div style="font-size:24px;flex-shrink:0">' + esc(pack.emoji || '\ud83d\udce6') + '</div>'
+        +     '<div style="font-weight:800;font-size:15px;color:var(--t1);letter-spacing:-.01em">' + esc(pack.name || 'Untitled pack') + '</div>'
+        +   '</div>'
+        +   '<div style="text-align:right;flex-shrink:0">'
+        +     '<div style="font-weight:800;font-size:16px;color:var(--t1)">' + fmtINR(pack.price) + '</div>'
+        +     (savings.marketValue > pack.price ? '<div style="font-size:11px;color:var(--t3);text-decoration:line-through">' + fmtINR(savings.marketValue) + '</div>' : '')
+        +     (savings.pct > 0 ? '<div style="font-size:10.5px;font-weight:800;color:#0F8A45">SAVE ' + savings.pct + '%</div>' : '')
+        +   '</div>'
+        + '</div>'
+        + contentsHtml
+        + '<div style="font-size:11.5px;color:var(--t3);margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#F2EDDF)">'
+        +   '\u23f0 ' + (pack.validityDays ? pack.validityDays + ' days validity' : 'No expiry')
+        +   ' \u00b7 ' + (inactive ? 'Inactive' : 'Active')
+        + '</div>'
+        + '<div style="display:flex;gap:8px;margin-top:12px">'
+        +   '<button onclick="window.HND.subs.openPackBuilder(\'' + esc(pack.id) + '\')" style="flex:1;background:var(--warm-100,#F8F4EA);color:var(--t1);border:1px solid var(--border-strong,#EFE8D7);padding:10px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">\u270e Edit</button>'
+        +   '<button onclick="window.HND.subs.openSellModal(\'' + esc(pack.id) + '\')" style="flex:1;background:var(--p,#FF6B35);color:#fff;border:none;padding:10px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">\u26a1 Sell to customer</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    slot.innerHTML = html;
+  }
+
+  function hookAppNav(){
+    if (!window.App || typeof window.App.nav !== 'function' || window.App.__mobPacksNavHooked) return false;
+    var orig = window.App.nav;
+    window.App.nav = function(page){
+      var r = orig.apply(this, arguments);
+      if (page === 'packs') setTimeout(render, 50);
+      return r;
+    };
+    window.App.__mobPacksNavHooked = true;
+    return true;
+  }
+
+  function subscribe(){
+    if (!window.Store || !Store.on || window.__mobPacksSubbed) return;
+    window.__mobPacksSubbed = true;
+    try {
+      Store.on('packs', function(){
+        /* Re-render whenever packs change — covers saves made through the
+           modal opened from this very page, which only knows how to
+           refresh the desktop list slot, not this one. */
+        if (window.App && window.App.current === 'packs') render();
+      });
+    } catch(e){}
+  }
+
+  function boot(retry){
+    hookAppNav();
+    subscribe();
+    if (window.App && window.App.current === 'packs') render();
+    if (retry > 0 && !window.App.__mobPacksNavHooked){
+      setTimeout(function(){ boot(retry - 1); }, 200);
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ boot(15); });
+  } else { boot(15); }
+})();
+</script>
+
 
 <!-- ════════════════════════════════════════════════════════════
      PACKS STRIP for new-sale screen (Phase C+ · May 2026)
@@ -71315,8 +71453,14 @@ html[data-shell="desktop"] #pg-home {
          visible for every vertical including Salon. Mirror HNCombo.isVert(). */
       combo:         foodPrep,
       /* (v34_042) Same allowlist that gates tables/KOT and the mobile More
-         entry — TABLE_VERTS_ON, exported in v34_024. One source of truth. */
-      waiters:       (function(){ try { return !!(window.isTableVert && isTableVert(v)); } catch(e){ return false; } })(),
+         entry — TABLE_VERTS_ON, exported in v34_024. One source of truth.
+         (Aug 2026 fix) Explicit `&& !isSalon` guard, mirroring the mobile
+         More fix — isTableVert(v) trusts `v`, which can be a stale cached
+         vertical (TABLE_VERTS_ON includes 'cafe', and a salon shop's local
+         cache drifting to 'cafe' is exactly the bug that surfaced this).
+         isSalon above is derived from the active shop's cardType, so this
+         can't show for salon even if `v` is wrong again later. */
+      waiters:       (function(){ try { return !!(window.isTableVert && isTableVert(v)) && !isSalon; } catch(e){ return false; } })(),
       /* (v34_045) Show while anything is unpriced, or forever for sabzi — where
          re-rating isn't setup, it's the 5am ritual. */
       bulkprice:     (function(){
