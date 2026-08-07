@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1515';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1533';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3888,12 +3888,12 @@ html[data-current-role="manager"] body{
     <div class="cust-search-wrap" style="position:relative">
       <div class="search-bar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <input id="checkout-cust-input" placeholder="Walk-in or search customer…" autocomplete="off" oninput="App.custSearchInput()" onfocus="App.custSearchInput()" onblur="setTimeout(() => App.custSearchClose(), 200)">
+        <input id="checkout-cust-input" placeholder="Search name or phone number…" autocomplete="off" oninput="App.custSearchInput()" onfocus="App.custSearchInput()" onblur="setTimeout(() => App.custSearchClose(), 200)">
         <button id="checkout-cust-clear" type="button" onclick="App.custSearchClear()" style="display:none;background:none;border:none;padding:6px;color:var(--t3);cursor:pointer">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div id="checkout-cust-results" class="cust-results" style="display:none"></div>
+      <div id="checkout-cust-results" class="cust-results" style="display:none;background:transparent;border:none;box-shadow:none;max-height:420px;padding-top:2px"></div>
       <div id="checkout-cust-tagged" style="display:none;margin-top:8px;padding:10px 12px;background:var(--p-50);border:1px solid var(--p-200);border-radius:11px;display:flex;align-items:center;gap:10px;font-size:13px">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--p)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
         <div style="flex:1;font-weight:600;color:var(--p-deep)" id="checkout-cust-tagged-text">—</div>
@@ -24751,47 +24751,87 @@ const App = {
     }
     matches = matches.slice(0, 6);
 
+    /* (Aug 2026 upgrade) Bolds the part of a customer's name that matched
+       the search — same visual language as search results elsewhere,
+       makes it obvious at a glance WHY a row matched. Case-insensitive;
+       falls back to the plain escaped name if the term isn't found (e.g.
+       a phone-number match with no text overlap in the name). */
+    const highlightMatch = (name) => {
+      const escaped = this.escapeHtml(name || '');
+      if (!q) return escaped;
+      const lower = (name || '').toLowerCase();
+      const idx = lower.indexOf(q);
+      if (idx === -1) return escaped;
+      const before = this.escapeHtml(name.slice(0, idx));
+      const hit = this.escapeHtml(name.slice(idx, idx + q.length));
+      const after = this.escapeHtml(name.slice(idx + q.length));
+      return before + '<b style="background:#FFE3AC;color:#5C3D06;border-radius:3px;padding:0 1px">' + hit + '</b>' + after;
+    };
+
     let html = '';
 
-    if (!q) {
-      html += `
-        <div class="cust-result-row cust-result-walkin" onclick="App.custSearchPick('walkin')">
-          <div class="cust-result-avatar">WI</div>
-          <div class="cust-result-meta">
-            <div class="cust-result-name" data-i18n="dash.walkIn">Walk-in</div>
-            <div class="cust-result-sub">No customer linked to this bill</div>
-          </div>
-        </div>`;
-    }
-    matches.forEach(c => {
-      const initials = c.initials || (c.name || '').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || '?';
-      const color = c.color || '#000000';
-      const visits = Number(c.visits || 0);
-      const phone = c.phone || '';
-      const tag = visits >= 10 ? '⭐ Loyal' : visits >= 5 ? '★ Repeat' : visits >= 2 ? 'Regular' : 'New';
-      html += `
-        <div class="cust-result-row" onclick="App.custSearchPick('existing','${c.id}')">
-          <div class="cust-result-avatar" style="background:linear-gradient(135deg, ${color}, ${this.darken(color)})">${this.escapeHtml(initials)}</div>
-          <div class="cust-result-meta">
-            <div class="cust-result-name">${this.escapeHtml(c.name)}</div>
-            <div class="cust-result-sub">${this.escapeHtml(phone) || 'No phone'} · ${visits} ${visits === 1 ? 'visit' : 'visits'}</div>
-          </div>
-          <span class="cust-result-tag">${tag}</span>
-        </div>`;
-    });
+    /* (Aug 2026 upgrade) "No customer" used to only appear when the search
+       box was empty — picking it meant first clearing whatever you'd
+       typed. It's now pinned above the results at all times, visually
+       separated from real customer matches so it can't be mistaken for
+       an actual "Walk-in"-named customer record sitting in the list below
+       it (both existed and looked identical before). */
+    html += `
+      <div onclick="App.custSearchPick('walkin')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:#F3F0E8;border-radius:14px;margin-bottom:8px;cursor:pointer">
+        <div style="width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--t2);flex-shrink:0;box-shadow:inset 0 1px 1px rgba(255,255,255,.6)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:800;color:var(--t1)" data-i18n="dash.walkIn">No customer</div>
+          <div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:1px">Bill without linking anyone — fastest for a quick walk-in</div>
+        </div>
+      </div>`;
 
+    /* (Aug 2026 upgrade) "Add new" promoted from a plain list row to a
+       highlighted card with its own color, matching how prominent this
+       action actually needs to be — someone typing a name that doesn't
+       exist yet should see this as clearly as "No customer" above it,
+       not buried below real matches. */
     if (q && !allCusts.some(c => (c.name || '').toLowerCase() === q)) {
       html += `
-        <div class="cust-result-row cust-result-add" onclick="App.custSearchPick('new')">
-          <div class="cust-result-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          <div class="cust-result-meta">
-            <div class="cust-result-name">Add "${this.escapeHtml(inp.value.trim())}" as new customer</div>
-            <div class="cust-result-sub">Phone optional — link bills, send WhatsApp</div>
+        <div onclick="App.custSearchPick('new')" style="display:flex;align-items:center;gap:12px;padding:14px;background:linear-gradient(160deg,#FFF3D9,#FFE3AC);border-radius:14px;margin-bottom:10px;cursor:pointer;box-shadow:0 8px 20px -12px rgba(147,96,10,.35)">
+          <div style="width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;color:#93600A;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:800;color:#5C3D06">Add "${this.escapeHtml(inp.value.trim())}" as new customer</div>
+            <div style="font-size:12px;color:#93600A;font-weight:600;margin-top:1px">Phone optional — link bills, send WhatsApp</div>
           </div>
         </div>`;
     }
-    if (!html) {
-      html = `<div class="empty-mini" style="padding:14px">No matches · keep typing or tap "Add as new"</div>`;
+
+    if (matches.length) {
+      html += `<div style="font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;padding:2px 2px 6px">${matches.length} match${matches.length === 1 ? '' : 'es'}</div>`;
+      html += `<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px -18px rgba(23,20,15,.3)">`;
+      matches.forEach((c, i) => {
+        const initials = c.initials || (c.name || '').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || '?';
+        const color = c.color || '#000000';
+        const visits = Number(c.visits || 0);
+        const phone = c.phone || '';
+        const isVip = visits >= 10;
+        const tagText = isVip ? 'VIP' : visits >= 5 ? 'Repeat' : visits >= 2 ? 'Regular' : 'New';
+        const tagColor = isVip ? 'background:#FFEEEC;color:#C23A22' : visits >= 2 ? 'background:#E8F8EE;color:#0F8A45' : 'background:#E9F0FB;color:#1D4ED8';
+        html += `
+          <div onclick="App.custSearchPick('existing','${c.id}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer${i < matches.length - 1 ? ';border-bottom:1px solid var(--border,#EFE8D7)' : ''}">
+            <div style="width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;background:linear-gradient(135deg, ${color}, ${this.darken(color)})">${this.escapeHtml(initials)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14.5px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                ${highlightMatch(c.name)}
+                <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;flex-shrink:0;${tagColor}">${tagText}</span>
+              </div>
+              <div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">${this.escapeHtml(phone) || 'No phone'} · ${visits} ${visits === 1 ? 'visit' : 'visits'}</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>`;
+      });
+      html += `</div>`;
+    } else if (q) {
+      html += `<div style="padding:16px;text-align:center;color:var(--t2);font-size:13px;font-weight:600">No matches for "${this.escapeHtml(inp.value.trim())}" · tap "Add as new" above</div>`;
     }
 
     results.innerHTML = html;
@@ -46197,30 +46237,54 @@ async function bootstrap(user, options){
          StaffDiscovery's live membership data, profession included. But a
          device that already has ANY cached shops skips that branch
          entirely and just keeps using whatever profession value happened
-         to get cached previously — even though the fresh, correct
-         membership data (already fetched for this exact login, via
-         discoverFromUser above) is sitting right here unused. This is how
-         a device that once saw a shop's profession as a fallback default
-         (e.g. 'cafe', used throughout the app before real data loads)
-         could keep showing that value forever: nothing on the "cache
-         already exists" path ever compared it against Firestore again.
+         to get cached previously.
          Reconcile it here, on every login, the same way the phantom-shop
          filter above already reconciles other staleness in this same
          array. Only touches profession — role/owner fields already have
          their own correction path via AppRole.refresh(). */
       try {
-        if (window.StaffDiscovery && typeof window.StaffDiscovery.getMemberships === 'function'){
+        if (window.StaffDiscovery && typeof window.StaffDiscovery.getMemberships === 'function'
+            && window.HisaabSyncDeps && window.HisaabSyncDeps.db && window.HisaabSyncDeps.sdk){
           var _freshMemberships = window.StaffDiscovery.getMemberships();
           var _profFixed = 0;
-          _freshMemberships.forEach(function(m){
-            if (!m || !m.shopId || !m.profession) return;
+          var _sdk = window.HisaabSyncDeps.sdk;
+          var _db  = window.HisaabSyncDeps.db;
+          /* (Aug 2026 fix, round 2) The first version of this fix trusted
+             m.profession, sourced from /staffPhoneIndex/{phone}/shops/{doc}.
+             That field is written ONCE by the addStaffMember Cloud Function
+             at the moment a staff member is added, and nothing refreshes it
+             afterward — so if the shop's profession was corrected LATER
+             (e.g. from a placeholder default to 'salon'), that index doc
+             stays wrong forever, and "fresh" StaffDiscovery data was really
+             just a fresh read of a stale field. Confirmed live: a manager's
+             kprof_ cache still read 'cafe' after this fix shipped, on a
+             build where role resolution was already correct — proving the
+             two use genuinely different data sources and only role's was
+             fixed. This version reads /shops/{shopId} directly instead —
+             the same canonical document the owner's own device reads, and
+             the one hasActiveSubscription()-style logic already treats as
+             ground truth elsewhere in this app. One extra read per login,
+             only for staff accounts, only for the shops that need it. */
+          for (var _mi = 0; _mi < _freshMemberships.length; _mi++){
+            var m = _freshMemberships[_mi];
+            if (!m || !m.shopId) continue;
             var s = state.shops.find(function(x){ return x && x.shopId === m.shopId; });
-            if (s && s.profession !== m.profession){
-              console.log('[MShop] reconciling stale profession for ' + m.shopId + ': "' + s.profession + '" → "' + m.profession + '"');
-              s.profession = m.profession;
-              _profFixed++;
+            if (!s) continue;
+            try {
+              var _shopRef = _sdk.doc(_db, 'shops', m.shopId);
+              var _shopSnap = await _sdk.getDoc(_shopRef);
+              if (_shopSnap.exists()){
+                var _liveProf = _shopSnap.data().profession || _shopSnap.data().cardType || '';
+                if (_liveProf && s.profession !== _liveProf){
+                  console.log('[MShop] reconciling stale profession for ' + m.shopId + ' from canonical shop doc: "' + s.profession + '" \u2192 "' + _liveProf + '"');
+                  s.profession = _liveProf;
+                  _profFixed++;
+                }
+              }
+            } catch (perShopErr) {
+              console.warn('[MShop] profession reconciliation read failed for ' + m.shopId + ' (non-fatal):', perShopErr);
             }
-          });
+          }
           if (_profFixed > 0) _saveCacheLocal();
         }
       } catch (reconcileErr) {
