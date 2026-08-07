@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1608';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1618';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1991,32 +1991,29 @@ html[data-shell="desktop"] .inv-actions{padding:4px 0 10px}
    (Aug 2026 upgrade) Restyled as a flat filled pill instead of a bordered
    box — closer to how a modern search field actually looks (Google, etc.):
    no visible border at rest, a soft neutral fill, and the border only
-   appears as a focus ring when actually in use. */
+   appears as a focus ring when actually in use.
+   (Aug 2026 — matches approved mock exactly) Reverted to the same
+   transform:scale(1.035) mechanism as search-zoom-mockup.html, same
+   values, same easing curve. The padding/height variant tried in between
+   was a deviation from what was actually agreed — going back to the
+   mock as the source of truth rather than re-guessing. */
 .cust-search-wrap .search-bar{
   padding:16px 18px; min-height:56px; gap:14px; border-radius:28px;
   background:#F1F0EC; border:1.5px solid transparent;
   box-shadow:none;
-  /* (Aug 2026 upgrade — zoom, round 2) A transform:scale() on a
-     near-full-width element only has a few px of side padding to grow
-     into before it visually reads as "clipped against the screen edge"
-     rather than "zoomed" — the effect was real in DevTools but too
-     subtle to notice on an actual phone. Switched to animating the real
-     padding/min-height/font-size instead: a genuine layout size increase
-     that pushes the results panel down and is unambiguous regardless of
-     how tight the surrounding margins are. */
-  transition: padding .18s cubic-bezier(.2,.8,.2,1), min-height .18s cubic-bezier(.2,.8,.2,1),
-              background .18s, border-color .18s, box-shadow .18s;
+  transform-origin: center top;
+  transform: scale(1);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s, border-color .18s, box-shadow .18s;
 }
 .cust-search-wrap .search-bar:focus-within{
   background:#fff; border-color:var(--p-200);
-  padding:22px 22px; min-height:68px;
-  box-shadow:0 12px 30px -10px rgba(23,20,15,.25), 0 0 0 5px rgba(255,107,53,.10);
+  transform: scale(1.035);
+  box-shadow:0 10px 28px -10px rgba(23,20,15,.22), 0 0 0 5px rgba(255,107,53,.10);
 }
 .cust-search-wrap .search-bar:hover{ border-color:transparent; }
-.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; transition:color .18s, width .18s, height .18s; flex-shrink:0; }
-.cust-search-wrap .search-bar:focus-within svg{ color:var(--p); width:23px; height:23px; }
-.cust-search-wrap .search-bar input{ font-size:16.5px; transition:font-size .18s; }
-.cust-search-wrap .search-bar:focus-within input{ font-size:18.5px; }
+.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; transition:color .18s; }
+.cust-search-wrap .search-bar:focus-within svg{ color:var(--p); }
+.cust-search-wrap .search-bar input{ font-size:16.5px; }
 
 .cust-search-wrap{position:relative}
 /* (Aug 2026 upgrade) One continuous panel, thin dividers between rows —
@@ -2037,7 +2034,13 @@ html[data-shell="desktop"] .inv-actions{padding:4px 0 10px}
   justify-content:center;flex-shrink:0;
 }
 .cust-results{
-  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;
+  /* (Aug 2026 reinforcement) Explicitly floats over the payment options
+     below rather than pushing them down — position:absolute takes it out
+     of document flow, and z-index is raised well above anything else on
+     this screen (payment tabs, split-payment toggle, Collect button) so
+     it can never be visually trapped underneath them until a customer
+     is actually picked and the panel closes. */
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:80;
   background:#fff;border:1px solid var(--border-strong);border-radius:13px;
   box-shadow:0 12px 28px -8px rgba(15,23,42,.18);
   max-height:280px;overflow-y:auto;
@@ -3939,7 +3942,7 @@ html[data-current-role="manager"] body{
     <div class="cust-search-wrap" style="position:relative">
       <div class="search-bar">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="checkout-cust-input" placeholder="Search name or phone number…" autocomplete="off" oninput="App.custSearchInput()" onfocus="App.custSearchInput()" onblur="setTimeout(() => App.custSearchClose(), 200)">
+        <input id="checkout-cust-input" placeholder="Search customers…" autocomplete="off" oninput="App.custSearchInput()" onfocus="App.custSearchInput()" onblur="setTimeout(() => App.custSearchClose(), 200)">
         <button id="checkout-cust-clear" type="button" onclick="App.custSearchClear()" style="display:none;background:none;border:none;padding:6px;color:var(--t3);cursor:pointer">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
