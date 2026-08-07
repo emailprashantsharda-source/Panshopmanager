@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1024';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1039';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -4383,7 +4383,7 @@ html[data-current-role="manager"] body{
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.navBack('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" id="catalog-title">Menu</div>
-    <button data-role-min="manager" onclick="App.openProductSheet()" aria-label="Add item" style="height:36px;padding:0 14px;background:var(--p,#FF6B35);border:none;border-radius:99px;display:inline-flex;align-items:center;gap:5px;color:#fff;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:-.01em;cursor:pointer;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add</button>
+    <button data-role-min="manager" onclick="App.openProductSheet(null, (App._catChip==='Retail')?{forceRetail:true}:undefined)" aria-label="Add item" style="height:36px;padding:0 14px;background:var(--p,#FF6B35);border:none;border-radius:99px;display:inline-flex;align-items:center;gap:5px;color:#fff;font-family:inherit;font-weight:800;font-size:13px;letter-spacing:-.01em;cursor:pointer;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add</button>
   </header>
 
   <div class="search-row">
