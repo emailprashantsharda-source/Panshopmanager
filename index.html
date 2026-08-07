@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1204';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1216';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -4504,6 +4504,17 @@ html[data-current-role="manager"] body{
         <span id="more-inventory-badge" class="menu-badge" style="background:#FEE2E2;color:#991B1B;display:none" data-i18n="more.lowBadge">LOW</span>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <!-- (moved from New Sale screen) Was a "🎁 Subscription packs" strip
+           pitching pack creation above the product grid on the screen used
+           dozens of times a day, for a feature most salons haven't set up
+           yet. Same destination (App.nav('packs')), now reached from a
+           place someone would actually go looking for it. Salon only,
+           same gate as Retail/Services/Inventory above. -->
+      <button class="menu-item" id="more-packs-entry" onclick="App.nav('packs')" style="display:none">
+        <div class="menu-icon" style="background:linear-gradient(160deg,#FFE9F1,#FFD3E4);color:#C0286A;box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 4px 10px -6px rgba(0,0,0,.3)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7Z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7Z"/></svg></div>
+        <div class="menu-text"><div class="menu-label">Subscription Packs</div><div class="menu-sub">Prepaid bundles customers buy upfront</div></div>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
       <button class="menu-item" id="more-ingredients-entry" onclick="App.nav('ingredients')" data-role-min="manager">
         <div class="menu-icon" style="background:linear-gradient(160deg,#FFF3D9,#FFE3AC);color:#93600A;box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 4px 10px -6px rgba(0,0,0,.3)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8l1-4Z"/><path d="M7 6h10l1.2 13.2A2 2 0 0 1 16.2 21H7.8a2 2 0 0 1-2-1.8L7 6Z"/><path d="M9 11c0 1.5 1.2 2 3 2s3-.5 3-2"/></svg></div>
         <div class="menu-text"><div class="menu-label" id="more-ingredients-label" data-i18n="nav.supplies">Ingredients</div><div class="menu-sub" id="more-ingredients-sub" data-i18n="more.autoTrackRawMat">Auto-track raw material costs</div></div>
@@ -5774,7 +5785,7 @@ html[data-current-role="manager"] body{
     'nav.bill':        { en: 'Bill',         hi: 'बिल'         },
 
     /* ── Desktop sidebar section labels ── */
-    'sb.menu':         { en: 'MENU',                 hi: 'मेन्यू'      },
+    'sb.menu':         { en: 'SHOP',                  hi: 'दुकान'       },
     'sb.money':        { en: 'MONEY',                hi: 'पैसा'        },
     'sb.people':       { en: 'PEOPLE',               hi: 'लोग'         },
     'sb.marketing':    { en: 'MARKETING & LOYALTY',  hi: 'मार्केटिंग'  },
@@ -15434,6 +15445,9 @@ const App = {
        screens for salon; mobile now does too. */
     const retailEntry = document.getElementById('more-retail-entry');
     if (retailEntry) retailEntry.style.display = _isSalonShop ? '' : 'none';
+    /* (moved from New Sale screen strip) Same salon-only gate as Retail. */
+    const packsEntry = document.getElementById('more-packs-entry');
+    if (packsEntry) packsEntry.style.display = _isSalonShop ? '' : 'none';
     /* (v33_29aq) Robust salon detection — use the ACTIVE shop's cardType as
        the source of truth, not this.vertical which can be stale during shop
        switches. Inventory entry is hidden by default in HTML; we only force
@@ -15898,7 +15912,7 @@ const App = {
     var SEC = [
       /* (v34_176) Rendered by _morePlanCard() — it needs the tier, not a row. */
       { planCard:true, rows:[] },
-      { title:this._T('sb.menu','Menu'), rows:[
+      { title:this._T('sb.menu','Shop'), rows:[
         { emoji:'\uD83C\uDF54', tint:'#FFF1E4', label:this._T('more.menuNav','Menu'), sub:'Dishes, prices, categories', on:"App.nav('catalog')", role:'manager' },
         { emoji:'\uD83C\uDF7E', tint:'#F5ECFB', label:this._T('nav.liquorStock','Bar'), sub:'Bottles, pegs, restock',
           on:'App.openLiquorStock()', role:'cashier', when: barOn && has('App.openLiquorStock') },
@@ -65807,6 +65821,15 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pkstrip-wrap {
   }
 
   function render(){
+    /* (fix) This strip cluttered the New Sale screen with a pitch for a
+       feature most salons haven't set up yet, sitting above the product
+       grid on the screen people use dozens of times a day. Moved to its
+       own "Subscription Packs" row in More → Menu instead, where someone
+       actually looking to manage packs will find it, without every New
+       Sale screen paying rent for it. Kept as a permanent no-op (rather
+       than removing the module) so nothing else that hooks into it
+       breaks, and so this can be reverted by deleting one line. */
+    return;
     if (!ensureMounted()) return;
     var wrap = $('hnd-pkstrip-wrap');
     var row = $('hnd-pkstrip-row');
