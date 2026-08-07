@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1624';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_2138';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3967,8 +3967,8 @@ html[data-current-role="manager"] body{
     <div class="ck-row-label" data-i18n="nav.customers">Customer</div>
     <div class="cust-search-wrap" style="position:relative">
       <div class="search-bar">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="checkout-cust-input" name="hn-cust-q-nofill" placeholder="Search customers…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" oninput="App.custSearchInput()" onfocus="App.custSearchInput(); this.closest('.cust-search-wrap').classList.add('is-focused')" onblur="setTimeout(() => App.custSearchClose(), 200); this.closest('.cust-search-wrap').classList.remove('is-focused')">
+        <svg id="checkout-cust-search-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="checkout-cust-input" name="hn-cust-q-nofill" placeholder="Search customers…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" oninput="App.custSearchInput()" onfocus="App.custSearchInput(); this.closest('.cust-search-wrap').classList.add('is-focused'); var _ic=document.getElementById('checkout-cust-search-ic'); if(_ic) _ic.style.color='var(--p,#FF6B35)'" onblur="setTimeout(() => App.custSearchClose(), 200); this.closest('.cust-search-wrap').classList.remove('is-focused'); var _ic=document.getElementById('checkout-cust-search-ic'); if(_ic) _ic.style.color=''">
         <button id="checkout-cust-clear" type="button" onclick="App.custSearchClear()" style="display:none;background:none;border:none;padding:6px;color:var(--t3);cursor:pointer">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -24887,7 +24887,7 @@ const App = {
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:800;color:var(--t1)" data-i18n="dash.walkIn">No customer</div>
+          <div style="font-size:15px;font-weight:800;color:var(--t1)">No customer</div>
           <div style="font-size:12.5px;color:var(--t2);font-weight:500;margin-top:1px">Bill without linking anyone</div>
         </div>
       </div>`);
@@ -34368,6 +34368,23 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   /* Plain-English explanation of Firestore error codes — these are what
      show up in the quarantine "Reason" box for each stuck record. */
   _errorCodeToHuman(code){
+    /* (Aug 2026 fix — "once and for all") permission-denied is what the
+       server returns for a lapsed subscription — same as every other
+       cause the generic map entry below covers, which is why the old
+       text hedged with "may have a config issue (please contact
+       support)". But an expired trial is by far the most common actual
+       cause, is fully within the shop's own control, and needs a support
+       ticket precisely never. Check it first and answer with the real
+       reason and the actual fix when that's what's going on; only fall
+       through to the generic explanation for genuinely unexplained
+       permission-denied cases. */
+    if (code === 'permission-denied') {
+      try {
+        if (typeof window.HND_getAccurateDaysLeft === 'function' && window.HND_getAccurateDaysLeft() <= 0) {
+          return 'Your trial has ended, so the server is correctly refusing new writes until this shop subscribes. This is not a bug and retrying will not help — tap Subscribe below to pick a plan, and everything queued here will sync automatically the moment it activates.';
+        }
+      } catch(e){}
+    }
     var map = {
       'permission-denied': 'Server temporarily refused this write. This often resolves in a minute — tap Retry. If it keeps failing, your shop access may have a config issue (please contact support).',
       'invalid-argument': 'Record data is malformed (e.g. an invalid number, missing field). This will never sync as-is.',
@@ -40939,6 +40956,39 @@ window.addEventListener('DOMContentLoaded', () => {
     // 4. Stuck — pending > 0, no progress in 10s, not in backoff → manual retry
     if (pending > 0 && _isStuck) {
       _stopCountdown();
+
+      /* (Aug 2026 fix — "once and for all") A shop whose trial has expired
+         sees this exact banner — "N changes stuck · Tap to retry" — with
+         no indication of WHY, and tapping Retry can never succeed: the
+         server is correctly and permanently rejecting these writes until
+         the shop actually subscribes, so "retry" just repeats the same
+         failure forever. A real client hit this mid-onboarding (208
+         products added, catalog still in progress) and saw nothing but a
+         scary red permission-denied-shaped warning with no path forward.
+         HND_getAccurateDaysLeft() is the same reliable, calendar-based
+         check already used to pre-empt this for new bills (see the
+         comment above _shouldGateBilling) — extending that same check
+         here closes the gap for every OTHER collection (products,
+         customers, expenses, etc.), not just bills, and for the banner
+         a person actually sees, not just the write attempt itself. */
+      var _daysLeft = null;
+      try {
+        if (typeof window.HND_getAccurateDaysLeft === 'function') _daysLeft = window.HND_getAccurateDaysLeft();
+      } catch(e){}
+
+      if (_daysLeft !== null && _daysLeft <= 0) {
+        pill.style.display = 'block';
+        pill.style.background = '#FEE2E2';
+        pill.style.border = '1px solid #FCA5A5';
+        pill.style.color = '#991B1B';
+        pill.style.cursor = 'pointer';
+        pillText.innerHTML = `🔒 Trial expired · ${pending} change${pending === 1 ? '' : 's'} waiting · <u>Subscribe to sync</u>`;
+        pill.onclick = function(){
+          try { if (window.App && typeof App.openSubscription === 'function') App.openSubscription(); } catch(e){}
+        };
+        return;
+      }
+
       pill.style.display = 'block';
       pill.style.background = '#FEE2E2';
       pill.style.border = '1px solid #FCA5A5';
