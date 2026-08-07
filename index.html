@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1123';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1137';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -15321,6 +15321,17 @@ const App = {
     } catch(myBizErr) {
       console.warn('[renderMoreMenu] my-businesses entry visibility failed (non-fatal):', myBizErr);
     }
+
+    /* (fix) For salon, "Menu Items" duplicated the new dedicated Retail entry
+       above it — VERTICAL_CONFIG.salon.catalogTitle is literally 'Retail',
+       inherited from how desktop repurposes this same nav item into its
+       Retail screen for salon. Mobile doesn't repurpose the catalog page the
+       way desktop does, so the row just sat there relabeled "Retail" showing
+       a generic mixed catalog, right above the real Retail screen. Salon's
+       two real needs — Services and take-home Retail — are already fully
+       covered by their own entries; this row is redundant for salon only. */
+    const menuEntry = document.getElementById('more-menu-entry');
+    if (menuEntry) menuEntry.style.display = _isSalonShop ? 'none' : '';
 
     const menuLabel = document.getElementById('more-menu-label');
     const menuSub = document.getElementById('more-menu-sub');
