@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_2138';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_2148';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -34448,11 +34448,33 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         + '<div class="sh-hero-sub">These records were rejected by the server. They will not reach the cloud unless retried or fixed. Review each one below.</div>'
         + '</div>';
     } else {
-      hero = '<div class="sh-hero sh-hero-warn">'
-        + '<div class="sh-hero-icon">⏳</div>'
-        + '<div class="sh-hero-t">' + pending + ' record' + (pending === 1 ? '' : 's') + ' syncing</div>'
-        + '<div class="sh-hero-sub">Active uploads in progress. This will clear automatically.</div>'
-        + '</div>';
+      /* (Aug 2026 fix — round 3, and hopefully final) Same underlying
+         cause, third surface: pending-but-not-yet-quarantined records on
+         this exact page also claimed they'd "clear automatically" — false
+         when the real blocker is an expired trial, since these will
+         individually fail, retry, and eventually quarantine too, never
+         actually clearing on their own. Checked in all three places now:
+         the Home banner's stuck branch, the Home banner's network-blocked
+         branch, and this page's own pending-state hero. */
+      var _daysLeft3 = null;
+      try {
+        if (typeof window.HND_getAccurateDaysLeft === 'function') _daysLeft3 = window.HND_getAccurateDaysLeft();
+      } catch(e){}
+
+      if (_daysLeft3 !== null && _daysLeft3 <= 0) {
+        hero = '<div class="sh-hero sh-hero-bad">'
+          + '<div class="sh-hero-icon">🔒</div>'
+          + '<div class="sh-hero-t">Trial expired · ' + pending + ' record' + (pending === 1 ? '' : 's') + ' waiting</div>'
+          + '<div class="sh-hero-sub">These will not sync until this shop subscribes — that\'s expected, not a bug. Subscribe and everything queued here uploads automatically within moments.</div>'
+          + '<button onclick="try{ App.openSubscription(); }catch(e){}" style="margin-top:12px;background:#17140F;color:#fff;border:none;padding:11px 20px;border-radius:11px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit">Subscribe now</button>'
+          + '</div>';
+      } else {
+        hero = '<div class="sh-hero sh-hero-warn">'
+          + '<div class="sh-hero-icon">⏳</div>'
+          + '<div class="sh-hero-t">' + pending + ' record' + (pending === 1 ? '' : 's') + ' syncing</div>'
+          + '<div class="sh-hero-sub">Active uploads in progress. This will clear automatically.</div>'
+          + '</div>';
+      }
     }
 
     var quarantineHTML = '';
@@ -40898,6 +40920,26 @@ window.addEventListener('DOMContentLoaded', () => {
       pill.style.border = '1px solid #FECACA';
       pill.style.color = '#991B1B';
       if (networkBlocked && pending > 0) {
+        /* (Aug 2026 fix — round 2) Repeated permission-denied failures
+           (exactly what an expired trial produces) trip networkBlocked
+           after 3 consecutive failures, same as any real connectivity
+           issue — so a lapsed subscription surfaces through THIS branch
+           just as often as the "stuck" branch below, and the first fix
+           only covered stuck. Same check, same fix, this branch too. */
+        var _daysLeft2 = null;
+        try {
+          if (typeof window.HND_getAccurateDaysLeft === 'function') _daysLeft2 = window.HND_getAccurateDaysLeft();
+        } catch(e){}
+
+        if (_daysLeft2 !== null && _daysLeft2 <= 0) {
+          pill.style.cursor = 'pointer';
+          pillText.innerHTML = `🔒 Trial expired · ${pending} change${pending === 1 ? '' : 's'} waiting · <u>Subscribe to sync</u>`;
+          pill.onclick = function(){
+            try { if (window.App && typeof App.openSubscription === 'function') App.openSubscription(); } catch(e){}
+          };
+          return;
+        }
+
         // User has signal but uploads keep failing — let them force retry
         pill.style.cursor = 'pointer';
         pillText.innerHTML = `🚫 Network blocked · ${pending} pending · <u>Tap to retry</u>`;
