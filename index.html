@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1602';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1608';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1996,23 +1996,27 @@ html[data-shell="desktop"] .inv-actions{padding:4px 0 10px}
   padding:16px 18px; min-height:56px; gap:14px; border-radius:28px;
   background:#F1F0EC; border:1.5px solid transparent;
   box-shadow:none;
-  /* (Aug 2026 upgrade — zoom) The "Google-style" ask was specifically
-     that the field should visibly grow when tapped, not just change
-     border color. transform-origin:top keeps it anchored to the label
-     above rather than growing symmetrically and shifting content up. */
-  transform-origin: center top;
-  transform: scale(1);
-  transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s, border-color .18s, box-shadow .18s;
+  /* (Aug 2026 upgrade — zoom, round 2) A transform:scale() on a
+     near-full-width element only has a few px of side padding to grow
+     into before it visually reads as "clipped against the screen edge"
+     rather than "zoomed" — the effect was real in DevTools but too
+     subtle to notice on an actual phone. Switched to animating the real
+     padding/min-height/font-size instead: a genuine layout size increase
+     that pushes the results panel down and is unambiguous regardless of
+     how tight the surrounding margins are. */
+  transition: padding .18s cubic-bezier(.2,.8,.2,1), min-height .18s cubic-bezier(.2,.8,.2,1),
+              background .18s, border-color .18s, box-shadow .18s;
 }
 .cust-search-wrap .search-bar:focus-within{
   background:#fff; border-color:var(--p-200);
-  transform: scale(1.035);
-  box-shadow:0 10px 28px -10px rgba(23,20,15,.22), 0 0 0 5px rgba(255,107,53,.10);
+  padding:22px 22px; min-height:68px;
+  box-shadow:0 12px 30px -10px rgba(23,20,15,.25), 0 0 0 5px rgba(255,107,53,.10);
 }
 .cust-search-wrap .search-bar:hover{ border-color:transparent; }
-.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; transition:color .18s; }
-.cust-search-wrap .search-bar:focus-within svg{ color:var(--p); }
-.cust-search-wrap .search-bar input{ font-size:16.5px; }
+.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; transition:color .18s, width .18s, height .18s; flex-shrink:0; }
+.cust-search-wrap .search-bar:focus-within svg{ color:var(--p); width:23px; height:23px; }
+.cust-search-wrap .search-bar input{ font-size:16.5px; transition:font-size .18s; }
+.cust-search-wrap .search-bar:focus-within input{ font-size:18.5px; }
 
 .cust-search-wrap{position:relative}
 /* (Aug 2026 upgrade) One continuous panel, thin dividers between rows —
