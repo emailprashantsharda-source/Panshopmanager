@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1039';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1053';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -4074,7 +4074,7 @@ html[data-current-role="manager"] body{
 
 <div class="page" id="pg-reports">
   <header class="hdr solid">
-    <button class="icon-btn" onclick="App.navBack('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <button class="icon-btn" onclick="App.navBack('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" data-i18n="rep.title">Reports</div>
     <button class="icon-btn"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
   </header>
@@ -5520,7 +5520,7 @@ html[data-current-role="manager"] body{
      the shutter came down. -->
 <div class="page" id="pg-daybook">
   <header class="hdr solid">
-    <button class="icon-btn" onclick="App.navBack('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <button class="icon-btn" onclick="App.navBack('more')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
     <div class="hdr-title" id="hndb-title">Aaj ka hisaab</div>
     <button class="icon-btn" style="visibility:hidden"></button>
   </header>
@@ -107101,7 +107101,15 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
       try { localStorage.setItem(_doneKey(), '1'); } catch(e){}
       try { if (window.hnEvent) hnEvent('bulkprice_skip', { shop_id: _shopId(), priced: this._total || 0 }); } catch(e){}
       var a = A();
-      try { if (a && a.nav) a.nav('home'); } catch(e){}
+      /* (fix) The back arrow was hardcoded to Home even when this screen was
+         opened deliberately from the More menu (more-bulkprice-entry), which
+         left the More-menu entry point stranded on Home instead of returning
+         the person to where they came from. _firstRun is true only for the
+         onboarding diversion (set at line ~35775) and is cleared by every
+         deliberate open() call — so it is the correct signal for where "back"
+         should go: Home for the onboarding tour, More for everyone else. */
+      var dest = this._firstRun ? 'home' : 'more';
+      try { if (a && a.navBack) a.navBack(dest); else if (a && a.nav) a.nav(dest); } catch(e){}
       _handoff();
     },
 
