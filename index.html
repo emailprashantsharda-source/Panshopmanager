@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1114';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1123';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -4477,6 +4477,25 @@ html[data-current-role="manager"] body{
         <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M2 6h20M2 18h20"/></svg></div>
         <div class="menu-text"><div class="menu-label" id="more-menu-label" data-i18n="nav.catalog">Menu Items</div><div class="menu-sub" id="more-menu-sub" data-i18n="more.tapToView">Tap to view</div></div>
         <span id="more-menu-badge" class="menu-badge" style="background:#FEE2E2;color:#991B1B;display:none" data-i18n="more.lowBadge">LOW</span>
+        <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <!-- (ported from desktop) Desktop gives salon a dedicated "Retail" screen
+           (#hnd-prodsales — take-home products, separate from Services) reached
+           via its own sidebar row. Mobile had no equivalent entry point at all —
+           retail items were only reachable by filtering the generic Menu Items
+           catalog to the "Retail" chip, and the header "+ Add" button there
+           routed straight into the salon SERVICE wizard because it had no way
+           to know which chip was active. App.openRetailLens() is mobile's own
+           full-screen Retail module (KPIs, chips, search, list) — it already
+           correctly includes salon retail products (they're tagged
+           resold:true) and already correctly opens the retail item form
+           (forceRetail:true), never the service wizard. It just had no button
+           pointing to it for salon. This row is that button. Hidden by default;
+           shown only for salon in renderMoreMenu(), mirroring more-inventory-entry
+           right below it. -->
+      <button class="menu-item" id="more-retail-entry" onclick="App.openRetailLens()" style="display:none">
+        <div class="menu-icon" style="background:#EFF7EC;color:#166534"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>
+        <div class="menu-text"><div class="menu-label" data-i18n="nav.retail">Retail</div><div class="menu-sub" data-i18n="d.retailSub">Take-home products customers can buy at the counter</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <button class="menu-item" id="more-inventory-entry" onclick="App.nav('inventory')" style="display:none">
@@ -15396,6 +15415,11 @@ const App = {
     }
 
     const invEntry = document.getElementById('more-inventory-entry');
+    /* (ported from desktop) Retail row — salon only, same gate as Services
+       right below it. Desktop shows Retail and Services as two separate
+       screens for salon; mobile now does too. */
+    const retailEntry = document.getElementById('more-retail-entry');
+    if (retailEntry) retailEntry.style.display = _isSalonShop ? '' : 'none';
     /* (v33_29aq) Robust salon detection — use the ACTIVE shop's cardType as
        the source of truth, not this.vertical which can be stale during shop
        switches. Inventory entry is hidden by default in HTML; we only force
@@ -103119,7 +103143,7 @@ var KB=[
         else { App.openLiquorStock(); }
         return;
       }
-      if (App.openProductSheet){ App.openProductSheet(p.id); return; }
+      if (App.openProductSheet){ App.openProductSheet(p.id, {forceRetail:true}); return; }
     } catch(e){}
   }
   App._retailOpenEditor = function(id){ var ov=document.getElementById('hn-retail-ov'); if(ov) ov.remove(); var p=null; try{p=Store.get('prods',id);}catch(e){} if(p) openEditor(p); };
