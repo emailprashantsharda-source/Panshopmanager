@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1456';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1515';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -24424,7 +24424,12 @@ const App = {
     if (count === 0){ this.toast(this._T('toast.cartEmpty', 'Cart is empty')); return; }
     if (!this._cartStaff) this._cartStaff = {};
 
-    const cfg = VERTICAL_CONFIG[this.vertical];
+    /* (Aug 2026 fix) this.vertical can be a stale cached value (the same
+       class of bug that showed a salon shop's Home pills as a restaurant's
+       "Running" tile) — _supplyVerticalKey() prefers the ACTIVE shop's
+       live cardType, which is what let a salon manager see "— pick barista —"
+       instead of "— pick stylist —" at checkout. */
+    const cfg = VERTICAL_CONFIG[this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical];
     const hasActiveStaff = (STAFF || []).filter(s => s && s.active !== false && !s._deleted).length > 0;
     const vertSaysHasStaff = (cfg && cfg.hasStaff !== false);
     const hasStaff = vertSaysHasStaff || hasActiveStaff;
@@ -24533,7 +24538,7 @@ const App = {
   _renderBillStaffPicker(){
     const section = document.getElementById('bill-staff-picker-section');
     if (!section) return;
-    const cfg = VERTICAL_CONFIG[this.vertical] || {};
+    const cfg = VERTICAL_CONFIG[this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical] || {};
 
     const hasActiveStaff = (STAFF || []).filter(s => s && s.active !== false && !s._deleted).length > 0;
     const vertSaysHasStaff = (cfg.hasStaff !== false);
@@ -24901,7 +24906,7 @@ const App = {
       }
     }
 
-    const cfgSale = VERTICAL_CONFIG[this.vertical] || {};
+    const cfgSale = VERTICAL_CONFIG[this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical] || {};
     if (cfgSale.requireStaffPerBill === true) {
       const haveStaff = (STAFF || []).some(s => s && !s._deleted && s.active !== false);
       if (haveStaff && (!this._billStaff || !this._billStaff.id)) {
