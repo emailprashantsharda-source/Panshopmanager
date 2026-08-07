@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1434';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1440';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -893,36 +893,39 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
     }
   } catch(e) {}
 
-  setTimeout(function(){
+  /* (Aug 2026 fix) This used to be a single check at exactly 4000ms: if
+     MShop.getActive() wasn't ready yet, it force-applied cashier ONCE and
+     never looked again. A manager whose bootstrap was still stalled at
+     that exact moment (not permanently broken, just slow — cold start,
+     weak signal, a big first sync) got stuck on cashier for the rest of
+     the session, with nothing left to correct it: MShop.bootstrap()'s own
+     two refresh() calls are the only other thing that ever touches role
+     state, and if bootstrap hadn't reached them yet either, there was
+     simply nothing left scheduled to try again.
+     Now: check every 3s up to 6 times (through ~18s) before giving up, and
+     even after the conservative cashier default fires as a last resort,
+     keep quietly checking in the background for another 30s — if bootstrap
+     was just slow rather than actually broken, this self-corrects without
+     the person needing to log out and back in at all. */
+  var _roleCheckAttempts = 0;
+  function _roleSafetyCheck(isBackgroundRetry){
     try {
-      if (document.documentElement.getAttribute('data-role-resolved') === 'yes') return;
+      if (document.documentElement.getAttribute('data-role-resolved') === 'yes' && !isBackgroundRetry) return;
 
-      /* (Aug 2026 fix) ROOT CAUSE of owners AND managers both getting stuck
-         on "Cashier": AppRole.refresh() is only ever called from inside
-         MShop's bootstrap(user, options) — twice, both wrapped in their own
-         try/catch. If bootstrap() is still awaiting Firestore (slow network,
-         a brand-new shop's extra writes, a staff member's first-time
-         membership rehydration) past this 4s mark, NEITHER call has run yet
-         and this safety-net was the ONLY thing that ever touches role state
-         — permanently, since nothing here re-checked afterward. Confirmed
-         via instrumented local testing: AppRole's own "role changed/
-         unchanged" log line never appeared at all — refresh() truly never
-         ran, not just ran late.
-         Before blindly forcing cashier, check whether MShop's active shop
-         is ALREADY available. If bootstrap has actually finished loading
-         shop data by now and only the refresh() call itself was skipped or
-         hasn't fired yet, we can resolve the REAL role immediately instead
-         of guessing wrong — same computation AppRole.refresh() would do,
-         just triggered from here too. If shop data genuinely isn't ready,
-         we still fall back to the conservative cashier default exactly as
-         before — the original security intent (never show owner/manager
-         UI, even briefly, to someone who isn't) is unchanged. */
       var _shopReady = false;
       try { _shopReady = !!(window.MShop && window.MShop.getActive && window.MShop.getActive()); } catch(e){}
 
       if (_shopReady && window.AppRole && typeof window.AppRole.refresh === 'function') {
-        console.warn('[HisaabNow] role resolution stalled, but shop data is already available — resolving the real role instead of defaulting to cashier');
+        console.warn('[HisaabNow] role resolution ' + (isBackgroundRetry ? '(background check)' : 'stalled') + ' — shop data is available, resolving the real role');
         window.AppRole.refresh();
+        return;
+      }
+
+      if (isBackgroundRetry) return;  /* shop still not ready — quietly try again next interval, no re-forcing needed */
+
+      _roleCheckAttempts++;
+      if (_roleCheckAttempts < 6) {
+        setTimeout(function(){ _roleSafetyCheck(false); }, 3000);
         return;
       }
 
@@ -936,7 +939,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
       // is purely a UI-visibility concern. But the principle from the user:
       // "cashier should never see owner menus, not even briefly" — so we err
       // on the conservative side.
-      console.warn('[HisaabNow] role resolution stalled — applying safety-net default (cashier)');
+      console.warn('[HisaabNow] role resolution stalled after ' + _roleCheckAttempts + ' attempts — applying safety-net default (cashier)');
       document.documentElement.setAttribute('data-role-resolved', 'yes');
       document.documentElement.setAttribute('data-current-role', 'cashier');
 
@@ -954,10 +957,23 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
       if (window.App && typeof window.App.renderHome === 'function') {
         window.App.renderHome();
       }
+
+      /* Keep quietly checking in the background — this is the actual new
+         behavior. A stall that resolves at 25s instead of 15s used to mean
+         "stuck until next login"; now it means "corrects itself in ~5s". */
+      var _bgChecks = 0;
+      var _bgInterval = setInterval(function(){
+        _bgChecks++;
+        if (_bgChecks > 10){ clearInterval(_bgInterval); return; }
+        var stillCashier = document.documentElement.getAttribute('data-current-role') === 'cashier';
+        if (!stillCashier){ clearInterval(_bgInterval); return; }
+        _roleSafetyCheck(true);
+      }, 3000);
     } catch(e) {
       console.error('[HisaabNow] safety-net role resolve failed', e);
     }
-  }, 4000);
+  }
+  setTimeout(function(){ _roleSafetyCheck(false); }, 4000);
 })();
 </script>
 <script>
@@ -4630,7 +4646,7 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label" data-i18n="more.reports">Reports</div><div class="menu-sub" data-i18n="more.reportsDwm">Daily, weekly, monthly</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="menu-item" id="more-biz-mgr-entry" onclick="App.openBusinessManager()" data-role-min="owner">
+      <button class="menu-item" id="more-biz-mgr-entry" onclick="App.openBusinessManager()" data-role-min="manager">
         <div class="menu-icon" style="background:linear-gradient(135deg,#7C3AED 0%,#2563EB 100%);color:#fff"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><circle cx="12" cy="14" r="1.5" fill="currentColor"/></svg></div>
         <div class="menu-text">
           <div class="menu-label" style="display:flex;align-items:center;gap:8px">
@@ -4657,7 +4673,7 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label" data-i18n="more.myBiz">My Businesses</div><div class="menu-sub" id="more-my-biz-sub" data-i18n="more.myBizSub">Compare across all your shops</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="menu-item" id="more-sub-entry" onclick="App.openSubscription()" data-role-min="owner">
+      <button class="menu-item" id="more-sub-entry" onclick="App.openSubscription()" data-role-min="manager">
         <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
         <div class="menu-text"><div class="menu-label" data-i18n="more.subscription">Subscription</div><div class="menu-sub" id="more-sub-status">—</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -4676,7 +4692,7 @@ html[data-current-role="manager"] body{
         <div class="menu-text"><div class="menu-label" data-i18n="more.helpSupport">Help & support</div><div class="menu-sub" data-i18n="more.helpSub">Tutorials, WhatsApp us</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="menu-item" onclick="App.nav('settings')" data-role-min="owner">
+      <button class="menu-item" onclick="App.nav('settings')" data-role-min="manager">
         <div class="menu-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
         <div class="menu-text"><div class="menu-label" data-i18n="more.settings">Settings</div><div class="menu-sub" data-i18n="more.settingsSub">Business profile, language, currency</div></div>
         <svg class="menu-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -16027,7 +16043,7 @@ const App = {
   },
 
   openBusinessManager(){
-    if (this._blockedBelow('owner')) return;
+    if (this._blockedBelow('manager')) return;
     if (this._shouldGateBilling()) {
       this._showSubsExpiredGate && this._showSubsExpiredGate();
       return;
