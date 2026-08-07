@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1533';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1538';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -34015,6 +34015,21 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           } else {
             out.push('  (no active shop at diagnostic time)');
           }
+          /* (Aug 2026 diagnostic) Vertical resolution has needed two
+             rounds of fixes for staff accounts (kprof_ cache, then
+             _supplyVerticalKey's missing profession fallback) — each
+             one found by guessing from a screenshot rather than seeing
+             the actual values. Surfacing every link in the chain here
+             so the next mismatch (if any) is visible instead of guessed. */
+          try {
+            var _vActive = (window.MShop && MShop.getActive && MShop.getActive()) || null;
+            out.push('');
+            out.push('Vertical (App.vertical):     ' + (window.App ? App.vertical : '—'));
+            out.push('Vertical (_supplyVerticalKey): ' + (window.App && App._supplyVerticalKey ? App._supplyVerticalKey() : '—'));
+            out.push('Vertical (S.prof):            ' + ((window.S && window.S.prof) || '—'));
+            out.push('Active shop .profession:      ' + (_vActive ? (_vActive.profession || '—') : '—'));
+            out.push('Active shop .cardType:        ' + (_vActive ? (_vActive.cardType || '—') : '—'));
+          } catch(vErr){ out.push('Vertical diagnostic failed: ' + (vErr && vErr.message)); }
           return out.join('\n');
         } catch(e){ return 'Role:        diagnostic failed — ' + (e && e.message); }
       })(),
@@ -36325,6 +36340,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     try {
       const active = window.MShop && MShop.getActive && MShop.getActive();
       if (active && active.cardType) return active.cardType;
+      /* (Aug 2026 fix) Staff shop objects (built by MShop.joinStaffShop()
+         and the bootstrap staff-shop rehydration path) only ever populate
+         .profession — .cardType is never set on them at all. This function
+         checked cardType only, so for every staff login it silently fell
+         straight through to this.vertical, completely bypassing the
+         profession reconciliation fixed earlier in MShop.bootstrap(). A
+         manager's checkout kept showing "pick barista" even after that fix
+         landed and kprof_ was confirmed correcting, because this specific
+         call site was never reading the field that got fixed. */
+      if (active && active.profession) return active.profession;
     } catch(e){}
     return this.vertical;
   },
