@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1216';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1335';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -33916,6 +33916,34 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       'User ID:    ' + userId,
       'Active shop: ' + (active ? active.name + ' (' + active.shopId + ')' : '—'),
       'Total shops: ' + shops.length,
+      '',
+      /* (Aug 2026 diagnostic) Role resolution has caused several "stuck on
+         Cashier" reports where the cause turned out to be invisible from
+         the screen alone — data-current-role, AppRole's own internal
+         _currentRole, and whether the active shop even carries
+         _isStaffShop/_staffRole can all disagree with each other. Surfacing
+         all four here means a support conversation can start from what
+         actually happened instead of guessing. */
+      (function(){
+        try {
+          if (!window.AppRole || typeof window.AppRole._diagnostics !== 'function'){
+            return 'Role:        AppRole module not loaded';
+          }
+          var d = window.AppRole._diagnostics();
+          var out = [];
+          out.push('Role (AppRole):   ' + d.currentRole);
+          out.push('Role (DOM attr):  ' + d.domAttribute);
+          out.push('Role resolved:    ' + (document.documentElement.getAttribute('data-role-resolved') || '—'));
+          out.push('Role cached (ls): ' + (function(){ try { return localStorage.getItem('hn_role_cached') || '—'; } catch(e){ return '—'; } })());
+          if (d.activeShop){
+            out.push('  isStaffShop:    ' + d.activeShop._isStaffShop);
+            out.push('  staffRole:      ' + (d.activeShop._staffRole || '—'));
+          } else {
+            out.push('  (no active shop at diagnostic time)');
+          }
+          return out.join('\n');
+        } catch(e){ return 'Role:        diagnostic failed — ' + (e && e.message); }
+      })(),
       '',
       'Subscription: ' + (tCfg.name || tier) + ' · ' + days + ' day' + (days === 1 ? '' : 's') + ' left',
       'Trial start: ' + (window.Subs && Subs._state && Subs._state.trialStartMs ? new Date(Subs._state.trialStartMs).toLocaleDateString('en-IN') : '—'),
