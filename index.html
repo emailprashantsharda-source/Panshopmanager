@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1335';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1434';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -45974,6 +45974,24 @@ function _restoreShopData(shopId){
     }
   }
 
+  /* (Aug 2026 fix) The block above only consults shopRec.profession when
+     `rp` is completely MISSING — a wrong-but-present cached value (e.g.
+     'cafe', a fallback default that got persisted before real shop data
+     ever loaded) was never questioned, because it's truthy. shopRec.profession
+     is the more authoritative source: it's what bootstrap's staff-profession
+     reconciliation (above, in MShop.bootstrap) actively keeps in sync with
+     Firestore on every login. When they disagree and shopRec has a real
+     value, prefer it and self-heal the cache so this doesn't need fixing
+     again next load. */
+  try {
+    var _shopRecCheck = state.shops.find(function(s){ return s.shopId === shopId; });
+    if (_shopRecCheck && _shopRecCheck.profession && _shopRecCheck.profession !== rp) {
+      console.log('[MShop] correcting stale kprof_ cache for ' + shopId + ': "' + rp + '" → "' + _shopRecCheck.profession + '"');
+      rp = _shopRecCheck.profession;
+      try { localStorage.setItem('kprof_' + shopId, rp); } catch(e){}
+    }
+  } catch(e){}
+
   window.S.store = rs || '';
   window.S.prof  = rp || '';
 
@@ -46138,6 +46156,41 @@ async function bootstrap(user, options){
                             || firstStaffShopId
                             || user.uid;
         }
+      }
+
+      /* (Aug 2026 fix) The rehydration branch below only runs when
+         state.shops was completely EMPTY — it rebuilds fresh from
+         StaffDiscovery's live membership data, profession included. But a
+         device that already has ANY cached shops skips that branch
+         entirely and just keeps using whatever profession value happened
+         to get cached previously — even though the fresh, correct
+         membership data (already fetched for this exact login, via
+         discoverFromUser above) is sitting right here unused. This is how
+         a device that once saw a shop's profession as a fallback default
+         (e.g. 'cafe', used throughout the app before real data loads)
+         could keep showing that value forever: nothing on the "cache
+         already exists" path ever compared it against Firestore again.
+         Reconcile it here, on every login, the same way the phantom-shop
+         filter above already reconciles other staleness in this same
+         array. Only touches profession — role/owner fields already have
+         their own correction path via AppRole.refresh(). */
+      try {
+        if (window.StaffDiscovery && typeof window.StaffDiscovery.getMemberships === 'function'){
+          var _freshMemberships = window.StaffDiscovery.getMemberships();
+          var _profFixed = 0;
+          _freshMemberships.forEach(function(m){
+            if (!m || !m.shopId || !m.profession) return;
+            var s = state.shops.find(function(x){ return x && x.shopId === m.shopId; });
+            if (s && s.profession !== m.profession){
+              console.log('[MShop] reconciling stale profession for ' + m.shopId + ': "' + s.profession + '" → "' + m.profession + '"');
+              s.profession = m.profession;
+              _profFixed++;
+            }
+          });
+          if (_profFixed > 0) _saveCacheLocal();
+        }
+      } catch (reconcileErr) {
+        console.warn('[MShop] staff profession reconciliation failed (non-fatal):', reconcileErr);
       }
     }
 
@@ -46775,6 +46828,17 @@ async function joinStaffShop(membership){
     existing._isStaffShop = true;
     existing._staffRole = membership.role;
     existing._staffOwnerUid = membership.ownerUid;
+    /* (Aug 2026 fix) This branch patched role fields but never touched
+       `profession` — so a shop that was ever locally cached with a wrong
+       or placeholder profession (e.g. 'cafe', one of the many fallback
+       defaults used before real shop data loads) kept that stale value
+       forever on every subsequent login, even after the shop was properly
+       configured in Firestore. membership.profession comes straight from
+       /staffPhoneIndex/{phone}/shops/{doc}, which IS kept current — just
+       never applied here. Only overwrite when Firestore actually has a
+       value; an empty membership.profession shouldn't blank out a good
+       cached one. */
+    if (membership.profession) existing.profession = membership.profession;
     _saveCacheLocal();
     await switchShop(membership.shopId);
     return membership.shopId;
