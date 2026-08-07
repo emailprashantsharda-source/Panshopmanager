@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1546';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1555';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1987,14 +1987,43 @@ html[data-shell="desktop"] .inv-actions{padding:4px 0 10px}
 /* (Aug 2026 fix) Checkout's customer search specifically — bigger tap
    target and font, easier to type into mid-checkout with one hand. Scoped
    to .cust-search-wrap only; .search-bar is shared by 5 other screens
-   (catalog, sales search, etc.) that didn't ask to get bigger too. */
+   (catalog, sales search, etc.) that didn't ask to get bigger too.
+   (Aug 2026 upgrade) Restyled as a flat filled pill instead of a bordered
+   box — closer to how a modern search field actually looks (Google, etc.):
+   no visible border at rest, a soft neutral fill, and the border only
+   appears as a focus ring when actually in use. */
 .cust-search-wrap .search-bar{
-  padding:16px 16px; min-height:54px; gap:12px; border-radius:16px;
+  padding:16px 18px; min-height:56px; gap:14px; border-radius:28px;
+  background:#F1F0EC; border:1.5px solid transparent;
+  box-shadow:none;
 }
-.cust-search-wrap .search-bar svg{ width:20px; height:20px; }
+.cust-search-wrap .search-bar:focus-within{
+  background:#fff; border-color:var(--p-200);
+  box-shadow:0 1px 6px -1px rgba(23,20,15,.12), 0 0 0 4px rgba(255,107,53,.08);
+}
+.cust-search-wrap .search-bar:hover{ border-color:transparent; }
+.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; }
+.cust-search-wrap .search-bar:focus-within svg{ color:var(--p); }
 .cust-search-wrap .search-bar input{ font-size:16.5px; }
 
 .cust-search-wrap{position:relative}
+/* (Aug 2026 upgrade) One continuous panel, thin dividers between rows —
+   replaces three separately-backgrounded blocks with one fast-to-scan
+   list, closer to how a search suggestion panel actually behaves. */
+.cust-results-flat{
+  background:#fff;border:1px solid var(--border,#EFE8D7);border-radius:18px;
+  overflow:hidden;box-shadow:0 10px 26px -18px rgba(23,20,15,.3);
+}
+.cust-row-flat{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;
+  border-bottom:1px solid var(--border,#EFE8D7);transition:background .1s;
+}
+.cust-row-flat:last-child{border-bottom:none}
+.cust-row-flat:hover,.cust-row-flat:active{background:#FAF8F4}
+.cust-row-flat-ic{
+  width:40px;height:40px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;
+}
 .cust-results{
   position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;
   background:#fff;border:1px solid var(--border-strong);border-radius:13px;
@@ -3897,7 +3926,7 @@ html[data-current-role="manager"] body{
     <div class="ck-row-label" data-i18n="nav.customers">Customer</div>
     <div class="cust-search-wrap" style="position:relative">
       <div class="search-bar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="checkout-cust-input" placeholder="Search name or phone number…" autocomplete="off" oninput="App.custSearchInput()" onfocus="App.custSearchInput()" onblur="setTimeout(() => App.custSearchClose(), 200)">
         <button id="checkout-cust-clear" type="button" onclick="App.custSearchClear()" style="display:none;background:none;border:none;padding:6px;color:var(--t3);cursor:pointer">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -24759,7 +24788,18 @@ const App = {
         return name.includes(q) || (ql.length >= 3 && phone.includes(ql));
       });
     }
-    matches = matches.slice(0, 6);
+    /* (Aug 2026 upgrade) Sort by visits (most frequent first), then name.
+       Previously used array order as-is — on a shop with more customers
+       than fit in the list, whoever happened to be stored last could push
+       an actual regular customer out of view even on an EMPTY search,
+       which read as "the dropdown doesn't show customers who are already
+       in the list" even though they were there, just not visible in the
+       unsorted slice. */
+    matches = matches.slice().sort((a, b) => {
+      const va = Number(a.visits || 0), vb = Number(b.visits || 0);
+      if (vb !== va) return vb - va;
+      return (a.name || '').localeCompare(b.name || '');
+    }).slice(0, 8);
 
     /* (Aug 2026 upgrade) Bolds the part of a customer's name that matched
        the search — same visual language as search results elsewhere,
@@ -24778,47 +24818,43 @@ const App = {
       return before + '<b style="background:#FFE3AC;color:#5C3D06;border-radius:3px;padding:0 1px">' + hit + '</b>' + after;
     };
 
-    let html = '';
+    /* (Aug 2026 upgrade — redesign) Was three visually separate blocks
+       (a gray card, a gradient card, a bordered white panel) stacked with
+       gaps between them — closer to three different UI components glued
+       together than one search result. Rewritten as ONE continuous flat
+       panel with thin hairline dividers between every row, the way a
+       search suggestion list actually reads: fast to scan, nothing
+       fighting for attention via its own background color. "No customer"
+       and "Add new" keep a colored icon chip so they're still easy to
+       spot, but they're rows in the same list now, not separate cards. */
+    const rows = [];
 
-    /* (Aug 2026 upgrade) "No customer" used to only appear when the search
-       box was empty — picking it meant first clearing whatever you'd
-       typed. It's now pinned above the results at all times, visually
-       separated from real customer matches so it can't be mistaken for
-       an actual "Walk-in"-named customer record sitting in the list below
-       it (both existed and looked identical before). */
-    html += `
-      <div onclick="App.custSearchPick('walkin')" style="display:flex;align-items:center;gap:14px;padding:16px;background:#F3F0E8;border-radius:16px;margin-bottom:10px;cursor:pointer">
-        <div style="width:44px;height:44px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--t2);flex-shrink:0;box-shadow:inset 0 1px 1px rgba(255,255,255,.6)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+    rows.push(`
+      <div onclick="App.custSearchPick('walkin')" class="cust-row-flat">
+        <div class="cust-row-flat-ic" style="background:#F1F0EC;color:var(--t2)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:15.5px;font-weight:800;color:var(--t1)" data-i18n="dash.walkIn">No customer</div>
-          <div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:2px;line-height:1.4">Bill without linking anyone — fastest for a quick walk-in</div>
+          <div style="font-size:15px;font-weight:800;color:var(--t1)" data-i18n="dash.walkIn">No customer</div>
+          <div style="font-size:12.5px;color:var(--t2);font-weight:500;margin-top:1px">Bill without linking anyone</div>
         </div>
-      </div>`;
+      </div>`);
 
-    /* (Aug 2026 upgrade) "Add new" promoted from a plain list row to a
-       highlighted card with its own color, matching how prominent this
-       action actually needs to be — someone typing a name that doesn't
-       exist yet should see this as clearly as "No customer" above it,
-       not buried below real matches. */
     if (q && !allCusts.some(c => (c.name || '').toLowerCase() === q)) {
-      html += `
-        <div onclick="App.custSearchPick('new')" style="display:flex;align-items:center;gap:14px;padding:16px;background:linear-gradient(160deg,#FFF3D9,#FFE3AC);border-radius:16px;margin-bottom:12px;cursor:pointer;box-shadow:0 8px 20px -12px rgba(147,96,10,.35)">
-          <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;color:#93600A;flex-shrink:0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      rows.push(`
+        <div onclick="App.custSearchPick('new')" class="cust-row-flat">
+          <div class="cust-row-flat-ic" style="background:#FFF3D9;color:#93600A">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:15.5px;font-weight:800;color:#5C3D06">Add "${this.escapeHtml(inp.value.trim())}" as new customer</div>
-            <div style="font-size:12.5px;color:#93600A;font-weight:600;margin-top:2px;line-height:1.4">Phone optional — link bills, send WhatsApp</div>
+            <div style="font-size:15px;font-weight:800;color:#5C3D06">Add "${this.escapeHtml(inp.value.trim())}" as new customer</div>
+            <div style="font-size:12.5px;color:#93600A;font-weight:500;margin-top:1px">Phone optional</div>
           </div>
-        </div>`;
+        </div>`);
     }
 
     if (matches.length) {
-      html += `<div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;padding:4px 4px 8px">${matches.length} match${matches.length === 1 ? '' : 'es'}</div>`;
-      html += `<div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px -18px rgba(23,20,15,.3);border:1px solid var(--border,#EFE8D7)">`;
-      matches.forEach((c, i) => {
+      matches.forEach((c) => {
         const initials = c.initials || (c.name || '').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || '?';
         const color = c.color || '#000000';
         const visits = Number(c.visits || 0);
@@ -24826,23 +24862,23 @@ const App = {
         const isVip = visits >= 10;
         const tagText = isVip ? 'VIP' : visits >= 5 ? 'Repeat' : visits >= 2 ? 'Regular' : 'New';
         const tagColor = isVip ? 'background:#FFEEEC;color:#C23A22' : visits >= 2 ? 'background:#E8F8EE;color:#0F8A45' : 'background:#E9F0FB;color:#1D4ED8';
-        html += `
-          <div onclick="App.custSearchPick('existing','${c.id}')" style="display:flex;align-items:center;gap:14px;padding:16px 14px;cursor:pointer${i < matches.length - 1 ? ';border-bottom:1px solid var(--border,#EFE8D7)' : ''}">
-            <div style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex-shrink:0;background:linear-gradient(135deg, ${color}, ${this.darken(color)})">${this.escapeHtml(initials)}</div>
+        rows.push(`
+          <div onclick="App.custSearchPick('existing','${c.id}')" class="cust-row-flat">
+            <div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;background:linear-gradient(135deg, ${color}, ${this.darken(color)})">${this.escapeHtml(initials)}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:15.5px;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              <div style="font-size:15px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                 ${highlightMatch(c.name)}
-                <span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:99px;flex-shrink:0;${tagColor}">${tagText}</span>
+                <span style="font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:99px;flex-shrink:0;${tagColor}">${tagText}</span>
               </div>
-              <div style="font-size:12.5px;color:var(--t2);font-weight:600;margin-top:3px">${this.escapeHtml(phone) || 'No phone'} · ${visits} ${visits === 1 ? 'visit' : 'visits'}</div>
+              <div style="font-size:12.5px;color:var(--t2);font-weight:500;margin-top:2px">${this.escapeHtml(phone) || 'No phone'} · ${visits} ${visits === 1 ? 'visit' : 'visits'}</div>
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
-          </div>`;
+          </div>`);
       });
-      html += `</div>`;
     } else if (q) {
-      html += `<div style="padding:20px 16px;text-align:center;color:var(--t2);font-size:13.5px;font-weight:600;line-height:1.5">No matches for "${this.escapeHtml(inp.value.trim())}" · tap "Add as new" above</div>`;
+      rows.push(`<div style="padding:22px 16px;text-align:center;color:var(--t2);font-size:13.5px;font-weight:500;line-height:1.5">No matches for "${this.escapeHtml(inp.value.trim())}" — tap "Add as new" above</div>`);
     }
+
+    const html = '<div class="cust-results-flat">' + rows.join('') + '</div>';
 
     results.innerHTML = html;
     results.style.display = 'block';
