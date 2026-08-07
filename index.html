@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_1555';
+    window.HISAABNOW_BUILD = 'v34_auto_20260807_1602';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1996,13 +1996,21 @@ html[data-shell="desktop"] .inv-actions{padding:4px 0 10px}
   padding:16px 18px; min-height:56px; gap:14px; border-radius:28px;
   background:#F1F0EC; border:1.5px solid transparent;
   box-shadow:none;
+  /* (Aug 2026 upgrade — zoom) The "Google-style" ask was specifically
+     that the field should visibly grow when tapped, not just change
+     border color. transform-origin:top keeps it anchored to the label
+     above rather than growing symmetrically and shifting content up. */
+  transform-origin: center top;
+  transform: scale(1);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s, border-color .18s, box-shadow .18s;
 }
 .cust-search-wrap .search-bar:focus-within{
   background:#fff; border-color:var(--p-200);
-  box-shadow:0 1px 6px -1px rgba(23,20,15,.12), 0 0 0 4px rgba(255,107,53,.08);
+  transform: scale(1.035);
+  box-shadow:0 10px 28px -10px rgba(23,20,15,.22), 0 0 0 5px rgba(255,107,53,.10);
 }
 .cust-search-wrap .search-bar:hover{ border-color:transparent; }
-.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; }
+.cust-search-wrap .search-bar svg{ width:20px; height:20px; color:var(--t2); opacity:1; transition:color .18s; }
 .cust-search-wrap .search-bar:focus-within svg{ color:var(--p); }
 .cust-search-wrap .search-bar input{ font-size:16.5px; }
 
