@@ -1202,6 +1202,16 @@ function dtParse(v, fallback){
   return isFinite(t) ? t : fallback;
 }
 const money = n => '₹' + Math.round(Number(n)||0).toLocaleString('en-IN');
+/* Which calendar day a timestamp belongs to, in the SHOP's local time — not
+   UTC. toISOString() reports the UTC date, which for IST (UTC+5:30) rolls
+   over 5h30m before local midnight actually does. A rental checked out at
+   00:33 local is on today's local date but yesterday's UTC date, so every
+   daily-rollup bucket keyed off toISOString() silently misfiled it. This is
+   the single local-date key every rollup site must use instead. */
+const localDayKey = (ms) => {
+  const d = new Date(ms == null ? Date.now() : ms);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+};
 /* Vehicle no. is optional, so a bike is shown by NAME with the plate as a
    secondary detail when it exists. */
 const vLabel = v => (v && (v.name || v.regNo)) || '—';
@@ -2610,8 +2620,7 @@ const R = {
       const r  = DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
       const docs = this.docWarn(v);
       const pill = { available:'ok', rented:'out', maintenance:'maint', retired:'late' }[v.status]||'ok';
-      const earned = DB.d.rentals.filter(x=>x.vehicleId===v.id && x.status==='closed')
-                      .reduce((s,x)=>s+(Number(x.revenue)||0),0);
+      const earned = this.earnedBy(v);
       return `<div class="card tap" onclick="R.editVehicle('${v.id}')">
         <div class="row">
           <div class="grow">
@@ -2674,18 +2683,32 @@ const R = {
   },
 
   /* Days since this bike last went out. The number that says the Maestro has
-     sat for 41 days having earned ₹2,100 all year. */
+     sat for 41 days having earned ₹2,100 all year.
+     Reads /vehicleStats, not DB.d.rentals — that listener only ever holds
+     OPEN rentals, so a bike sitting available (the common case) had no
+     matching row there and this fell back to "days since added," which is
+     wrong for any bike with rental history that isn't mid-rental today. */
   idleDays(v){
-    const last = (DB.d.rentals||[])
-      .filter(r => r.vehicleId === v.id)
-      .reduce((m,r)=> Math.max(m, Number(r.outAt)||0), 0);
+    const stat = (DB.d.vehicleStats||[]).find(s => s.id === v.id);
+    const last = stat && stat.lastOutAt ? Number(stat.lastOutAt) : 0;
     if (!last) return v.createdAt ? Math.floor((Date.now()-v.createdAt)/(24*HOUR)) : null;
     return Math.floor((Date.now()-last)/(24*HOUR));
   },
+  /* Same fix: this used to filter DB.d.rentals for status==='closed', which
+     that listener can never contain, so this always returned ₹0. */
   earnedBy(v){
-    return (DB.d.rentals||[])
-      .filter(r => r.vehicleId === v.id && r.status === 'closed')
-      .reduce((s,r)=> s + (Number(r.revenue)||0), 0);
+    const stat = (DB.d.vehicleStats||[]).find(s => s.id === v.id);
+    return stat ? (Number(stat.earned)||0) : 0;
+  },
+
+  /* Same fix again: this used to count DB.d.rentals (open-only listener),
+     so it could only ever read 0 or 1 — whether this bike happened to be
+     out right now — never the true lifetime trip count. */
+  tripsBy(v){
+    const stat = (DB.d.vehicleStats||[]).find(s => s.id === v.id);
+    const closedTrips = stat ? (Number(stat.closedTrips)||0) : 0;
+    const isOut = (DB.d.rentals||[]).some(r => r.vehicleId === v.id && r.status === 'open');
+    return closedTrips + (isOut ? 1 : 0);
   },
 
   fleetTable(hdr){
@@ -2714,7 +2737,7 @@ const R = {
         ${list.map(v=>{
           const rc = (DB.d.rates||[]).find(r=>r.id===v.rateId);
           const docs = this.docWarn(v);
-          const rides = (DB.d.rentals||[]).filter(r=>r.vehicleId===v.id).length;
+          const rides = this.tripsBy(v);
           const idle = this.idleDays(v);
           const pill = { available:'ok', rented:'out', maintenance:'maint', retired:'late' }[v.status]||'ok';
           const sel = this.selHas(v.id);
@@ -2763,7 +2786,15 @@ const R = {
     const ids = this.selIds(); if (!ids.length) return;
     const out = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id && r.status==='open'));
     if (out.length) return toast(out.length + ' of these are out — check them in first');
-    const withHist = ids.filter(id => (DB.d.rentals||[]).some(r=>r.vehicleId===id));
+    /* Reads /vehicleStats, not DB.d.rentals — by this point every selected
+       id has already passed the open-rental check above, so DB.d.rentals
+       (open-only) could never show history here even when a bike has a
+       full closed-rental past. That made this confirm always claim "none
+       of them have been rented," even for a bike with 100 settled trips. */
+    const withHist = ids.filter(id => {
+      const s = (DB.d.vehicleStats||[]).find(x=>x.id===id);
+      return s && (Number(s.closedTrips)||0) > 0;
+    });
     if (!confirm('Remove ' + ids.length + ' ' + noun(ids.length!==1) + '?\n\n' +
       (withHist.length ? withHist.length + ' of them have rental history, which is kept.'
                        : 'None of them have been rented.'))) return;
@@ -2865,6 +2896,13 @@ const R = {
       <div class="fld"><label class="lbl">Vehicle no. <span class="muted">optional</span></label>
         <input class="in" id="v-reg" value="${esc(v?(v.regNo||''):'')}"
           placeholder="MP04 AB 1234" autocapitalize="characters"></div>
+      <!-- Duplicate-name/duplicate-number rejections used to be a toast only —
+           2.6 seconds, easy to miss if a counter worker glances away, and the
+           sheet was left open with no visible sign anything went wrong. A
+           second bike typed in good faith could be silently discarded. This
+           banner stays until the conflict is actually fixed or the sheet is
+           closed on purpose. -->
+      <div id="v-err"></div>
       <div class="fld"><label class="lbl">Rate card <span class="req">*</span></label>
         <select class="in" id="v-rate" onchange="R.rateSel()">
           <option value="">— choose —</option>${opts}
@@ -3351,11 +3389,20 @@ const R = {
       }
     }
     /* Reg is optional now, so NAME is the identity. Only guard duplicates on
-       whichever one the shop actually filled in. */
+       whichever one the shop actually filled in. Persistent inline banner,
+       not just a toast — see the note by #v-err above. */
+    const showConflict = (msg) => {
+      const el = document.getElementById('v-err');
+      if (el) el.innerHTML = `<div class="card" style="background:var(--danger-tint);
+        border-color:var(--danger);margin:-4px 0 12px">
+        <b style="color:var(--danger);font-size:13px">${esc(msg)}</b></div>`;
+      toast(msg);
+    };
     if (reg && DB.d.vehicles.some(x=>x.regNo===reg && x.id!==id))
-      return toast('That vehicle number already exists');
+      return showConflict('That vehicle number already exists');
     if (!reg && DB.d.vehicles.some(x=>x.name===name && x.id!==id))
-      return toast('A '+noun()+' with that name already exists — add a number or change the name');
+      return showConflict('A '+noun()+' with that name already exists — add a number or change the name');
+    { const el = document.getElementById('v-err'); if (el) el.innerHTML = ''; }
     const rc = DB.d.rates.find(r=>r.id===rateId);
     const g = i => document.getElementById(i);
     const old = old0;
@@ -3429,6 +3476,15 @@ const R = {
     const rates = DB.d.rates||[];
     return (DB.d.vehicles||[]).filter(v => {
       if (v.deletedAt) return false;
+      /* "Never been rented" has to mean lifetime, not "not open right now."
+         DB.d.rentals is the open-only listener — a bike with 50 closed
+         rentals but nothing open at this moment used to read as never
+         rented here, so the bulk-cleanup button below could delete a
+         vehicle with real earnings history, exactly what this guard exists
+         to prevent. /vehicleStats carries the lifetime trip count that
+         listener can't. */
+      const stat = (DB.d.vehicleStats||[]).find(s => s.id === v.id);
+      if (stat && (Number(stat.closedTrips)||0) > 0) return false;
       if ((DB.d.rentals||[]).some(r => r.vehicleId === v.id)) return false;
       const rc = rates.find(r => r.id === v.rateId);
       return rc && !this.rateReady(rc);
@@ -4478,7 +4534,7 @@ const R = {
       fuelOut: (document.getElementById('c-fuel')||{value:''}).value,
       docOverride: !!(ovEl && ovEl.checked) ? this.docBlocked(v) : '',
     };
-    rental.dayKey = new Date(now).toISOString().slice(0,10);
+    rental.dayKey = localDayKey(now);
 
     if (window.Cloud && Cloud.ready){
       /* Allocating a specific bike is the one write that must reach the
@@ -4520,6 +4576,12 @@ const R = {
         cashIn:     Number(rental.outCash)||0,
         upiIn:      Math.max(0, inTotal - (Number(rental.outCash)||0)),
       });
+      /* Fleet's "Idle days" needs to know when this bike last left, without
+         listening to every rental ever written against it (see the note by
+         the rentals listener). One small per-vehicle doc, same shape as the
+         /daily rollup, updated on every checkout regardless of how the
+         rental ends. */
+      Cloud.bumpVehicleStat(vid, { lastOutAt: rental.outAt });
     } else {
       DB.d.rentals.push(rental);
       v.status = 'rented';
@@ -4788,9 +4850,10 @@ Please return on time to get your full deposit back.`;
       const _coll = Number(patch.balanceCollected)||0;
       const _ref  = Number(patch.depositRefunded)||0;
       const _refCash = patch.refundMode === 'upi' ? 0 : _ref;
-      const revenueDay = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+      const revenueDay = r.dayKey || localDayKey(r.outAt);
       Cloud.rollup(revenueDay, { revenue: patch.revenue, rentals: 1 });
-      Cloud.rollup(new Date(patch.settledAt).toISOString().slice(0,10), {
+      Cloud.bumpVehicleStat(r.vehicleId, { earned: patch.revenue, closedTrips: 1 });
+      Cloud.rollup(localDayKey(patch.settledAt), {
         rentals:     0,          /* already counted above, on the day the rental happened */
         collected:   _coll,
         depositsOut: _ref,
@@ -4923,13 +4986,22 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     }, { status:'available' });
     if (!w.ok) return toast(w.reason==='settled' ? 'Already settled on another device' : 'Could not cancel');
     Cloud.audit('rental.cancel', id, { deposit:r.depositHeld }, { reason: why });
-    const ck = new Date().toISOString().slice(0,10);
-    const _wasCash = (r.outPayMode || 'cash') !== 'upi';
+    const ck = localDayKey();
+    /* Everything handed over at pickup — deposit AND advance — goes back on
+       a cancel, split exactly the way it came in (r.outCash), not guessed
+       from the payment-mode label. The old version keyed off outPayMode
+       being 'upi' vs not: for a real 'upi' pickup it only ever returned
+       depositHeld through upiOut, quietly dropping the advance; for a
+       'split' pickup it returned the whole thing through cashOut and never
+       touched upiOut at all, so the UPI half never left the reconciliation.
+       inTotal/outCash mirrors the exact split checkout recorded going in. */
+    const inTotal = (Number(r.depositHeld)||0) + (Number(r.advancePaid)||0);
+    const outCash = Number(r.outCash)||0;
     await Cloud.rollup(ck, {
       depositsOut: Number(r.depositHeld)||0,
       collected: -(Number(r.advancePaid)||0),
-      cashOut: _wasCash ? (Number(r.outCash)||Number(r.depositHeld)||0) : 0,
-      upiOut:  _wasCash ? 0 : (Number(r.depositHeld)||0) });
+      cashOut: Math.min(inTotal, outCash),
+      upiOut:  Math.max(0, inTotal - outCash) });
     Haptic.success(); closeSheet(); this.nav('out');
     toast('Cancelled · ' + money(r.depositHeld) + ' deposit returned');
   },
@@ -4994,9 +5066,10 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
        moved revenue to check-out day, would silently create a permanent
        mismatch: the check-out day stays wrong by the old amount forever,
        and the settle day goes wrong by the correction instead. */
-    const revDay = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+    const revDay = r.dayKey || localDayKey(r.outAt);
     await Cloud.rollupDelta(revDay, { revenue: rev - oldRev });
-    const dk = new Date(r.settledAt||Date.now()).toISOString().slice(0,10);
+    Cloud.bumpVehicleStat(r.vehicleId, { earned: rev - oldRev });
+    const dk = localDayKey(r.settledAt);
     await Cloud.rollupDelta(dk, {
       collected: newColl - oldColl,
       depositsOut: ref - (Number(r.depositRefunded)||0), outstanding: newOut - oldOut });
@@ -5037,7 +5110,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
          (see the cash/upi toggle on i-rm, no split field exists for it), so
          it reverses by r.refundMode, matching cancelRental's own pattern. */
       const refundWasCash = (r.refundMode || 'cash') !== 'upi';
-      const dk = new Date(r.settledAt||Date.now()).toISOString().slice(0,10);
+      const dk = localDayKey(r.settledAt);
       await Cloud.rollupDelta(dk, {
         collected: -(Number(r.balanceCollected)||0),
         depositsOut: -(Number(r.depositRefunded)||0),
@@ -5047,7 +5120,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         cashOut: refundWasCash ? -(Number(r.depositRefunded)||0) : 0,
         upiOut:  refundWasCash ? 0 : -(Number(r.depositRefunded)||0),
       });
-      const ok2 = r.dayKey || new Date(r.outAt||Date.now()).toISOString().slice(0,10);
+      const ok2 = r.dayKey || localDayKey(r.outAt);
       const inTotal = (Number(r.depositHeld)||0) + (Number(r.advancePaid)||0);
       await Cloud.rollupDelta(ok2, {
         rentals: -1, revenue: -(Number(r.revenue)||0),
@@ -5056,6 +5129,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         cashIn:  -(Number(r.outCash)||0),
         upiIn:   -Math.max(0, inTotal - (Number(r.outCash)||0)),
       });
+      Cloud.bumpVehicleStat(r.vehicleId, { earned: -(Number(r.revenue)||0), closedTrips: -1 });
       Cloud.audit('bill.void', id, { revenue:r.revenue }, null);
       this._closed = null;
       Haptic.success(); closeSheet(); this.render(); toast('Bill voided');
@@ -5142,11 +5216,14 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
 
     const per = DB.d.vehicles.map(v=>{
       const rs = inRange.filter(x=>x.vehicleId===v.id);
-      const all = closed.filter(x=>x.vehicleId===v.id);
+      /* Lifetime total for payback% comes from /vehicleStats, not from the
+         400-item recentClosed cache above — a shop past ~400 lifetime
+         settlements would otherwise silently undercount payback on its
+         older, most-paid-off bikes. */
       return { v, earned: rs.reduce((a,x)=>a+(Number(x.revenue)||0),0),
                hours: rs.reduce((a,x)=>a+(Number(x.hoursUsed)||0),0), trips: rs.length,
                payback: v.cost ? Math.min(999, Math.round(
-                 all.reduce((a,x)=>a+(Number(x.revenue)||0),0)/v.cost*100)) : null };
+                 R.earnedBy(v)/v.cost*100)) : null };
     }).filter(x=>x.trips>0).sort((a,b)=>b.earned-a.earned);
 
     const peak = Math.max(earned, got, depIn, depOut, 1);
@@ -5230,7 +5307,34 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
             <div class="muted">${p.trips} rental${p.trips===1?'':'s'} · ${fmtDur(p.hours)} on rent${
               p.payback!==null?' · <b style="color:'+(p.payback>=100?'var(--success-d)':'var(--t2)')+'">'+p.payback+'% of cost recovered</b>':''}</div>
           </div>`).join('')}
+
+      ${this.isOwner() ? `<button class="btn ghost" style="margin-top:14px;font-size:12px;color:var(--t3)"
+          onclick="R.repairMoney()">Fix past earnings numbers</button>` : ''}
     `;
+  },
+
+  /* One-time cleanup for two bugs that share the same fix: the day-bucketing
+     bug (past checkouts/settlements between 12am-5:30am IST were filed under
+     the wrong calendar day) and the Fleet Earned/Idle days bug (those columns
+     read a listener that could never contain a closed rental). Both rebuild
+     from the same rental history in one pass. Owner-only, and asks first
+     since it rewrites numbers the shop has already looked at. */
+  repairMoney(){
+    if (!confirm('This rebuilds every day\'s earnings and every vehicle\'s '
+      + 'totals from your actual rentals, fixing entries filed under the '
+      + 'wrong day and Fleet earnings that were stuck at zero. It can take '
+      + 'a few seconds and cannot be undone. Continue?')) return;
+    toast('Rebuilding — this may take a moment…');
+    (async () => {
+      const res = await Cloud.repairDailyRollups();
+      if (!res.ok) return toast(res.msg || 'Could not repair — ' + (res.code||'try again'));
+      Haptic.success();
+      this._closed = null;
+      toast('Fixed ' + res.days + ' day' + (res.days===1?'':'s') + ' and '
+        + res.vehicles + ' vehicle' + (res.vehicles===1?'':'s')
+        + ' across ' + res.rentals + ' rentals');
+      this.render();
+    })();
   },
 
   /* Every bike row is a question — "why did this one earn that?" — so it
@@ -5238,10 +5342,16 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
   vehicleBills(vid){
     const v = DB.d.vehicles.find(x=>x.id===vid);
     const rng = this._range();
+    /* Filtered by outAt, matching the card totals on the Money page and the
+       "revenue belongs to check-out day" rule (see the note in checkinSave).
+       This used to filter by settledAt instead, so a rental checked out on
+       one day and settled the next counted here but not in the card above
+       it — the total in this sheet and the number on the card it was
+       opened from could silently disagree. */
     const rows = (this._closed||[]).filter(x => x.vehicleId===vid && !x.voidedAt
       && x.status!=='cancelled'
-      && (this._period==='all' || (x.settledAt>=rng.start && x.settledAt<=rng.end)))
-      .sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
+      && (this._period==='all' || (x.outAt>=rng.start && x.outAt<=rng.end)))
+      .sort((a,b)=>(b.outAt||0)-(a.outAt||0));
     const total = rows.reduce((a,x)=>a+(Number(x.revenue)||0),0);
     openSheet(`<div class="sheet-hd"><h2>${esc(v?vLabel(v):'Bike')}</h2>
         <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
@@ -5534,7 +5644,7 @@ import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, collection, query, where, orderBy, limit, startAfter,
+  doc, collection, query, where, orderBy, limit, startAfter, documentId,
   onSnapshot, getDoc, getDocs, setDoc, updateDoc, runTransaction,
   serverTimestamp, writeBatch, onSnapshotsInSync, increment, collectionGroup
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -5855,6 +5965,9 @@ const Cloud = {
        The collection is one small document per day, so no ordering is needed
        here at all: the whole thing is cheap to hold and the UI sorts it. */
     this._unsub.push(bind(query(S('daily'), limit(800)), 'daily'));
+    /* One doc per vehicle — bounded by fleet size, not rental history, same
+       reasoning as /daily. This is what Fleet's Earned/Idle days read. */
+    this._unsub.push(bind(S('vehicleStats'), 'vehicleStats'));
 
     this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
       this.shop = sd.exists() ? sd.data() : null;
@@ -5946,7 +6059,7 @@ const Cloud = {
       (d.rentals||[]).forEach(r=>{ const id='mg_'+r.id;
         b.set(doc(db,'rn_shops',this.shopId,'rentals',id), Object.assign({}, r, {
           vehicleId: map[r.vehicleId]||r.vehicleId,
-          dayKey: new Date(r.outAt||Date.now()).toISOString().slice(0,10),
+          dayKey: localDayKey(r.outAt),
           migrated:true })); });
       await b.commit();
       this.stashLocal();
@@ -6318,6 +6431,175 @@ const Cloud = {
       }, { merge:true });
       return { ok:true };
     } catch(e){ console.error('rollupDelta', e); return { ok:false, code:(e&&e.code)||'unknown' }; }
+  },
+
+  /* ── per-vehicle stats: what Fleet's Earned/Idle days columns read ──
+     The rentals listener only ever holds OPEN rentals (see the note by it
+     in open()) — closed history is deliberately kept out of it so the app
+     doesn't listen to a collection that grows without bound. Fleet's old
+     "Earned" and "Idle days" columns read straight off that listener, so
+     they were reading a list that could never contain a closed rental:
+     Earned was always ₹0, and Idle days fell back to "since this bike was
+     added" for anything not mid-rental right now. This is the same fix as
+     /daily — one small live-listened doc per vehicle, updated at the
+     handful of places a vehicle's earnings or last-out time actually
+     change, instead of scanning full rental history on every render. */
+  bumpVehicleStat(vehicleId, patch){
+    if (!vehicleId) return;
+    try {
+      const data = { updatedAt: Date.now() };
+      if (patch.earned != null)      data.earned = increment(Number(patch.earned)||0);
+      if (patch.closedTrips != null) data.closedTrips = increment(Number(patch.closedTrips)||0);
+      /* Last-out time is a fact, not a delta — always the newest value, so
+         it is set directly rather than incremented. Checkouts happen in
+         chronological order, so "most recent write wins" is correct. */
+      if (patch.lastOutAt != null)   data.lastOutAt = Number(patch.lastOutAt)||Date.now();
+      setDoc(this.p('vehicleStats', vehicleId), data, { merge:true });
+    } catch(e){ /* best-effort, same as rollup() — never blocks the user action */ }
+  },
+
+  /* ── one-time repair: rebuild /daily and /vehicleStats from the rentals
+     themselves ──────────────────────────────────────────────────────
+     Two bugs this fixes in one pass, since both read the exact same
+     rental history:
+
+     1) Every rollup site used to key its day-document by UTC date
+        (toISOString) instead of the shop's local date, so any
+        checkout/settle/cancel between 12:00am-5:29am IST posted to the
+        wrong calendar day in /daily — the numbers behind the "Earned"
+        hero and the Cash-vs-UPI cards on the Money page.
+
+     2) Fleet's "Earned" and "Idle days" columns read the open-rentals
+        listener, which can never contain a closed rental — Earned was
+        always ₹0, and Idle days fell back to "since this bike was added"
+        for anything not mid-rental right now.
+
+     Both write paths are fixed now (see localDayKey and bumpVehicleStat),
+     but the documents already written before the fix are still sitting
+     there wrong. This does not patch them with deltas — deltas on top of
+     an unknown-wrong number stay wrong. It ignores every existing /daily
+     and /vehicleStats doc, replays every rental's known outcome
+     (open / closed / cancelled; voided nets to zero) using the corrected
+     logic, and overwrites both collections with the recomputed truth.
+     Safe to run more than once — it is not additive. */
+  async repairDailyRollups(){
+    if (!this.shopId) return { ok:false, msg:'Sign in first' };
+    if (this.role !== 'owner') return { ok:false, msg:'Only the shop owner can run this' };
+    try {
+      const rentals = [];
+      let cursor = null;
+      while (true){
+        const base = collection(db,'rn_shops',this.shopId,'rentals');
+        const q = cursor
+          ? query(base, orderBy(documentId()), startAfter(cursor), limit(500))
+          : query(base, orderBy(documentId()), limit(500));
+        const snap = await getDocs(q);
+        if (snap.empty) break;
+        snap.docs.forEach(d => rentals.push(Object.assign({ id:d.id }, d.data())));
+        cursor = snap.docs[snap.docs.length-1];
+        if (snap.docs.length < 500) break;
+      }
+
+      const totals = {};
+      const bump = (day, field, val) => {
+        val = Number(val)||0;
+        if (!day || !val) return;
+        if (!totals[day]) totals[day] = { rentals:0, revenue:0, collected:0,
+          depositsIn:0, depositsOut:0, outstanding:0, cashIn:0, upiIn:0, cashOut:0, upiOut:0 };
+        totals[day][field] += val;
+      };
+
+      const vstats = {};   /* vehicleId -> { earned, closedTrips, lastOutAt } */
+      const vbump = (vid, field, val) => {
+        if (!vid) return;
+        if (!vstats[vid]) vstats[vid] = { earned:0, closedTrips:0, lastOutAt:0 };
+        if (field === 'lastOutAt') vstats[vid].lastOutAt = Math.max(vstats[vid].lastOutAt, Number(val)||0);
+        else vstats[vid][field] += (Number(val)||0);
+      };
+
+      rentals.forEach(r => {
+        /* Last-out time is a plain fact about the vehicle, true even for a
+           rental that was later cancelled or voided — the bike genuinely
+           left. Tracked before the void/skip check below. */
+        vbump(r.vehicleId, 'lastOutAt', r.outAt);
+
+        if (r.voidedAt || r.status === 'void') return;   /* voiding nets to zero everywhere else */
+
+        /* Every rental that ever went out booked its deposit/advance on
+           check-out day — this happens regardless of what became of it. */
+        const pickupDay = r.dayKey || localDayKey(r.outAt);
+        const dep = Number(r.depositHeld)||0, adv = Number(r.advancePaid)||0, outCash = Number(r.outCash)||0;
+        bump(pickupDay, 'depositsIn', dep);
+        bump(pickupDay, 'collected', adv);
+        bump(pickupDay, 'cashIn', outCash);
+        bump(pickupDay, 'upiIn', Math.max(0, (dep+adv) - outCash));
+
+        if (r.status === 'closed'){
+          bump(pickupDay, 'revenue', r.revenue);
+          bump(pickupDay, 'rentals', 1);
+          vbump(r.vehicleId, 'earned', r.revenue);
+          vbump(r.vehicleId, 'closedTrips', 1);
+          const settleDay = localDayKey(r.settledAt);
+          const coll = Number(r.balanceCollected)||0, inCash = Number(r.inCash)||0;
+          bump(settleDay, 'collected', coll);
+          bump(settleDay, 'depositsOut', r.depositRefunded);
+          bump(settleDay, 'outstanding', r.unpaid);
+          bump(settleDay, 'cashIn', inCash);
+          bump(settleDay, 'upiIn', Math.max(0, coll - inCash));
+          const refundWasCash = (r.refundMode || 'cash') !== 'upi';
+          bump(settleDay, 'cashOut', refundWasCash ? r.depositRefunded : 0);
+          bump(settleDay, 'upiOut', refundWasCash ? 0 : r.depositRefunded);
+        } else if (r.status === 'cancelled'){
+          const cancelDay = localDayKey(r.cancelledAt || r.settledAt || r.outAt);
+          bump(cancelDay, 'depositsOut', dep);
+          bump(cancelDay, 'collected', -adv);
+          /* Matches the fixed cancelGo: whatever came in (dep+adv) goes back
+             out split exactly the way outCash recorded it, not guessed from
+             the payment-mode label. */
+          const inTotal = dep + adv;
+          bump(cancelDay, 'cashOut', Math.min(inTotal, outCash));
+          bump(cancelDay, 'upiOut', Math.max(0, inTotal - outCash));
+        }
+        /* status === 'open': the pickup-day booking above is the whole story. */
+      });
+
+      /* Every day that currently has a /daily doc must be included even if
+         it recomputes to nothing — otherwise a day that should now read
+         zero would keep showing its old, wrong number. Same reasoning for
+         every vehicle that currently has a /vehicleStats doc. */
+      const existing = await getDocs(collection(db,'rn_shops',this.shopId,'daily'));
+      existing.docs.forEach(d => { if (!totals[d.id]) totals[d.id] = { rentals:0, revenue:0,
+        collected:0, depositsIn:0, depositsOut:0, outstanding:0, cashIn:0, upiIn:0, cashOut:0, upiOut:0 }; });
+      const existingV = await getDocs(collection(db,'rn_shops',this.shopId,'vehicleStats'));
+      existingV.docs.forEach(d => { if (!vstats[d.id]) vstats[d.id] = { earned:0, closedTrips:0, lastOutAt:0 }; });
+
+      const days = Object.keys(totals);
+      for (let i = 0; i < days.length; i += 400){
+        const b = writeBatch(db);
+        days.slice(i, i+400).forEach(day => {
+          b.set(this.p('daily', day), Object.assign({}, totals[day], { updatedAt: Date.now(), repairedAt: Date.now() }));
+        });
+        await b.commit();
+      }
+
+      const vids = Object.keys(vstats);
+      for (let i = 0; i < vids.length; i += 400){
+        const b = writeBatch(db);
+        vids.slice(i, i+400).forEach(vid => {
+          const s = vstats[vid];
+          b.set(this.p('vehicleStats', vid), {
+            earned: s.earned, closedTrips: s.closedTrips,
+            lastOutAt: s.lastOutAt || null,
+            updatedAt: Date.now(), repairedAt: Date.now() });
+        });
+        await b.commit();
+      }
+
+      return { ok:true, days: days.length, vehicles: vids.length, rentals: rentals.length };
+    } catch(e){
+      console.error('repairDailyRollups', e);
+      return { ok:false, code:(e&&e.code)||'unknown', msg:(e&&e.message)||'failed' };
+    }
   },
 
   /* PayU hosted checkout. The client never sends an amount — it sends the
