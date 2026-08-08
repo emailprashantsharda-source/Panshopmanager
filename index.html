@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_1021';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_1108';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -15226,41 +15226,78 @@ const App = {
       try {
         if (window.Subs && typeof Subs.getCurrentTier === 'function') {
           const tier = Subs.getCurrentTier();
-          const days = (typeof Subs.daysLeft === 'function') ? Subs.daysLeft() : 0;
+          /* (Aug 2026 fix) Prefer HND_getAccurateDaysLeft() — the same source
+             the sync banners and the pre-expiry warning use. Subs.daysLeft()
+             is a second, independently-derived count, and two sources for the
+             same number is how the Home pills and checkout labels drifted
+             earlier. Falls back to Subs.daysLeft() if unavailable. */
+          let days = 0;
+          try {
+            if (typeof window.HND_getAccurateDaysLeft === 'function') days = window.HND_getAccurateDaysLeft();
+            else if (typeof Subs.daysLeft === 'function') days = Subs.daysLeft();
+          } catch(e){ try { days = (typeof Subs.daysLeft === 'function') ? Subs.daysLeft() : 0; } catch(e2){} }
           const tierCfg = (typeof Subs.getTierConfig === 'function') ? Subs.getTierConfig(tier) : null;
           let badgeText = '', bg = '', fg = '';
           if (tier === 'trial') {
             const safeDays = Math.max(0, Number(days) || 0);
-            if (safeDays <= 3) {
-              badgeText = '⏰ TRIAL ENDING · ' + safeDays + 'd left';
-              bg = 'rgba(251,146,60,.95)';
-              fg = '#451A03';
+            /* ≤2 days matches the pre-expiry sync banner's own threshold, so
+               the card and the banner surface the warning at the same moment
+               rather than a day apart. */
+            if (safeDays <= 2) {
+              badgeText = '⏰ FREE TRIAL · ' + safeDays + ' day' + (safeDays === 1 ? '' : 's') + ' left · SUBSCRIBE';
+              bg = '#FFE0B2';
+              fg = '#8A3A00';
             } else {
-              badgeText = '⭐ TRIAL · ' + safeDays + 'd left';
-              bg = 'rgba(250,204,21,.95)';
-              fg = '#1E293B';
+              badgeText = '⭐ FREE TRIAL · ' + safeDays + ' days left';
+              bg = '#FFF3C4';
+              fg = '#7A4E00';
             }
           } else if (tier === 'trial-expired' || tier === 'expired') {
-            badgeText = '';
+            /* (Aug 2026 fix) Was badgeText = '' — the badge hid itself in the
+               one state where saying something matters most, leaving an
+               expired shop with no indication on this card at all. Wording
+               matches the sync banner's "Subscribe to sync" rather than
+               inventing a third phrasing for the same action. */
+            badgeText = (tier === 'expired' ? '🔒 PLAN EXPIRED · SUBSCRIBE' : '🔒 TRIAL EXPIRED · SUBSCRIBE');
+            bg = 'rgba(255,255,255,.22)';
+            fg = '#FFFFFF';
           } else if (tierCfg) {
 
             const planName = (tierCfg.name || tier).toUpperCase();
+            const _isKing = String(tier).toLowerCase() === 'king';
             if (tier === 'lifetime' || days < 0 || days > 9000) {
               badgeText = '✓ ' + planName + ' · ACTIVE';
             } else {
               const safeDays = Math.max(0, Number(days) || 0);
-              badgeText = '⭐ ' + planName + ' · ' + safeDays + 'd left';
+              badgeText = (_isKing ? '👑 ' : '✦ ') + planName + ' · ' + safeDays + ' day' + (safeDays === 1 ? '' : 's') + ' left';
             }
-            bg = 'rgba(34,197,94,.95)';
-            fg = '#052E16';
+            /* Reuse the colours already declared in TIERS rather than a new
+               palette: King is its own red (#DC2626), Pro/others read as a
+               clean white chip against the gold card. */
+            if (_isKing) { bg = '#FEE2E2'; fg = '#B01818'; }
+            else { bg = '#FFFFFF'; fg = '#14110C'; }
           }
           if (badgeText) {
+            /* (Aug 2026 fix) Strip data-i18n before writing — this element
+               has no static key today, but every other dynamic label on this
+               screen that skipped this step (the role banner, the "No
+               customer" row) got silently reverted by the i18n observer.
+               Doing it here pre-empts the same bug if a key is ever added. */
+            try { planBadge.removeAttribute('data-i18n'); } catch(e){}
             planBadge.textContent = badgeText;
             planBadge.style.background = bg;
             planBadge.style.color = fg;
             planBadge.style.display = 'inline-flex';
+            /* Tapping the badge goes straight to plans; stopPropagation so it
+               doesn't also trigger the card's shop-switcher handler. */
+            planBadge.style.cursor = 'pointer';
+            planBadge.onclick = function(ev){
+              try { ev.stopPropagation(); } catch(e){}
+              try { if (window.App && typeof App.openSubscription === 'function') App.openSubscription(); } catch(e){}
+            };
           } else {
             planBadge.style.display = 'none';
+            planBadge.onclick = null;
           }
         } else {
 
