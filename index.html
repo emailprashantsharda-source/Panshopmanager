@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_0615';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_1016';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -20898,7 +20898,10 @@ const App = {
       const idx = STAFF.findIndex(s => s.id === r.staffId);
       const initials = (staff && staff.initials) || (r.name||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
       const color = (staff && staff.color) || '#000000';
-      const onclick = idx >= 0 ? `onclick="App.openStaffDetail(${idx})"` : '';
+      /* (Aug 2026) openStaffDetail takes a stable id now — pass r.staffId
+         straight through instead of round-tripping it into an array index. */
+      const _sid = String(r.staffId || '').replace(/'/g, "\\'");
+      const onclick = _sid ? `onclick="App.openStaffDetail('${_sid}')"` : (idx >= 0 ? `onclick="App.openStaffDetail(${idx})"` : '');
       return `
         <div class="li" ${onclick} style="cursor:pointer">
           <div class="li-avatar" style="background:${color};color:#fff;font-weight:800;font-size:14px;letter-spacing:-.01em">${this.escapeHtml(initials)}</div>
@@ -31753,11 +31756,43 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     });
   },
 
-  openStaffDetail(idx){
+  /* (Aug 2026) Mirrors _apptByRef — resolve a staff member by stable id,
+     falling back to array index for any legacy caller still passing one.
+     Added because index-based refs silently pointed at the wrong record
+     (see the comment in the leaderboard renderer). */
+  _staffByRef(ref){
+    try {
+      if (typeof ref === 'string' && ref !== '') {
+        var fresh = (window.Store && Store.list && Store.list('staff')) || [];
+        var hit = fresh.find(function(x){ return x && x.id === ref; })
+               || (Array.isArray(window.STAFF) && STAFF.find(function(x){ return x && x.id === ref; }));
+        if (hit) return hit;
+        /* (Aug 2026) Also search the CF-fetched cache. renderStaff() merges
+           _staffCache into the visible list, so a staff member who has been
+           invited but whose record hasn't landed in Store yet still gets a
+           row — and without this lookup, that row's Edit/Remove buttons
+           would resolve to nothing and appear dead. Matched on phoneE164
+           too, since cache records set their id to the phone number. */
+        var cache = (Array.isArray(this._staffCache) ? this._staffCache : []);
+        var cHit = cache.find(function(x){ return x && (x.id === ref || x.phoneE164 === ref || x.phone === ref); });
+        if (cHit) return cHit;
+        var n = parseInt(ref, 10);
+        if (!isNaN(n) && Array.isArray(window.STAFF) && STAFF[n]) return STAFF[n];
+        return null;
+      }
+      return (Array.isArray(window.STAFF) && STAFF[ref]) || null;
+    } catch(e){ return null; }
+  },
 
-    const s = STAFF[idx];
+  openStaffDetail(ref){
+
+    const s = this._staffByRef(ref);
     if (!s) { this.toast(this._T('toast.staffNotFound', 'Staff not found')); return; }
     const staffId = s.id;
+    /* Thread the stable id through to the Edit/Remove buttons rendered
+       below, so they resolve the same record even if STAFF is refreshed
+       while this sheet is open. */
+    const idx = String(s.id || '').replace(/'/g, "\\'");
 
     const today = window.td();
     const monthInfo = window.Commission.thisMonth();
@@ -31950,17 +31985,17 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           let _r = 'owner';
           try { if (window.AppRole && AppRole.getCurrentRole) _r = AppRole.getCurrentRole(); } catch(e){}
           if (_r !== 'owner' && _r !== 'manager') return '<div style="text-align:center;font-size:12px;color:var(--t3);font-weight:600;padding:8px">Only the owner or manager can edit or remove staff</div>';
-          return `<button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteStaff(${idx})" style="flex:0 0 auto" data-i18n="btn.remove">Remove</button>
-                  <button type="button" class="ps-btn ps-btn-primary" onclick="App.editStaffFromDetail(${idx})">Edit details</button>`;
+          return `<button type="button" class="ps-btn ps-btn-danger" onclick="App.deleteStaff('${idx}')" style="flex:0 0 auto" data-i18n="btn.remove">Remove</button>
+                  <button type="button" class="ps-btn ps-btn-primary" onclick="App.editStaffFromDetail('${idx}')">Edit details</button>`;
         })()}
       </div>
     `;
     this.openInfoSheet({ title: this.escapeHtml(s.name || 'Team member'), sub: roleLabel + ' · ' + commPctLabel + ' comm', bodyHTML: body });
   },
 
-  editStaffFromDetail(idx){
-    const s = STAFF[idx];
-    if (!s) return;
+  editStaffFromDetail(ref){
+    const s = this._staffByRef(ref);
+    if (!s) { this.toast(this._T('toast.staffNotFound', 'Staff not found')); return; }
     const targetId = s.id;
     this.closeProductSheet();
     setTimeout(() => {
@@ -32006,9 +32041,9 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }, 250);
   },
 
-  async deleteStaff(idx){
-    const s = STAFF[idx];
-    if (!s) return;
+  async deleteStaff(ref){
+    const s = this._staffByRef(ref);
+    if (!s) { this.toast(this._T('toast.staffNotFound', 'Staff not found')); return; }
 
     try {
       let _r = 'owner';
@@ -38192,7 +38227,29 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     const storeStaff = ((typeof STAFF !== 'undefined' && STAFF) || []).map(s => Object.assign({ _src: 'store' }, s));
     const cacheStaff = (this._staffCache && Array.isArray(this._staffCache) ? this._staffCache : []).map(s => Object.assign({ _src: 'cache' }, s));
-    const combined = storeStaff.concat(cacheStaff).filter(s => s && !s._deleted && !s.deletedAt);
+    /* (Aug 2026 fix) These two sources overlap: _staffCache holds records
+       fetched from listShopStaff, and the same people are normally ALSO in
+       Store — so a plain concat() rendered them twice. Symptom: the "Staff"
+       stat (which counts Store only) said 3 while the leaderboard below it
+       listed 4 rows, with one person duplicated. Store wins on conflict,
+       since it's the source Edit/Remove actually write to; a cache record
+       is only appended if nobody with that id/phone is already present.
+       Matched on id AND both phone fields because the two sources don't
+       always populate the same ones. */
+    const _seen = new Set();
+    storeStaff.forEach(s => {
+      if (s.id) _seen.add('id:' + s.id);
+      if (s.phoneE164) _seen.add('ph:' + s.phoneE164);
+      if (s.phone) _seen.add('ph:' + s.phone);
+    });
+    const cacheDeduped = cacheStaff.filter(s => {
+      if (!s) return false;
+      if (s.id && _seen.has('id:' + s.id)) return false;
+      if (s.phoneE164 && _seen.has('ph:' + s.phoneE164)) return false;
+      if (s.phone && _seen.has('ph:' + s.phone)) return false;
+      return true;
+    });
+    const combined = storeStaff.concat(cacheDeduped).filter(s => s && !s._deleted && !s.deletedAt);
 
     if (combined.length === 0
         && window.MShop && typeof window.MShop.getActive === 'function'
@@ -38242,6 +38299,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       const prevIsStore = prev._src === 'store';
       const currIsStore = s._src === 'store';
       const merged = Object.assign({}, prev, s, { _sortTs: Math.max(ts, prev._sortTs || 0) });
+
+      /* (Aug 2026 fix) Object.assign lets the LAST source win on every key,
+         including .id — so when a cache record (whose id is set to the
+         phone number in the lazy-fetch path above) merged over a Store
+         record, the row lost the real Store document id. Edit/Remove
+         resolve by that id, so those buttons would silently fail on any
+         person present in both sources. Keep whichever id belongs to the
+         Store record. */
+      if (prevIsStore && prev.id) merged.id = prev.id;
+      else if (currIsStore && s.id) merged.id = s.id;
 
       const prevComm = (prev.commission != null && prev.commission !== '') ? Number(prev.commission) : null;
       const currComm = (s.commission != null && s.commission !== '') ? Number(s.commission) : null;
@@ -38386,8 +38453,20 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       if (roleLabel === 'cashier') roleLabel = 'Cashier';
       else if (roleLabel === 'manager') roleLabel = 'Manager';
 
-      const origIdx = STAFF.findIndex(x => x && (x.phoneE164 || x.phone || x.id || x.name) === (s.phoneE164 || s.phone || s.id || s.name));
-      const safeIdx = origIdx >= 0 ? origIdx : 0;
+      /* (Aug 2026 fix) Was: STAFF.findIndex(x => (x.phoneE164 || x.phone ||
+         x.id || x.name) === (s.phoneE164 || s.phone || s.id || s.name)) —
+         which coalesces each side down to whichever field happens to be
+         present FIRST, then compares those. Two records only match if they
+         both resolve to the same field; a staff member with only an id
+         compared against one with a phoneE164 never matches, findIndex
+         returns -1, and safeIdx silently fell back to 0 — so Edit/Remove
+         operated on the FIRST person in the list instead of the one
+         tapped. Match on .id directly (the stable identifier Store
+         guarantees) and pass that id through, the same way the
+         appointments card fix does, so no index math is involved at all. */
+      const safeStaffId = String(s.id || '').replace(/'/g, "\\'");
+      const origIdx = STAFF.findIndex(x => x && x.id && s.id && x.id === s.id);
+      const staffRef = safeStaffId ? `'${safeStaffId}'` : (origIdx >= 0 ? origIdx : 0);
 
       const _unitSing = s._isCashierStat ? 'bill' : 'service';
       const _unitPlur = s._isCashierStat ? 'bills' : 'services';
@@ -38405,7 +38484,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       }
 
       return `
-        <div class="li" onclick="App.openStaffDetail(${safeIdx})">
+        <div class="li" onclick="App.openStaffDetail(${staffRef})">
           <div class="rank-badge rank-${i+1 <= 3 ? i+1 : 'n'}">${i+1}</div>
           <div class="li-avatar" style="background:linear-gradient(135deg, ${color}, ${this.darken(color)})">${this.escapeHtml(initials)}</div>
           <div class="li-meta">
