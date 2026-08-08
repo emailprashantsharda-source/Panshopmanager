@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_1108';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_1512';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -11476,11 +11476,31 @@ const EMOJI_KEYWORDS = [
   ['highlights', '✨'], ['keratin', '💁‍♀️'], ['smoothening', '💆‍♀️'], ['straightening', '💁‍♀️'],
   ['perm', '🦱'], ['hair', '💇'],
   ['beard', '🧔'], ['shave', '🪒'], ['shaving', '🪒'], ['mustache', '🧔'],
-  ['facial', '💆'], ['cleanup', '🧼'], ['threading', '🪡'], ['bleach', '☀️'],
+  ['facial', '💆'], ['cleanup', '🧼'], ['clean up', '🧼'], ['threading', '🪡'], ['thread', '🪡'],
+  ['bleach', '☀️'], ['detan', '☀️'], ['de-tan', '☀️'],
   ['waxing', '💆‍♀️'], ['wax', '💆‍♀️'],
   ['manicure', '💅'], ['pedicure', '🦶'], ['nail', '💅'],
-  ['bridal', '👰'], ['makeup', '💄'], ['mehendi', '🌿'], ['henna', '🌿'],
+  ['bridal', '👰'], ['makeup', '💄'], ['make up', '💄'], ['mehendi', '🌿'], ['henna', '🌿'],
   ['spa', '🧖'], ['massage', '💆'], ['therapy', '💆‍♀️'],
+  /* (Aug 2026) Real salon menus rarely name a service "haircut" — they're
+     segmented by CLIENT and by LENGTH: "Men", "Women (Member)", "Happy Girl
+     (Below 12 years)", "Upto shoulder". A 208-item imported catalogue had
+     zero keyword hits above, which is how every tile ended up on the
+     vertical fallback. These cover the segment/length naming convention.
+     Deliberately placed AFTER the treatment words above so a specific
+     service name still wins over a generic segment word — "Women Facial"
+     matches 'facial' first, not 'women'. */
+  ['upto shoulder', '💇‍♀️'], ['up to shoulder', '💇‍♀️'], ['below shoulder', '💇‍♀️'],
+  ['shoulder length', '💇‍♀️'], ['waist length', '💇‍♀️'], ['mid back', '💇‍♀️'],
+  ['below 12', '🧒'], ['below 10', '🧒'], ['kids', '🧒'], ['child', '🧒'],
+  ['happy girl', '👧'], ['happy boy', '👦'], ['girl', '👧'], ['boy', '👦'],
+  /* (Aug 2026 fix) Order matters here: matching is a substring indexOf, and
+     "women" CONTAINS "men" — with 'men' listed first, every "Women" service
+     matched the man emoji before 'women' was ever reached. Same for
+     'ladies'/'gents' being unambiguous but 'men' being a substring trap.
+     Longer/more specific terms must precede the ones they contain. */
+  ['women', '👩'], ['ladies', '👩'], ['gents', '👨'], ['men', '👨'], ['unisex', '👥'],
+  ['add-on', '➕'], ['add on', '➕'], ['addon', '➕'], ['touch up', '🖌️'], ['touchup', '🖌️'],
 
   ['atta', '🌾'], ['flour', '🌾'], ['maida', '🌾'], ['besan', '🌾'], ['suji', '🌾'],
   ['sugar', '🍚'], ['salt', '🧂'], ['oil', '🛢️'], ['ghee', '🧈'], ['butter', '🧈'],
@@ -14109,7 +14129,36 @@ const App = {
        letters) and reset to a vertical-appropriate default. Persists the fix
        so it only runs once per corrupted record. */
     try {
-      var _defEmoji = ({ salon:'✂️', cafe:'☕', restaurant:'🍽️', bakery:'🥐', sweets:'🍬', grocery:'🛒', stationery:'✏️', cement:'🏗️', pan:'🍃' })[this.vertical] || '📦';
+      /* (Aug 2026 fix) TWO bugs here, both of which hit the Javed Habib
+         salon's 208-item imported catalogue:
+
+         1. `this.vertical` — the stale-cached-vertical problem we chased
+            through checkout labels and Home pills. When this repair ran it
+            read 'cafe', so a SALON's services were stamped with a
+            cafe/restaurant default. Use _supplyVerticalKey(), the source
+            that reads the active shop's real profession.
+
+         2. Every repaired item got the SAME emoji. That's why the New Sale
+            grid showed 🍽️ on all 208 tiles — one blanket default, applied
+            in bulk. EMOJI_KEYWORDS already contains salon terms (hair,
+            facial, wax, thread, beard, nail, bleach, makeup, massage,
+            spa...), it just was never consulted here. Derive per-item from
+            the item's own name first, and only fall back to the vertical
+            default when nothing matches. */
+      var _vKeyEmoji = (this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical);
+      var _defEmoji = ({ salon:'✂️', cafe:'☕', restaurant:'🍽️', bakery:'🥐', sweets:'🍬', grocery:'🛒', stationery:'✏️', cement:'🏗️', pan:'🍃' })[_vKeyEmoji] || '📦';
+      var _emojiForName = function(nm){
+        try {
+          var lower = String(nm || '').toLowerCase();
+          if (lower && window.EMOJI_KEYWORDS){
+            for (var i = 0; i < window.EMOJI_KEYWORDS.length; i++){
+              var pair = window.EMOJI_KEYWORDS[i];
+              if (pair && pair[0] && lower.indexOf(pair[0]) !== -1) return pair[1];
+            }
+          }
+        } catch(e){}
+        return _defEmoji;
+      };
       var _fixedAny = false;
       (SERVICES || []).forEach(function(p){
         if (!p || !p.emoji) return;
@@ -14119,8 +14168,9 @@ const App = {
         var looksCorrupt = (e.indexOf(',') >= 0) || /[a-zA-Z]/.test(e) || e.length > 8;
         if (looksCorrupt){
           try {
-            Store.update('prods', p.id, { emoji: _defEmoji });
-            p.emoji = _defEmoji;
+            var _newEmoji = _emojiForName(p.name);
+            Store.update('prods', p.id, { emoji: _newEmoji });
+            p.emoji = _newEmoji;
             _fixedAny = true;
           } catch(err){ /* best-effort */ }
         }
@@ -14129,6 +14179,64 @@ const App = {
         SERVICES = Store.list('prods');  /* refresh after repair */
         console.info('[v33_29s] Repaired corrupted product emoji field(s)');
       }
+
+      /* (Aug 2026) Second, separate repair — for records the check above
+         can't see. The salon's 208 imported services were all stamped with
+         a single wrong-vertical default (🍽️) by the buggy version of this
+         routine. That's a perfectly VALID emoji, so `looksCorrupt` is false
+         and they'd never be reconsidered — the grid would show plates
+         forever. This pass re-derives from the item name for records still
+         sitting on a vertical default that (a) doesn't match this shop's
+         actual vertical, and (b) whose name DOES produce a keyword hit —
+         so a deliberate manual choice is never overwritten, and neither is
+         an item whose name genuinely has no better match. Runs once: after
+         the rewrite the emoji is no longer a foreign default, so the
+         condition stops being true for it. */
+      try {
+        /* (Aug 2026 fix) Compare with variation selectors and skin-tone
+           modifiers stripped. These entries are written with U+FE0F (the
+           emoji-presentation selector) — '🍽️' is TWO code points, not one.
+           A record whose stored emoji is the bare '🍽' (no selector, which
+           is what several import paths and some keyboards produce) is a
+           different string, so indexOf() returned -1, the item was treated
+           as "a deliberate manual choice", and the repair skipped it. That
+           is why all 208 imported services kept showing plates even though
+           this repair pass existed and the keyword list already had good
+           matches for every one of their names. */
+        var _stripVS = function(s){
+          try { return String(s || '').replace(/[\uFE0E\uFE0F]/g, '').replace(/[\u{1F3FB}-\u{1F3FF}]/gu, ''); }
+          catch(e){ return String(s || '').replace(/[\uFE0E\uFE0F]/g, ''); }
+        };
+        var _foreignDefaults = ['🍽️','☕','🥐','🍬','🛒','✏️','🏗️','🍃','📦','✂️'].map(_stripVS);
+        var _defEmojiBare = _stripVS(_defEmoji);
+        var _repairedNames = 0;
+        (SERVICES || []).forEach(function(p){
+          if (!p || !p.name) return;
+          /* (Aug 2026) Also covers records with NO emoji at all. The guard
+             here used to require p.emoji to be truthy, so an item with a
+             blank or missing emoji field fell through both repair passes
+             untouched and rendered whatever the grid's own fallback draws. */
+          if (!p.emoji){
+            var firstPick = _emojiForName(p.name);
+            if (firstPick){
+              try { Store.update('prods', p.id, { emoji: firstPick }); p.emoji = firstPick; _repairedNames++; } catch(err){}
+            }
+            return;
+          }
+          var cur = String(p.emoji);
+          var curBare = _stripVS(cur);
+          if (curBare === _defEmojiBare) return;            /* already correct for this vertical */
+          if (_foreignDefaults.indexOf(curBare) === -1) return;  /* a real choice — leave alone */
+          var better = _emojiForName(p.name);
+          if (better && _stripVS(better) !== curBare && _stripVS(better) !== _defEmojiBare){
+            try { Store.update('prods', p.id, { emoji: better }); p.emoji = better; _repairedNames++; } catch(err){}
+          }
+        });
+        if (_repairedNames > 0){
+          SERVICES = Store.list('prods');
+          console.info('[emoji] re-derived ' + _repairedNames + ' product emoji(s) from item names');
+        }
+      } catch(e2){ console.warn('[emoji] name-based re-derive failed (non-fatal):', e2); }
     } catch(e){ console.warn('[v33_29s] emoji sanitize failed (non-fatal):', e); }
     SALES_TODAY = Store.todaySales();
     CUSTOMERS   = Store.list('custs');
