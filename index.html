@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_0526';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_0552';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -5400,7 +5400,7 @@ html[data-current-role="manager"] body{
       </div>
       <div class="form-group" id="staff-comm-group">
         <label class="form-label" data-i18n="staff.commPct">Commission %</label>
-        <input type="number" class="form-input" placeholder="15" id="staff-comm" value="15">
+        <input type="number" class="form-input" placeholder="e.g. 15" id="staff-comm" value="0">
       </div>
     </div>
 
@@ -24636,7 +24636,13 @@ const App = {
     const requires = cfg.requireStaffPerBill === true ||
                      (hasActiveStaff && !vertSaysHasStaff);
 
-    const _SALARIED_ROLES = ['cashier', 'helper'];
+    /* (Aug 2026 fix) 'manager' and 'owner' were missing from this list —
+       cashier and helper were already correctly excluded as roles that
+       don't provide the service being billed, but a manager or owner
+       staff record showed up in "Who served this customer?" right
+       alongside actual stylists, which doesn't make sense for the same
+       reason cashier doesn't. */
+    const _SALARIED_ROLES = ['cashier', 'helper', 'manager', 'owner'];
     const staffList = (STAFF || []).filter(s => {
       if (!s || s._deleted || s.active === false) return false;
       const roleLower = String(s.role || '').toLowerCase();
@@ -24661,7 +24667,7 @@ const App = {
       const isSelected = this._billStaff && this._billStaff.id === id;
       const initials = s.initials || (s.name || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
       const color = s.color || '#000000';
-      const comm = (s.commission != null) ? s.commission : 15;
+      const comm = (s.commission != null) ? s.commission : 0;
       return `<button onclick="App._pickBillStaff('${id}')" style="
           padding:10px 12px;border-radius:11px;border:2px solid ${isSelected ? '#7C2D12' : 'transparent'};
           background:${isSelected ? '#fff' : 'rgba(255,255,255,.6)'};
@@ -24689,7 +24695,7 @@ const App = {
           trigAv.style.background = picked.color || '#0A0A0A';
         }
         if (trigName) {
-          const comm = (picked.commission != null) ? picked.commission : 15;
+          const comm = (picked.commission != null) ? picked.commission : 0;
           trigName.textContent = (picked.name || '') + '  ·  ' + comm + '%';
           trigName.classList.remove('placeholder');
         }
@@ -31966,7 +31972,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         const nm = document.getElementById('staff-name'); if (nm) nm.value = s.name || '';
         const ph = document.getElementById('staff-phone'); if (ph) ph.value = s.phone || '';
         const sl = document.getElementById('staff-salary'); if (sl) sl.value = s.salary || '';
-        const cm = document.getElementById('staff-comm'); if (cm) cm.value = s.commission || 15;
+        const cm = document.getElementById('staff-comm'); if (cm) cm.value = (s.commission != null) ? s.commission : 0;
 
         const jd = document.getElementById('staff-joined');
         if (jd) jd.value = s.joinedDate || window.td();
@@ -37641,7 +37647,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
 
     const salary = parseInt((document.getElementById('staff-salary')||{}).value || '0') || 0;
-    const comm = parseFloat((document.getElementById('staff-comm')||{}).value || '15') || 0;
+    const comm = parseFloat((document.getElementById('staff-comm')||{}).value || '0') || 0;
 
     const joinedDateRaw = ((document.getElementById('staff-joined')||{}).value || '').trim();
     const joinedDate = joinedDateRaw || window.td();
@@ -91154,7 +91160,7 @@ html[data-shell="desktop"] #hnd-shop-switcher.omega-pill .om-avatar {
     /* Build dropdown HTML */
     var options = '<option value="">— Select stylist —</option>'
       + staff.map(function(s){
-          var comm = (s.commission != null) ? s.commission : 15;
+          var comm = (s.commission != null) ? s.commission : 0;
           var sel = (s.id === selectedId) ? ' selected' : '';
           return '<option value="' + escHtml(s.id) + '"' + sel + '>'
                  + escHtml(s.name || '—') + ' · ' + comm + '% comm'
@@ -113315,7 +113321,7 @@ html[data-shell="desktop"] body.hnd-on-pos.hnpos2 .hnpos2-band .hnd-pos-complete
     var opts = '<option value="">\u2014 Select stylist \u2014</option>';
     for (var i=0;i<staff.length;i++){
       var st = staff[i];
-      var comm = (st.commission != null) ? st.commission : 15;
+      var comm = (st.commission != null) ? st.commission : 0;
       opts += '<option value="' + esc(st.id) + '"'
             + ((picked && picked.id === st.id) ? ' selected' : '') + '>'
             + esc(st.name || '\u2014') + ' \u00b7 ' + comm + '%</option>';
