@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260807_2148';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_0526';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -40903,9 +40903,39 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     _lastPending = pending;
 
-    // 1. Clean state — hide pill
+    // 1. Clean state — hide pill, UNLESS the trial is about to run out
     if (online && pending === 0 && !networkBlocked) {
       _stopCountdown();
+
+      /* (Aug 2026 — proactive pre-expiry warning) Everything above this
+         point exists because a shop's trial ran out with zero warning —
+         writes just started silently failing on day 8. This is the fix
+         for the "silently" part: when sync is completely healthy but the
+         trial has 2 days or fewer left, say so here, before anything
+         actually breaks. Only fires with 0 < daysLeft <= 2 — genuinely
+         expired (<=0) is handled by the error-state banners above, and
+         plenty of runway left (>2 days) stays quiet so this doesn't
+         become background noise on every visit. Amber/informational
+         styling, not the red "something is wrong" treatment the other
+         states use, since nothing is actually wrong yet. */
+      var _daysLeftPre = null;
+      try {
+        if (typeof window.HND_getAccurateDaysLeft === 'function') _daysLeftPre = window.HND_getAccurateDaysLeft();
+      } catch(e){}
+
+      if (_daysLeftPre !== null && _daysLeftPre > 0 && _daysLeftPre <= 2) {
+        pill.style.display = 'block';
+        pill.style.background = '#FEF3C7';
+        pill.style.border = '1px solid #FDE68A';
+        pill.style.color = '#92400E';
+        pill.style.cursor = 'pointer';
+        pillText.innerHTML = `⏰ Trial ends in ${_daysLeftPre} day${_daysLeftPre === 1 ? '' : 's'} · <u>Subscribe now</u>`;
+        pill.onclick = function(){
+          try { if (window.App && typeof App.openSubscription === 'function') App.openSubscription(); } catch(e){}
+        };
+        return;
+      }
+
       pill.style.display = 'none';
       pill.onclick = null;
       pill.style.cursor = '';
