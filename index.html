@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_0559';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_0615';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -31977,6 +31977,21 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         const jd = document.getElementById('staff-joined');
         if (jd) jd.value = s.joinedDate || window.td();
 
+        /* (Aug 2026 fix) nav('add-staff') already ran renderStaffRoleTiles()
+           synchronously as part of its own setup, before this correction
+           step gets a chance to run — but at that point MShop.getActive()
+           can still be mid-load, so the tile set it built may be the
+           generic fallback role list rather than the salon-specific one
+           (which is where "Beautician" actually lives). The code below
+           only ever toggled .selected on whatever tiles already existed;
+           if "Beautician" wasn't among them yet, the match against s.role
+           silently found nothing and the form kept whatever nav() had
+           defaulted to. Re-rendering here, now that more time has passed
+           and the shop's real vertical config is far more likely to be
+           ready, guarantees the correct role list exists before matching
+           against it. */
+        this.renderStaffRoleTiles();
+
         const tiles = document.querySelectorAll('#pg-add-staff .cat-tile');
         tiles.forEach(t => {
           const tname = t.querySelector('.cat-tile-name')?.textContent?.trim();
@@ -37422,7 +37437,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           _payRow.style.gridTemplateColumns = '';
 
           if (_commInput && (_commInput.value === '0' || _commInput.value === '')) {
-            _commInput.value = '15';
+            _commInput.value = '0';
           }
         }
       }
@@ -38451,10 +38466,22 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       this._renderedAppts = true;
       return;
     }
-    const html = list.map((a, idx) => `
+    const html = list.map((a, idx) => {
+      const safeId = String(a.id || '').replace(/'/g, "\\'");
+      /* (Aug 2026 fix) Was onclick="App.openApptEdit(${idx})" — the array
+         POSITION at render time, not a stable identifier. _apptByRef()
+         already prefers looking records up by .id and only falls back to
+         treating the ref as a raw array index for legacy callers — so
+         passing the id directly here uses the reliable path instead of
+         the fallback, and can't silently open the wrong record (or find
+         nothing) if the underlying list gets refreshed or reordered
+         between render and tap. Falls back to idx only if this record
+         somehow has no id at all. */
+      const ref = safeId ? `'${safeId}'` : idx;
+      return `
       <div class="appt">
         <div class="appt-time">${this.escapeHtml(a.time || '')}</div>
-        <div class="appt-card ${a.type || 'booked'}" onclick="App.openApptEdit(${idx})">
+        <div class="appt-card ${a.type || 'booked'}" onclick="App.openApptEdit(${ref})">
           <div class="appt-name">${this.escapeHtml(a.name || 'Walk-in')}</div>
           <div class="appt-svc">${this.escapeHtml(a.svc || '')}</div>
           <div class="appt-meta">
@@ -38463,7 +38490,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
     target.innerHTML = html + '<div style="height:18px"></div>';
     this._renderedAppts = true;
   },
