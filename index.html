@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_1016';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_1021';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -18816,11 +18816,22 @@ const App = {
        owner of the margin/setcost/setmargin logic — this only replaces the
        tile where the plan says something else belongs there.
 
-       Salon is left alone: _useStaffPill already owns slot 3 for it, and two
-       things claiming one tile is how these drift. */
+       (Aug 2026 fix) Was: `&& !_useStaffPill`, deliberately leaving salon to
+       the older _useStaffPill heuristic. That choice made sense when slot 2
+       had no stylist pill of its own — but slot 2 now shows "Per Stylist"
+       for salon, so letting _useStaffPill also claim slot 3 rendered TWO
+       tiles with identical math (revenue ÷ stylists) side by side: "Per
+       Stylist ₹450 · 2 stylists today" next to "Per Staff ₹450 · 2 stylists
+       today". _useStaffPill fires whenever commission AND cost data are both
+       zero, which is now the normal state for a salon that hasn't set
+       commission rates — so this wasn't an edge case, it was the default.
+       The explicit per-vertical plan (_HOME_PILLS, salon → s3:'repeat') is
+       the finalized source of truth for what belongs in each slot, so it
+       wins here. _useStaffPill still governs its own label/value logic
+       elsewhere for verticals whose plan doesn't name a slot-3 pill. */
     try {
       var _plan3 = this._homePlan();
-      if (_plan3.s3 !== 'margin' && !_useStaffPill && !_useCashTile){
+      if (_plan3.s3 !== 'margin' && !_useCashTile){
         var _p3 = this._buildPill(_plan3.s3);
         if (_p3){
           this._applyPill('kpi-tile-3', 'kpi-profit-label', 'kpi-profit', 'kpi-profit-delta', _p3);
