@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_0552';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_0559';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -24677,7 +24677,7 @@ const App = {
         <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,${color},${this.darken(color)});color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:-.01em">${this.escapeHtml(initials)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:#7C2D12;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${this.escapeHtml((s.name || '').split(' ')[0])}</div>
-          <div style="font-size:10.5px;color:#9A3412;font-weight:600;margin-top:1px">${comm}% comm</div>
+          ${comm > 0 ? `<div style="font-size:10.5px;color:#9A3412;font-weight:600;margin-top:1px">${comm}% comm</div>` : ''}
         </div>
       </button>`;
     }).join('');
@@ -24696,7 +24696,7 @@ const App = {
         }
         if (trigName) {
           const comm = (picked.commission != null) ? picked.commission : 0;
-          trigName.textContent = (picked.name || '') + '  ·  ' + comm + '%';
+          trigName.textContent = (picked.name || '') + (comm > 0 ? ('  ·  ' + comm + '%') : '');
           trigName.classList.remove('placeholder');
         }
         if (trigReq) trigReq.style.display = 'none';
