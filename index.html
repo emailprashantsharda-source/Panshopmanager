@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_1512';
+    window.HISAABNOW_BUILD = 'v34_auto_20260808_1518';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -21802,7 +21802,29 @@ const App = {
         qty = this.cart[id] || 0;
       }
       const price = Number(s.price || s.sp || 0);
-      const emoji = s.emoji || '🛒';
+      /* (Aug 2026 fix) Derive at RENDER time when the stored value is a
+         generic placeholder, rather than only relying on the background
+         repair in _syncFromStore(). That repair rewrites the records
+         correctly, but this grid can paint before it has run on a cold
+         start — which is exactly the visible "box emoji for a second, then
+         the right one" flash. Deriving here means the correct emoji is
+         drawn on the FIRST paint; the stored-record repair still runs and
+         persists the value, so this is a display-layer safety net, not a
+         replacement for it. Only placeholders are re-derived — a real
+         choice the shop made is always respected. */
+      let emoji = s.emoji || '';
+      try {
+        const _bare = String(emoji).replace(/[\uFE0E\uFE0F]/g, '');
+        const _isPlaceholder = !_bare || _bare === '📦' || _bare === '🍽' || _bare === '🛒';
+        if (_isPlaceholder && s.name && window.EMOJI_KEYWORDS){
+          const _lower = String(s.name).toLowerCase();
+          for (let _k = 0; _k < window.EMOJI_KEYWORDS.length; _k++){
+            const _pair = window.EMOJI_KEYWORDS[_k];
+            if (_pair && _pair[0] && _lower.indexOf(_pair[0]) !== -1){ emoji = _pair[1]; break; }
+          }
+        }
+      } catch(e){}
+      if (!emoji) emoji = '🛒';
 
       const priceLabel = (s.hasSizes && Array.isArray(s.sizes) && s.sizes.length >= 2)
         ? 'from ₹' + price
