@@ -550,6 +550,78 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   font-variant-numeric:tabular-nums}
 .mn-hero-s{font-size:12.5px;opacity:.85;font-weight:600}
 .mn-track{background:#EFEBE3;border-radius:6px;height:7px;overflow:hidden}
+/* ── Fleet screen ────────────────────────────────────────────────────
+   KPI strip, then one card per vehicle with a footer fact strip. The
+   card answers, top to bottom: which bike, what state, what it made
+   today, and the one fact its state raises (when it's back / why it
+   can't go / what it costs). */
+.fl-kpi{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);
+  border:1px solid var(--bd);border-radius:16px;margin-bottom:14px;
+  box-shadow:var(--shadow-md);overflow:hidden}
+.fl-k{padding:11px 5px;text-align:center;position:relative}
+.fl-k+.fl-k:before{content:'';position:absolute;left:0;top:16%;height:68%;width:1px;
+  background:var(--bd)}
+.fl-k-l{font-size:10px;font-weight:700;letter-spacing:.03em;color:var(--t3);
+  text-transform:uppercase;line-height:1.3}
+.fl-k-v{font-size:22px;font-weight:850;letter-spacing:-.025em;line-height:1.15;
+  font-variant-numeric:tabular-nums;margin-top:2px}
+.fl-k.all .fl-k-v{color:var(--p)}
+.fl-k.out .fl-k-v{color:var(--p-mid)}
+.fl-k.ok  .fl-k-v{color:var(--success-d)}
+.fl-k.svc .fl-k-v{color:var(--y)}
+.fl-k.svc.zero .fl-k-v{color:var(--t4)}
+.fl-tools{display:flex;gap:8px;margin-bottom:13px}
+.fl-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--bd);border-radius:12px;padding:0 12px;min-width:0}
+.fl-search input{flex:1;min-width:0;border:0;outline:0;background:none;padding:11px 0;
+  font-size:14.5px;color:var(--t1);font-family:inherit}
+.fl-search input::placeholder{color:var(--t4)}
+.fl-sort{flex:none;background:var(--card);border:1px solid var(--bd);border-radius:12px;
+  padding:0 13px;font-size:13.5px;font-weight:700;color:var(--t2);cursor:pointer;
+  font-family:inherit}
+.fl-sec{font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--t3);margin:16px 2px 9px}
+.fl-v{background:var(--card);border:1px solid var(--bd);border-radius:16px;
+  margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer}
+.fl-v:active{background:#FCFAF6}
+.fl-main{display:flex;gap:12px;padding:13px 13px 11px}
+/* No photo library in this app, so the plate does the identifying work a
+   photo would: a shop knows its bikes by number, and the number is already
+   in the record. Tinted by state so the list scans by colour. */
+.fl-th{flex:none;width:60px;height:60px;border-radius:13px;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border:1px solid transparent}
+.fl-th-i{font-size:20px;line-height:1}
+.fl-th-p{font-size:8.5px;font-weight:800;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;text-align:center;padding:0 2px}
+.t-rented{background:var(--p-50);border-color:#D3E0EA;color:var(--p)}
+.t-avail{background:var(--success-tint);border-color:#BFEBD4;color:var(--success-d)}
+.t-svc{background:var(--y-tint);border-color:var(--y-bd);color:#8A5A06}
+.fl-mid{flex:1;min-width:0}
+.fl-hd{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.fl-n{font-size:16.5px;font-weight:800;letter-spacing:-.02em;max-width:100%}
+.fl-pill{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;white-space:nowrap}
+.p-rented{background:var(--p-50);color:var(--p)}
+.p-avail{background:var(--success-tint);color:var(--success-d)}
+.p-svc{background:var(--y-tint);color:#8A5A06}
+.fl-meta{font-size:12.5px;color:var(--t3);margin-top:3px}
+.fl-who{font-size:13.5px;font-weight:650;margin-top:4px}
+.w-rented{color:var(--p-mid)}
+.w-svc{color:#8A5A06}
+.w-idle{color:var(--t4)}
+.fl-money{flex:none;text-align:right;padding-left:4px}
+.fl-m-v{font-size:16.5px;font-weight:850;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:var(--success-d)}
+.fl-m-v.nil{color:var(--t4);font-weight:700}
+.fl-m-l{font-size:10.5px;color:var(--t4);font-weight:600;margin-top:1px;white-space:nowrap}
+.fl-foot{display:flex;align-items:stretch;border-top:1px solid #F1EDE5;background:#FDFBF7}
+.fl-f{flex:1;display:flex;align-items:center;gap:6px;padding:9px 11px;font-size:12px;
+  color:var(--t2);min-width:0}
+.fl-f+.fl-f{border-left:1px solid #F1EDE5}
+.fl-f b{font-weight:700;color:var(--t1)}
+.fl-fi{font-size:12.5px;flex:none;opacity:.75}
+.fl-f.warn,.fl-f.warn b{color:#8A5A06}
 /* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
    size instead of four columns squeezing them to nothing. */
 .bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
@@ -2582,6 +2654,30 @@ const R = {
   },
 
   /* ── FLEET ──────────────────────────────────────────────────────── */
+  /* Earned by this bike within a period, from the closed-rentals cache the
+     Money page already loads. vehicleStats.earned is a LIFETIME figure and
+     cannot answer "today" — but the cache is capped at 400 recent
+     settlements, so this is right for today/this week and would undercount
+     a very long window. Only ever called for short periods here. */
+  earnedToday(v){
+    const rows = this._closed || [];
+    const start = new Date(); start.setHours(0,0,0,0);
+    const s = start.getTime();
+    return rows.filter(x => x.vehicleId===v.id && !x.voidedAt && x.status!=='cancelled'
+        && (x.outAt||0) >= s)
+      .reduce((a,x)=> a + (Number(x.revenue)||0), 0);
+  },
+
+  fleetSearch(q){ this._fq = q; this.renderFleet(); },
+  fleetSort(){
+    const opts = ['status','earning','idle','name'];
+    const cur = opts.indexOf(this._fsort||'status');
+    this._fsort = opts[(cur+1) % opts.length];
+    toast({ status:'Sorted by status', earning:'Sorted by earned today',
+            idle:'Sorted by longest idle', name:'Sorted by name' }[this._fsort]);
+    this.renderFleet();
+  },
+
   renderFleet(){
     const box = document.getElementById('fleet-list');
     const missing = DB.d.rates.filter(rc => !DB.d.vehicles.some(v => v.rateId===rc.id)).length;
@@ -2600,10 +2696,7 @@ const R = {
         ${junk && this.isOwner() ? `<button class="btn ghost sm" style="margin-top:8px;width:100%"
           onclick="R.clearStarters()">Remove ${junk} unpriced ${noun(junk!==1)} I never added</button>` : ''}
       </div>` : '') +
-      `<div class="muted" style="margin:0 2px 10px">
-        One ${noun()} per row. Rename it, add a vehicle number, or add a second ${noun()}
-        of the same model from Rates.</div>
-      <button class="btn" style="margin-bottom:12px" onclick="R.editVehicle()">
+      `<button class="btn" style="margin-bottom:12px" onclick="R.editVehicle()">
         + Add a ${noun()}</button>` +
       /* Only offered when there genuinely are priced rate cards with no bike
          against them. With no seeding that is a real, useful state — a shop that
@@ -2630,74 +2723,142 @@ const R = {
        owner sitting down actually wants. Same data, different question. */
     if (this.isWide()) return this.fleetTable(hdr);
 
-    const order = { available:0, rented:1, maintenance:2, retired:3 };
-    const vs = [...DB.d.vehicles].sort((a,b)=>
-      (order[a.status]-order[b.status]) || String(vLabel(a)).localeCompare(String(vLabel(b))));
-    box.innerHTML = hdr + vs.map(v => {
+    /* The closed-rentals cache backs "Earned today". Money loads it too and
+       both share this field, so opening one page warms the other. Re-render
+       through render() rather than renderFleet() directly: if the user has
+       switched to Money while this was in flight, Money rendered against the
+       empty placeholder below and needs the same wake-up. */
+    if (!this._closed && window.Cloud && Cloud.ready){
+      this._closed = [];
+      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    }
+
+    const live = DB.d.vehicles.filter(v => !v.deletedAt);
+    const openOf = v => DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
+    /* "Cannot rent out" is the honest grouping: it is what a blocked bike
+       means to the person at the counter, and it covers three different
+       causes — expired papers, no rate set, and manual maintenance — that
+       all produce the same refusal at checkout. */
+    const blocked = v => v.status==='maintenance' || v.status==='retired'
+      || !!this.docBlocked(v)
+      || (()=>{ const rc = DB.d.rates.find(r=>r.id===v.rateId); return !rc || !this.rateReady(rc); })();
+    const bucketOf = v => v.status==='rented' ? 0 : (blocked(v) ? 2 : 1);
+
+    const q = (this._fq||'').trim().toLowerCase();
+    const match = v => !q || String(vLabel(v)).toLowerCase().includes(q)
+      || String(v.regNo||'').toLowerCase().includes(q)
+      || String(v.model||'').toLowerCase().includes(q);
+    const shown = live.filter(match);
+
+    const sortKey = this._fsort || 'status';
+    const sorters = {
+      status:  (a,b)=> (bucketOf(a)-bucketOf(b)) || String(vLabel(a)).localeCompare(String(vLabel(b))),
+      earning: (a,b)=> this.earnedToday(b) - this.earnedToday(a),
+      idle:    (a,b)=> (this.idleDays(b)||0) - (this.idleDays(a)||0),
+      name:    (a,b)=> String(vLabel(a)).localeCompare(String(vLabel(b))),
+    };
+    const vs = shown.slice().sort(sorters[sortKey]);
+
+    const nOut = live.filter(v=>v.status==='rented').length;
+    const nBlocked = live.filter(v=>bucketOf(v)===2).length;
+    const nReady = live.length - nOut - nBlocked;
+
+    const kpi = `
+      <div class="fl-kpi">
+        <div class="fl-k all"><div class="fl-k-l">Total</div><div class="fl-k-v">${live.length}</div></div>
+        <div class="fl-k out"><div class="fl-k-l">Out now</div><div class="fl-k-v">${nOut}</div></div>
+        <div class="fl-k ok"><div class="fl-k-l">Ready</div><div class="fl-k-v">${nReady}</div></div>
+        <div class="fl-k svc${nBlocked?'':' zero'}"><div class="fl-k-l">Blocked</div>
+          <div class="fl-k-v">${nBlocked}</div></div>
+      </div>`;
+
+    const tools = `
+      <div class="fl-tools">
+        <div class="fl-search"><span style="opacity:.5">\u{1F50D}</span>
+          <input id="fl-q" placeholder="Search by name or number" value="${esc(this._fq||'')}"
+            oninput="R.fleetSearch(this.value)"></div>
+        <button class="fl-sort" onclick="R.fleetSort()">\u2195 ${
+          { status:'Status', earning:'Earned', idle:'Idle', name:'Name' }[sortKey]}</button>
+      </div>`;
+
+    const card = v => {
       const rc = DB.d.rates.find(r=>r.id===v.rateId);
-      const r  = DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
+      const r = openOf(v);
       const docs = this.docWarn(v);
-      const pill = { available:'ok', rented:'out', maintenance:'maint', retired:'late' }[v.status]||'ok';
-      const earned = this.earnedBy(v);
-      return `<div class="card tap" onclick="R.editVehicle('${v.id}')">
-        <div class="row">
-          <div class="grow">
-            <div class="row" style="gap:7px">
-              <b class="ell" style="font-size:15.5px">${esc(vLabel(v))}</b>
-              <span class="pill ${pill}">${v.status.toUpperCase()}</span>
-              ${docs ? `<span class="pill warn">${esc(docs)}</span>` : ''}
-              ${rc && !this.rateReady(rc) ? `<span class="pill late">NO RATE</span>` : ''}
-            </div>
-            ${(()=>{
-              /* A booking holds a MODEL, so this line is a fact about the rate
-                 card, not about this one bike. It used to read "Booked 9 Aug"
-                 on every bike sharing the card, which says the opposite of
-                 what is true: one booking against two Activas leaves one free.
-                 
-                 So it now counts. Two bikes, one booking reads "1 of 2 booked",
-                 which is both accurate and identical on every row — correct,
-                 because it is a model-level fact. The preferred bike says so. */
-              const bs = this.bookings().filter(b => b.rateId === v.rateId)
-                .sort((a,c)=> Number(a.fromAt)-Number(c.fromAt));
-              if (!bs.length) return '';
-              const nb = bs[0];
-              const bikes = (DB.d.vehicles||[]).filter(x =>
-                !x.deletedAt && x.rateId === v.rateId && x.status !== 'retired').length;
-              const tight = bs.length >= bikes;
-              const mine = nb.preferredVehicleId === v.id;
-              return `<div class="muted" style="margin-top:3px;font-weight:750;color:${
-                tight ? 'var(--danger)' : 'var(--vi)'}">
-                \u{1F4C5} ${bs.length} of ${bikes} ${esc(nb.model||'')} booked \u00b7 ${
-                  esc(fmtDT(nb.fromAt))}${bs.length===1?' \u00b7 '+esc(nb.customerName):''}${
-                  mine ? ' \u00b7 this one preferred' : ''}</div>`;
-            })()}
-            <div class="muted ell" style="margin-top:2px">
-              ${esc(vSub(v))||esc(v.model)}${
-                !rc ? ' · no rate card'
-                : (this.rateReady(rc) ? ' · deposit '+money(rc.deposit) : '')
-              }</div>
-            ${rc && !this.rateReady(rc) ? `
-            <!-- The prompt sits where the problem was noticed, and goes straight
-                 to the rate card rather than to the Rates list. stopPropagation
-                 because the whole card already opens the bike editor, and a
-                 thumb aiming at this should not land there instead. -->
-            <div class="muted" style="margin-top:4px;color:var(--danger)">
-              Rate not set \u2014 this ${noun()} cannot go out.
-              <span style="font-weight:850;text-decoration:underline"
-                onclick="event.stopPropagation();R.editRate('${rc.id}')">Set rate</span>
-            </div>` : ''}
-            <div class="muted" style="margin-top:4px">
-              Earned ${money(earned)}${v.cost?' of '+money(v.cost)+' cost':''}
-              ${r?' · out, due '+fmtDT(r.dueAt):''}
-            </div>
+      const noRate = !rc || !this.rateReady(rc);
+      const b = bucketOf(v);
+      const tone = b===0 ? 'rented' : (b===2 ? 'svc' : 'avail');
+      const et = this.earnedToday(v);
+      const plate = (v.regNo||'').split(' ').slice(-2).join(' ') || (v.regNo||'');
+      const overdue = r && r.dueAt && Date.now() > r.dueAt;
+
+      /* One line under the name saying what this bike is doing right now. The
+         status pill says the category; this says the specific. */
+      let who = '', whoCls = 'idle';
+      if (r){ who = 'With ' + esc(r.customerName || 'a customer'); whoCls = 'rented'; }
+      else if (docs){ who = esc(docs); whoCls = 'svc'; }
+      else if (noRate){ who = 'Rate not set'; whoCls = 'svc'; }
+      else if (v.status==='maintenance'){ who = 'In maintenance'; whoCls = 'svc'; }
+      else if (v.status==='retired'){ who = 'Retired'; whoCls = 'svc'; }
+      else { const d = this.idleDays(v); who = d===null ? '' : (d<=0 ? 'Back today' : 'Idle '+d+' day'+(d===1?'':'s')); }
+
+      /* Left footer cell answers the question this bike's state actually
+         raises: when is it back / why can't it go / what does it cost. */
+      let f1;
+      if (r) f1 = `<div class="fl-f${overdue?' warn':''}"><span class="fl-fi">\u{1F551}</span>${
+        overdue ? '<b>Overdue</b> \u00b7 due '+esc(fmtDT(r.dueAt)) : 'Due <b>'+esc(fmtDT(r.dueAt))+'</b>'}</div>`;
+      else if (b===2) f1 = `<div class="fl-f warn"><span class="fl-fi">\u{1F6AB}</span><b>${
+        noRate ? 'No rate \u2014 cannot go out' : 'Blocked at checkout'}</b></div>`;
+      else f1 = `<div class="fl-f"><span class="fl-fi">\u{1F4B0}</span><b>${
+        rc && rc.tiers && rc.tiers.h24 ? money(rc.tiers.h24) : '\u2014'}</b>/day</div>`;
+
+      return `<div class="fl-v" onclick="R.editVehicle('${v.id}')">
+        <div class="fl-main">
+          <div class="fl-th t-${tone}">
+            <div class="fl-th-i">${kindEmoji()}</div>
+            ${plate?`<div class="fl-th-p">${esc(plate)}</div>`:''}
+          </div>
+          <div class="fl-mid">
+            <div class="fl-hd"><span class="fl-n ell">${esc(vLabel(v))}</span>
+              <span class="fl-pill p-${tone}">${
+                b===0?'Out':(b===2?(noRate?'No rate':'Blocked'):'Ready')}</span></div>
+            <div class="fl-meta ell">${esc(vSub(v))||esc(v.model||'')}</div>
+            ${who?`<div class="fl-who w-${whoCls} ell">${who}</div>`:''}
+          </div>
+          <div class="fl-money">
+            <div class="fl-m-v${et?'':' nil'}">${et?money(et):'\u2014'}</div>
+            <div class="fl-m-l">Earned today</div>
           </div>
         </div>
+        <div class="fl-foot">
+          ${f1}
+          <div class="fl-f"><span class="fl-fi">\u{1F6E1}\uFE0F</span>Deposit <b>${
+            rc && rc.deposit ? money(rc.deposit) : '\u2014'}</b></div>
+        </div>
       </div>`;
-    }).join('');
-      /* The second Add button at the end of the list is gone. It existed because
-         the first one was hard to find at the bottom; the first one now sits at
-         the top, and two of them four centimetres apart on a one-bike fleet was
-         the result. */
+    };
+
+    const group = (label, n, list) => !list.length ? '' :
+      `<div class="fl-sec">${label} \u00b7 ${n}</div>` + list.map(card).join('');
+
+    let body;
+    if (!vs.length){
+      body = `<div class="card"><div class="muted">No ${noun(1)} match \u201C${esc(this._fq||'')}\u201D.</div></div>`;
+    } else if (sortKey === 'status'){
+      body = group('Out on rent', vs.filter(v=>bucketOf(v)===0).length, vs.filter(v=>bucketOf(v)===0))
+           + group('Ready to rent', vs.filter(v=>bucketOf(v)===1).length, vs.filter(v=>bucketOf(v)===1))
+           + group('Cannot rent out', vs.filter(v=>bucketOf(v)===2).length, vs.filter(v=>bucketOf(v)===2));
+    } else {
+      body = vs.map(card).join('');
+    }
+
+    box.innerHTML = kpi + hdr + tools + body;
+    /* innerHTML replaced the input, so focus and caret are gone. Restore them
+       or typing a second character in the search box moves focus to nowhere. */
+    if (q){
+      const el = document.getElementById('fl-q');
+      if (el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    }
   },
 
   /* Days since this bike last went out. The number that says the Maestro has
@@ -5222,7 +5383,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     const closed = this._closed || [];
     if (!this._closed && window.Cloud && Cloud.ready){
       this._closed = [];
-      Cloud.recentClosed(400).then(rows => { this._closed = rows; if (this.page==='money') this.renderMoney(); });
+      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
     }
     /* Filtered by outAt, not settledAt — for the same reason revenue now rolls
        up to check-out day. A rental out at 10pm and back at 4am belongs to
