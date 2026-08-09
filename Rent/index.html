@@ -5866,10 +5866,31 @@ const Cloud = {
       const snap = await getDoc(doc(db, 'rn_members', this.uid));
       const m = snap.exists() ? snap.data() : null;
       const shops = (m && m.shops) ? Object.keys(m.shops) : [];
-      if (this.shopId && shops.length && !shops.includes(this.shopId)) {
-        /* The remembered shop is gone or access was removed — recover quietly. */
+      /* Used to require shops.length here too — "the remembered shop is
+         gone, but only clean it up if you have somewhere else to go."
+         That left a real gap: an account with NO valid memberships at all
+         (test data wiped, staff access removed, anything that zeroes out
+         `shops`) never satisfied the old shops.length check, so the stale
+         shopId in localStorage was never cleared. afterLogin()'s fast path
+         re-opens it optimistically on every single login regardless, every
+         listener denies against a shop this account can't access, and no
+         amount of retrying — however patient — fixes that, because it
+         isn't a timing problem. This is what the "vehicleStats/bookings
+         permission-denied, unrecovering across logins" reports were. */
+      if (this.shopId && !shops.includes(this.shopId)) {
         try { localStorage.removeItem('rn_last_shop_' + this.uid); } catch(e){}
-        location.reload();
+        if (shops.length) {
+          /* Another valid shop exists — reload picks it up via afterLogin()'s
+             members-doc path now that the stale cache is gone. */
+          location.reload();
+        } else {
+          /* Nowhere else to go. Tear down the listeners aimed at the
+             inaccessible shop and send them to create one, instead of
+             reloading into the exact same dead end. */
+          this._unsub.forEach(f=>{ try{f();}catch(e){} }); this._unsub=[];
+          this.shopId = null; this.role = null; this.shop = null;
+          this.askShop();
+        }
       } else if (m && m.shops && m.shops[this.shopId]) {
         this.role = m.shops[this.shopId];
         try { localStorage.setItem('rn_last_role_' + this.uid, this.role); } catch(e){}
@@ -5972,6 +5993,14 @@ const Cloud = {
        return value isn't tracked too, switching shops before the retry
        fires would leave the retried listener running against the old
        shop forever. */
+    /* Backoff schedule for the permission-denied retry: 1.5s, then 3.5s.
+       One shot at a fixed 1.5s was enough for a clean network but not for
+       the session that surfaced this — full of QUIC/DNS errors — where the
+       membership doc plausibly took longer than 1.5s to become visible to
+       a fresh Listen request. Two tries, backing off, costs nothing on a
+       healthy connection (the first one just succeeds) and gives a slow one
+       real room before the toast gives up on it. */
+    const RETRY_DELAYS_MS = [1500, 3500];
     const bind = (q, key, after, silent) => {
       let tries = 0;
       const attach = () => {
@@ -5984,9 +6013,9 @@ const Cloud = {
           if (after) after();
           if (this.ready && window.R) window.R.render();
         }, err => {
-          console.error(key, err.code||err);
-          if (err.code === 'permission-denied' && tries === 0){
-            tries++; setTimeout(attach, 1500); return;
+          console.error(key, err.code||err, 'try', tries);
+          if (err.code === 'permission-denied' && tries < RETRY_DELAYS_MS.length){
+            setTimeout(attach, RETRY_DELAYS_MS[tries]); tries++; return;
           }
           if (!silent) window.toast('Sync error on '+key);
         }));
@@ -6039,9 +6068,9 @@ const Cloud = {
         if (this.shop && this.shop.ownerUid === this.uid) this.role = 'owner';
         if (this.ready && window.R) window.R.render();
       }, err => {
-        console.error('shop', err.code||err);
-        if (err.code === 'permission-denied' && shopTries === 0){
-          shopTries++; setTimeout(attachShop, 1500);
+        console.error('shop', err.code||err, 'try', shopTries);
+        if (err.code === 'permission-denied' && shopTries < RETRY_DELAYS_MS.length){
+          setTimeout(attachShop, RETRY_DELAYS_MS[shopTries]); shopTries++;
         }
       }));
     };
