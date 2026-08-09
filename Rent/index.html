@@ -5681,10 +5681,24 @@ try {
 const auth = getAuth(app);
 const fns = getFunctions(app);
 /* Durable offline mirror + cross-tab coherence. This is the piece that
-   makes "never lost" true for work done without a connection. */
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
+   makes "never lost" true for work done without a connection.
+
+   Falls back to a plain (memory-only) Firestore instance if persistent
+   cache init itself throws — some browsers/WebViews have IndexedDB
+   disabled or broken outright (storage permissions, embedded webview
+   restrictions, private-browsing variants that differ from Chrome's).
+   Without this, that class of device couldn't load the app at all.
+   Offline durability is lost in that fallback, but a shop can still use
+   the app online rather than seeing a blank screen. */
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch(e){
+  console.warn('Persistent Firestore cache unavailable, falling back to memory cache', e);
+  db = initializeFirestore(app, {});
+}
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
@@ -5958,7 +5972,25 @@ const Cloud = {
          actually wants the full model list. */
 
       await this.open(shopId);
-    } catch(e){ console.error(e); window.toast('Could not create business — '+(e.code||e.message)); }
+    } catch(e){
+      console.error(e);
+      /* INTERNAL ASSERTION FAILED is a Firestore SDK bug in its local
+         persistence layer, not anything this app's code can catch or
+         retry around — by the time it surfaces, the write may or may not
+         have gone through, and the SDK's IndexedDB state for this origin
+         is in an inconsistent place. The one reliable recovery, since it's
+         a storage problem rather than a network or permissions one, is a
+         clean storage context: an Incognito/Private window sidesteps
+         whatever's wrong in the normal profile entirely. Telling someone
+         to "close other tabs" for a raw SDK internal-assertion string
+         would send them down the wrong troubleshooting path. */
+      const msg = (e && e.message) || '';
+      if (msg.indexOf('INTERNAL ASSERTION FAILED') !== -1){
+        window.toast('Something is wrong with this browser\'s local storage for this site. Try again in a Private/Incognito window, or a different browser.');
+      } else {
+        window.toast('Could not create business — '+(e.code||e.message));
+      }
+    }
   },
 
   /* ── open a shop: scoped listeners ────────────────────────────── */
