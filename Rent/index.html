@@ -6654,9 +6654,17 @@ const Cloud = {
          /daily above. That must not take down the /daily repair that just
          succeeded: isolated in its own try, reported separately, so the
          Money-page numbers still get fixed even if Fleet's have to wait
-         on a rules deploy. */
+         on a rules deploy.
+
+         One retry on permission-denied specifically, same reasoning as the
+         live listeners in open(): a button pressed moments after the rules
+         actually finished propagating, or right after a fresh sign-in on a
+         shaky connection, can hit the exact same timing race that showed up
+         on /bookings and /vehicleStats in the console log that led to that
+         fix — and this one-shot call had no retry of its own before now, so
+         it reported the transient failure as final on the very first hit. */
       let vehicleErr = null, vids = [];
-      try {
+      const runVehicleStats = async () => {
         const existingV = await getDocs(collection(db,'rn_shops',this.shopId,'vehicleStats'));
         existingV.docs.forEach(d => { if (!vstats[d.id]) vstats[d.id] = { earned:0, closedTrips:0, lastOutAt:0 }; });
         vids = Object.keys(vstats);
@@ -6671,10 +6679,24 @@ const Cloud = {
           });
           await b.commit();
         }
+      };
+      try {
+        await runVehicleStats();
       } catch(e){
-        console.error('repairDailyRollups(vehicleStats)', e);
-        vehicleErr = (e && e.code) || 'unknown';
-        vids = [];
+        if ((e && e.code) === 'permission-denied'){
+          await new Promise(res => setTimeout(res, 1500));
+          try {
+            await runVehicleStats();
+          } catch(e2){
+            console.error('repairDailyRollups(vehicleStats)', e2);
+            vehicleErr = (e2 && e2.code) || 'unknown';
+            vids = [];
+          }
+        } else {
+          console.error('repairDailyRollups(vehicleStats)', e);
+          vehicleErr = (e && e.code) || 'unknown';
+          vids = [];
+        }
       }
 
       return { ok:true, days: days.length, vehicles: vids.length, rentals: rentals.length, vehicleErr };
