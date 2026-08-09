@@ -550,6 +550,24 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   font-variant-numeric:tabular-nums}
 .mn-hero-s{font-size:12.5px;opacity:.85;font-weight:600}
 .mn-track{background:#EFEBE3;border-radius:6px;height:7px;overflow:hidden}
+/* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
+   size instead of four columns squeezing them to nothing. */
+.bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
+  border:1px solid #EFEBE3;border-radius:12px;overflow:hidden}
+.bs-tile{display:flex;align-items:center;gap:10px;padding:14px 12px;background:#fff}
+.bs-ico{font-size:20px;line-height:1;flex:none}
+.bs-l{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--t3);line-height:1.25}
+.bs-v{font-size:22px;font-weight:850;letter-spacing:-.02em;color:var(--t1);
+  font-variant-numeric:tabular-nums;margin-top:2px}
+/* Inline per-rental list under each vehicle card. */
+.bs-rows{margin-top:10px;border-top:1px solid #EFEBE3}
+.bs-row{display:flex;align-items:center;gap:10px;padding:9px 0;
+  border-bottom:1px solid #F4F1EB}
+.bs-row:last-child{border-bottom:0;padding-bottom:0}
+.bs-row-n{font-size:14px;font-weight:650;color:var(--t1)}
+.bs-bill{flex:none;background:none;border:0;padding:4px 2px;font-size:11.5px;
+  font-weight:800;letter-spacing:.03em;color:#2E6D96;cursor:pointer}
 .mn-track>div{height:100%;border-radius:6px;transition:width .35s cubic-bezier(.2,.8,.3,1)}
 .pl-toggle{display:flex;gap:6px;background:var(--p-50);border:1px solid var(--bd);
   border-radius:13px;padding:4px;margin-bottom:14px}
@@ -5222,9 +5240,34 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
          older, most-paid-off bikes. */
       return { v, earned: rs.reduce((a,x)=>a+(Number(x.revenue)||0),0),
                hours: rs.reduce((a,x)=>a+(Number(x.hoursUsed)||0),0), trips: rs.length,
+               rows: rs.slice().sort((a,b)=>(b.outAt||0)-(a.outAt||0)),
                payback: v.cost ? Math.min(999, Math.round(
                  R.earnedBy(v)/v.cost*100)) : null };
     }).filter(x=>x.trips>0).sort((a,b)=>b.earned-a.earned);
+
+    /* ── rentals summary ──────────────────────────────────────────────
+       Counted off outAt for every status, so a rental appears in exactly
+       the period it went out in — the same rule the Earned hero and the
+       per-vehicle cards now use. Counting completed by settledAt instead
+       would let one rental land in two different periods depending on
+       which tile you looked at.
+
+       Ongoing is not filtered by period on purpose: a bike still out is
+       out right now regardless of which period is selected, and showing
+       "0 ongoing" while three bikes are on the road would be wrong on
+       the one screen a shop checks to find them. Cancelled comes from
+       the closed cache, which keeps cancelled rows (they are excluded
+       from inRange above, not from `closed`). */
+    const sumOut = x => this._period==='all' || (x.outAt >= rng.start && x.outAt <= rng.end);
+    const sCompleted = inRange.length;
+    const sCancelled = closed.filter(x => x.status==='cancelled' && !x.voidedAt && sumOut(x)).length;
+    const sOngoing   = open.length;
+    const sTotal     = sCompleted + sCancelled + sOngoing;
+    const sTile = (label, val, color, icon) => `
+      <div class="bs-tile">
+        <div class="bs-ico" style="color:${color}">${icon}</div>
+        <div><div class="bs-l">${label}</div><div class="bs-v">${val}</div></div>
+      </div>`;
 
     const peak = Math.max(earned, got, depIn, depOut, 1);
     const bar = (l,val,col) => `
@@ -5285,6 +5328,18 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
           <b>${money(netCash + netUpi)}</b></div>
       </div>
 
+      <div class="card">
+        <div class="sec-hd" style="margin:0 0 12px">Rentals · ${esc(rng.label)}</div>
+        <div class="bs-grid">
+          ${sTile('Total rentals', sTotal, '#0F3D5C', '🗓️')}
+          ${sTile('Completed', sCompleted, '#06C167', '🛵')}
+          ${sTile('Ongoing', sOngoing, '#F5A623', '🕒')}
+          ${sTile('Cancelled', sCancelled, '#D64545', '✕')}
+        </div>
+        <div class="muted" style="margin-top:10px">Ongoing is live — bikes out right
+          now, whichever period is selected above.</div>
+      </div>
+
       <div class="card mn-liab">
         <div class="row"><div class="grow">
           <div class="mn-liab-l">Deposits held right now</div>
@@ -5299,13 +5354,29 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
 
       <div class="sec-hd">Which bikes earned · ${esc(rng.label)}</div>
       ${!per.length ? '<div class="card"><div class="muted">No settled rentals in this period.</div></div>'
-        : per.map(p=>`<div class="card tap" onclick="R.vehicleBills('${esc(p.v.id)}')">
+        : per.map(p=>`<div class="card">
             <div class="row"><b class="grow ell">${esc(vLabel(p.v))}
               ${p.v.regNo?'<span class="muted"> '+esc(p.v.regNo)+'</span>':''}</b>
               <b>${money(p.earned)}</b></div>
             <div class="mn-track" style="margin:8px 0 6px"><div style="background:linear-gradient(90deg,#0F3D5C,#3E7FA8);width:${(p.earned/(per[0].earned||1))*100}%"></div></div>
             <div class="muted">${p.trips} rental${p.trips===1?'':'s'} · ${fmtDur(p.hours)} on rent${
               p.payback!==null?' · <b style="color:'+(p.payback>=100?'var(--success-d)':'var(--t2)')+'">'+p.payback+'% of cost recovered</b>':''}</div>
+            <!-- Every rental listed inline rather than behind a tap. The sheet
+                 that R.vehicleBills() opens still exists and is still reachable
+                 from history; this is the same data without the click, because
+                 the question "which rentals made up this number" was being
+                 asked of every single card. -->
+            <div class="bs-rows">
+              ${p.rows.map(r=>`<div class="bs-row">
+                <div class="grow ell">
+                  <div class="bs-row-n">${esc(r.customerName||'Walk-in')}</div>
+                  <div class="muted">${r.outAt?fmtDT(r.outAt):''}${
+                    r.extraHours?' · '+r.extraHours+'h extra':''}</div>
+                </div>
+                <b>${money(r.revenue)}</b>
+                <button class="bs-bill" onclick="event.stopPropagation();R.bill('${esc(r.id)}')">BILL ›</button>
+              </div>`).join('')}
+            </div>
           </div>`).join('')}
 
       ${this.isOwner() ? `<button class="btn ghost" style="margin-top:14px;font-size:12px;color:var(--t3)"
