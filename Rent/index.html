@@ -5946,15 +5946,25 @@ const Cloud = {
     this._unsub.forEach(f=>{ try{f();}catch(e){} }); this._unsub=[];
     const S = p => collection(db,'rn_shops',shopId,p);
 
-    /* `silent`: for listeners the app can run without (daily rollups,
-       vehicle stats) — a hiccup here shouldn't put a scary "Sync error"
-       toast in front of someone whose very first screen this might be,
-       for a collection that's legitimately empty and blocks nothing they
-       can actually do. Still logged to console either way. One retry
-       after a short delay: if this is the first-open-after-create race
-       (writes just committed, listener attached a beat too early), the
-       retry alone fixes it; if it's a real rules problem, the retry fails
-       the same way and the console still has the real error code.
+    /* One retry, specifically on permission-denied, for every listener here —
+       not just the two silenced ones below. The stack trace that led to this
+       comment showed /bookings failing alongside /vehicleStats on a brand-new
+       shop's first open, both gated by the exact same rnIsMember(shopId) — a
+       rule this change never touched. That rules out a rules-authoring
+       mistake specific to one collection; what's left is a timing race:
+       a listener can attach a beat before the membership doc that grants
+       rnIsMember() is visible to a fresh Listen request, worse on a shaky
+       connection (the session that surfaced this was full of QUIC/DNS
+       errors). The retry is scoped to permission-denied on purpose — other
+       error codes (offline, resource-exhausted) aren't a timing problem and
+       a delayed retry wouldn't fix them, only hide them longer.
+
+       `silent`: for listeners the app can run without (daily rollups,
+       vehicle stats) — a hiccup here, if the retry doesn't clear it,
+       shouldn't put a scary "Sync error" toast in front of someone whose
+       very first screen this might be, for a collection that's legitimately
+       empty and blocks nothing they can actually do. Still logged to
+       console either way; this only suppresses the toast, never the retry.
 
        Each attach — including the retry — pushes its own unsub into
        _unsub directly, rather than bind() returning one unsub to push.
@@ -5975,7 +5985,9 @@ const Cloud = {
           if (this.ready && window.R) window.R.render();
         }, err => {
           console.error(key, err.code||err);
-          if (silent && tries === 0){ tries++; setTimeout(attach, 1500); return; }
+          if (err.code === 'permission-denied' && tries === 0){
+            tries++; setTimeout(attach, 1500); return;
+          }
           if (!silent) window.toast('Sync error on '+key);
         }));
       };
@@ -6006,15 +6018,34 @@ const Cloud = {
 
 
 
-    this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
-      this.shop = sd.exists() ? sd.data() : null;
-      this.shopName = this.shop ? (this.shop.name||'') : '';
-      /* The shop document is the authority on who owns the business, so a
-         missing membership record can no longer strip the owner of their
-         own account. */
-      if (this.shop && this.shop.ownerUid === this.uid) this.role = 'owner';
-      if (this.ready && window.R) window.R.render();
-    }));
+    /* Same permission-denied retry as bind() below, hand-rolled here since
+       this listener's job (this.shop/this.shopName/this.role) doesn't fit
+       bind()'s generic DB.d[key] shape. Previously had no error callback at
+       all, so if this hit the exact race that surfaced on /bookings and
+       /vehicleStats — a listener attaching a beat before the membership doc
+       is visible — it would fail completely silently: no console line, no
+       toast, just this.shop staying null forever with nothing to explain
+       why. healMembership() below is a self-heal for a genuinely missing
+       membership doc, but does nothing for a listener that simply needs
+       to be asked again a moment later. */
+    let shopTries = 0;
+    const attachShop = () => {
+      this._unsub.push(onSnapshot(doc(db,'rn_shops',shopId), sd => {
+        this.shop = sd.exists() ? sd.data() : null;
+        this.shopName = this.shop ? (this.shop.name||'') : '';
+        /* The shop document is the authority on who owns the business, so a
+           missing membership record can no longer strip the owner of their
+           own account. */
+        if (this.shop && this.shop.ownerUid === this.uid) this.role = 'owner';
+        if (this.ready && window.R) window.R.render();
+      }, err => {
+        console.error('shop', err.code||err);
+        if (err.code === 'permission-denied' && shopTries === 0){
+          shopTries++; setTimeout(attachShop, 1500);
+        }
+      }));
+    };
+    attachShop();
 
     /* Self-heal. If the membership record never landed — a dropped batch, a
        first-signup race — write it now rather than leaving the account in a
