@@ -675,6 +675,36 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dfl-foot{display:flex;justify-content:space-between;padding:11px 14px;background:#FCFAF6;
   border-top:1px solid var(--bd);font-size:12.5px;color:var(--t3)}
 .dfl-foot b{color:var(--t1);font-weight:800}
+/* ── Out Now, desktop ────────────────────────────────────────────────
+   Shares the Fleet KPI/tool/table shell; these are the pieces specific
+   to an operational screen — the overdue call-out, the phone number,
+   and the live estimate. */
+.dfl-k.od:before{background:var(--danger)}
+.dfl-k.od.zero:before{background:var(--bd)}
+.dfl-k.od .dfl-k-v{color:var(--danger)}
+.dfl-k.od.zero .dfl-k-v{color:var(--t4)}
+.dfl-chip.dg.on{background:var(--danger);border-color:var(--danger)}
+.dout-alert{display:flex;align-items:center;gap:12px;background:var(--danger-tint);
+  border:1px solid #F3C8C2;border-radius:13px;padding:13px 16px;margin-bottom:14px}
+.dout-alert-i{font-size:19px;flex:none}
+.dout-alert b{font-size:14px;color:var(--danger)}
+.dout-alert .s{font-size:12.5px;color:#8A2B20;margin-top:2px;line-height:1.45}
+.dout-cust{font-weight:650;font-size:13.5px}
+.dout-ph{font-size:12px;color:var(--t3);font-variant-numeric:tabular-nums;margin-top:1px}
+.dout-due{font-weight:650;font-size:13px}
+.dout-due.warn{color:var(--danger);font-weight:800}
+.dout-due.soon{color:#8A5A06;font-weight:750}
+.dout-run{font-size:11.5px;color:var(--t4);margin-top:1px}
+.dout-est{font-weight:800;color:var(--t1)}
+.dout-est-x{font-size:11px;color:var(--danger);font-weight:700;margin-top:1px}
+.dout-act{display:flex;gap:6px;justify-content:flex-end}
+.dout-ab{border:1px solid var(--bd);background:var(--card);border-radius:9px;padding:7px 11px;
+  font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;
+  color:var(--t2);text-decoration:none;display:inline-block}
+.dout-ab.pri{background:var(--p);border-color:var(--p);color:#fff}
+.dout-ab.call{color:var(--p-mid)}
+.dt-tbl tbody tr.od{background:#FEF7F6}
+.dt-tbl tbody tr.od:hover{background:#FDEFED}
 /* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
    size instead of four columns squeezing them to nothing. */
 .bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
@@ -2679,6 +2709,7 @@ const R = {
       return;
     }
     open.sort((a,b)=> a.dueAt - b.dueAt);
+    if (this.isWide()) return this.outTable(banner, open, now, depHeld, todayRev, today);
     box.innerHTML = banner + open.map(r => {
       const v = DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
       const isLate = now > r.dueAt;
@@ -2706,6 +2737,138 @@ const R = {
     }).join('');
   },
 
+  /* ── OUT NOW, desktop ────────────────────────────────────────────────
+     Unlike Fleet, this is an operational screen: its job is telling a shop
+     who to chase and what to charge when a bike walks back in. So it is
+     ordered by urgency and carries two things the phone cannot afford —
+     the customer's phone number, and what the bill comes to right now. */
+  outEstimate(r){
+    /* The same call the check-in sheet makes, so the number previewed here
+       and the number charged at the counter come from one place and cannot
+       drift apart. Rentals written before rateSnapshot existed have none,
+       and get no estimate rather than a wrong one. */
+    if (!r.rateSnapshot) return null;
+    try {
+      const hrs = Math.max(0, hoursBetween(r.outAt, Date.now()));
+      const q = quote(r.rateSnapshot, r.tier, hrs);
+      return { total: (q.rent||0) + (q.overtime||0), overtime: q.overtime||0 };
+    } catch(e){ return null; }
+  },
+  outFilter(k){ this._ofilter = k; this.render(); },
+  outSearch(q){ this._oq = q; this.render(); },
+
+  outTable(banner, open, now, depHeld, todayRev, today){
+    const box = document.getElementById('out-list');
+    const dayEnd = new Date(); dayEnd.setHours(23,59,59,999);
+    const isLate = r => now > r.dueAt;
+    const dueToday = r => !isLate(r) && r.dueAt <= dayEnd.getTime();
+    const late = open.filter(isLate);
+
+    const q = (this._oq||'').trim().toLowerCase();
+    const vOf = r => DB.d.vehicles.find(x=>x.id===r.vehicleId) || {};
+    const matchQ = r => { if (!q) return true; const v = vOf(r);
+      return [vLabel(v), v.regNo, r.customerName, r.customerPhone]
+        .some(s => String(s||'').toLowerCase().includes(q)); };
+    const filt = this._ofilter || 'all';
+    const matchF = r => filt==='all' || (filt==='late' && isLate(r))
+      || (filt==='today' && dueToday(r));
+    const list = open.filter(r => matchQ(r) && matchF(r));
+
+    /* Overtime already running across every late rental — the cost of not
+       ringing them, which is the reason this screen exists. */
+    const lateExtra = late.reduce((a,r)=>{ const e = this.outEstimate(r); return a + (e?e.overtime:0); }, 0);
+    const estTotal = list.reduce((a,r)=>{ const e = this.outEstimate(r); return a + (e?e.total:0); }, 0);
+    const fleetN = (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
+    const settled = today ? (Number(today.rentals)||0) : 0;
+
+    const kpi = `<div class="dfl-kpi">
+      <div class="dfl-k out"><div class="dfl-k-l">Out now</div>
+        <div class="dfl-k-v">${open.length}</div>
+        <div class="dfl-k-s">of ${fleetN} ${noun(1)}</div></div>
+      <div class="dfl-k od${late.length?'':' zero'}"><div class="dfl-k-l">Overdue</div>
+        <div class="dfl-k-v">${late.length}</div>
+        <div class="dfl-k-s">${lateExtra?money(lateExtra)+' extra running':'none late'}</div></div>
+      <div class="dfl-k ok"><div class="dfl-k-l">Earned today</div>
+        <div class="dfl-k-v">${money(todayRev)}</div>
+        <div class="dfl-k-s">${settled} rental${settled===1?'':'s'} settled</div></div>
+      <div class="dfl-k svc"><div class="dfl-k-l">Deposits held</div>
+        <div class="dfl-k-v">${money(depHeld)}</div>
+        <div class="dfl-k-s">${open.length} open \u00b7 refundable</div></div>
+    </div>`;
+
+    /* Only shown when something is actually late — a permanent "0 overdue"
+       banner is furniture, and furniture stops being read. */
+    const alert = late.length ? `<div class="dout-alert">
+      <div class="dout-alert-i">\u23F0</div>
+      <div><b>${late.length} ${noun(late.length!==1)} ${late.length===1?'is':'are'} overdue</b>
+        <div class="s">${late.slice(0,3).map(r=>{
+          const v = vOf(r);
+          return esc(vLabel(v)) + ' \u00b7 ' + fmtDur(hoursBetween(r.dueAt, now)) + ' past due'
+            + (r.customerName ? ' with ' + esc(r.customerName) : '');
+        }).join(' \u2022 ')}${late.length>3?' \u2022 and '+(late.length-3)+' more':''}.
+        Overtime is already counted in the estimate.</div></div>
+    </div>` : '';
+
+    const chip = (k,label,cnt,dg)=>`<button class="dfl-chip${dg?' dg':''}${filt===k?' on':''}"
+      onclick="R.outFilter('${k}')">${label} ${cnt}</button>`;
+    const tools = `<div class="dfl-tools">
+      <div class="dfl-search"><span style="opacity:.5">\u{1F50D}</span>
+        <input id="dout-q" placeholder="Search ${noun()}, customer or number"
+          value="${esc(this._oq||'')}" oninput="R.outSearch(this.value)"></div>
+      ${chip('all','All',open.length)}${chip('late','Overdue',late.length,true)}
+      ${chip('today','Due today',open.filter(dueToday).length)}
+    </div>`;
+
+    box.innerHTML = banner + kpi + alert + tools + `<div class="dt-tbl"><table>
+      <thead><tr>
+        <th class="railcol"></th>
+        <th>${Noun()}</th><th>Customer</th><th>Out since</th><th>Due</th>
+        <th>Plan</th><th class="num">Deposit</th><th class="num">Est. now</th>
+        <th class="num">Action</th>
+      </tr></thead><tbody>
+      ${!list.length ? `<tr><td colspan="9" class="muted" style="padding:22px;text-align:center">
+          Nothing matches this filter.</td></tr>` : list.map(r=>{
+        const v = vOf(r);
+        const lateR = isLate(r);
+        const soon = !lateR && (r.dueAt - now) <= HOUR;
+        const est = this.outEstimate(r);
+        const rail = lateR ? 's-od' : (soon ? 's-soon' : 's-ok');
+        const overH = lateR ? hoursBetween(r.dueAt, now) : 0;
+        const untilH = !lateR ? hoursBetween(now, r.dueAt) : 0;
+        return `<tr class="${rail}${lateR?' od':''}" onclick="R.checkinStart('${r.id}')">
+          <td class="rail"></td>
+          <td><div class="nm">${esc(vLabel(v))}</div>${
+            v.regNo?`<div class="dfl-sub">${esc(v.regNo)}</div>`:''}</td>
+          <td><div class="dout-cust">${esc(r.customerName||'\u2014')}</div>${
+            r.customerPhone?`<div class="dout-ph">${esc(r.customerPhone)}</div>`:''}</td>
+          <td><div class="dout-due">${esc(fmtDT(r.outAt))}</div>
+            <div class="dout-run">${fmtDur(hoursBetween(r.outAt, now))} on rent</div></td>
+          <td><div class="dout-due${lateR?' warn':(soon?' soon':'')}">${
+            lateR ? fmtDur(overH)+' overdue' : 'in '+fmtDur(untilH)}</div>
+            <div class="dout-run">${esc(fmtDT(r.dueAt))}</div></td>
+          <td><span class="pill ${lateR?'late':(soon?'warn':'out')}">${esc(tierLabel(r))}</span></td>
+          <td class="num">${money(r.depositHeld)}</td>
+          <td class="num">${est ? `<div class="dout-est">${money(est.total)}</div>${
+            est.overtime?`<div class="dout-est-x">+${money(est.overtime)} overtime</div>`:''}`
+            : '<span class="muted">\u2014</span>'}</td>
+          <td class="num"><div class="dout-act" onclick="event.stopPropagation()">
+            ${r.customerPhone?`<a class="dout-ab call" href="tel:${esc(r.customerPhone)}"
+              title="Call ${esc(r.customerName||'customer')}">\u{1F4DE}</a>`:''}
+            <button class="dout-ab" onclick="R.extend('${r.id}')">Extend</button>
+            <button class="dout-ab pri" onclick="R.checkinStart('${r.id}')">Check in \u203A</button>
+          </div></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>
+      <div class="dfl-foot"><span>Showing ${list.length} of ${open.length} out</span>
+        <span>Deposits held <b style="color:#8A5A06">${money(depHeld)}</b>
+          \u00b7 estimated on return <b style="color:var(--success-d)">${money(estTotal)}</b></span></div>
+      </div>`;
+    if (q){
+      const el = document.getElementById('dout-q');
+      if (el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    }
+  },
   /* ── FLEET ──────────────────────────────────────────────────────── */
   /* Earned by this bike within a period, from the closed-rentals cache the
      Money page already loads. vehicleStats.earned is a LIFETIME figure and
