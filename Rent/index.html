@@ -5778,6 +5778,10 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     return { start: start.getTime(), end: end.getTime(), label: p.label };
   },
   _dayKeys(){
+    /* 'all' means every day since the epoch — 20,000+ iterations building a
+       Set the caller then ignores, on every render. The caller short-circuits
+       on 'all' anyway, so return an empty Set rather than doing the work. */
+    if (this._period === 'all') return new Set();
     const { start, end } = this._range();
     const out = new Set();
     for (let t = start; t <= end; t += 86400000){
@@ -6915,11 +6919,18 @@ const Cloud = {
        that grows without bound. But revenue still has to be visible, so the
        daily rollups written at settle carry it: one small document per day,
        which is all the dashboard and the Money tab actually need. */
-    /* orderBy('__name__') is a REST-level field path; the JS SDK wants
-       documentId(). It threw on every load — hence "Sync error on daily".
-       The collection is one small document per day, so no ordering is needed
-       here at all: the whole thing is cheap to hold and the UI sorts it. */
-    bind(query(S('daily'), limit(800)), 'daily', null, true);
+    /* orderBy(documentId()) descending, NOT unordered. A limit() with no
+       ordering is not "the cheapest 800" — Firestore returns documents in
+       document-id order, and these ids are date keys (2026-08-12), so an
+       unordered limit silently returned the 800 OLDEST days and dropped
+       the newest. A shop past 800 days of history, or one whose repair run
+       created a long historical range, settled a rental and watched Money
+       still read zero: the write had landed, the listener just never asked
+       for that day. Descending puts today first, which is the one day that
+       must never fall outside the window.
+       (An earlier note here said orderBy was unnecessary; that was true
+       only while the collection was smaller than the limit.) */
+    bind(query(S('daily'), orderBy(documentId(), 'desc'), limit(800)), 'daily', null, true);
     /* One doc per vehicle — bounded by fleet size, not rental history, same
        reasoning as /daily. This is what Fleet's Earned/Idle days read. */
     bind(S('vehicleStats'), 'vehicleStats', null, true);
@@ -7320,6 +7331,7 @@ const Cloud = {
      deposit swallowed by an unpaid rent is earned but never refunded, and
      showing only one of those numbers makes the till look wrong. */
   rollup(dayKey, o){
+    if (!dayKey){ console.error('rollup called with no dayKey', o); return; }
     try {
       setDoc(this.p('daily', dayKey), {
         rentals:     increment(o.rentals != null ? o.rentals : (o.revenue != null ? 1 : 0)),
@@ -7333,8 +7345,19 @@ const Cloud = {
         cashOut:     increment(Number(o.cashOut)||0),
         upiOut:      increment(Number(o.upiOut)||0),
         updatedAt: Date.now()
-      }, { merge:true });
-    } catch(e){}
+      }, { merge:true })
+      /* setDoc is deliberately not awaited — a settle must not block on the
+         network. But un-awaited also means a rejection surfaces nowhere, and
+         `catch(e){}` below only ever caught the synchronous throw. A rollup
+         that fails is a day of revenue that vanishes from Money while the
+         rental itself looks settled, which is the hardest kind of bug to
+         report and the hardest to find. rollupDelta already logs; this now
+         matches it. */
+        .catch(e => {
+          console.error('rollup ' + dayKey, (e && e.code) || e);
+          if (window.toast) toast('Earnings for ' + dayKey + ' did not save — tell your developer');
+        });
+    } catch(e){ console.error('rollup ' + dayKey, e); }
   },
 
   /* Repair for shops created before seeding moved server-side: their
@@ -7430,8 +7453,14 @@ const Cloud = {
          it is set directly rather than incremented. Checkouts happen in
          chronological order, so "most recent write wins" is correct. */
       if (patch.lastOutAt != null)   data.lastOutAt = Number(patch.lastOutAt)||Date.now();
-      setDoc(this.p('vehicleStats', vehicleId), data, { merge:true });
-    } catch(e){ /* best-effort, same as rollup() — never blocks the user action */ }
+      /* Logged, not silent — same reasoning as rollup() above. A rejection
+         here is why Fleet's Earned column reads zero, and swallowing it
+         meant the only evidence was the wrong number itself. No toast: this
+         is a secondary stat, and rollup() will already have complained if
+         the whole write path is broken. */
+      setDoc(this.p('vehicleStats', vehicleId), data, { merge:true })
+        .catch(e => console.error('bumpVehicleStat ' + vehicleId, (e && e.code) || e));
+    } catch(e){ console.error('bumpVehicleStat ' + vehicleId, e); }
   },
 
   /* ── one-time repair: rebuild /daily and /vehicleStats from the rentals
