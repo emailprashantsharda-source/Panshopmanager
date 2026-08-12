@@ -622,6 +622,59 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .fl-f b{font-weight:700;color:var(--t1)}
 .fl-fi{font-size:12.5px;flex:none;opacity:.75}
 .fl-f.warn,.fl-f.warn b{color:#8A5A06}
+/* ── Fleet, desktop ──────────────────────────────────────────────────
+   Stays a table on purpose: a seated owner with eighteen bikes wants
+   them comparable at once, and the multi-select/bulk actions live here.
+   These add the redesign's ideas on top of that density. */
+.dfl-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.dfl-k{background:var(--card);border:1px solid var(--bd);border-radius:14px;
+  padding:13px 15px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.dfl-k:before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.dfl-k.all:before{background:var(--p)}
+.dfl-k.out:before{background:var(--p-mid)}
+.dfl-k.ok:before{background:var(--success)}
+.dfl-k.svc:before{background:var(--y)}
+.dfl-k.svc.zero:before{background:var(--bd)}
+.dfl-k-l{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--t3)}
+.dfl-k-v{font-size:29px;font-weight:850;letter-spacing:-.03em;line-height:1.05;margin-top:3px;
+  font-variant-numeric:tabular-nums}
+.dfl-k.all .dfl-k-v{color:var(--p)}
+.dfl-k.out .dfl-k-v{color:var(--p-mid)}
+.dfl-k.ok .dfl-k-v{color:var(--success-d)}
+.dfl-k.svc .dfl-k-v{color:var(--y)}
+.dfl-k.svc.zero .dfl-k-v{color:var(--t4)}
+.dfl-k-s{font-size:11.5px;color:var(--t4);margin-top:2px}
+.dfl-tools{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.dfl-search{flex:0 1 340px;display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--bd);border-radius:11px;padding:0 12px;min-width:0}
+.dfl-search input{flex:1;min-width:0;border:0;outline:0;background:none;padding:10px 0;
+  font-size:14px;font-family:inherit;color:var(--t1)}
+.dfl-search input::placeholder{color:var(--t4)}
+.dfl-chip{background:var(--card);border:1px solid var(--bd);border-radius:999px;
+  padding:8px 14px;font-size:13px;font-weight:650;color:var(--t2);cursor:pointer;
+  font-family:inherit;white-space:nowrap}
+.dfl-chip.on{background:var(--p);border-color:var(--p);color:#fff;font-weight:750}
+/* Status rail — the row's state readable before any text is parsed. */
+.dt-tbl th.railcol{width:3px;padding:0}
+.dt-tbl td.rail{width:3px;padding:0;position:relative}
+.dt-tbl td.rail:after{content:'';position:absolute;inset:0}
+.dt-tbl tr.s-out td.rail:after{background:var(--p-mid)}
+.dt-tbl tr.s-ok  td.rail:after{background:var(--success)}
+.dt-tbl tr.s-svc td.rail:after{background:var(--y)}
+.dfl-sub{font-size:11.5px;color:var(--t4);margin-top:1px}
+.dfl-plate{font-variant-numeric:tabular-nums;font-size:13px;color:var(--t2)}
+.dfl-who{font-size:12.5px;color:var(--t2);font-weight:600}
+.dfl-who.warn{color:#8A5A06;font-weight:700}
+.dfl-earn{font-weight:800;color:var(--success-d)}
+.dfl-earn.nil{color:var(--t4);font-weight:600}
+.dfl-pb{display:flex;align-items:center;gap:7px;justify-content:flex-end}
+.dfl-pb-t{width:50px;height:6px;border-radius:4px;background:#EFEBE3;overflow:hidden;flex:none}
+.dfl-pb-t>div{height:100%;border-radius:4px}
+.dfl-pb-n{font-size:12px;font-weight:750;width:38px;text-align:right}
+.dfl-foot{display:flex;justify-content:space-between;padding:11px 14px;background:#FCFAF6;
+  border-top:1px solid var(--bd);font-size:12.5px;color:var(--t3)}
+.dfl-foot b{color:var(--t1);font-weight:800}
 /* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
    size instead of four columns squeezing them to nothing. */
 .bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
@@ -2892,51 +2945,171 @@ const R = {
 
   fleetTable(hdr){
     const box = document.getElementById('fleet-list');
-    const order = { available:0, rented:1, maintenance:2, retired:3 };
-    const list = (DB.d.vehicles||[]).filter(v=>!v.deletedAt)
-      .slice().sort((a,b)=> (order[a.status]||0)-(order[b.status]||0)
-        || String(vLabel(a)).localeCompare(String(vLabel(b))));
+    const live = (DB.d.vehicles||[]).filter(v=>!v.deletedAt);
+
+    /* Same closed-rentals cache Money and the phone Fleet use, for the
+       "Earned today" column. Loading it here means whichever screen the
+       owner opens first warms it for the others. */
+    if (!this._closed && window.Cloud && Cloud.ready){
+      this._closed = [];
+      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    }
+
+    /* Identical bucketing to the phone list, so the two screens never
+       disagree about what "blocked" means: expired papers, no rate set, or
+       manual maintenance all produce the same refusal at checkout. */
+    const openOf = v => (DB.d.rentals||[]).find(x=>x.vehicleId===v.id && x.status==='open');
+    const rateOf = v => (DB.d.rates||[]).find(r=>r.id===v.rateId);
+    const noRateOf = v => { const rc = rateOf(v); return !rc || !this.rateReady(rc); };
+    const blocked = v => v.status==='maintenance' || v.status==='retired'
+      || !!this.docBlocked(v) || noRateOf(v);
+    const bucketOf = v => v.status==='rented' ? 0 : (blocked(v) ? 2 : 1);
+
+    const q = (this._fq||'').trim().toLowerCase();
+    const matchQ = v => !q || String(vLabel(v)).toLowerCase().includes(q)
+      || String(v.regNo||'').toLowerCase().includes(q)
+      || String(v.model||'').toLowerCase().includes(q);
+    const filt = this._ffilter || 'all';
+    const matchF = v => filt==='all' || (filt==='out' && bucketOf(v)===0)
+      || (filt==='ready' && bucketOf(v)===1) || (filt==='blocked' && bucketOf(v)===2);
+
+    const sortKey = this._fsort || 'status';
+    const sorters = {
+      status:  (a,b)=> (bucketOf(a)-bucketOf(b)) || String(vLabel(a)).localeCompare(String(vLabel(b))),
+      earning: (a,b)=> this.earnedToday(b) - this.earnedToday(a),
+      idle:    (a,b)=> (this.idleDays(b)||0) - (this.idleDays(a)||0),
+      name:    (a,b)=> String(vLabel(a)).localeCompare(String(vLabel(b))),
+    };
+    const list = live.filter(v=>matchQ(v)&&matchF(v)).slice().sort(sorters[sortKey]);
     const ids = list.map(v=>v.id);
     const n = this.selCount();
 
-    box.innerHTML = hdr + (n ? this.bulkBar(n + ' ' + noun(n!==1) + ' selected', [
+    const nOut = live.filter(v=>bucketOf(v)===0).length;
+    const nBlocked = live.filter(v=>bucketOf(v)===2).length;
+    const nReady = live.length - nOut - nBlocked;
+    const nOverdue = live.filter(v=>{ const r=openOf(v); return r && r.dueAt && Date.now()>r.dueAt; }).length;
+    const invested = live.reduce((a,v)=>a+(Number(v.cost)||0),0);
+    const util = live.length ? Math.round(nOut/live.length*100) : 0;
+    const todayTotal = live.reduce((a,v)=>a+this.earnedToday(v),0);
+    const lifeTotal = live.reduce((a,v)=>a+this.earnedBy(v),0);
+
+    const kpi = `<div class="dfl-kpi">
+      <div class="dfl-k all"><div class="dfl-k-l">Total ${noun(1)}</div>
+        <div class="dfl-k-v">${live.length}</div>
+        <div class="dfl-k-s">${invested?money(invested)+' invested':'&nbsp;'}</div></div>
+      <div class="dfl-k out"><div class="dfl-k-l">Out now</div>
+        <div class="dfl-k-v">${nOut}</div>
+        <div class="dfl-k-s">${nOverdue?nOverdue+' overdue':'none overdue'}</div></div>
+      <div class="dfl-k ok"><div class="dfl-k-l">Ready to rent</div>
+        <div class="dfl-k-v">${nReady}</div>
+        <div class="dfl-k-s">${util}% out today</div></div>
+      <div class="dfl-k svc${nBlocked?'':' zero'}"><div class="dfl-k-l">Cannot rent out</div>
+        <div class="dfl-k-v">${nBlocked}</div>
+        <div class="dfl-k-s">${nBlocked?'fix to rent these':'all clear'}</div></div>
+    </div>`;
+
+    const chip = (k,label,cnt)=>`<button class="dfl-chip${filt===k?' on':''}"
+      onclick="R.fleetFilter('${k}')">${label} ${cnt}</button>`;
+    const tools = `<div class="dfl-tools">
+      <div class="dfl-search"><span style="opacity:.5">\u{1F50D}</span>
+        <input id="dfl-q" placeholder="Search by name or number" value="${esc(this._fq||'')}"
+          oninput="R.fleetSearch(this.value)"></div>
+      ${chip('all','All',live.length)}${chip('out','Out',nOut)}
+      ${chip('ready','Ready',nReady)}${chip('blocked','Blocked',nBlocked)}
+      <span class="grow"></span>
+      <button class="dfl-chip" onclick="R.fleetSort()">\u2195 ${
+        { status:'Status', earning:'Earned today', idle:'Idle', name:'Name' }[sortKey]}</button>
+    </div>`;
+
+    box.innerHTML = hdr + kpi + tools + (n ? this.bulkBar(n + ' ' + noun(n!==1) + ' selected', [
         ['R.bulkStatus(\'maintenance\')', 'Mark unavailable'],
         ['R.bulkStatus(\'available\')',   'Mark available'],
         ['R.bulkRetire()',                'Retire', 'dg'],
       ]) : '') +
       `<div class="dt-tbl"><table>
         <thead><tr>
+          <th class="railcol"></th>
           <th class="selcol" onclick="R.selAll(${JSON.stringify(ids).replace(/"/g,'&quot;')})">
             ${this.cbox(ids.length && ids.every(i=>this.selHas(i)))}</th>
-          <th>${Noun()}</th><th>Number</th><th>Rate card</th>
+          <th>${Noun()}</th><th>Number</th><th>Status</th><th>Right now</th>
           <th class="num">Deposit</th><th class="num">Rentals</th>
-          <th class="num">Earned</th><th class="num">Idle days</th>
-          <th>Papers</th><th>Status</th>
+          <th class="num">Earned today</th><th class="num">Lifetime</th>
+          <th class="num">Idle</th><th class="num">Payback</th>
         </tr></thead><tbody>
-        ${list.map(v=>{
-          const rc = (DB.d.rates||[]).find(r=>r.id===v.rateId);
+        ${!list.length ? `<tr><td colspan="12" class="muted" style="padding:22px;text-align:center">
+            No ${noun(1)} match this filter.</td></tr>` : list.map(v=>{
+          const rc = rateOf(v);
+          const r = openOf(v);
           const docs = this.docWarn(v);
-          const rides = this.tripsBy(v);
+          const noRate = noRateOf(v);
+          const b = bucketOf(v);
           const idle = this.idleDays(v);
-          const pill = { available:'ok', rented:'out', maintenance:'maint', retired:'late' }[v.status]||'ok';
+          const et = this.earnedToday(v);
+          const life = this.earnedBy(v);
           const sel = this.selHas(v.id);
-          return `<tr class="${sel?'sel':''}" onclick="R.editVehicle('${v.id}')">
+          const overdue = r && r.dueAt && Date.now() > r.dueAt;
+          const railCls = b===0?'s-out':(b===2?'s-svc':'s-ok');
+
+          /* "Right now": two lines answering what this bike is doing and the
+             one fact that follows from it. Replaces the old Papers column,
+             which could only ever say "ok" — the interesting cases all live
+             here now, together, instead of split across three columns. */
+          let l1, l2, warn = false;
+          if (r){
+            l1 = overdue ? 'Overdue' : 'With ' + esc(r.customerName || 'a customer');
+            l2 = overdue ? 'With ' + esc(r.customerName||'a customer') + ' \u00b7 due ' + esc(fmtDT(r.dueAt))
+                         : 'Due ' + esc(fmtDT(r.dueAt));
+            warn = !!overdue;
+          } else if (noRate){
+            l1 = 'Rate not set \u2014 cannot go out'; l2 = 'Set a price to rent this out'; warn = true;
+          } else if (docs){
+            l1 = esc(docs); l2 = 'Blocked at checkout'; warn = true;
+          } else if (v.status==='maintenance'){ l1 = 'In maintenance'; l2 = 'Marked unavailable'; warn = true;
+          } else if (v.status==='retired'){ l1 = 'Retired'; l2 = 'Not in service'; warn = true;
+          } else {
+            l1 = idle===null ? 'Ready' : (idle<=0 ? 'Back today' : 'Idle '+idle+' day'+(idle===1?'':'s'));
+            l2 = rc && rc.tiers && rc.tiers.h24 ? money(rc.tiers.h24)+'/day' : 'Ready to rent';
+          }
+
+          /* Payback as a bar: 4% against 134% is a shape before it is a
+             number, which is the comparison an owner is actually making. */
+          const pb = v.cost ? Math.min(999, Math.round(life/v.cost*100)) : null;
+          const pbCol = pb===null ? '' : (pb>=100 ? 'var(--success)' : (pb<25 ? 'var(--danger)' : 'var(--p-mid)'));
+
+          return `<tr class="${railCls}${sel?' sel':''}" onclick="R.editVehicle('${v.id}')">
+            <td class="rail"></td>
             <td class="selcol" onclick="event.stopPropagation();R.selToggle('${v.id}')">${this.cbox(sel)}</td>
-            <td class="nm">${esc(vLabel(v))}</td>
-            <td class="muted">${esc(v.regNo)||'—'}</td>
-            <td>${rc ? (this.rateReady(rc) ? esc(rc.model)
-                  : `<span class="pill late">NO RATE</span>`) : '<span class="pill late">NONE</span>'}</td>
-            <td class="num">${rc && this.rateReady(rc) ? money(rc.deposit) : '—'}</td>
-            <td class="num">${rides}</td>
-            <td class="num">${money(this.earnedBy(v))}</td>
+            <td><div class="nm">${esc(vLabel(v))}</div>${
+              v.model?`<div class="dfl-sub">${esc(v.model)}</div>`:''}</td>
+            <td class="dfl-plate">${esc(v.regNo)||'\u2014'}</td>
+            <td><span class="pill ${b===0?'out':(b===2?(noRate?'late':'maint'):'ok')}">${
+              b===0?'OUT':(b===2?(noRate?'NO RATE':'BLOCKED'):'READY')}</span></td>
+            <td><div class="dfl-who${warn?' warn':''}">${l1}</div>
+              <div class="dfl-sub">${l2}</div></td>
+            <td class="num">${rc && this.rateReady(rc) ? money(rc.deposit) : '\u2014'}</td>
+            <td class="num">${this.tripsBy(v)}</td>
+            <td class="num"><span class="dfl-earn${et?'':' nil'}">${et?money(et):'\u2014'}</span></td>
+            <td class="num">${money(life)}</td>
             <td class="num" ${idle!=null && idle>30 ? 'style="color:var(--danger);font-weight:850"':''}>${
-              idle==null?'—':idle}</td>
-            <td>${docs?`<span class="pill warn">${esc(docs)}</span>`:'<span class="muted">ok</span>'}</td>
-            <td><span class="pill ${pill}">${v.status.toUpperCase()}</span></td>
+              idle==null?'\u2014':idle}</td>
+            <td class="num">${pb===null ? '<span class="muted">\u2014</span>' :
+              `<div class="dfl-pb"><div class="dfl-pb-t"><div style="width:${
+                Math.min(100,pb)}%;background:${pbCol}"></div></div>
+                <span class="dfl-pb-n" style="color:${pb>=100?'var(--success-d)':(pb<25?'var(--danger)':'var(--t2)')}">${pb}%</span></div>`}</td>
           </tr>`;
         }).join('')}
-      </tbody></table></div>`;
+      </tbody></table>
+      <div class="dfl-foot"><span>Showing ${list.length} of ${live.length} ${noun(1)}</span>
+        <span>Earned today <b style="color:var(--success-d)">${money(todayTotal)}</b>
+          \u00b7 lifetime <b>${money(lifeTotal)}</b></span></div>
+      </div>`;
+    if (q){
+      const el = document.getElementById('dfl-q');
+      if (el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    }
   },
+
+  fleetFilter(k){ this._ffilter = k; this.renderFleet(); },
 
   /* One bar, every screen. Sits where the header was so nothing shifts under
      the cursor when a row is ticked. */
