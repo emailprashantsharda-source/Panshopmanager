@@ -705,6 +705,96 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dout-ab.call{color:var(--p-mid)}
 .dt-tbl tbody tr.od{background:#FEF7F6}
 .dt-tbl tbody tr.od:hover{background:#FDEFED}
+/* ── Money, desktop ──────────────────────────────────────────────────
+   Two columns: analysis left, reconciliation right. */
+.dmn-hrow{display:flex;align-items:center;gap:9px;margin-bottom:14px;flex-wrap:wrap}
+.dmn-top{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.dmn-hero{background:linear-gradient(135deg,var(--p) 0%,var(--p-mid) 100%);color:#fff;
+  border-radius:16px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:var(--shadow-md)}
+.dmn-hero:after{content:'';position:absolute;right:-30px;top:-40px;width:150px;height:150px;
+  border-radius:50%;background:rgba(255,255,255,.06)}
+.dmn-hero-l{font-size:10.5px;font-weight:750;letter-spacing:.09em;text-transform:uppercase;
+  color:rgba(255,255,255,.65)}
+.dmn-hero-v{font-size:36px;font-weight:850;letter-spacing:-.035em;line-height:1.05;margin-top:5px;
+  font-variant-numeric:tabular-nums}
+.dmn-hero-s{font-size:12.5px;color:rgba(255,255,255,.78);margin-top:5px}
+.dmn-hero-s b{color:#FFD9A0;font-weight:750}
+.dmn-k{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:15px 16px;
+  box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.dmn-k:before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.dmn-k.got:before{background:var(--success)}
+.dmn-k.dep:before{background:var(--y)}
+.dmn-k.owe:before{background:var(--danger)}
+.dmn-k.owe.zero:before{background:var(--bd)}
+.dmn-k-l{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t3)}
+.dmn-k-v{font-size:26px;font-weight:850;letter-spacing:-.03em;line-height:1.1;margin-top:4px;
+  font-variant-numeric:tabular-nums}
+.dmn-k.got .dmn-k-v{color:var(--success-d)}
+.dmn-k.dep .dmn-k-v{color:#8A5A06}
+.dmn-k.owe .dmn-k-v{color:var(--danger)}
+.dmn-k.owe.zero .dmn-k-v{color:var(--t4)}
+.dmn-k-s{font-size:11.5px;color:var(--t4);margin-top:3px}
+.dmn-cols{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+.dmn-h{display:flex;align-items:center;gap:10px;padding:14px 16px 0}
+.dmn-t{font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.dmn-sub{font-size:12px;color:var(--t4)}
+.dmn-b{padding:14px 16px}
+.dmn-chart{display:flex;align-items:flex-end;gap:5px;height:150px;padding:0 2px}
+.dmn-bar{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;
+  align-items:center;gap:4px;height:100%}
+.dmn-bv{font-size:10px;font-weight:750;color:var(--t3);font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden}
+.dmn-bt{width:100%;border-radius:5px 5px 0 0;
+  background:linear-gradient(180deg,var(--p-mid),var(--p));min-height:2px}
+.dmn-bar.top .dmn-bt{background:linear-gradient(180deg,var(--y),#E08E12)}
+.dmn-bar.top .dmn-bv{color:#8A5A06;font-weight:850}
+.dmn-bl{font-size:10px;color:var(--t4);font-weight:600;white-space:nowrap}
+.dmn-leg{display:flex;gap:16px;font-size:11.5px;color:var(--t4);margin-top:10px;
+  padding-top:10px;border-top:1px solid #F4F1EB}
+.dmn-leg b{color:var(--t1);font-weight:800}
+.dmn-flow{display:flex;align-items:center;gap:11px;padding:9px 0}
+.dmn-flow+.dmn-flow{border-top:1px solid #F7F4EE}
+.dmn-flow.tot{border-top:1px solid var(--bd);margin-top:4px;padding-top:11px}
+.dmn-flow.tot .dmn-flow-l{font-weight:800;color:var(--t1)}
+.dmn-flow.tot .dmn-flow-v{font-size:15px}
+.dmn-flow-l{width:132px;flex:none;font-size:12.5px;font-weight:650;color:var(--t2)}
+.dmn-flow-t{flex:1;height:8px;border-radius:5px;background:#F1EDE5;overflow:hidden}
+.dmn-flow-t>div{height:100%;border-radius:5px}
+.dmn-flow-v{width:80px;text-align:right;font-weight:800;font-size:13.5px;
+  font-variant-numeric:tabular-nums}
+.dmn-two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.dmn-pot{border-radius:13px;padding:13px 14px;border:1px solid}
+.dmn-pot.cash{background:var(--y-tint);border-color:var(--y-bd)}
+.dmn-pot.bank{background:#EEF2FB;border-color:#D3DCF0}
+.dmn-pot-l{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.dmn-pot.cash .dmn-pot-l{color:#8A5A06}
+.dmn-pot.bank .dmn-pot-l{color:#3A4C86}
+.dmn-pot-v{font-size:22px;font-weight:850;letter-spacing:-.03em;margin-top:3px;
+  font-variant-numeric:tabular-nums}
+.dmn-pot-s{font-size:11px;color:var(--t3);margin-top:2px;font-variant-numeric:tabular-nums}
+.dmn-note{font-size:12px;color:var(--t2);line-height:1.5;margin-top:11px;padding-top:11px;
+  border-top:1px dashed var(--y-bd)}
+.dmn-tiles{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
+  border:1px solid #EFEBE3;border-radius:12px;overflow:hidden}
+.dmn-tile{background:var(--card);padding:12px;display:flex;align-items:center;gap:9px}
+.dmn-tile-i{font-size:18px;flex:none}
+.dmn-tile-l{font-size:10px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+.dmn-tile-v{font-size:20px;font-weight:850;letter-spacing:-.02em;margin-top:1px;
+  font-variant-numeric:tabular-nums}
+.dmn-tbl{width:100%;border-collapse:collapse;margin-top:12px}
+.dmn-tbl th{font-size:10.5px;font-weight:750;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--t3);text-align:left;padding:10px 16px;background:#FCFAF6;
+  border-bottom:1px solid var(--bd);white-space:nowrap}
+.dmn-tbl th.num,.dmn-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
+.dmn-tbl td{padding:10px 16px;border-bottom:1px solid #F4F1EB}
+.dmn-tbl tbody tr:last-child td{border-bottom:0}
+.dmn-tbl tbody tr{cursor:pointer}
+.dmn-tbl tbody tr:hover{background:#FDFBF7}
+.dmn-nm{font-weight:750;font-size:14px}
+.dmn-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.dmn-share-t{width:66px;height:6px;border-radius:4px;background:#EFEBE3;overflow:hidden;flex:none}
+.dmn-share-t>div{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--p),var(--p-mid))}
+.dmn-share-n{font-weight:800;width:36px;text-align:right;font-size:12.5px}
 /* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
    size instead of four columns squeezing them to nothing. */
 .bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
@@ -2660,7 +2750,11 @@ const R = {
        pre-seeded. One welcome, three steps, one button. */
     const noBikes = !(DB.d.vehicles||[]).filter(v=>!v.deletedAt).length;
     const kp = document.getElementById('out-kpis');
-    if (kp) kp.style.display = noBikes ? 'none' : '';
+    /* Hidden on desktop as well as on an empty shop: outTable() renders its
+       own KPI row with sublines, and this static strip sat above it saying
+       the same four numbers a second time — including the deposits card,
+       which the table already carries in its footer. */
+    if (kp) kp.style.display = (noBikes || this.isWide()) ? 'none' : '';
     if (noBikes && this.isManager()){
       /* The question first, then the welcome. Both are full-screen and both
          belong to a shop that owns nothing; showing them together would be two
@@ -2855,14 +2949,13 @@ const R = {
             ${r.customerPhone?`<a class="dout-ab call" href="tel:${esc(r.customerPhone)}"
               title="Call ${esc(r.customerName||'customer')}">\u{1F4DE}</a>`:''}
             <button class="dout-ab" onclick="R.extend('${r.id}')">Extend</button>
-            <button class="dout-ab pri" onclick="R.checkinStart('${r.id}')">Check in \u203A</button>
+            <button class="dout-ab pri" onclick="R.checkinStart('${r.id}')">Settle \u203A</button>
           </div></td>
         </tr>`;
       }).join('')}
       </tbody></table>
       <div class="dfl-foot"><span>Showing ${list.length} of ${open.length} out</span>
-        <span>Deposits held <b style="color:#8A5A06">${money(depHeld)}</b>
-          \u00b7 estimated on return <b style="color:var(--success-d)">${money(estTotal)}</b></span></div>
+        <span>Estimated on return <b style="color:var(--success-d)">${money(estTotal)}</b></span></div>
       </div>`;
     if (q){
       const el = document.getElementById('dout-q');
@@ -5775,6 +5868,16 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <div class="mn-track"><div style="background:${col};width:${Math.min(100,(val/peak)*100)}%"></div></div>
       </div>`;
 
+    /* Desktop gets a two-column layout: analysis left, reconciliation right.
+       Every figure below is one this function already computed — the branch
+       re-arranges, it does not recalculate. Passing them in rather than
+       letting moneyTable() work them out again is deliberate: two copies of
+       this arithmetic would eventually disagree. */
+    if (this.isWide()) return this.moneyTable({
+      rng, days, earned, got, depIn, depOut, owed, rentals, held,
+      cashIn, upiIn, cashOut, upiOut, netCash, netUpi, legacy,
+      per, sCompleted, sCancelled, sOngoing, sTotal });
+
     document.getElementById('money-body').innerHTML = `
       <div class="mn-chips">${this.PERIODS.map(p=>`<button class="mn-chip ${this._period===p.k?'on':''}"
         onclick="R.setPeriod('${p.k}')">${p.label}</button>`).join('')}</div>
@@ -5879,6 +5982,182 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       ${this.isOwner() ? `<button class="btn ghost" style="margin-top:14px;font-size:12px;color:var(--t3)"
           onclick="R.repairMoney()">Fix past earnings numbers</button>` : ''}
     `;
+  },
+
+  /* ── MONEY, desktop ──────────────────────────────────────────────────
+     Two columns: how the business is doing on the left, does-this-match-
+     my-drawer on the right. Takes every figure as an argument from
+     renderMoney() rather than recomputing — one arithmetic, two layouts.
+     The only thing computed here is the per-day series for the chart,
+     which the phone layout has no use for. */
+  moneyTable(d){
+    const { rng, days, earned, got, depIn, depOut, owed, rentals, held,
+            cashIn, upiIn, cashOut, upiOut, netCash, netUpi, legacy,
+            per, sCompleted, sCancelled, sOngoing, sTotal } = d;
+
+    /* Shape over time is the one thing a phone genuinely cannot show, and
+       it needs no new plumbing: /daily already holds one document per day
+       with a revenue field. Sorted by the document id, which is the local
+       date key, so the bars read left-to-right oldest-to-newest. */
+    const series = (days||[]).slice()
+      .sort((a,b)=> String(a.id).localeCompare(String(b.id)))
+      .map(x => ({ key:String(x.id), v: Number(x.revenue)||0 }))
+      .slice(-31);
+    const dayPeak = series.reduce((m,s)=>Math.max(m,s.v), 0) || 1;
+    const best = series.reduce((m,s)=> s.v>((m&&m.v)||0)?s:m, null);
+    const avg = series.length ? Math.round(series.reduce((a,s)=>a+s.v,0)/series.length) : 0;
+    const shortDay = k => { const p = String(k).split('-');
+      const dt = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+      return isFinite(dt.getTime())
+        ? dt.toLocaleDateString('en-IN',{ weekday:'short' }) : String(k).slice(-2); };
+    const dayFull = k => { const p = String(k).split('-');
+      const dt = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+      return isFinite(dt.getTime())
+        ? dt.toLocaleDateString('en-IN',{ day:'numeric', month:'short' }) : String(k); };
+
+    const chart = !series.length ? '' : `
+      <div class="card">
+        <div class="dmn-h"><span class="dmn-t">Earned per day</span><span class="grow"></span>
+          ${best && best.v ? `<span class="dmn-sub">Best: ${esc(dayFull(best.key))} ${money(best.v)}</span>`:''}
+        </div>
+        <div class="dmn-b">
+          <div class="dmn-chart">
+            ${series.map(s=>`<div class="dmn-bar${best&&s.key===best.key&&s.v?' top':''}"
+                title="${esc(dayFull(s.key))} — ${money(s.v)}">
+              <span class="dmn-bv">${s.v?money(s.v):''}</span>
+              <div class="dmn-bt" style="height:${Math.max(2,(s.v/dayPeak)*100)}%"></div>
+              <span class="dmn-bl">${esc(series.length>14?String(s.key).slice(-2):shortDay(s.key))}</span>
+            </div>`).join('')}
+          </div>
+          <div class="dmn-leg"><span>Daily average <b>${money(avg)}</b></span>
+            <span>${series.length} day${series.length===1?'':'s'} with data</span></div>
+        </div>
+      </div>`;
+
+    const flow = (l,val,col) => `
+      <div class="dmn-flow"><div class="dmn-flow-l">${l}</div>
+        <div class="dmn-flow-t"><div style="background:${col};width:${
+          Math.min(100,(val/(Math.max(earned,got,depIn,depOut,1)))*100)}%"></div></div>
+        <div class="dmn-flow-v">${money(val)}</div></div>`;
+
+    const tile = (l,v,col,icon) => `<div class="dmn-tile"><span class="dmn-tile-i">${icon}</span>
+      <div><div class="dmn-tile-l">${l}</div>
+        <div class="dmn-tile-v" style="color:${col}">${v}</div></div></div>`;
+
+    const topEarn = per.length ? per[0].earned || 1 : 1;
+    const noneEarned = (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length - per.length;
+
+    document.getElementById('money-body').innerHTML = `
+      <div class="dmn-hrow">
+        <div class="mn-chips" style="margin:0">${this.PERIODS.map(p=>`<button class="mn-chip ${
+          this._period===p.k?'on':''}" onclick="R.setPeriod('${p.k}')">${p.label}</button>`).join('')}</div>
+        <span class="grow"></span>
+        <button class="dfl-chip" onclick="R.history(true)">\u{1F4C4} Past rentals &amp; bills</button>
+        ${this.isOwner()?`<button class="dfl-chip" onclick="R.repairMoney()">Fix past earnings</button>`:''}
+      </div>
+
+      <div class="dmn-top">
+        <div class="dmn-hero">
+          <div class="dmn-hero-l">Earned \u00b7 ${esc(rng.label)}</div>
+          <div class="dmn-hero-v">${money(earned)}</div>
+          <div class="dmn-hero-s">${rentals} rental${rentals===1?'':'s'} settled${
+            owed>0?' \u00b7 <b>'+money(owed)+' still to collect</b>':''}</div>
+        </div>
+        <div class="dmn-k got"><div class="dmn-k-l">Collected</div>
+          <div class="dmn-k-v">${money(got)}</div>
+          <div class="dmn-k-s">cash that reached you</div></div>
+        <div class="dmn-k dep"><div class="dmn-k-l">Deposits held now</div>
+          <div class="dmn-k-v">${money(held)}</div>
+          <div class="dmn-k-s">${sOngoing} open \u00b7 not your money</div></div>
+        <div class="dmn-k owe${owed?'':' zero'}"><div class="dmn-k-l">Still to collect</div>
+          <div class="dmn-k-v">${money(owed)}</div>
+          <div class="dmn-k-s">${owed?'chase these':'all settled'}</div></div>
+      </div>
+
+      <div class="dmn-cols">
+        <div>
+          ${chart}
+          <div class="card">
+            <div class="dmn-h"><span class="dmn-t">Which ${noun(1)} earned \u00b7 ${esc(rng.label)}</span></div>
+            ${!per.length ? '<div class="dmn-b"><div class="muted">No settled rentals in this period.</div></div>'
+              : `<table class="dmn-tbl">
+              <thead><tr><th>${Noun()}</th><th class="num">Rentals</th><th class="num">Hours out</th>
+                <th class="num">Payback</th><th class="num">Earned</th><th class="num">Share</th></tr></thead>
+              <tbody>${per.map(p=>`<tr onclick="R.vehicleBills('${esc(p.v.id)}')">
+                <td><div class="dmn-nm">${esc(vLabel(p.v))}</div>${
+                  p.v.regNo?`<div class="dfl-sub">${esc(p.v.regNo)}</div>`:''}</td>
+                <td class="num">${p.trips}</td>
+                <td class="num">${fmtDur(p.hours)}</td>
+                <td class="num">${p.payback===null?'<span class="muted">\u2014</span>'
+                  :`<b style="color:${p.payback>=100?'var(--success-d)':(p.payback<25?'var(--danger)':'var(--t2)')}">${p.payback}%</b>`}</td>
+                <td class="num" style="font-weight:800">${money(p.earned)}</td>
+                <td class="num"><div class="dmn-share"><div class="dmn-share-t">
+                  <div style="width:${(p.earned/topEarn)*100}%"></div></div>
+                  <span class="dmn-share-n">${earned?Math.round(p.earned/earned*100):0}%</span></div></td>
+              </tr>`).join('')}</tbody></table>
+              <div class="dfl-foot"><span>${per.length} of ${
+                (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length} ${noun(1)} earned this period</span>
+                <span>${noneEarned>0?noneEarned+' earned nothing \u00b7 ':''}<b>${money(earned)}</b> total</span></div>`}
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="dmn-h"><span class="dmn-t">Cash vs UPI</span></div>
+            <div class="dmn-b">
+              ${legacy ? `<div class="muted">Payment mode was not recorded for this period.</div>` : `
+              <div class="dmn-two">
+                <div class="dmn-pot cash"><div class="dmn-pot-l">\u{1F4B5} In the drawer</div>
+                  <div class="dmn-pot-v">${money(netCash)}</div>
+                  <div class="dmn-pot-s">${money(cashIn)} in \u00b7 ${money(cashOut)} out</div></div>
+                <div class="dmn-pot bank"><div class="dmn-pot-l">\u{1F4F2} To your bank</div>
+                  <div class="dmn-pot-v">${money(netUpi)}</div>
+                  <div class="dmn-pot-s">${money(upiIn)} in \u00b7 ${money(upiOut)} out</div></div>
+              </div>
+              ${netCash < 0 ? `<div class="dmn-note"><b>Nothing is missing.</b> Deposit refunds
+                leave the drawer on a different day from when they came in, so the two sides
+                rarely match on any one day. Over a longer period they balance.</div>`:''}`}
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="dmn-h"><span class="dmn-t">Where the cash went</span></div>
+            <div class="dmn-b">
+              ${flow('Rent earned', earned, 'linear-gradient(90deg,#0F3D5C,#2E6D96)')}
+              ${flow('Collected', got, 'linear-gradient(90deg,#06C167,#048A45)')}
+              ${flow('Deposits taken in', depIn, 'linear-gradient(90deg,#F5A623,#D98B0F)')}
+              ${flow('Deposits returned', depOut, 'linear-gradient(90deg,#BDB9B0,#94908A)')}
+              <div class="dmn-flow tot"><div class="dmn-flow-l">Total movement</div>
+                <span class="grow"></span>
+                <div class="dmn-flow-v">${money(netCash + netUpi)}</div></div>
+            </div>
+          </div>
+
+          <div class="card mn-liab" style="margin-bottom:14px">
+            <div class="dmn-b">
+              <div class="mn-liab-l">Deposits held right now</div>
+              <div class="mn-liab-v">${money(held)}</div>
+              <div class="muted" style="margin-top:6px">${sOngoing} open rental${
+                sOngoing===1?'':'s'} — the customers' money, deliberately excluded
+                from Earned above.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="dmn-h"><span class="dmn-t">Rentals \u00b7 ${esc(rng.label)}</span></div>
+            <div class="dmn-b">
+              <div class="dmn-tiles">
+                ${tile('Total', sTotal, 'var(--p)', '\u{1F5D3}\uFE0F')}
+                ${tile('Completed', sCompleted, 'var(--success-d)', '\u{1F6F5}')}
+                ${tile('Ongoing', sOngoing, 'var(--y)', '\u{1F552}')}
+                ${tile('Cancelled', sCancelled, 'var(--t4)', '\u2715')}
+              </div>
+              <div class="muted" style="margin-top:10px">Ongoing is live — ${noun(1)} out right
+                now, whichever period is selected.</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
   },
 
   /* One-time cleanup for two bugs that share the same fix: the day-bucketing
