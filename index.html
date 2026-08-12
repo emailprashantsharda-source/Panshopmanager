@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260808_1518';
+    window.HISAABNOW_BUILD = 'v34_auto_20260812_1826';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -7836,7 +7836,7 @@ const CARD_TYPE_CHIPS = {
   dairy:      ['All','Low stock','Out','Milk','Curd & Dahi','Paneer','Butter & Ghee','Cheese','Beverages','Ice Cream','Powder & Tins','Daily Counter'],
   sabzi:      ['All','Low stock','Out','Daily','Leafy','Gourds','Beans','Gobhi','Roots','Other Veg','Exotic','Fruit'],
   stationery: ['All','Low stock','Out','Notebooks','Books','Pens','Pencils','Erasers','Colors','Geometry','Files','Office','Adhesives','Paper','Bags'],
-  pan:        ['All','Low stock','Out','Loose','Paan','Cigarettes - ITC','Cigarettes - Premium','Cigarettes - Other','Cigars & Loose','Pan Masala','Accessories','Cold Drinks','Chips','Chocolates','Biscuits','Other'],
+  pan:        ['All','Low stock','Out','Loose','Paan','Cigarettes','Pan Masala & Tobacco','Cold Drinks & Snacks','Accessories','Other'],
   cement:     ['All','Low stock','Out','OPC 43','OPC 53','PPC','PSC','White','Ready Mix','Accessories'],
   other:      ['All','Low stock','Out','Items','Services']
 };
@@ -8006,8 +8006,11 @@ const CARD_TYPE_BRANDS = {
   pan: {
     'ITC':              ['Gold Flake', 'Classic', 'Wills', 'India Kings'],
     'Marlboro':         ['Marlboro'],
-    'Benson & Hedges':  ['Benson & Hedges'],
     'Four Square':      ['Four Square'],
+    'Bristol':          ['Bristol'],
+    'Panama':           ['Panama'],
+    'Charminar':        ['Charminar'],
+    'Beedi':            ['Beedi'],
     'Cadbury':          ['Cadbury', 'Dairy Milk', '5 Star', 'Perk'],
     "Lay's":            ["Lay's"],
     'Bingo':            ['Bingo'],
@@ -9626,8 +9629,12 @@ pan: {
   txnUnit: 'bill', txnUnitPlural: 'bills',
   topPanelTitle: 'Top Sellers',
   catalogTitle: 'Products', catalogSearch: 'Search items…',
-  catalogChips: ['All','Loose','Paan','Cigarettes - ITC','Cigarettes - Premium','Cigarettes - Other','Cigars & Loose','Pan Masala','Accessories','Cold Drinks','Chips','Chocolates','Biscuits','Other'],
-  addSaleChips: ['All','Loose','Paan','Cigarettes - ITC','Cigarettes - Premium','Cigarettes - Other','Cigars & Loose','Pan Masala','Accessories','Cold Drinks','Chips','Chocolates','Biscuits','Other'],
+  /* (audit fix) Was 14 chips split by distributor logic (ITC/Premium/Other/
+     Cigars-&-Loose) with an empty 'Loose' chip nothing was ever tagged into.
+     Collapsed to how a pan shopkeeper actually thinks: singles, paan, packs,
+     masala/tobacco, snacks, accessories, other. */
+  catalogChips: ['All','Loose','Paan','Cigarettes','Pan Masala & Tobacco','Cold Drinks & Snacks','Accessories','Other'],
+  addSaleChips: ['All','Loose','Paan','Cigarettes','Pan Masala & Tobacco','Cold Drinks & Snacks','Accessories','Other'],
   salesUnitLabel: 'Bills',
   showUdhar: true,
   tracksStock: true,
@@ -9667,8 +9674,8 @@ pan: {
     icon:'🍃', activeBiz:'Sharma Pan Bhandar',
     stores:[{name:'Sharma Pan Bhandar · Sec 18', sub:'Pan Shop · ₹1,74,000 this month', active:true}],
     insight:'Evening sales (7-10 PM) are 60% of daily revenue — keep top SKUs stocked.' },
-  inventory: { title:'Inventory', stats:{items:86, low:14, value:'48K'},
-    chips:['All','Low stock','Out','Loose','Paan','Cigarettes - ITC','Cigarettes - Premium','Cigarettes - Other','Cigars & Loose','Pan Masala','Accessories','Cold Drinks','Chips','Chocolates','Biscuits','Other'] },
+  inventory: { title:'Inventory', stats:{items:30, low:5, value:'22K'},
+    chips:['All','Low stock','Out','Loose','Paan','Cigarettes','Pan Masala & Tobacco','Cold Drinks & Snacks','Accessories','Other'] },
   inventoryItems: [
     {name:'Gold Flake Kings · pack of 10',stock:24,unit:'pack',value:6000,status:'ok',emoji:'🚬'},
     {name:'Gold Flake Kings · loose',stock:140,unit:'pc',value:1750,status:'ok',emoji:'🚬'},
@@ -10926,161 +10933,59 @@ const SEED_CATALOGS = {
     {name:'Tiffin Box · Steel', emoji:'🍱', cat:'Bags'}
   ],
 
+  /* (audit rebuild — v34) Was 130+ items split into 14 distributor-logic
+     categories (Cigarettes-ITC/Premium/Other, Cigars & Loose, Chips,
+     Chocolates, Biscuits...) skewed toward metro-kiosk SKUs (Marlboro,
+     Dunhill, Cohiba/Davidoff cigars) with zero budget brands and an empty
+     'Loose' chip — the single most common pan-shop sale (one loose
+     cigarette) was mis-filed under 'Cigars & Loose' next to premium cigars.
+     Trimmed to a ~30-item quick-start set across 7 categories that match how
+     a shopkeeper actually sorts stock, with real budget brands added
+     (Bristol, Panama, Charminar, Beedi) alongside a couple of premium SKUs
+     so higher-footfall shops aren't undersupplied either. Full long-tail
+     SKUs (extra Marlboro/ITC variants, cigars, extra soft-drink flavours)
+     were dropped from the default seed — owners can still add any product
+     by hand; this is just what loads on day one. */
   pan: [
 
+    {name:'Loose Cigarette (Single)', emoji:'🚬', cat:'Loose'},
+    {name:'Loose Toffee / Mukhwas', emoji:'🍬', cat:'Loose'},
+    {name:'Loose Supari', emoji:'🟤', cat:'Loose'},
+
     {name:'Sada Paan', emoji:'🍃', cat:'Paan'},
-    {name:'Banarasi Sada Paan', emoji:'🍃', cat:'Paan'},
-    {name:'Calcutta Sada Paan', emoji:'🍃', cat:'Paan'},
-    {name:'Maghai Paan', emoji:'🍃', cat:'Paan'},
     {name:'Meetha Paan', emoji:'🌿', cat:'Paan'},
-    {name:'Banarasi Meetha Paan', emoji:'🌿', cat:'Paan'},
+    {name:'Banarasi Paan', emoji:'🍃', cat:'Paan'},
     {name:'Special Meetha Paan', emoji:'🌿', cat:'Paan'},
-    {name:'Chocolate Paan', emoji:'🍫', cat:'Paan'},
-    {name:'Kesar Paan', emoji:'🌟', cat:'Paan'},
-    {name:'Anarkali Paan', emoji:'🌹', cat:'Paan'},
-    {name:'Madhuri Paan', emoji:'🌸', cat:'Paan'},
-    {name:'Chuski Paan (Ice + Rose)', emoji:'❄️', cat:'Paan'},
-    {name:'Fire Paan', emoji:'🔥', cat:'Paan'},
     {name:'Silver Coated Paan (Chandi)', emoji:'⚪', cat:'Paan'},
-    {name:'Tobacco Paan (Qiwam)', emoji:'🍃', cat:'Paan'},
-    {name:'Pooja Paan', emoji:'🪔', cat:'Paan'},
 
-    {name:'Gold Flake Kings · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Gold Flake Kings · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Gold Flake Lights · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Gold Flake Lights · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Gold Flake Super Star · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Gold Flake Super Star · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Classic Filter Kings · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Classic Filter Kings · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Classic Mild · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Classic Mild · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Classic Ice Burst · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Classic Ice Burst · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Wills Navy Cut · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'Wills Navy Cut · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'India Kings · 10s', emoji:'🚬', cat:'Cigarettes - ITC'},
-    {name:'India Kings · 20s', emoji:'🚬', cat:'Cigarettes - ITC'},
+    {name:'Beedi Bundle · 25s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Bristol · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Panama · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Charminar · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Four Square · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Gold Flake Kings · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Classic Mild · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Wills Navy Cut · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Marlboro Red · 10s', emoji:'🚬', cat:'Cigarettes'},
 
-    {name:'Marlboro Red · 10s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Red · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Gold · 10s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Gold · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Ice Burst · 10s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Ice Burst · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Double Fusion · 10s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Marlboro Double Fusion · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Benson & Hedges · 10s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Benson & Hedges · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Dunhill · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
-    {name:'Davidoff · 20s', emoji:'🚬', cat:'Cigarettes - Premium'},
+    {name:'Rajnigandha · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
+    {name:'Pan Parag · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
+    {name:'Pan Bahar · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
+    {name:'Vimal · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
+    {name:'Supari Mix · 50g', emoji:'🟤', cat:'Pan Masala & Tobacco'},
 
-    {name:'Four Square · 10s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Four Square · 20s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Red & White · 10s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Red & White · 20s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Cavanders · 10s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Berkeley · 10s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Berkeley · 20s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Charms · 10s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Pall Mall · 10s', emoji:'🚬', cat:'Cigarettes - Other'},
-    {name:'Pall Mall · 20s', emoji:'🚬', cat:'Cigarettes - Other'},
+    {name:'Coca-Cola · 250ml', emoji:'🥤', cat:'Cold Drinks & Snacks'},
+    {name:'Thums Up · 250ml', emoji:'🥤', cat:'Cold Drinks & Snacks'},
+    {name:"Lay's Classic Salted", emoji:'🥔', cat:'Cold Drinks & Snacks'},
+    {name:'Cadbury Dairy Milk · small', emoji:'🍫', cat:'Cold Drinks & Snacks'},
+    {name:'Parle-G · small', emoji:'🍪', cat:'Cold Drinks & Snacks'},
+    {name:'Center Fresh', emoji:'🟢', cat:'Cold Drinks & Snacks'},
 
-    {name:'Loose Cigarette (Single)', emoji:'🚬', cat:'Cigars & Loose'},
-    {name:'Romeo y Julieta Cigar', emoji:'🌿', cat:'Cigars & Loose'},
-    {name:'Cohiba Cigar', emoji:'🌿', cat:'Cigars & Loose'},
-    {name:'Davidoff Cigar', emoji:'🌿', cat:'Cigars & Loose'},
-    {name:'Indian Cigar (Trichinopoly)', emoji:'🌿', cat:'Cigars & Loose'},
-    {name:'Mini Cigar Pack', emoji:'🌿', cat:'Cigars & Loose'},
-
-    {name:'Rajnigandha · small', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Rajnigandha · 20g', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Pan Parag · small', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Pan Parag · 20g', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Pan Bahar · small', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Vimal · small', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Tulsi Mix · small', emoji:'🟫', cat:'Pan Masala'},
-    {name:'Saunf Mukhwas · 100g', emoji:'🌿', cat:'Pan Masala'},
-    {name:'Mishri Saunf · 100g', emoji:'🌿', cat:'Pan Masala'},
-    {name:'Silver Mukhwas · 50g', emoji:'⚪', cat:'Pan Masala'},
-    {name:'Mouth Freshener Mix', emoji:'🌿', cat:'Pan Masala'},
-    {name:'Supari Mix · 50g', emoji:'🟤', cat:'Pan Masala'},
-
-    {name:'Bic Lighter', emoji:'🔥', cat:'Accessories'},
     {name:'Cricket Lighter', emoji:'🔥', cat:'Accessories'},
-    {name:'Refillable Lighter', emoji:'🔥', cat:'Accessories'},
-    {name:'Zippo Lighter', emoji:'🔥', cat:'Accessories'},
     {name:'Match Box · single', emoji:'🔥', cat:'Accessories'},
-    {name:'Match Box · pack of 10', emoji:'🔥', cat:'Accessories'},
-    {name:'Raw Rolling Papers', emoji:'📜', cat:'Accessories'},
-    {name:'OCB Rolling Papers', emoji:'📜', cat:'Accessories'},
-    {name:'Smoking Rolling Papers', emoji:'📜', cat:'Accessories'},
-    {name:'Cigarette Filters · pack', emoji:'⚪', cat:'Accessories'},
-    {name:'Ashtray', emoji:'🍂', cat:'Accessories'},
-    {name:'Cigarette Holder', emoji:'🚬', cat:'Accessories'},
-
-    {name:'Coca-Cola · 250ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Coca-Cola · 500ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Coca-Cola · 750ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Pepsi · 250ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Pepsi · 500ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Sprite · 250ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Sprite · 500ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Limca · 250ml', emoji:'🍋', cat:'Cold Drinks'},
-    {name:'Fanta · 250ml', emoji:'🍊', cat:'Cold Drinks'},
-    {name:'Mirinda · 250ml', emoji:'🍊', cat:'Cold Drinks'},
-    {name:'Thums Up · 250ml', emoji:'🥤', cat:'Cold Drinks'},
-    {name:'Bisleri Water · 1L', emoji:'💧', cat:'Cold Drinks'},
-    {name:'Bisleri Water · 500ml', emoji:'💧', cat:'Cold Drinks'},
-    {name:'Red Bull · can', emoji:'⚡', cat:'Cold Drinks'},
-    {name:'Sting · 250ml', emoji:'⚡', cat:'Cold Drinks'},
-    {name:'Monster · can', emoji:'⚡', cat:'Cold Drinks'},
-
-    {name:"Lay's Classic Salted", emoji:'🥔', cat:'Chips'},
-    {name:"Lay's Magic Masala", emoji:'🥔', cat:'Chips'},
-    {name:"Lay's American Style Cream & Onion", emoji:'🥔', cat:'Chips'},
-    {name:'Bingo Mad Angles', emoji:'🌽', cat:'Chips'},
-    {name:'Bingo Tedhe Medhe', emoji:'🥨', cat:'Chips'},
-    {name:'Kurkure Masala Munch', emoji:'🌽', cat:'Chips'},
-    {name:'Kurkure Green Chutney', emoji:'🌶️', cat:'Chips'},
-    {name:'Doritos · Nacho Cheese', emoji:'🧀', cat:'Chips'},
-    {name:'Pringles · 110g', emoji:'🥔', cat:'Chips'},
-    {name:"Haldiram's Bhujia · 50g", emoji:'🟡', cat:'Chips'},
-    {name:"Haldiram's Aloo Bhujia · 50g", emoji:'🥔', cat:'Chips'},
-    {name:'Uncle Chipps', emoji:'🥔', cat:'Chips'},
-
-    {name:'Cadbury Dairy Milk · small', emoji:'🍫', cat:'Chocolates'},
-    {name:'Cadbury Dairy Milk Silk', emoji:'🍫', cat:'Chocolates'},
-    {name:'Cadbury 5 Star', emoji:'⭐', cat:'Chocolates'},
-    {name:'Cadbury Perk', emoji:'🍫', cat:'Chocolates'},
-    {name:'KitKat · 4-finger', emoji:'🍫', cat:'Chocolates'},
-    {name:'Munch', emoji:'🍫', cat:'Chocolates'},
-    {name:'Snickers', emoji:'🍫', cat:'Chocolates'},
-    {name:'Mentos · roll', emoji:'⚪', cat:'Chocolates'},
-    {name:'Polo · roll', emoji:'⚪', cat:'Chocolates'},
-    {name:'Center Fresh', emoji:'🟢', cat:'Chocolates'},
-    {name:'Center Fruit', emoji:'🍬', cat:'Chocolates'},
-    {name:'Halls', emoji:'🟢', cat:'Chocolates'},
-    {name:'Boomer Bubble Gum', emoji:'🟣', cat:'Chocolates'},
-    {name:'Big Babol', emoji:'🟢', cat:'Chocolates'},
-
-    {name:'Parle-G · small', emoji:'🍪', cat:'Biscuits'},
-    {name:'Parle-G · large', emoji:'🍪', cat:'Biscuits'},
-    {name:'Marie Gold', emoji:'🍪', cat:'Biscuits'},
-    {name:'Hide & Seek', emoji:'🍫', cat:'Biscuits'},
-    {name:'Oreo', emoji:'🍪', cat:'Biscuits'},
-    {name:'Bourbon', emoji:'🍫', cat:'Biscuits'},
-    {name:'Good Day', emoji:'🍪', cat:'Biscuits'},
-    {name:'Britannia 50-50', emoji:'🍪', cat:'Biscuits'},
 
     {name:'Maggi · 1-pack', emoji:'🍜', cat:'Other'},
-    {name:'Yippee Noodles', emoji:'🍜', cat:'Other'},
-    {name:'Top Ramen', emoji:'🍜', cat:'Other'},
-    {name:'AAA Battery · pair', emoji:'🔋', cat:'Other'},
-    {name:'AA Battery · pair', emoji:'🔋', cat:'Other'},
-    {name:'Tissue Pack · small', emoji:'🧻', cat:'Other'},
-    {name:'Wet Wipes · pack', emoji:'🧻', cat:'Other'},
-    {name:'Phone Charging Cable', emoji:'🔌', cat:'Other'}
+    {name:'AAA Battery · pair', emoji:'🔋', cat:'Other'}
   ],
 
   /* ── (v34_025) dairy — Amul / Mother Dairy dealer ──────────────────────────
@@ -53074,7 +52979,7 @@ button:not(:disabled){ user-select:none }
         bakery: ['Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Party Cake','Pastries','Patties','Cheese','Cookies','Premium','Croissants'],
         grocery: ['Grains','Dairy','Personal care','Household','Other'],
         stationery: ['Notebooks','Books','Pens','Pencils','Erasers','Colors','Geometry','Files','Office','Adhesives','Paper','Bags'],
-        pan: ['Loose','Paan','Cigarettes - ITC','Cigarettes - Premium','Cigarettes - Other','Cigars & Loose','Pan Masala','Accessories','Cold Drinks','Chips','Chocolates','Biscuits','Other'],
+        pan: ['Loose','Paan','Cigarettes','Pan Masala & Tobacco','Cold Drinks & Snacks','Accessories','Other'],
         other: ['Items','Services'],
         sweets: ['Milk Sweets','Bengali Sweets','Dry Fruit Sweets','Laddu','Ghee Sweets','Halwa','Bhujia & Sev','Namkeen & Mixture','Snacks','Chaat','Beverages','Gift Boxes']
       };
