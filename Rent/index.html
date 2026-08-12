@@ -808,6 +808,14 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dbk-cap td.mdl{text-align:left;padding-left:2px}
 .dbk-cn{font-weight:750;font-size:13.5px}
 .dbk-cs{font-size:11px;color:var(--t4)}
+.dbk-cs.mix{color:#8A5A06;font-weight:650}
+.dbk-mixw{font-size:10.5px;color:#8A5A06;background:var(--y-tint);border:1px solid var(--y-bd);
+  border-radius:8px;padding:5px 7px;margin-top:5px;line-height:1.4;max-width:230px}
+.dbk-mixw span{font-weight:800;text-decoration:underline;cursor:pointer;white-space:nowrap}
+.dbk-fix{display:block;margin-top:6px;width:100%;background:#fff;border:1px solid var(--y-bd);
+  border-radius:7px;padding:5px 8px;font:750 10.5px/1.3 inherit;font-family:inherit;
+  color:#8A5A06;cursor:pointer;text-align:left}
+.dbk-fix:hover{background:var(--y-tint);border-color:var(--y)}
 .dbk-cell{border-radius:8px;padding:7px 4px;font-size:12.5px;font-weight:750;
   font-variant-numeric:tabular-nums;border:1px solid transparent}
 .c-free{background:var(--success-tint);color:var(--success-d);border-color:#BFEBD4}
@@ -2806,7 +2814,35 @@ const R = {
         wk: [0,6].includes(d.getDay()) });
     }
     let over = null;
-    const grid = models.map(rc => ({ rc, cells: cols.map(c => {
+    /* A row is one rate card, and bookFree() pools every vehicle pointing at
+       it — so two genuinely different vehicles sharing a card show as one
+       row with a count of 2, labelled with the card's model name. That is
+       arithmetically right and practically misleading: "Bolero · 2 cars"
+       when the second is a Tiago hides both a pooling error and a pricing
+       one, since the Tiago is being quoted at Bolero rates. Collect the
+       distinct vehicle names per card so the row can say what it actually
+       covers instead of only how many. */
+    const namesFor = rc => {
+      const vs = (DB.d.vehicles||[]).filter(v =>
+        !v.deletedAt && v.rateId === rc.id && v.status !== 'retired');
+      const names = [];
+      vs.forEach(v => { const n = String(vLabel(v)||'').trim();
+        if (n && names.indexOf(n) === -1) names.push(n); });
+      /* The odd ones out are the vehicles whose own name is not the card's
+         model — those are the ones worth offering to split off, and one
+         entry per distinct name so three identical Activas offer one fix,
+         not three. */
+      const seen = new Set();
+      const odd = vs.filter(v => {
+        const n = String(vLabel(v)||'').trim().toLowerCase();
+        if (!n || n === String(rc.model||'').trim().toLowerCase()) return false;
+        if (seen.has(n)) return false;
+        seen.add(n); return true;
+      });
+      return { names, odd };
+    };
+    const grid = models.map(rc => { const nm = namesFor(rc);
+      return { rc, names: nm.names, odd: nm.odd, cells: cols.map(c => {
       const f = this.bookFree(rc.id, c.s, c.e);
       /* bookFree clamps free at 0, which hides the case that matters most:
          more bookings than bikes. Recomputed raw so a shop is told it is
@@ -2817,7 +2853,7 @@ const R = {
         : raw === f.total ? 'c-free'
         : (raw / f.total) <= 0.34 ? 'c-tight' : 'c-some';
       return { raw, total:f.total, cls };
-    }) }));
+    }) }; });
 
     const capCard = !models.length ? '' : `
       <div class="card">
@@ -2828,11 +2864,21 @@ const R = {
             <thead><tr><th class="mdl">Model</th>
               ${cols.map(c=>`<th class="${c.wk?'wk':''}">${esc(c.top)}<br>${esc(c.bot)}</th>`).join('')}
             </tr></thead>
-            <tbody>${grid.map(g=>`<tr>
+            <tbody>${grid.map(g=>{
+              /* Mismatch = this card covers vehicles whose names are not all
+                 the card's model. One name that differs is worth flagging;
+                 several identical Activas are not. */
+                const mixed = g.names.length > 1 && g.odd.length > 0;
+                return `<tr>
               <td class="mdl"><div class="dbk-cn">${esc(g.rc.model)}</div>
-                <div class="dbk-cs">${g.cells[0].total} ${noun(g.cells[0].total!==1)}</div></td>
+                <div class="dbk-cs${mixed?' mix':''}">${g.cells[0].total} ${noun(g.cells[0].total!==1)}${
+                  mixed ? ' \u2014 ' + esc(g.names.join(', ')) : ''}</div>
+                ${mixed?`<div class="dbk-mixw">Same rate card, different ${noun(1)} \u2014 they share
+                  one price and one pool.
+                  ${g.odd.map(v=>`<button class="dbk-fix" onclick="R.splitRate('${v.id}')"
+                    >Give ${esc(vLabel(v))} its own rate</button>`).join('')}</div>`:''}</td>
               ${g.cells.map(c=>`<td><div class="dbk-cell ${c.cls}">${c.raw}/${c.total}</div></td>`).join('')}
-            </tr>`).join('')}</tbody>
+            </tr>`;}).join('')}</tbody>
           </table>
           <div class="dbk-leg">
             <span class="dbk-lg"><i class="c-free"></i>All free</span>
@@ -4019,14 +4065,76 @@ const R = {
      the answer conservative and occasionally refuses a booking that would
      have fitted. Correct direction to be wrong — turning one away costs a
      day's rent, double-booking costs the customer and the review. */
+  /* Give a pooled vehicle its own rate card. Copies the prices it is
+     already being charged at, so nothing changes for the customer until
+     the owner edits them — the point is to separate the pool and the
+     price, not to silently re-price a bike mid-season. Named after the
+     vehicle, since that is the name the shop actually uses for it. */
+  splitRate(vehicleId){
+    const v = (DB.d.vehicles||[]).find(x=>x.id===vehicleId); if (!v) return;
+    const src = (DB.d.rates||[]).find(r=>r.id===v.rateId);
+    if (!src) return toast('That '+noun()+' has no rate card to split');
+    const name = String(vLabel(v)||'').trim() || src.model;
+    if (!confirm('Give ' + name + ' its own rate card?\n\n'
+      + 'It will start with the same prices as ' + src.model
+      + ', so nothing changes for customers until you edit them. '
+      + name + ' will stop sharing availability with ' + src.model + '.')) return;
+    const rec = {
+      model: name,
+      deposit: Number(src.deposit)||0,
+      ot: Number(src.ot)||0,
+      tiers: Object.assign({}, src.tiers||{}),
+      kind: src.kind || v.kind || 'bike',
+      ...(src.kmIncluded!=null ? { kmIncluded: src.kmIncluded } : {}),
+      ...(src.kmExtra!=null ? { kmExtra: src.kmExtra } : {}),
+      weekend: src.weekend ? JSON.parse(JSON.stringify(src.weekend)) : null
+    };
+    if (window.Cloud && Cloud.ready){
+      const rid = Cloud.nid('rc');
+      Cloud.put('rates', rid, rec).then(w => {
+        if (!w.ok) return toast(Cloud.explainWrite(w.code));
+        Cloud.put('vehicles', v.id, { rateId: rid, model: name }).then(w2 => {
+          if (!w2.ok) return toast(Cloud.explainWrite(w2.code));
+          Haptic.success();
+          toast(name + ' now has its own rate card — set its prices in Rates');
+        });
+      });
+      /* Optimistic local update so the grid splits immediately rather than
+         waiting on the round trip. */
+      DB.d.rates.push(Object.assign({ id: rid }, rec));
+      v.rateId = rid; v.model = name;
+    } else {
+      const rid = DB.id('rc');
+      DB.d.rates.push(Object.assign({ id: rid }, rec));
+      v.rateId = rid; v.model = name;
+    }
+    DB.save(); this.render();
+  },
+
   bookFree(rateId, from, to, ignoreId){
     const bikes = (DB.d.vehicles||[]).filter(v =>
       !v.deletedAt && v.rateId === rateId && v.status !== 'retired');
     const total = bikes.length;
     if (!total) return { total:0, free:0, outNow:0, booked:0 };
     const ids = new Set(bikes.map(v=>v.id));
+    /* An open rental means the bike is physically out RIGHT NOW, so its
+       effective return time is at least this moment — hence max(dueAt, now)
+       rather than dueAt alone.
+
+       With bare `dueAt > from`, an OVERDUE rental fell out of today's
+       window entirely: due yesterday, still not returned, and the window
+       starts at midnight today, so dueAt < from and the bike counted as
+       available. A shop with one car out three days late was shown two
+       cars free and could book both. The longer a bike was overdue the
+       more confidently the app said it was free, which is exactly backwards.
+
+       Future days are deliberately unaffected: for a window starting after
+       now, max() collapses back to dueAt, so an overdue bike is still
+       assumed to come back rather than blocking every future day forever. */
+    const nowMs = Date.now();
     const outNow = (DB.d.rentals||[]).filter(r =>
-      r.status === 'open' && ids.has(r.vehicleId) && (Number(r.dueAt)||0) > from).length;
+      r.status === 'open' && ids.has(r.vehicleId)
+      && Math.max(Number(r.dueAt)||0, nowMs) > from).length;
     const booked = this.bookings().filter(b =>
       b.id !== ignoreId && b.rateId === rateId &&
       Number(b.fromAt) < to && Number(b.toAt) > from).length;
