@@ -795,6 +795,40 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dmn-share-t{width:66px;height:6px;border-radius:4px;background:#EFEBE3;overflow:hidden;flex:none}
 .dmn-share-t>div{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--p),var(--p-mid))}
 .dmn-share-n{font-weight:800;width:36px;text-align:right;font-size:12.5px}
+/* ── Bookings, desktop ───────────────────────────────────────────────
+   The capacity grid is the point: a booking holds a model, not a bike,
+   so "how many Activas are spoken for on Saturday" is the only question
+   worth answering and a per-booking list cannot answer it. */
+.dbk-cap{width:100%;border-collapse:separate;border-spacing:0;min-width:560px}
+.dbk-cap th{font-size:10.5px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--t3);padding:8px 6px;text-align:center;white-space:nowrap;line-height:1.3}
+.dbk-cap th.mdl{text-align:left;padding-left:2px;width:180px}
+.dbk-cap th.wk{color:var(--vi)}
+.dbk-cap td{padding:4px 3px;text-align:center}
+.dbk-cap td.mdl{text-align:left;padding-left:2px}
+.dbk-cn{font-weight:750;font-size:13.5px}
+.dbk-cs{font-size:11px;color:var(--t4)}
+.dbk-cell{border-radius:8px;padding:7px 4px;font-size:12.5px;font-weight:750;
+  font-variant-numeric:tabular-nums;border:1px solid transparent}
+.c-free{background:var(--success-tint);color:var(--success-d);border-color:#BFEBD4}
+.c-some{background:var(--vi-tint);color:var(--vi);border-color:var(--vi-bd)}
+.c-tight{background:var(--y-tint);color:#8A5A06;border-color:var(--y-bd)}
+.c-full{background:var(--danger-tint);color:var(--danger);border-color:#F3C8C2}
+.dbk-leg{display:flex;gap:14px;font-size:11.5px;color:var(--t4);padding:12px 0 0;
+  border-top:1px solid #F4F1EB;margin-top:8px;flex-wrap:wrap}
+.dbk-lg{display:flex;align-items:center;gap:5px}
+.dbk-lg i{width:10px;height:10px;border-radius:3px;display:inline-block;font-style:normal}
+.dbk-day{background:#FCFAF6;font-size:11px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--t3);padding:7px 12px}
+.dt-tbl tbody tr.bknow{background:#FBF7FF}
+.dt-tbl tbody tr.bknow:hover{background:#F6EEFF}
+.dt-tbl tr.r-now td.rail:after{background:var(--y)}
+.dt-tbl tr.r-soon td.rail:after{background:var(--vi)}
+.dt-tbl tr.r-later td.rail:after{background:var(--bd)}
+.dfl-sub.clash{color:var(--danger);font-weight:650}
+.pill.dbk-notok{background:#F1EDE5;color:var(--t4)}
+.dfl-chip.dbk-new{background:var(--vi);border-color:var(--vi);color:#fff;font-weight:750}
+.dout-ab.dbk-go{background:var(--y);border-color:var(--y);color:#0A0A0A}
 /* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
    size instead of four columns squeezing them to nothing. */
 .bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
@@ -1039,7 +1073,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   </div>
   <button class="nv" id="sv-out" onclick="R.nav('out')">
     <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-9l-2-6h4l2-3h4l1 3"/></svg></span><span class="tx">Out Now</span><span class="ct" id="sv-out-c"></span></button>
-  <button class="nv" id="sv-book" onclick="R.nav('out');R.outTab(1)">
+  <button class="nv" id="sv-book" onclick="R.nav('out',{book:true})">
     <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span><span class="tx">Booked</span><span class="ct" id="sv-book-c"></span></button>
   <button class="nv" id="sv-fleet" onclick="R.nav('fleet')">
     <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg></span><span class="tx">Fleet</span><span class="ct" id="sv-fleet-c"></span></button>
@@ -1549,8 +1583,15 @@ const R = {
     setInterval(()=>{ if (this.page==='out') this.renderOut(); }, 60000);
   },
 
-  nav(p){
+  nav(p, opts){
     this._sel = null;   /* never carry a selection across screens */
+    /* Out Now and Booked are one page distinguished by _bookTab, and the
+       desktop sidebar has a separate button for each. Without this reset,
+       nav('out') after viewing Booked re-entered the page with _bookTab
+       still true: the nav button lit up, the content did not change, and
+       Out Now looked broken. The Booked button passes {book:true} to opt
+       back in. */
+    this._bookTab = !!(opts && opts.book);
     if ((p==='money' && !this.isManager()) || (p==='rates' && !this.isManager())) {
       toast('Ask the owner for access'); p = 'out';
     }
@@ -2623,6 +2664,7 @@ const R = {
   /* Grouped by day, nearest first. Today's carry their actions inline; later
      ones are rows until their day comes round. */
   bookedList(held){
+    if (this.isWide()) return this.bookedTable(held);
     if (!held.length) return `<div class="empty"><div class="e">\u{1F4C5}</div>
       <b>No bookings yet</b>
       <span>Set a future date on the rent-out sheet and it becomes a booking.</span>
@@ -2665,6 +2707,180 @@ const R = {
       </div>`;
     });
     return out;
+  },
+
+  bookFilter(k){ this._bkf = k; this.render(); },
+
+  /* ── BOOKINGS, desktop ───────────────────────────────────────────────
+     Built around the fact stated in bookFree() above: a booking holds a
+     MODEL, not a named bike. So the question is never "which bike is
+     free on Saturday" but "how many Activas are spoken for" — which the
+     phone list, being one card per booking, cannot show at all. */
+  bookedTable(held){
+    const now = Date.now();
+    const dayKey = ms => { const d=new Date(ms);
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+    const today = dayKey(now);
+    const startOfDay = n => { const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+n); return d.getTime(); };
+
+    /* 'past' needs the statuses bookings() filters out, so it reads
+       DB.d.bookings directly rather than through that helper. */
+    const filt = this._bkf || 'up';
+    const all = DB.d.bookings || [];
+    const past = all.filter(b => b.status && b.status !== 'held')
+      .sort((a,b)=> Number(b.fromAt)-Number(a.fromAt));
+    const todays = held.filter(b => dayKey(b.fromAt) === today);
+    const list = filt==='today' ? todays : (filt==='past' ? past : held);
+
+    /* ── capacity grid ──────────────────────────────────────────────
+       One bookFree() call per model per day. Seven days by however many
+       priced models a shop has — pure in-memory arithmetic over small
+       arrays, computed once here rather than inside the template. */
+    const models = (DB.d.rates||[]).filter(rc => this.rateReady(rc)
+      && (DB.d.vehicles||[]).some(v => !v.deletedAt && v.rateId===rc.id && v.status!=='retired'));
+    const cols = [];
+    for (let i=0;i<7;i++){
+      const s = startOfDay(i), e = s + 86399999;
+      const d = new Date(s);
+      cols.push({ s, e,
+        top: i===0 ? 'Today' : d.toLocaleDateString('en-IN',{ weekday:'short' }),
+        bot: String(d.getDate()) + (i===0||d.getDate()===1 ? ' '+d.toLocaleDateString('en-IN',{month:'short'}) : ''),
+        wk: [0,6].includes(d.getDay()) });
+    }
+    let over = null;
+    const grid = models.map(rc => ({ rc, cells: cols.map(c => {
+      const f = this.bookFree(rc.id, c.s, c.e);
+      /* bookFree clamps free at 0, which hides the case that matters most:
+         more bookings than bikes. Recomputed raw so a shop is told it is
+         oversubscribed rather than just seeing "full". */
+      const raw = f.total - f.outNow - f.booked;
+      if (raw < 0 && !over) over = { model: rc.model, day: c, n: -raw };
+      const cls = (f.total===0 || raw<=0) ? 'c-full'
+        : raw === f.total ? 'c-free'
+        : (raw / f.total) <= 0.34 ? 'c-tight' : 'c-some';
+      return { raw, total:f.total, cls };
+    }) }));
+
+    const capCard = !models.length ? '' : `
+      <div class="card">
+        <div class="dmn-h"><span class="dmn-t">Free by model \u00b7 next 7 days</span>
+          <span class="grow"></span><span class="dmn-sub">free / total</span></div>
+        <div class="dmn-b" style="padding-top:8px;overflow-x:auto">
+          <table class="dbk-cap">
+            <thead><tr><th class="mdl">Model</th>
+              ${cols.map(c=>`<th class="${c.wk?'wk':''}">${esc(c.top)}<br>${esc(c.bot)}</th>`).join('')}
+            </tr></thead>
+            <tbody>${grid.map(g=>`<tr>
+              <td class="mdl"><div class="dbk-cn">${esc(g.rc.model)}</div>
+                <div class="dbk-cs">${g.cells[0].total} ${noun(g.cells[0].total!==1)}</div></td>
+              ${g.cells.map(c=>`<td><div class="dbk-cell ${c.cls}">${c.raw}/${c.total}</div></td>`).join('')}
+            </tr>`).join('')}</tbody>
+          </table>
+          <div class="dbk-leg">
+            <span class="dbk-lg"><i class="c-free"></i>All free</span>
+            <span class="dbk-lg"><i class="c-some"></i>Some booked</span>
+            <span class="dbk-lg"><i class="c-tight"></i>Nearly full</span>
+            <span class="dbk-lg"><i class="c-full"></i>Full / overbooked</span>
+            <span style="margin-left:auto">Counts ${noun(1)} still out on rent, not just bookings.</span>
+          </div>
+        </div>
+      </div>`;
+
+    const tokens = held.reduce((a,b)=>a+(Number(b.token)||0),0);
+    const quoted = list.reduce((a,b)=>a+(Number(b.quotedRent)||0),0);
+    const withTok = held.filter(b=>Number(b.token)>0).length;
+    const wk = held.filter(b=>Number(b.fromAt) <= startOfDay(7)).length;
+    const nModels = new Set(held.map(b=>b.rateId)).size;
+
+    const kpi = `<div class="dfl-kpi">
+      <div class="dfl-k svc"><div class="dfl-k-l">Pickups today</div>
+        <div class="dfl-k-v">${todays.length}</div>
+        <div class="dfl-k-s">${todays.length?'keep these back':'nothing due'}</div></div>
+      <div class="dfl-k out"><div class="dfl-k-l">Next 7 days</div>
+        <div class="dfl-k-v">${wk}</div>
+        <div class="dfl-k-s">across ${nModels} model${nModels===1?'':'s'}</div></div>
+      <div class="dfl-k ok"><div class="dfl-k-l">Tokens held</div>
+        <div class="dfl-k-v">${money(tokens)}</div>
+        <div class="dfl-k-s">${withTok} of ${held.length} paid a token</div></div>
+      <div class="dfl-k od${over?'':' zero'}"><div class="dfl-k-l">Overbooked</div>
+        <div class="dfl-k-v">${over?over.n:0}</div>
+        <div class="dfl-k-s">${over?esc(over.model)+', '+esc(over.day.top)+' '+esc(over.day.bot):'none'}</div></div>
+    </div>`;
+
+    const alert = !over ? '' : `<div class="dout-alert">
+      <div class="dout-alert-i">\u26A0\uFE0F</div>
+      <div><b>${esc(over.model)} is overbooked on ${esc(over.day.top)} ${esc(over.day.bot)}</b>
+        <div class="s">${over.n} more booking${over.n===1?'':'s'} than ${noun(1)} available.
+          Move one to another model, or tell the customer before they arrive.</div></div>
+    </div>`;
+
+    const chip = (k,label,cnt)=>`<button class="dfl-chip${filt===k?' on':''}"
+      onclick="R.bookFilter('${k}')">${label} ${cnt}</button>`;
+    const tools = `<div class="dfl-tools">
+      ${chip('up','Upcoming',held.length)}${chip('today','Today',todays.length)}
+      ${chip('past','Past',past.length)}
+      <span class="grow"></span>
+      <button class="dfl-chip dbk-new" onclick="R.newBooking()">+ New booking</button>
+    </div>`;
+
+    let lastDay = '', body = '';
+    if (!list.length){
+      body = `<tr><td colspan="8" class="muted" style="padding:22px;text-align:center">
+        ${filt==='past'?'No past bookings yet.':'No bookings here.'}</td></tr>`;
+    } else list.forEach(b => {
+      const k = dayKey(b.fromAt);
+      if (k !== lastDay){
+        lastDay = k;
+        const d = new Date(Number(b.fromAt));
+        const lbl = k===today ? 'Today' : d.toLocaleDateString('en-IN',
+          { weekday:'short', day:'numeric', month:'short' });
+        body += `<tr><td colspan="8" class="dbk-day">${esc(lbl)}</td></tr>`;
+      }
+      const isToday = k === today;
+      const isPast = filt === 'past';
+      const f = this.bookFree(b.rateId, Number(b.fromAt), Number(b.toAt), b.id);
+      const clash = !isPast && (f.total - f.outNow - f.booked) < 0;
+      const mins = (Number(b.fromAt) - now) / 60000;
+      const when = isPast ? '' : (mins < 0 ? 'started' :
+        mins < 60 ? 'in ' + Math.round(mins) + ' min' : 'in ' + fmtDur(mins/60));
+      const pv = b.preferredVehicleId
+        ? (DB.d.vehicles||[]).find(v=>v.id===b.preferredVehicleId) : null;
+      const rail = isPast ? 'r-later' : (isToday ? 'r-now' : (mins < 4320 ? 'r-soon' : 'r-later'));
+      body += `<tr class="${rail}${isToday&&!isPast?' bknow':''}">
+        <td class="rail"></td>
+        <td><div class="dmn-nm">${esc(fmtDT(b.fromAt).split(', ').slice(1).join(', ')||fmtDT(b.fromAt))}</div>
+          ${when?`<div class="dfl-sub">${esc(when)}</div>`:''}</td>
+        <td><div class="dmn-nm">${esc(b.model||'\u2014')}</div>
+          <div class="dfl-sub${clash?' clash':''}">${clash ? 'more bookings than '+noun(1)
+            : (pv ? 'prefers '+esc(vSub(pv)||vLabel(pv)) : 'any '+noun())}</div></td>
+        <td><div class="dout-cust">${esc(b.customerName||'\u2014')}</div>
+          ${b.customerPhone?`<div class="dout-ph">${esc(b.customerPhone)}</div>`:''}</td>
+        <td><span class="pill ${isPast?'':(clash?'late':(isToday?'warn':'bk'))}">${
+          isPast ? esc(String(b.status||'').toUpperCase()) : esc(tierOf(b.tier).label)}</span></td>
+        <td class="num" style="font-weight:800">${money(b.quotedRent)}</td>
+        <td>${Number(b.token)>0
+          ? `<span class="pill ok">${money(b.token)} taken</span>`
+          : `<span class="pill dbk-notok">No token</span>`}</td>
+        <td class="num"><div class="dout-act">
+          ${isPast ? '<span class="muted">\u2014</span>' : `
+            ${b.customerPhone?`<a class="dout-ab call" href="tel:${esc(b.customerPhone)}"
+              title="Call ${esc(b.customerName||'customer')}">\u{1F4DE}</a>`:''}
+            ${isToday
+              ? `<button class="dout-ab" onclick="R.bookNoShow('${b.id}')">No-show</button>
+                 <button class="dout-ab dbk-go" onclick="R.startBooking('${b.id}')">Start rental \u203A</button>`
+              : `<button class="dout-ab" onclick="R.bookCancel('${b.id}')">Cancel</button>`}`}
+        </div></td>
+      </tr>`;
+    });
+
+    return kpi + alert + capCard + tools + `<div class="dt-tbl"><table>
+      <thead><tr><th class="railcol"></th><th>Pickup</th><th>Model</th><th>Customer</th>
+        <th>${filt==='past'?'Outcome':'Plan'}</th><th class="num">Quoted</th><th>Token</th>
+        <th class="num">Action</th></tr></thead>
+      <tbody>${body}</tbody></table>
+      <div class="dfl-foot"><span>${list.length} booking${list.length===1?'':'s'}</span>
+        <span>${filt!=='past'?`Tokens held <b style="color:var(--success-d)">${money(tokens)}</b> \u00b7 `:''}quoted value <b>${money(quoted)}</b></span></div>
+    </div>`;
   },
 
   /* The second door. Same sheet, date pre-set to tomorrow — nobody discovers a
