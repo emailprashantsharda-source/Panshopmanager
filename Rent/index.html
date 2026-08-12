@@ -829,6 +829,59 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .pill.dbk-notok{background:#F1EDE5;color:var(--t4)}
 .dfl-chip.dbk-new{background:var(--vi);border-color:var(--vi);color:#fff;font-weight:750}
 .dout-ab.dbk-go{background:var(--y);border-color:var(--y);color:#0A0A0A}
+/* ── Rates, desktop ──────────────────────────────────────────────────
+   Every price in the shop on one editable grid. */
+.rt-tbl{width:100%;border-collapse:separate;border-spacing:0}
+.rt-tbl th{font-size:10.5px;font-weight:750;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--t3);text-align:center;padding:10px 8px;background:#FCFAF6;
+  border-bottom:1px solid var(--bd);white-space:nowrap}
+.rt-tbl th.mdl{text-align:left;padding-left:16px;min-width:190px}
+.rt-tbl th.grp{border-left:1px solid var(--bd)}
+.rt-tbl th.we{color:var(--vi);background:#FBFAFF}
+.rt-th-s{font-weight:600;text-transform:none;letter-spacing:0;font-size:9.5px}
+.rt-tbl td{padding:7px 8px;border-bottom:1px solid #F4F1EB;text-align:center;vertical-align:middle}
+.rt-tbl td.mdl{text-align:left;padding-left:16px;cursor:pointer}
+.rt-tbl td.grp{border-left:1px solid var(--bd)}
+.rt-tbl td.we{background:#FCFBFF}
+.rt-tbl tbody tr:last-child td{border-bottom:0}
+.rt-tbl tbody tr:hover td{background:#FDFBF7}
+.rt-tbl tbody tr:hover td.we{background:#F8F5FF}
+.rt-nm{font-weight:750;font-size:14.5px;letter-spacing:-.01em}
+.rt-meta{font-size:11.5px;color:var(--t4);margin-top:3px;display:flex;align-items:center;gap:6px}
+.rt-dot{width:4px;height:4px;border-radius:50%;background:var(--t4);display:inline-block}
+/* Inline price cell — invisible until hovered, so the grid reads as a table
+   rather than a form, but is editable everywhere. */
+.rt-pc{width:72px;border:1px solid transparent;border-radius:9px;padding:7px 8px;
+  font:750 13.5px/1 inherit;font-family:inherit;font-variant-numeric:tabular-nums;
+  text-align:right;background:transparent;color:var(--t1)}
+.rt-pc::placeholder{color:var(--t4);font-weight:600}
+.rt-pc:hover{border-color:var(--bd);background:#fff}
+.rt-pc:focus{outline:0;border-color:var(--p);background:#fff;
+  box-shadow:0 0 0 3px rgba(15,61,92,.1)}
+.rt-pc.zero{color:var(--danger);background:var(--danger-tint);border-color:#F3C8C2}
+.rt-pc.dim{color:var(--t4);font-weight:600}
+.rt-pc.dirty{border-color:var(--y);background:var(--y-tint)}
+.rt-tog{border:1px solid var(--bd);background:var(--card);border-radius:9px;padding:6px 11px;
+  font-size:12px;font-weight:700;color:var(--t4);cursor:pointer;font-family:inherit}
+.rt-tog.on{background:var(--vi-tint);border-color:var(--vi-bd);color:var(--vi)}
+.rt-bk{font-weight:750;font-variant-numeric:tabular-nums}
+.rt-bk.none{color:var(--danger)}
+.rt-earn{font-weight:800;color:var(--success-d);font-variant-numeric:tabular-nums}
+.rt-earn.nil{color:var(--t4);font-weight:600}
+.rt-hint{font-size:12px;color:var(--t4);padding:12px 16px 0;display:flex;gap:16px;flex-wrap:wrap}
+.rt-hint-r{color:var(--danger)}
+.rt-warn{background:var(--y-tint);border-color:var(--y-bd)}
+.rt-warn b{color:#8A5A06}
+.rt-warn .s{color:#7A5209}
+/* Sticky save bar: bulk inline editing needs a visible undo path. */
+.rt-savebar{position:sticky;bottom:14px;display:flex;align-items:center;gap:12px;
+  background:var(--p);color:#fff;border-radius:13px;padding:12px 16px;margin-top:14px;
+  box-shadow:0 6px 20px rgba(10,44,67,.28);z-index:20}
+.rt-sb-s{font-size:12px;color:rgba(255,255,255,.7)}
+.rt-bs{border:0;border-radius:9px;padding:8px 15px;font-size:13px;font-weight:750;
+  cursor:pointer;font-family:inherit}
+.rt-bs.y{background:var(--y);color:#0A0A0A}
+.rt-bs.g{background:rgba(255,255,255,.14);color:#fff}
 /* Rentals summary tiles — 2x2 on a phone, so each figure keeps a readable
    size instead of four columns squeezing them to nothing. */
 .bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#EFEBE3;
@@ -905,6 +958,11 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .side{display:none}
 @media (min-width:1024px){
   body{padding-bottom:0}
+  /* The shop name is already in the sidebar brand block at this width, so
+     the header eyebrow is the same string twice on one screen. Hidden here
+     rather than deleted from the markup: below 1024px there is no sidebar,
+     and the header is the only place the shop name appears at all. */
+  .top-biz{display:none}
   .side{
     display:flex;flex-direction:column;gap:3px;
     position:fixed;left:0;top:0;bottom:0;width:216px;z-index:60;
@@ -1072,15 +1130,15 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <b id="side-biz">—<span id="side-plan">Trial</span></b>
   </div>
   <button class="nv" id="sv-out" onclick="R.nav('out')">
-    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-9l-2-6h4l2-3h4l1 3"/></svg></span><span class="tx">Out Now</span><span class="ct" id="sv-out-c"></span></button>
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M14.8 17H9.2l-1.6-4.6h3.1l1.7-2.6h3.2l1.1 2.9"/><path d="M16.7 9.8h2.1"/><path d="M1.6 10.5h3.2M0.8 13.6h2.6"/></svg></span><span class="tx">Out Now</span><span class="ct" id="sv-out-c"></span></button>
   <button class="nv" id="sv-book" onclick="R.nav('out',{book:true})">
-    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span><span class="tx">Booked</span><span class="ct" id="sv-book-c"></span></button>
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.8" width="18" height="16.2" rx="2.6"/><path d="M3 9.6h18M8 2.6v4M16 2.6v4"/><path d="M8.6 14.6l2.3 2.3 4.4-4.4"/></svg></span><span class="tx">Bookings</span><span class="ct" id="sv-book-c"></span></button>
   <button class="nv" id="sv-fleet" onclick="R.nav('fleet')">
-    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg></span><span class="tx">Fleet</span><span class="ct" id="sv-fleet-c"></span></button>
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.7 9.6L12 3.4l9.3 6.2"/><path d="M4.6 9.9v10.7h14.8V9.9"/><circle cx="9.2" cy="17.2" r="1.6"/><circle cx="15.2" cy="17.2" r="1.6"/><path d="M13.6 17.2h-2.8l-1-2.6h1.7l.9-1.4h1.6l.6 1.6"/></svg></span><span class="tx">Fleet</span><span class="ct" id="sv-fleet-c"></span></button>
   <button class="nv" id="sv-rates" onclick="R.nav('rates')">
-    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="tx">Rates</span><span class="ct"></span></button>
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 13.1l-7.3 7.3a2.1 2.1 0 0 1-3 0l-6-6a2.1 2.1 0 0 1-.6-1.6l.3-5.9a2.1 2.1 0 0 1 2-2l5.9-.3c.6 0 1.2.2 1.6.6l7.1 7.1a2.1 2.1 0 0 1 0 .8z"/><path d="M8.6 8.1h4M8.6 10.5h4M10.9 8.1c1.2 0 2 .9 2 2s-.8 2-2 2H9.4l3.2 3.3"/></svg></span><span class="tx">Rates</span><span class="ct"></span></button>
   <button class="nv" id="sv-money" onclick="R.nav('money')">
-    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg></span><span class="tx">Money</span><span class="ct"></span></button>
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 20.6h17.2"/><path d="M7 20.6v-4.8M12 20.6v-8.2M17 20.6v-5.6"/><path d="M5.2 10.2l4.3-4.3 3.2 3.2 5-5"/><path d="M14.2 4.1h3.5v3.5"/></svg></span><span class="tx">Money</span><span class="ct"></span></button>
   <button class="side-cta" onclick="R.topAction()"><span class="p">+</span>
     <span class="tx" id="side-cta-tx"> Rent out</span></button>
   <button class="side-tog" onclick="R.sideToggle()">
@@ -1127,10 +1185,10 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 <div class="nav">
   <button id="nv-out" class="on" onclick="R.nav('out')">
-    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-9l-2-6h4l2-3h4l1 3"/></svg></span>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M14.8 17H9.2l-1.6-4.6h3.1l1.7-2.6h3.2l1.1 2.9"/><path d="M16.7 9.8h2.1"/><path d="M1.6 10.5h3.2M0.8 13.6h2.6"/></svg></span>
     <span>Out Now</span></button>
   <button id="nv-fleet" onclick="R.nav('fleet')">
-    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 5v14"/></svg></span>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.7 9.6L12 3.4l9.3 6.2"/><path d="M4.6 9.9v10.7h14.8V9.9"/><circle cx="9.2" cy="17.2" r="1.6"/><circle cx="15.2" cy="17.2" r="1.6"/><path d="M13.6 17.2h-2.8l-1-2.6h1.7l.9-1.4h1.6l.6 1.6"/></svg></span>
     <span>Fleet</span></button>
   <button class="nav-cta" id="nv-cta" onclick="R.topAction()" aria-label="Rent out">
     <span class="nav-cta-btn">
@@ -1139,10 +1197,10 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <span class="nav-cta-l" id="nv-cta-l">Rent out</span>
   </button>
   <button id="nv-rates" onclick="R.nav('rates')">
-    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 13.1l-7.3 7.3a2.1 2.1 0 0 1-3 0l-6-6a2.1 2.1 0 0 1-.6-1.6l.3-5.9a2.1 2.1 0 0 1 2-2l5.9-.3c.6 0 1.2.2 1.6.6l7.1 7.1a2.1 2.1 0 0 1 0 .8z"/><path d="M8.6 8.1h4M8.6 10.5h4M10.9 8.1c1.2 0 2 .9 2 2s-.8 2-2 2H9.4l3.2 3.3"/></svg></span>
     <span>Rates</span></button>
   <button id="nv-money" onclick="R.nav('money')">
-    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg></span>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 20.6h17.2"/><path d="M7 20.6v-4.8M12 20.6v-8.2M17 20.6v-5.6"/><path d="M5.2 10.2l4.3-4.3 3.2 3.2 5-5"/><path d="M14.2 4.1h3.5v3.5"/></svg></span>
     <span>Money</span></button>
 </div>
 
@@ -4398,36 +4456,193 @@ const R = {
      fat-finger a price. Photograph it instead — then CONFIRM every figure,
      because a misread 620 as 820 costs money on every rental until someone
      notices. Nothing is saved from this screen without a second tap. */
+  /* ── RATES, desktop ──────────────────────────────────────────────────
+     One editable grid instead of one sheet per model. Owners set prices
+     relatively — "Aviator should be ₹50 more than Activa" — and the sheet
+     made that comparison impossible: you had to open two, and remember the
+     first. Desktop has the width for the whole price list at once.
+
+     Edits are staged in _rdraft and written on Save rather than per
+     keystroke: a price list is edited in sweeps, and a write per keystroke
+     would be both expensive and impossible to undo. */
+  rateEdit(id, field, val){
+    this._rdraft = this._rdraft || {};
+    const rc = (DB.d.rates||[]).find(r=>r.id===id); if (!rc) return;
+    const cur = field==='dep' ? (Number(rc.deposit)||0)
+              : field==='ot'  ? (Number(rc.ot)||0)
+              : Number((rc.tiers||{})[field])||0;
+    const n = val === '' ? 0 : (Number(String(val).replace(/[^0-9.]/g,''))||0);
+    this._rdraft[id] = this._rdraft[id] || {};
+    if (n === cur) delete this._rdraft[id][field];
+    else this._rdraft[id][field] = n;
+    if (!Object.keys(this._rdraft[id]).length) delete this._rdraft[id];
+    this.ratesSaveBar();
+  },
+  rateDraftCount(){
+    return Object.values(this._rdraft||{}).reduce((a,o)=>a+Object.keys(o).length,0);
+  },
+  /* Only the bar is re-rendered while typing. A full render() would replace
+     the input under the cursor and lose the caret on every keystroke. */
+  ratesSaveBar(){
+    const el = document.getElementById('rt-savebar'); if (!el) return;
+    const n = this.rateDraftCount();
+    if (!n){ el.style.display='none'; return; }
+    const names = Object.keys(this._rdraft).map(id=>{
+      const rc=(DB.d.rates||[]).find(r=>r.id===id); return rc?rc.model:''; }).filter(Boolean);
+    el.style.display='';
+    el.innerHTML = `<b>${n} price${n===1?'':'s'} changed</b>
+      <span class="rt-sb-s">${esc(names.slice(0,4).join(', '))}${names.length>4?' +'+(names.length-4)+' more':''}</span>
+      <span class="grow"></span>
+      <button class="rt-bs g" onclick="R.rateDiscard()">Discard</button>
+      <button class="rt-bs y" onclick="R.rateSaveAll()">Save changes</button>`;
+  },
+  rateDiscard(){ this._rdraft = null; this.render(); },
+  rateSaveAll(){
+    const d = this._rdraft || {};
+    const ids = Object.keys(d);
+    if (!ids.length) return;
+    ids.forEach(id => {
+      const rc = (DB.d.rates||[]).find(r=>r.id===id); if (!rc) return;
+      const patch = {};
+      const tiers = Object.assign({}, rc.tiers||{});
+      let touchedTiers = false;
+      Object.keys(d[id]).forEach(f => {
+        if (f==='dep') patch.deposit = d[id][f];
+        else if (f==='ot') patch.ot = d[id][f];
+        else { tiers[f] = d[id][f]; touchedTiers = true; }
+      });
+      if (touchedTiers) patch.tiers = tiers;
+      /* Same write path saveRate() uses, so a grid edit and a sheet edit
+         are indistinguishable to Firestore and to the offline queue. */
+      if (window.Cloud && Cloud.ready){
+        Cloud.put('rates', id, patch).then(w => { if (!w.ok) toast(Cloud.explainWrite(w.code)); });
+      }
+      Object.assign(rc, patch);
+    });
+    DB.save();
+    this._rdraft = null;
+    Haptic.success();
+    toast(ids.length + ' rate card' + (ids.length===1?'':'s') + ' updated');
+    this.render();
+  },
+  ratesFilter(k){ this._rtf = k; this.render(); },
+
   ratesTable(hdr){
     const box = document.getElementById('rates-list');
-    const list = (DB.d.rates||[]).slice();
-    const ids = list.map(r=>r.id);
-    const n = this.selCount();
-    box.innerHTML = hdr + (n ? this.bulkBar(n + ' rate card' + (n===1?'':'s') + ' selected', [
-        ['R.bulkPrice()', 'Change prices'],
-      ]) : '') +
-      `<div class="dt-tbl"><table>
-        <thead><tr>
-          <th class="selcol" onclick="R.selAll(${JSON.stringify(ids).replace(/"/g,'&quot;')})">
-            ${this.cbox(ids.length && ids.every(i=>this.selHas(i)))}</th>
-          <th>Model</th><th class="num">Deposit</th>
-          ${TIERS.map(t=>`<th class="num">${t.label}</th>`).join('')}
-          <th class="num">Overtime</th><th class="num">Bikes</th>
-        </tr></thead><tbody>
-        ${list.map(r=>{
-          const bikes = (DB.d.vehicles||[]).filter(v=>v.rateId===r.id && !v.deletedAt).length;
-          const sel = this.selHas(r.id);
-          return `<tr class="${sel?'sel':''}" onclick="R.editRate('${r.id}')">
-            <td class="selcol" onclick="event.stopPropagation();R.selToggle('${r.id}')">${this.cbox(sel)}</td>
-            <td class="nm">${esc(r.model)}${this.rateReady(r)?'':' <span class="pill late">SET PRICE</span>'}</td>
-            <td class="num">${r.deposit?money(r.deposit):'—'}</td>
-            ${TIERS.map(t=>{ const v=Number((r.tiers||{})[t.k])||0;
-              return `<td class="num">${v?money(v):'<span class="muted">—</span>'}</td>`; }).join('')}
-            <td class="num">${r.ot?money(r.ot):'—'}</td>
-            <td class="num">${bikes}</td>
-          </tr>`;
-        }).join('')}
-      </tbody></table></div>`;
+    const all = (DB.d.rates||[]).slice();
+    const bikesOf = rc => (DB.d.vehicles||[]).filter(v=>v.rateId===rc.id && !v.deletedAt).length;
+    const blocked = all.filter(rc => !this.rateReady(rc));
+    const withWk = all.filter(rc => rc.weekend);
+
+    const filt = this._rtf || 'all';
+    const list = filt==='bad' ? blocked : (filt==='wk' ? withWk : all);
+
+    /* Earned per model over 30 days, from the closed cache Money loads.
+       Pricing without knowing what a model actually earns is guesswork,
+       and this is the only screen where that number changes a decision. */
+    if (!this._closed && window.Cloud && Cloud.ready){
+      this._closed = [];
+      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    }
+    const since = Date.now() - 30*24*HOUR;
+    const earnedOf = rc => {
+      const ids = new Set((DB.d.vehicles||[]).filter(v=>v.rateId===rc.id).map(v=>v.id));
+      return (this._closed||[]).filter(x => ids.has(x.vehicleId) && !x.voidedAt
+          && x.status!=='cancelled' && (x.outAt||0) >= since)
+        .reduce((a,x)=>a+(Number(x.revenue)||0),0);
+    };
+
+    const d = this._rdraft || {};
+    const val = (rc, f) => {
+      if (d[rc.id] && d[rc.id][f] != null) return d[rc.id][f];
+      return f==='dep' ? (Number(rc.deposit)||0)
+           : f==='ot'  ? (Number(rc.ot)||0)
+           : Number((rc.tiers||{})[f])||0;
+    };
+    /* A blank tier and a zero tier mean different things — one is "not
+       offered", the other blocks the bike — and the old table showed both
+       as a dash. Zero on a REQUIRED field (24hr, overtime) is red; zero on
+       an optional tier just means the shop does not sell that length. */
+    const cell = (rc, f, req) => {
+      const v = val(rc, f);
+      const dirty = d[rc.id] && d[rc.id][f] != null;
+      const cls = (req && !v) ? 'zero' : (!v ? 'dim' : '');
+      return `<td class="${f==='dep'||f==='h3'||f==='ot'?'grp':''}">
+        <input class="rt-pc ${cls}${dirty?' dirty':''}" value="${v?v:''}"
+          placeholder="${req?'0':'\u2014'}" inputmode="numeric"
+          oninput="R.rateEdit('${rc.id}','${f}',this.value)"></td>`;
+    };
+
+    const chip = (k,label,n)=>`<button class="dfl-chip${filt===k?' on':''}"
+      onclick="R.ratesFilter('${k}')">${label} ${n}</button>`;
+
+    const warn = !blocked.length ? '' : `<div class="dout-alert rt-warn">
+      <div class="dout-alert-i">\u26A0\uFE0F</div>
+      <div><b>${blocked.length} model${blocked.length===1?'':'s'} still ${
+        blocked.length===1?'has':'have'} no price</b>
+        <div class="s">A ${noun()} cannot go out until its 24-hour rate and overtime are set.
+          ${esc(blocked.slice(0,3).map(r=>r.model).join(', '))}${
+          blocked.length>3?' and '+(blocked.length-3)+' more':''} ${
+          blocked.length===1?'is':'are'} blocked at the counter right now.</div></div>
+    </div>`;
+
+    const d24 = all.map(rc=>val(rc,'h24')).filter(Boolean);
+    const totalBikes = all.reduce((a,rc)=>a+bikesOf(rc),0);
+
+    box.innerHTML = hdr + warn + `
+      <div class="dfl-tools">
+        ${chip('all','All',all.length)}${chip('bad','Needs price',blocked.length)}
+        ${chip('wk','Weekend set',withWk.length)}
+        <span class="grow"></span>
+        <button class="dfl-chip" onclick="R.ratesBulkAll()">\u2195 Change all prices</button>
+      </div>
+      <div class="card">
+        <div class="dmn-h"><span class="dmn-t">Price list</span><span class="grow"></span>
+          <span class="dmn-sub">Click any price to edit \u00b7 Tab moves across</span></div>
+        <div style="overflow-x:auto">
+        <table class="rt-tbl">
+          <thead><tr>
+            <th class="mdl">Model</th>
+            <th class="grp">Deposit</th>
+            ${TIERS.map((t,i)=>`<th class="${i===0?'grp':''}">${esc(t.label)}</th>`).join('')}
+            <th class="grp">Overtime<br><span class="rt-th-s">per hr</span></th>
+            <th class="grp we">Weekend</th>
+            <th class="grp">${Noun(1)}</th>
+            <th>Earned 30d</th>
+          </tr></thead>
+          <tbody>${!list.length
+            ? `<tr><td colspan="${TIERS.length+6}" class="muted" style="padding:22px;text-align:center">
+                No rate cards here.</td></tr>`
+            : list.map(rc=>{
+            const nb = bikesOf(rc);
+            const et = earnedOf(rc);
+            const ok = this.rateReady(rc);
+            return `<tr>
+              <td class="mdl" onclick="R.editRate('${rc.id}')">
+                <div class="rt-nm">${esc(rc.model)}</div>
+                <div class="rt-meta"><span class="pill ${ok?'ok':'late'}">${ok?'Live':'Blocked'}</span>
+                  ${rc.kind==='car'?'<span class="rt-dot"></span>car':''}</div></td>
+              ${cell(rc,'dep',false)}
+              ${TIERS.map(t=>cell(rc,t.k,t.k==='h24')).join('')}
+              ${cell(rc,'ot',true)}
+              <td class="grp we">${rc.weekend
+                ? `<button class="rt-tog on" onclick="R.editRate('${rc.id}')">Set \u203A</button>`
+                : `<button class="rt-tog" onclick="R.editRate('${rc.id}')">Off</button>`}</td>
+              <td class="grp"><span class="rt-bk${nb?'':' none'}">${nb}</span></td>
+              <td><span class="rt-earn${et?'':' nil'}">${et?money(et):'\u2014'}</span></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>
+        <div class="rt-hint">
+          <span>Blank means this length is not offered and will not appear at the counter.</span>
+          <span class="rt-hint-r">Red means \u20B90 on a required price \u2014 the ${noun()} is blocked.</span>
+        </div>
+        <div class="dfl-foot"><span>${all.length} rate card${all.length===1?'':'s'} \u00b7 ${
+          totalBikes} ${noun(totalBikes!==1)} priced</span>
+          <span>${d24.length?`Cheapest 24 hr <b>${money(Math.min(...d24))}</b> \u00b7 dearest <b>${money(Math.max(...d24))}</b>`:''}</span></div>
+      </div>
+      <div class="rt-savebar" id="rt-savebar" style="display:none"></div>`;
+    this.ratesSaveBar();
   },
 
   /* ── seasonal pricing ─────────────────────────────────────────────
@@ -4436,6 +4651,20 @@ const R = {
      every number that changes. */
   bulkPrice(){
     const ids = this.selIds(); if (!ids.length) return;
+    this._bpMode = 'pct'; this._bpVal = 10; this._bpDep = false;
+    this.bulkPriceSheet();
+  },
+  /* The desktop grid replaced the checkbox column that used to feed
+     bulkPrice(), which would have stranded a whole working feature —
+     percentage/fixed changes across cards, with a preview. This selects
+     every card currently in view and opens the same sheet. */
+  ratesBulkAll(){
+    const filt = this._rtf || 'all';
+    const all = (DB.d.rates||[]);
+    const list = filt==='bad' ? all.filter(rc=>!this.rateReady(rc))
+               : filt==='wk' ? all.filter(rc=>rc.weekend) : all;
+    if (!list.length) return toast('No rate cards to change');
+    this._sel = new Set(list.map(r=>r.id));
     this._bpMode = 'pct'; this._bpVal = 10; this._bpDep = false;
     this.bulkPriceSheet();
   },
