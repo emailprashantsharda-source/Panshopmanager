@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1205';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1225';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -19139,13 +19139,20 @@ const App = {
     try {
       var todays = Store.todaySales() || [];
       total = todays.length;
-      if (!total) return null;
       var seen = {};
       (Store.list('custs') || []).forEach(function(c){ if (c && c.id) seen[c.id] = (Number(c.bills)||0); });
       todays.forEach(function(b){ if (b && b.custId && (seen[b.custId]||0) > 1) rep++; });
     } catch(e){ return null; }
     var T = this._T.bind(this);
-    var pct = total ? Math.round(rep / total * 100) : 0;
+    if (!total){
+      /* (audit fix — v34) Used to return null here, which pushed slot 3
+         into the exact same generic Profit fallback slot 2 falls into when
+         IT has nothing to show — two pills both labeled "Profit" on any day
+         with zero bills yet. A named zero-state keeps the pill's identity
+         instead of borrowing someone else's. */
+      return { label:T('dash.repeat','Repeat'), value:'—', sub:T('dash.noBillsYetShort','no bills yet'), mode:'repeat', tone:'' };
+    }
+    var pct = Math.round(rep / total * 100);
     return {
       label: T('dash.repeat','Repeat'),
       value: pct + '%',
