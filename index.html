@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1720';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1800';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -95054,7 +95054,7 @@ var KB=[
 .hntm-lbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8A8A8A}
 .hntm-lbl b{color:#B8860B}
 .hntm-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.hntm-mode{display:inline-flex;border:1px solid #E2E2E2;border-radius:8px;overflow:hidden}
+.hntm-mode{display:inline-flex;flex-shrink:0;border:1px solid #E2E2E2;border-radius:8px;overflow:hidden}
 .hntm-mode button{border:0;background:none;font-family:inherit;font-size:11px;font-weight:700;padding:6px 10px;color:#8A8A8A}
 .hntm-mode button.on{background:#FFC043;color:#1a1a1a}
 .hntm-kds{display:inline-flex;align-items:center;gap:5px;border:0;background:#1C1C1C;color:#FFC043;border-radius:999px;padding:8px 13px;font-family:inherit;font-size:12.5px;font-weight:700;line-height:1}
@@ -95062,7 +95062,8 @@ var KB=[
 .hntm-kds .b{background:#E23744;color:#fff;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px}
 .svc-tile-minus{position:absolute;top:6px;left:6px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:#fff;border:1.5px solid #E2483C;color:#E2483C;border-radius:50%;font-size:22px;font-weight:700;line-height:1;box-shadow:0 1px 5px rgba(0,0,0,.14);z-index:4}
 .svc-tile-minus:active{background:#FDECEA}
-.hntm-chips{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px;scrollbar-width:none}
+.hntm-chiprow{display:flex;align-items:center;gap:8px}
+.hntm-chips{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px;scrollbar-width:none;flex:1;min-width:0}
 .hntm-chips::-webkit-scrollbar{display:none}
 .hntm-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1px solid #E2E2E2;background:#fff;border-radius:999px;padding:7px 12px;font-family:inherit;font-size:13px;font-weight:600;color:#1a1a1a;min-height:38px}
 .hntm-chip.on{border-color:#FFC043;background:#FFF8EA}
@@ -95085,7 +95086,6 @@ var KB=[
 .hntm-acts-row .kot{flex:1.7;background:#0A0A0A;color:#FFC043;border:none;border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;padding:12px 8px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .hntm-acts-row .bill{flex:1;border:1px solid #E2E2E2;background:#fff;border-radius:12px;font-family:inherit;font-size:12px;font-weight:700;padding:12px 6px;color:#1a1a1a;min-height:44px;white-space:nowrap}
 .hntm-acts-row .more{flex:0 0 44px;border:1px solid #E2E2E2;background:#fff;border-radius:12px;font-family:inherit;font-size:17px;color:#1a1a1a;min-height:44px}
-.hntm-mode-sp{flex:1;min-width:6px}
 .hntm-sheetwrap{position:fixed;inset:0;z-index:9600;visibility:hidden}
 .hntm-sheetwrap.on{visibility:visible}
 .hntm-scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
@@ -95544,12 +95544,19 @@ var KB=[
     } else {
       /* (audit fix — v34) The separate "OPEN ORDERS N" label row is gone —
          the All Orders button above already says the count, so a second
-         row repeating it was pure redundancy. The mode toggle now shares
-         the same row as the order chips instead of sitting on its own
-         line above them. */
+         row repeating it was pure redundancy. The mode toggle shares the
+         same row as the order chips instead of sitting on its own line
+         above them.
+         (audit fix — v34, follow-up) That row used to be ONE scrollable
+         flex container holding chips + New order + the toggle together —
+         so the toggle was only reachable by scrolling right, with no
+         visual hint that was possible, and on some tables even a single
+         chip pushed it fully off-screen. It's now split: chips scroll in
+         their own sub-container, the toggle sits outside that scroll area
+         and is always visible regardless of how many orders are open. */
       var chips=orders.map(function(o){ var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count}; var amtTxt=(amt.total>0)?('\u20B9'+amt.total):'\u00b7'; var tm=typeMeta(o.type);
         return '<button class="hntm-chip'+(ostatus(o)==='billed'?' st-billed':'')+(live?' on':'')+'" type="button" onclick="HNTables.switchTo(\''+o.id+'\')"><span class="ty">'+tm.e+'</span><span class="t">'+esc(o.label)+'</span>'+stPill(o)+'<span class="a">'+amtTxt+'</span><span class="x" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span></button>'; }).join('');
-      body='<div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button><span class="hntm-mode-sp"></span>'+modeBarMob()+'</div>';
+      body='<div class="hntm-chiprow"><div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button></div>'+modeBarMob()+'</div>';
     }
     /* (audit fix — v34) Send to Kitchen, Bill, and More are one row now,
        not a full-width primary button on its own line stacked over a
@@ -108480,7 +108487,20 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
          deliberate open() call — so it is the correct signal for where "back"
          should go: Home for the onboarding tour, More for everyone else. */
       var dest = this._firstRun ? 'home' : 'more';
-      try { if (a && a.navBack) a.navBack(dest); else if (a && a.nav) a.nav(dest); } catch(e){}
+      /* (audit fix — v34) navBack(fallback) only uses fallback when its
+         internal nav stack is empty — it pops the stack FIRST regardless
+         of what fallback says. During onboarding the stack is full of
+         earlier setup screens (language selection included), so
+         navBack('home') was landing on whatever the stack popped, not on
+         Home. The onboarding exit is a fixed destination, not a "return to
+         wherever I came from," so it bypasses the stack entirely. The
+         More-menu entry point keeps navBack — that one genuinely means
+         "return to caller." */
+      try {
+        if (this._firstRun) { if (a && a.nav) a.nav('home'); }
+        else if (a && a.navBack) a.navBack(dest);
+        else if (a && a.nav) a.nav(dest);
+      } catch(e){}
       _handoff();
     },
 
