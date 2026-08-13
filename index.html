@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1345';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1353';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -19258,10 +19258,29 @@ const App = {
     } catch(e){ console.warn('[kpi2 tap] live mode recompute failed, using cached mode', e); }
     try { if (window.haptic) haptic.tap(); } catch(e){}
     if (mode === 'running'){
+      /* (temp diagnostic — v34) Remove once Running-pill root cause is
+         confirmed. Two fix attempts on this path already shipped without
+         resolving it, and there's no easy way to read a phone's console —
+         so this stages what would normally be console.log lines as toasts,
+         2.4s apart so each is readable before the next replaces it. */
+      var _diag = 'mode=running · HNTables=' + (!!window.HNTables) + ' · openBoard=' + !!(window.HNTables && HNTables.openBoard);
+      try { this.toast(_diag); } catch(e0){}
       try {
-        if (window.HNTables && HNTables.openBoard) HNTables.openBoard();
-        else { console.warn('[kpi2 tap] HNTables.openBoard unavailable'); this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading')); }
-      } catch(e){ console.warn('[kpi2 tap] HNTables.openBoard threw', e); this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading')); }
+        if (window.HNTables && HNTables.openBoard) {
+          HNTables.openBoard();
+          setTimeout(function(){
+            try {
+              var _ov = document.getElementById('hnob');
+              var _msg = 'hnob=' + !!_ov + ' · onClass=' + !!(_ov && _ov.classList.contains('on'))
+                + ' · display=' + (_ov ? getComputedStyle(_ov).display : 'n/a')
+                + ' · z=' + (_ov ? getComputedStyle(_ov).zIndex : 'n/a');
+              App.toast(_msg);
+            } catch(e3){ try { App.toast('DIAG check failed: ' + (e3 && e3.message)); } catch(e4){} }
+          }, 2400);
+        } else {
+          this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading'));
+        }
+      } catch(e){ console.warn('[kpi2 tap] HNTables.openBoard threw', e); try { this.toast('DIAG threw: ' + (e && e.message)); } catch(e2){} }
       return;
     }
     if (mode === 'udhaar'){ this.nav('udhaar'); return; }
