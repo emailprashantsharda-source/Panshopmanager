@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1131';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1205';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -4909,7 +4909,7 @@ html[data-current-role="manager"] body{
       </div>
 
       <div class="menu-item" id="settings-tables-row" onclick="App.toggleTablesFeature && App.toggleTablesFeature()" style="cursor:pointer">
-        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px" data-i18n="settings.tablesSection">Restaurant / café</div><div class="menu-label" data-i18n="settings.tablesLabel">Tables, KOT &amp; Kitchen</div><div class="menu-sub" style="margin-top:2px;font-size:11px;color:#94A3B8" data-i18n="settings.tablesSub">On = show the Orders/Tables bar, send items to the kitchen (KOT), and open the Kitchen Display. Off = simple billing only.</div></div>
+        <div class="menu-text"><div class="menu-sub" style="margin:0 0 2px" data-i18n="settings.tablesSection">Restaurant / café / bakery with seating</div><div class="menu-label" data-i18n="settings.tablesLabel">Tables, KOT &amp; Kitchen</div><div class="menu-sub" style="margin-top:2px;font-size:11px;color:#94A3B8" data-i18n="settings.tablesSub">On = show the Orders/Tables bar, send items to the kitchen (KOT), and open the Kitchen Display. Off = simple billing only.</div></div>
         <div id="settings-tables-switch" style="width:42px;height:24px;border-radius:99px;background:#E5E7EB;position:relative;flex-shrink:0;transition:background .18s">
           <span id="settings-tables-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .18s"></span>
         </div>
@@ -15747,7 +15747,16 @@ const App = {
       var _wEntry = document.getElementById('more-waiters-entry');
       if (_wEntry) {
         var _isTv = false;
-        try { _isTv = !!(window.isTableVert && isTableVert(window.hnVert ? hnVert() : this.vertical)); } catch(e){}
+        try {
+          var _wVert = window.hnVert ? hnVert() : this.vertical;
+          _isTv = !!(window.isTableVert && isTableVert(_wVert));
+          /* (audit fix — v34) Bakery isn't in the default allowlist, but a
+             bakery that opted in via the Settings toggle has real Tables/KOT
+             running — Waiter Collection needs to be reachable there too. */
+          if (!_isTv && window.isTableVertOptional && isTableVertOptional(_wVert)) {
+            try { _isTv = !!(window.HNTables && HNTables.isEnabled && HNTables.isEnabled()); } catch(e){}
+          }
+        } catch(e){}
         /* (Aug 2026 fix) Explicit salon exclusion, independent of isTableVert.
            TABLE_VERTS_ON includes 'cafe' — and this.vertical/hnVert() can be
            a stale cached value left over from before a shop's real profession
@@ -17823,9 +17832,11 @@ const App = {
         try {
           var _vv=(this.vertical||'');
           if (_vv==='cafe'||_vv==='restaurant'||_vv==='bar') _food=true;
+          if (window.isTableVertOptional && window.isTableVertOptional(_vv)) _food=true;
           var _act=window.MShop&&MShop.getActive&&MShop.getActive();
           var _ct=_act&&(_act.cardType||_act.profession);
           if (_ct==='cafe'||_ct==='restaurant'||_ct==='bar') _food=true;
+          if (window.isTableVertOptional && window.isTableVertOptional(_ct)) _food=true;
         } catch(e){}
         tRow.style.display = (_food || bfEnabled) ? '' : 'none';
       }
@@ -18951,7 +18962,7 @@ const App = {
     cafe:       { s2:'running', s3:'margin'  },
     bar:        { s2:'running', s3:'barstock'},
     sweets:     { s2:'cash',    s3:'margin'  },
-    bakery:     { s2:'running', s3:'margin'  },
+    bakery:     { s2:'profit',  s3:'repeat'  },
     grocery:    { s2:'cash',    s3:'reorder' },
     dairy:      { s2:'cash',    s3:'reorder' },
     stationery: { s2:'cash',    s3:'reorder' },
@@ -95006,6 +95017,16 @@ var KB=[
      truth for the whole gate. */
   var TABLE_VERTS_ON=['restaurant','cafe','bar'];
   function isTableVert(v){ v=String(v||'').toLowerCase(); return TABLE_VERTS_ON.indexOf(v)>=0; }
+  /* (audit fix — v34) Bakery is a real, common case restaurant/cafe/bar don't
+     cover: a bakery WITH a café-corner wants real Tables/KOT, but a plain
+     counter bakery (the majority) must not get it turned on for free — that
+     was the whole reason bakery sat outside TABLE_VERTS_ON in the first
+     place. This is not "add bakery to the allowlist" (which would flip
+     Tables ON by default for every bakery shop); it's a second, narrower set
+     that ONLY the explicit Settings toggle can act on. Untouched, it stays
+     OFF — identical to today's behaviour. */
+  var TABLE_VERTS_OPTIONAL=['bakery'];
+  function isTableVertOptional(v){ v=String(v||'').toLowerCase(); return TABLE_VERTS_OPTIONAL.indexOf(v)>=0; }
   /* (v34_024) The comment above says this array is the single source of truth
      for the whole gate. It wasn't — it lives in this closure, so renderMoreMenu
      (a different script block) couldn't ask it, and the Waiter Collection entry
@@ -95013,7 +95034,7 @@ var KB=[
      offered "Orders by waiter · collect at day end". Export it so the claim in
      that comment is actually true. Read-only; the array stays the one place to
      edit. */
-  try { window.isTableVert = isTableVert; window.HN_TABLE_VERTS = TABLE_VERTS_ON; } catch(e){}
+  try { window.isTableVert = isTableVert; window.HN_TABLE_VERTS = TABLE_VERTS_ON; window.isTableVertOptional = isTableVertOptional; window.HN_TABLE_VERTS_OPTIONAL = TABLE_VERTS_OPTIONAL; } catch(e){}
 
   /* (v34_070) Distribution / dealer verticals (cement, …). ONE source of truth,
      modelled exactly on isTableVert above. Every cement-aware branch — the
@@ -95071,6 +95092,16 @@ var KB=[
        5) default OFF. */
   function isEnabled(){
     var s=vStrong();
+    /* (audit fix — v34) Optional-vertical check runs first: if the strong
+       signal is bakery (or any future optional-only vertical) and NOT also
+       a default-on vertical, the explicit override is the only thing that
+       can turn it on — no automatic default either way, since neither
+       "always off" nor "always on" is right for bakery as a category. */
+    for(var m=0;m<s.length;m++){
+      if (s[m] && isTableVertOptional(s[m]) && !isTableVert(s[m])){
+        try{ return localStorage.getItem('hn_tables_on')==='1'; }catch(e){ return false; }
+      }
+    }
     /* (v34_116) The manual override used to be read FIRST, so a stale
        hn_tables_on='1' — left by a demo, a test, or a vertical switch — kept
        Dine-in / Parcel / Delivery / Swiggy / Zomato tabs on a grocery till.
