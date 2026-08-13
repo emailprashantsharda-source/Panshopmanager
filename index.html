@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260812_1826';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1122';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -5822,6 +5822,23 @@ html[data-current-role="manager"] body{
 
 <div class="toast" id="toast"></div>
 
+<!-- (audit fix) Custom confirm sheet — replaces window.confirm() for the
+     starter-item cleanup action. Native confirm() is unreliable inside an
+     installed TWA/PWA (the exact wrapper this app ships as on Play Store):
+     on some Android WebView configs the dialog either never paints or paints
+     behind the app shell, so a tap on the trigger button looks completely
+     dead even though the JS did run. This sheet is DOM we control, so it
+     always renders. -->
+<div id="hn-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(20,17,12,.45);z-index:9998;align-items:flex-end;justify-content:center" onclick="if(event.target===this) App.hnConfirmCancel()">
+  <div id="hn-confirm-sheet" style="width:100%;max-width:480px;background:#fff;border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.2)">
+    <div id="hn-confirm-msg" style="font-size:14px;color:var(--t1,#14110C);font-weight:600;line-height:1.5;white-space:pre-line;margin-bottom:18px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="App.hnConfirmCancel()" style="flex:1;padding:13px;border-radius:11px;border:1px solid var(--line,#E5E0D5);background:#fff;color:var(--t1,#14110C);font-family:inherit;font-weight:700;font-size:14px;cursor:pointer">Cancel</button>
+      <button id="hn-confirm-ok" onclick="App.hnConfirmOk()" style="flex:1;padding:13px;border-radius:11px;border:none;background:var(--danger,#E11900);color:#fff;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer">Remove</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════════════════════════════════════
      Custom confirm modal (replaces native confirm() — May 2026)
      Used by App.confirm({title, message, confirmText, cancelText, dangerous})
@@ -7821,7 +7838,7 @@ const CARD_TYPE_CHIPS = {
   restaurant: ['All','Low stock','Out','Soups','Veg Starters','Non-Veg Starters','Tandoor','Veg Mains','Non-Veg Mains','Breads','Rice & Biryani','Dal','Indo-Chinese','South Indian','Continental','Sides','Desserts','Beverages'],
   salon:      ['All','Low stock','Out','Men · Hair','Men · Face','Men · Body','Women · Hair','Women · Face','Women · Threading','Women · Nails','Women · Waxing','Women · Body','Women · Bridal','Common','Retail'],
   sweets:     ['All','Low stock','Out','Milk Sweets','Bengali Sweets','Dry Fruit Sweets','Laddu','Ghee Sweets','Halwa','Bhujia & Sev','Namkeen & Mixture','Snacks','Chaat','Beverages','Gift Boxes'],
-  bakery:     ['All','Low stock','Out','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Party Cake','Pastries','Patties','Cheese','Cookies','Premium','Croissants'],
+  bakery:     ['All','Low stock','Out','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Pastries','Patties','Savory Snacks','Cookies','Confectionery','Brownies & Desserts','Croissants & Rolls','Donuts & Muffins'],
   grocery:    ['All','Low stock','Out','Loose','Staples','Dals','Oils','Spices','Dairy','Beverages','Snacks','Personal','Household','Vegetables','Fruits'],
   /* (v34_045) sabzi + dairy were MISSING. getCurrentCardChips() reads THIS map,
      not VERTICAL_CONFIG[v].catalogChips — which is where v34_025 and v34_032 put
@@ -9458,8 +9475,8 @@ bakery: {
   txnUnit: 'order', txnUnitPlural: 'orders',
   topPanelTitle: 'Top Bakes',
   catalogTitle: 'Menu', catalogSearch: 'Search menu items…',
-  catalogChips: ['All','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Party Cake','Pastries','Patties','Cheese','Cookies','Premium','Croissants'],
-  addSaleChips: ['All','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Party Cake','Pastries','Patties','Cheese','Cookies','Premium','Croissants'],
+  catalogChips: ['All','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Pastries','Patties','Savory Snacks','Cookies','Confectionery','Brownies & Desserts','Croissants & Rolls','Donuts & Muffins'],
+  addSaleChips: ['All','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Pastries','Patties','Savory Snacks','Cookies','Confectionery','Brownies & Desserts','Croissants & Rolls','Donuts & Muffins'],
   salesUnitLabel: 'Bills',
   showUdhar: true,
   tracksStock: true,
@@ -10696,6 +10713,7 @@ const SEED_CATALOGS = {
     {name:'Bun · pack of 4', emoji:'🍔', cat:'Bread'},
     {name:'Hot Dog Bun · pack of 4', emoji:'🌭', cat:'Bread'},
     {name:'Pizza Base', emoji:'⚪', cat:'Bread'},
+    {name:'Rusk Toast', emoji:'🟫', cat:'Bread'},
 
     {name:'Chocolate Truffle Cake · 500g', emoji:'🍫', cat:'Cakes 500g'},
     {name:'Black Forest Cake · 500g', emoji:'🎂', cat:'Cakes 500g'},
@@ -10727,11 +10745,10 @@ const SEED_CATALOGS = {
     {name:'Chocolate Truffle Cake · 2kg', emoji:'🍫', cat:'Cakes 1.5kg+'},
     {name:'Butterscotch Cake · 2kg', emoji:'🍰', cat:'Cakes 1.5kg+'},
     {name:'Red Velvet Cake · 2kg', emoji:'🍰', cat:'Cakes 1.5kg+'},
-
-    {name:'Chocolate Party Cake · 5kg', emoji:'🎉', cat:'Party Cake'},
-    {name:'Black Forest Party Cake · 5kg', emoji:'🎉', cat:'Party Cake'},
-    {name:'Vanilla Party Cake · 5kg', emoji:'🎉', cat:'Party Cake'},
-    {name:'Butterscotch Party Cake · 5kg', emoji:'🎉', cat:'Party Cake'},
+    {name:'Chocolate Party Cake · 5kg', emoji:'🎉', cat:'Cakes 1.5kg+'},
+    {name:'Black Forest Party Cake · 5kg', emoji:'🎉', cat:'Cakes 1.5kg+'},
+    {name:'Vanilla Party Cake · 5kg', emoji:'🎉', cat:'Cakes 1.5kg+'},
+    {name:'Butterscotch Party Cake · 5kg', emoji:'🎉', cat:'Cakes 1.5kg+'},
 
     {name:'Pineapple Pastry', emoji:'🧁', cat:'Pastries'},
     {name:'Chocolate Truffle Pastry', emoji:'🧁', cat:'Pastries'},
@@ -10745,6 +10762,7 @@ const SEED_CATALOGS = {
     {name:'Coffee Eclair', emoji:'☕', cat:'Pastries'},
     {name:'Fruit Tart', emoji:'🍓', cat:'Pastries'},
     {name:'Apple Slice', emoji:'🍎', cat:'Pastries'},
+    {name:'Cream Roll', emoji:'🌀', cat:'Pastries'},
 
     {name:'Veg Patties', emoji:'🥧', cat:'Patties'},
     {name:'Chicken Patties', emoji:'🥧', cat:'Patties'},
@@ -10757,11 +10775,9 @@ const SEED_CATALOGS = {
     {name:'Samosa', emoji:'🥟', cat:'Patties'},
     {name:'Dilkhush', emoji:'🥧', cat:'Patties'},
 
-    {name:'Cheese Sandwich', emoji:'🧀', cat:'Cheese'},
-    {name:'Cheese Pizza Slice', emoji:'🍕', cat:'Cheese'},
-    {name:'Cheese Balls · pack of 6', emoji:'🧀', cat:'Cheese'},
-    {name:'Cheese Croissant', emoji:'🥐', cat:'Cheese'},
-    {name:'Cheesecake Slice', emoji:'🍰', cat:'Cheese'},
+    {name:'Cheese Sandwich', emoji:'🧀', cat:'Savory Snacks'},
+    {name:'Cheese Pizza Slice', emoji:'🍕', cat:'Savory Snacks'},
+    {name:'Cheese Balls · pack of 6', emoji:'🧀', cat:'Savory Snacks'},
 
     {name:'Choco Chip Cookies', emoji:'🍪', cat:'Cookies'},
     {name:'Butter Cookies', emoji:'🍪', cat:'Cookies'},
@@ -10771,28 +10787,30 @@ const SEED_CATALOGS = {
     {name:'Almond Cookies', emoji:'🍪', cat:'Cookies'},
     {name:'Coconut Macaroon', emoji:'🥥', cat:'Cookies'},
     {name:'Jeera Biscuit', emoji:'🍪', cat:'Cookies'},
-    {name:'Rusk Toast', emoji:'🟫', cat:'Cookies'},
-    {name:'Cream Roll', emoji:'🌀', cat:'Cookies'},
 
-    {name:'Marzipan · pack of 6', emoji:'🍬', cat:'Premium'},
-    {name:'Chocolate Truffle · pack of 6', emoji:'🍫', cat:'Premium'},
-    {name:'Almond Rock · pack of 6', emoji:'🌰', cat:'Premium'},
-    {name:'Coffee Nougat · pack of 6', emoji:'☕', cat:'Premium'},
-    {name:'Brownie', emoji:'🍫', cat:'Premium'},
-    {name:'Walnut Brownie', emoji:'🌰', cat:'Premium'},
-    {name:'Tiramisu Slice', emoji:'☕', cat:'Premium'},
-    {name:'Swiss Roll', emoji:'🌀', cat:'Premium'},
+    {name:'Marzipan · pack of 6', emoji:'🍬', cat:'Confectionery'},
+    {name:'Chocolate Truffle · pack of 6', emoji:'🍫', cat:'Confectionery'},
+    {name:'Almond Rock · pack of 6', emoji:'🌰', cat:'Confectionery'},
+    {name:'Coffee Nougat · pack of 6', emoji:'☕', cat:'Confectionery'},
 
-    {name:'Plain Croissant', emoji:'🥐', cat:'Croissants'},
-    {name:'Chocolate Croissant', emoji:'🥐', cat:'Croissants'},
-    {name:'Almond Croissant', emoji:'🥐', cat:'Croissants'},
-    {name:'Plain Donut', emoji:'🍩', cat:'Croissants'},
-    {name:'Chocolate Donut', emoji:'🍩', cat:'Croissants'},
-    {name:'Sugar Donut', emoji:'🍩', cat:'Croissants'},
-    {name:'Chocolate Muffin', emoji:'🧁', cat:'Croissants'},
-    {name:'Blueberry Muffin', emoji:'🫐', cat:'Croissants'},
-    {name:'Banana Bread', emoji:'🍌', cat:'Croissants'},
-    {name:'Cinnamon Roll', emoji:'🌀', cat:'Croissants'}
+    {name:'Brownie', emoji:'🍫', cat:'Brownies & Desserts'},
+    {name:'Walnut Brownie', emoji:'🌰', cat:'Brownies & Desserts'},
+    {name:'Tiramisu Slice', emoji:'☕', cat:'Brownies & Desserts'},
+    {name:'Swiss Roll', emoji:'🌀', cat:'Brownies & Desserts'},
+    {name:'Cheesecake Slice', emoji:'🍰', cat:'Brownies & Desserts'},
+
+    {name:'Plain Croissant', emoji:'🥐', cat:'Croissants & Rolls'},
+    {name:'Chocolate Croissant', emoji:'🥐', cat:'Croissants & Rolls'},
+    {name:'Almond Croissant', emoji:'🥐', cat:'Croissants & Rolls'},
+    {name:'Cheese Croissant', emoji:'🥐', cat:'Croissants & Rolls'},
+    {name:'Cinnamon Roll', emoji:'🌀', cat:'Croissants & Rolls'},
+
+    {name:'Plain Donut', emoji:'🍩', cat:'Donuts & Muffins'},
+    {name:'Chocolate Donut', emoji:'🍩', cat:'Donuts & Muffins'},
+    {name:'Sugar Donut', emoji:'🍩', cat:'Donuts & Muffins'},
+    {name:'Chocolate Muffin', emoji:'🧁', cat:'Donuts & Muffins'},
+    {name:'Blueberry Muffin', emoji:'🫐', cat:'Donuts & Muffins'},
+    {name:'Banana Bread', emoji:'🍌', cat:'Donuts & Muffins'}
   ],
 
   stationery: [
@@ -10945,47 +10963,65 @@ const SEED_CATALOGS = {
      so higher-footfall shops aren't undersupplied either. Full long-tail
      SKUs (extra Marlboro/ITC variants, cigars, extra soft-drink flavours)
      were dropped from the default seed — owners can still add any product
-     by hand; this is just what loads on day one. */
+     by hand; this is just what loads on day one.
+
+     PRICES (Aug 2026 update): cigarette MRPs now reflect the new
+     length-based excise duty that took effect 1 Feb 2026 (Budget 2026-27),
+     which pushed most packs up ~20–40% overnight — e.g. Gold Flake Kings
+     10s went from ~₹170 to ~₹220–240, Wills Navy Cut 10s from ~₹95 to
+     ~₹120. These are approximate street MRPs pulled from press coverage of
+     the hike, not a live price feed — packaging is still catching up
+     region by region, so treat every cigarette/pan-masala price here as a
+     sensible starting point to correct against your own distributor's
+     current rate card, not gospel. Paan prices are maker-set and vary
+     shop to shop even within one city, so those are typical street
+     ballparks only. seedCatalog() only pre-fills sp/price; cost price
+     (cp) is intentionally left blank for every item — only the shopkeeper
+     knows what they actually pay their distributor, and guessing that
+     number would silently misstate their profit margin. Gutka/chewing
+     tobacco brands are deliberately NOT seeded here: manufacture and sale
+     is banned under FSSAI rules in most states, so it isn't something to
+     default into every pan shop's catalog nationwide — owners where it's
+     legally sold can add it by hand via + Add. */
   pan: [
 
-    {name:'Loose Cigarette (Single)', emoji:'🚬', cat:'Loose'},
-    {name:'Loose Toffee / Mukhwas', emoji:'🍬', cat:'Loose'},
-    {name:'Loose Supari', emoji:'🟤', cat:'Loose'},
+    {name:'Loose Cigarette (Single)', emoji:'🚬', cat:'Loose', price:12},
+    {name:'Loose Toffee / Mukhwas', emoji:'🍬', cat:'Loose', price:2},
+    {name:'Loose Supari', emoji:'🟤', cat:'Loose', price:5},
 
-    {name:'Sada Paan', emoji:'🍃', cat:'Paan'},
-    {name:'Meetha Paan', emoji:'🌿', cat:'Paan'},
-    {name:'Banarasi Paan', emoji:'🍃', cat:'Paan'},
-    {name:'Special Meetha Paan', emoji:'🌿', cat:'Paan'},
-    {name:'Silver Coated Paan (Chandi)', emoji:'⚪', cat:'Paan'},
+    {name:'Sada Paan', emoji:'🍃', cat:'Paan', price:15},
+    {name:'Meetha Paan', emoji:'🌿', cat:'Paan', price:25},
+    {name:'Banarasi Paan', emoji:'🍃', cat:'Paan', price:30},
+    {name:'Special Meetha Paan', emoji:'🌿', cat:'Paan', price:40},
+    {name:'Silver Coated Paan (Chandi)', emoji:'⚪', cat:'Paan', price:60},
 
-    {name:'Beedi Bundle · 25s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Bristol · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Panama · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Charminar · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Four Square · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Gold Flake Kings · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Classic Mild · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Wills Navy Cut · 10s', emoji:'🚬', cat:'Cigarettes'},
-    {name:'Marlboro Red · 10s', emoji:'🚬', cat:'Cigarettes'},
+    {name:'Beedi Bundle · 25s', emoji:'🚬', cat:'Cigarettes', price:40},
+    {name:'Bristol · 10s', emoji:'🚬', cat:'Cigarettes', price:120},
+    {name:'Panama · 10s', emoji:'🚬', cat:'Cigarettes', price:100},
+    {name:'Charminar · 10s', emoji:'🚬', cat:'Cigarettes', price:90},
+    {name:'Four Square · 10s', emoji:'🚬', cat:'Cigarettes', price:90},
+    {name:'Wills Navy Cut · 10s', emoji:'🚬', cat:'Cigarettes', price:120},
+    {name:'Gold Flake Kings · 10s', emoji:'🚬', cat:'Cigarettes', price:230},
+    {name:'Classic Mild · 10s', emoji:'🚬', cat:'Cigarettes', price:230},
+    {name:'Marlboro Red · 10s', emoji:'🚬', cat:'Cigarettes', price:350},
 
-    {name:'Rajnigandha · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
-    {name:'Pan Parag · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
-    {name:'Pan Bahar · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
-    {name:'Vimal · small', emoji:'🟫', cat:'Pan Masala & Tobacco'},
-    {name:'Supari Mix · 50g', emoji:'🟤', cat:'Pan Masala & Tobacco'},
+    {name:'Rajnigandha · small pouch', emoji:'🟫', cat:'Pan Masala & Tobacco', price:10},
+    {name:'Pan Parag · small pouch', emoji:'🟫', cat:'Pan Masala & Tobacco', price:5},
+    {name:'Pan Bahar · small pouch', emoji:'🟫', cat:'Pan Masala & Tobacco', price:10},
+    {name:'Vimal · small pouch', emoji:'🟫', cat:'Pan Masala & Tobacco', price:5},
+    {name:'Supari Mix · 50g', emoji:'🟤', cat:'Pan Masala & Tobacco', price:20},
 
-    {name:'Coca-Cola · 250ml', emoji:'🥤', cat:'Cold Drinks & Snacks'},
-    {name:'Thums Up · 250ml', emoji:'🥤', cat:'Cold Drinks & Snacks'},
-    {name:"Lay's Classic Salted", emoji:'🥔', cat:'Cold Drinks & Snacks'},
-    {name:'Cadbury Dairy Milk · small', emoji:'🍫', cat:'Cold Drinks & Snacks'},
-    {name:'Parle-G · small', emoji:'🍪', cat:'Cold Drinks & Snacks'},
-    {name:'Center Fresh', emoji:'🟢', cat:'Cold Drinks & Snacks'},
+    {name:'Coca-Cola · 250ml', emoji:'🥤', cat:'Cold Drinks & Snacks', price:20},
+    {name:'Thums Up · 250ml', emoji:'🥤', cat:'Cold Drinks & Snacks', price:20},
+    {name:"Lay's Classic Salted", emoji:'🥔', cat:'Cold Drinks & Snacks', price:20},
+    {name:'Cadbury Dairy Milk · small', emoji:'🍫', cat:'Cold Drinks & Snacks', price:10},
+    {name:'Parle-G · small', emoji:'🍪', cat:'Cold Drinks & Snacks', price:10},
+    {name:'Center Fresh', emoji:'🟢', cat:'Cold Drinks & Snacks', price:10},
 
-    {name:'Cricket Lighter', emoji:'🔥', cat:'Accessories'},
-    {name:'Match Box · single', emoji:'🔥', cat:'Accessories'},
+    {name:'Cricket Lighter', emoji:'🔥', cat:'Accessories', price:10},
+    {name:'Match Box · single', emoji:'🔥', cat:'Accessories', price:1},
 
-    {name:'Maggi · 1-pack', emoji:'🍜', cat:'Other'},
-    {name:'AAA Battery · pair', emoji:'🔋', cat:'Other'}
+    {name:'Maggi · 1-pack', emoji:'🍜', cat:'Other', price:14}
   ],
 
   /* ── (v34_025) dairy — Amul / Mother Dairy dealer ──────────────────────────
@@ -18911,11 +18947,11 @@ const App = {
     restaurant: { s2:'running', s3:'margin'  },
     cafe:       { s2:'running', s3:'margin'  },
     bar:        { s2:'running', s3:'barstock'},
-    sweets:     { s2:'udhaar',  s3:'margin'  },
-    bakery:     { s2:'udhaar',  s3:'soldout' },
-    grocery:    { s2:'udhaar',  s3:'reorder' },
-    dairy:      { s2:'udhaar',  s3:'reorder' },
-    stationery: { s2:'udhaar',  s3:'reorder' },
+    sweets:     { s2:'cash',    s3:'margin'  },
+    bakery:     { s2:'bookings', s3:'soldout' },
+    grocery:    { s2:'cash',    s3:'reorder' },
+    dairy:      { s2:'cash',    s3:'reorder' },
+    stationery: { s2:'cash',    s3:'reorder' },
     pan:        { s2:'cash',    s3:'reorder' },
     sabzi:      { s2:'waste',   s3:'reorder' },
     salon:      { s2:'stylist', s3:'repeat'  }
@@ -18935,7 +18971,7 @@ const App = {
       try { v = (window.hnVert ? hnVert() : (this.vertical || '')); } catch(e){ v = this.vertical || ''; }
     }
     /* Unknown trade keeps today's behaviour rather than guessing at it. */
-    return this._HOME_PILLS[v] || { s2:'udhaar', s3:'margin' };
+    return this._HOME_PILLS[v] || { s2:'cash', s3:'margin' };
   },
 
   /* Each builder returns {label, value, sub, mode, tone} or null when the
@@ -18970,6 +19006,31 @@ const App = {
       value: '\u20b9' + Math.round(owed).toLocaleString('en-IN'),
       sub: owed > 0 ? (n + ' ' + T('dash.owe','to collect')) : T('dash.nothingOut','nothing out'),
       mode:'udhaar', tone: owed > 0 ? 'warn' : ''
+    };
+  },
+  /* (audit fix — v34) Bakery-specific. The Cake Orders / timeSlots feature
+     (VERTICAL_CONFIG.bakery.timeSlots) already collects real booking data
+     into 'appts', and the More-menu Reservations row already surfaces a
+     count from it — but nothing on the home screen did, even though a
+     baker's actual "where is my business right now" question is closer to
+     "how many cakes am I on the hook for" than a generic credit balance.
+     Returns null (falls through to the Profit fallback) for any shop with
+     timeSlots off, so this only ever activates where it's meaningful. */
+  _pillBookings(){
+    var cfg = VERTICAL_CONFIG[this.vertical] || {};
+    var ts = cfg.timeSlots;
+    if (!ts || !ts.enabled) return null;
+    var appts = [];
+    try { appts = Store.list('appts') || []; } catch(e){ return null; }
+    var todayKey = new Date().toISOString().slice(0,10);
+    var todayCount = 0;
+    appts.forEach(function(a){ if (a && String(a.date||'').slice(0,10) === todayKey) todayCount++; });
+    var T = this._T.bind(this);
+    return {
+      label: ts.menuLabel || 'Orders',
+      value: String(appts.length),
+      sub: todayCount > 0 ? (todayCount + ' ' + T('more.bookedToday','booked today')) : T('more.noBookingsYet','No bookings yet'),
+      mode:'bookings', tone: todayCount > 0 ? 'good' : ''
     };
   },
   _pillCash(){
@@ -19130,6 +19191,7 @@ const App = {
         case 'barstock': return this._pillBarStock();
         case 'repeat':   return this._pillRepeat();
         case 'stylist':  return this._pillStylist();
+        case 'bookings': return this._pillBookings();
       }
     } catch(e){ console.warn('[home pills] ' + kind + ' failed', e); }
     return null;
@@ -19167,6 +19229,7 @@ const App = {
       this.nav('daybook'); return;
     }
     if (mode === 'stylist'){ this.nav('staff'); return; }
+    if (mode === 'bookings'){ this.nav('appointments'); return; }
     /* 'none' and anything unrecognised: no destination, so do nothing rather
        than dump him on a screen he did not ask for. */
   },
@@ -25737,7 +25800,16 @@ const App = {
            record tombstoned by another device arrives with only deletedAt. */
         if (!p || p._deleted || p.deletedAt) return false;
         if (!p.seeded) return false;
-        var priced = (Number(p.sp)||0) > 0 || (Number(p.price)||0) > 0 || p.cp != null;
+        /* (audit fix) Some seed catalogs (pan) now ship with a real MRP
+           pre-filled via seedCatalog()'s optional price field, so `sp>0` can
+           no longer tell "shopkeeper priced this" apart from "the seed data
+           came with a suggested price." active:true is the actual signal —
+           it's the same flag the desktop Activate button and the mobile
+           product-save flow both write, and it's false on every seeded row
+           until a human does something with it, pre-priced or not. cp is
+           kept as a secondary signal since a hand-entered cost price can
+           only come from the shopkeeper — no seed sets it. */
+        var priced = !!p.active || p.cp != null;
         var stocked = (Number(p.stock)||0) > 0;
         var used = !!p.soldCount || !!p.lastSoldAt;
         return !priced && !stocked && !used;
@@ -25781,13 +25853,48 @@ const App = {
     try { if (window.HND && HND.cat && HND.cat.render) HND.cat.render(); } catch(e){}
   },
 
+  /* (audit fix) Custom confirm sheet controller — see #hn-confirm-overlay.
+     hnConfirmSheet(msg, onOk[, okLabel]) opens it; the two button handlers
+     below resolve the pending callback and close it. Only one confirm can
+     be pending at a time, which matches every call site today. */
+  hnConfirmSheet(msg, onOk, okLabel){
+    try {
+      var ov = document.getElementById('hn-confirm-overlay');
+      var msgEl = document.getElementById('hn-confirm-msg');
+      var okBtn = document.getElementById('hn-confirm-ok');
+      if (!ov || !msgEl || !okBtn) { if (confirm(msg)) onOk(); return; } // last-resort fallback
+      msgEl.textContent = msg;
+      okBtn.textContent = okLabel || 'Remove';
+      this._hnConfirmCb = onOk;
+      ov.style.display = 'flex';
+    } catch(e){ console.warn('[hnConfirmSheet] failed', e); }
+  },
+  hnConfirmOk(){
+    var ov = document.getElementById('hn-confirm-overlay');
+    if (ov) ov.style.display = 'none';
+    var cb = this._hnConfirmCb; this._hnConfirmCb = null;
+    try { if (typeof cb === 'function') cb(); } catch(e){ console.warn('[hnConfirmOk] callback failed', e); }
+  },
+  hnConfirmCancel(){
+    var ov = document.getElementById('hn-confirm-overlay');
+    if (ov) ov.style.display = 'none';
+    this._hnConfirmCb = null;
+  },
+
   clearStarter(){
     var list = this._starterUntouched();
     if (!list.length) { this.toast('Nothing to remove'); return; }
-    if (!confirm('Remove ' + list.length + ' starter item' + (list.length===1?'':'s') + '?\n\n'
+    var _self = this;
+    this.hnConfirmSheet(
+      'Remove ' + list.length + ' starter item' + (list.length===1?'':'s') + '?\n\n'
       + 'These have no price, no stock and have never been sold.\n'
       + 'Anything you have priced or stocked is kept.\n\n'
-      + 'They disappear from both Catalog and Inventory.')) return;
+      + 'They disappear from both Catalog and Inventory.',
+      function(){ _self._clearStarterConfirmed(list); },
+      'Remove'
+    );
+  },
+  _clearStarterConfirmed(list){
     var n = 0;
     /* ── (v34_180) Soft-delete, or the server puts all 168 back ───────────────
        This used Store.remove() -> Store.delete(), which splices the record out
@@ -48925,9 +49032,9 @@ window.Store = {
         emoji:   seed.emoji || '📦',
         cat:     seed.cat || '',
 
-        cp:      null,
-        sp:      0,
-        price:   0,
+        cp:      (seed.cp != null) ? seed.cp : null,
+        sp:      seed.price || 0,
+        price:   seed.price || 0,
 
         stock:   0,
         unit:    seed.unit || 'pcs',
@@ -52976,7 +53083,7 @@ button:not(:disabled){ user-select:none }
         salon: ['Men · Hair','Men · Face','Women · Hair','Women · Face','Women · Threading','Women · Nails','Women · Waxing','Women · Bridal','Common','Retail'],
         cafe:  ['Hot drinks','Cold drinks','Food','Desserts','Snacks'],
         restaurant: ['Soups','Veg Starters','Non-Veg Starters','Tandoor','Veg Mains','Non-Veg Mains','Breads','Rice & Biryani','Dal','Indo-Chinese','South Indian','Continental','Sides','Desserts','Beverages'],
-        bakery: ['Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Party Cake','Pastries','Patties','Cheese','Cookies','Premium','Croissants'],
+        bakery: ['Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Pastries','Patties','Savory Snacks','Cookies','Confectionery','Brownies & Desserts','Croissants & Rolls','Donuts & Muffins'],
         grocery: ['Grains','Dairy','Personal care','Household','Other'],
         stationery: ['Notebooks','Books','Pens','Pencils','Erasers','Colors','Geometry','Files','Office','Adhesives','Paper','Bags'],
         pan: ['Loose','Paan','Cigarettes','Pan Masala & Tobacco','Cold Drinks & Snacks','Accessories','Other'],
@@ -90151,7 +90258,7 @@ html[data-shell="desktop"] .hnd-pos-cust.omega-wired {
   /* For the avatar, use vertical emoji icon instead of initials.
      Matches the mobile shop switcher style. */
   var V_ICONS = {
-    salon: '💇', cafe: '☕', restaurant: '🍽️', bakery: '🥖',
+    salon: '💇', cafe: '☕', restaurant: '🍽️', bakery: '🥐',
     sweets: '🍬', grocery: '🥬', stationery: '📚', pan: '🌿',
     dhaba: '🍛', other: '🏪'
   };
