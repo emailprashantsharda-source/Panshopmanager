@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1705';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1720';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3892,7 +3892,7 @@ html[data-current-role="manager"] body{
     <button class="icon-btn" onclick="App.cancelSale()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="hdr-title" id="addsale-title" data-i18n="common.newSale">New Sale</div>
     <button class="icon-btn cw-btn-highlight" id="addsale-cw-btn" aria-label="Custom weight (gms/kg)" onclick="App.openCustomWeight()" style="margin-right:4px;background:linear-gradient(135deg,var(--y) 0%,var(--y-dark) 100%);color:#1a1a1a;box-shadow:0 2px 8px rgba(255,192,67,.4)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></button>
-    <button class="icon-btn" id="addsale-kds-btn" aria-label="Kitchen Display" onclick="window.HNTables && HNTables.openKDS && HNTables.openKDS()" style="display:none;position:relative;background:#0A0A0A;color:#fff"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span id="addsale-kds-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--p,#FF6B35);color:#fff;font-size:9px;font-weight:800;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center"></span></button>
+    <button class="icon-btn" id="addsale-kds-btn" aria-label="Kitchen Display" onclick="window.HNTables && HNTables.openKDS && HNTables.openKDS()" style="display:none;position:relative;background:#0A0A0A;color:#fff;font-size:19px"><span aria-hidden="true">🔥</span><span id="addsale-kds-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--p,#FF6B35);color:#fff;font-size:9px;font-weight:800;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center"></span></button>
     <button class="icon-btn" id="addsale-mic-btn" aria-label="Voice billing" onclick="App.startVoiceBill()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
   </header>
 
@@ -95078,18 +95078,20 @@ var KB=[
 .hntm-tcell .n{font-size:14px;font-weight:700;color:#1a1a1a}.hntm-tcell .s{font-size:10px;font-weight:600}
 .hntm-tcell .x{position:absolute;top:1px;right:4px;color:#aaa;font-size:11px}
 .hntm-cfg{margin-top:7px;width:100%;border:0;background:none;font-family:inherit;font-size:11px;font-weight:600;color:#8A8A8A}
-.hntm-acts-primary{margin-top:8px}
-.hntm-acts-primary button.kot{width:100%;background:#0A0A0A;color:#FFC043;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;padding:13px;min-height:46px;display:flex;align-items:center;justify-content:center;gap:8px}
-.hntm-acts{display:flex;gap:7px;margin-top:7px;overflow-x:auto;scrollbar-width:none}
-.hntm-acts::-webkit-scrollbar{display:none}
-.hntm-acts button{flex:1;border:1px solid #E2E2E2;background:#fff;border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 13px;color:#1a1a1a;min-height:40px;white-space:nowrap}
+/* (audit fix — v34) Kitchen/Bill/More combined into one row — was a
+   full-width primary button stacked over a second row for the other two,
+   which cost an extra row of height the product grid needed more. */
+.hntm-acts-row{display:flex;gap:7px;margin-top:8px}
+.hntm-acts-row .kot{flex:1.7;background:#0A0A0A;color:#FFC043;border:none;border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;padding:12px 8px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.hntm-acts-row .bill{flex:1;border:1px solid #E2E2E2;background:#fff;border-radius:12px;font-family:inherit;font-size:12px;font-weight:700;padding:12px 6px;color:#1a1a1a;min-height:44px;white-space:nowrap}
+.hntm-acts-row .more{flex:0 0 44px;border:1px solid #E2E2E2;background:#fff;border-radius:12px;font-family:inherit;font-size:17px;color:#1a1a1a;min-height:44px}
+.hntm-mode-sp{flex:1;min-width:6px}
 .hntm-sheetwrap{position:fixed;inset:0;z-index:9600;visibility:hidden}
 .hntm-sheetwrap.on{visibility:visible}
 .hntm-scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
 .hntm-sheetwrap.on .hntm-scrim{opacity:1}
 .hntm-sheetcard{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1)}
 .hntm-sheetwrap.on .hntm-sheetcard{transform:translateY(0)}
-.hntm-acts button.more{flex:0 0 auto;min-width:64px;padding:9px 14px;font-size:12.5px;font-weight:700;text-align:center}
 .hntm-handle{width:36px;height:4px;border-radius:99px;background:#DADADA;margin:6px auto 12px}
 .hntm-stitle{font-size:20px;font-weight:850;letter-spacing:-.02em;color:#16150f;margin:0 4px 2px}
 .hntm-shelp{font-size:12.5px;font-weight:500;color:#6B6B6B;margin:0 4px 12px}
@@ -95454,7 +95456,7 @@ var KB=[
       } catch(e){}
       return false; } var h=host(); if(!h) return false; var s=document.getElementById('hntab-strip'); if(!s){ s=document.createElement('div'); s.id='hntab-strip'; if(isDesktop()){ h.insertBefore(s,h.firstChild); } else { s.className='hntab-mob'; var sr=h.querySelector('.search-row'); if(sr&&sr.parentNode===h){ h.insertBefore(s, sr.nextSibling); } else { h.insertBefore(s, h.firstChild); } } } return true; }
   function typeMenuHTML(){ if(!_menuOpen) return ''; return '<div class="hntab-menu">'+ORDER_TYPES.map(function(t){ return '<button type="button" onclick="HNTables.newOrder(\''+t.k+'\')"><span>'+t.e+'</span> '+t.l+'</button>'; }).join('')+'</div>'; }
-  function kdsBtn(){ var n=kots.length; return '<button class="hntab-kds-btn" type="button" onclick="HNTables.openKDS()">\uD83D\uDDA5\uFE0F '+T('tables.kitchen','Kitchen')+(n?'<span class="b">'+n+'</span>':'')+'</button>'; }
+  function kdsBtn(){ var n=kots.length; return '<button class="hntab-kds-btn" type="button" onclick="HNTables.openKDS()">\uD83D\uDD25 '+T('tables.kitchen','Kitchen')+(n?'<span class="b">'+n+'</span>':'')+'</button>'; }
   function modeBar(){ var m=mode(); return '<div class="hntab-modebar"><button class="hntab-mbtn'+(m==='orders'?' on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="hntab-mbtn'+(m==='tables'?' on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></div>'; }
   function actsRow(){ if(activeId==null) return ''; return '<div class="hntab-acts">'+(billFirstOn()?'<button class="hntab-act bill" type="button" onclick="HNTables.printBill()">\uD83E\uDDFE '+T('tables.printBill','Print bill')+'</button>':'')
       +'<button class="hntab-act kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button>'
@@ -95508,40 +95510,56 @@ var KB=[
     }
     strip.innerHTML=head+body; }
   function modeBarMob(){ var m=mode(); return '<span class="hntm-mode"><button class="'+(m==='orders'?'on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="'+(m==='tables'?'on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></span>'; }
-  function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()"><span class="ic">\uD83D\uDDA5\uFE0F</span> '+T('tables.kitchen','Kitchen')+(n?' <span class="b">'+n+'</span>':'')+'</button>'; }
+  function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()"><span class="ic">\uD83D\uDD25</span> '+T('tables.kitchen','Kitchen')+(n?' <span class="b">'+n+'</span>':'')+'</button>'; }
   function boardBtnProminent(){
     var due = boardDue();
-    var sub = orders.length + ' ' + (orders.length===1?T('tables.openOne','open'):T('tables.openMany','open')) + ' \u00b7 ' + due + ' ' + T('tables.awaitingPay','awaiting payment');
+    /* (audit fix — v34) Collapsed back to one line — the two-line version
+       with a subtitle (built a couple iterations ago to make this
+       "prominent") ate a whole extra row of screen real estate for
+       information the order-chip row below already mostly repeats. Stays
+       dark and easy to spot; just doesn't cost as much height. */
     return '<button class="hntm-board-prom" type="button" onclick="HNTables.openBoard()">'
       + '<span class="ic">\uD83E\uDDFE</span>'
-      + '<span class="mid"><span class="t1">' + T('tables.allOrders','All Orders') + '</span><span class="t2">' + sub + '</span></span>'
+      + '<span class="t1">' + T('tables.allOrders','All Orders') + '</span>'
+      + '<span class="cnt">' + orders.length + ' ' + (orders.length===1?T('tables.openOne','open'):T('tables.openMany','open')) + '</span>'
       + (due>0 ? '<span class="badge">'+due+'</span>' : '')
       + '<span class="chev">\u203A</span>'
       + '</button>';
   }
   function renderMob(strip){ var m=mode();
-    var head='<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <b>'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</b></span><span class="hntm-right">'+modeBarMob()+'</span></div>';
     /* (audit fix — v34) The 'All Orders' entry point used to be a 24px
        icon-only button squeezed into the mode-toggle row — same visual
        weight as Orders/Tables, for the one screen that shows every table
-       awaiting payment (money sitting uncollected). Now its own full-width
-       row above the bar, with the actual counts printed on it. */
-    head = boardBtnProminent() + head;
+       awaiting payment (money sitting uncollected). Now its own row above
+       the bar — collapsed to a single line per the follow-up declutter
+       pass, since the two-line 'prominent' version cost more space than
+       it earned. */
+    var head = boardBtnProminent();
     var body;
     if(m==='tables'){ var n=tableCount(),cells='';
+      head += '<div class="hntm-bar"><span class="hntm-lbl">'+T('tables.tablesLbl','Tables')+' <b>'+(occupiedCount()+'/'+tableCount())+'</b></span><span class="hntm-right">'+modeBarMob()+'</span></div>';
       for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
         cells+='<button class="hntm-tcell'+(occ?' occ':' free')+(live?' on':'')+'" type="button" onclick="HNTables.openTable('+i+')"><span class="n">'+i+'</span><span class="s">'+sub+'</span>'+(occ?'<span class="x" onclick="event.stopPropagation();HNTables.clearTable('+i+')">\u00d7</span>':'')+'</button>'; }
       body='<div class="hntm-grid">'+cells+'</div><button class="hntm-cfg" type="button" onclick="HNTables.setTableCount()">\u2699\uFE0F '+T('tables.setCount','Set number of tables')+'</button>';
     } else {
+      /* (audit fix — v34) The separate "OPEN ORDERS N" label row is gone —
+         the All Orders button above already says the count, so a second
+         row repeating it was pure redundancy. The mode toggle now shares
+         the same row as the order chips instead of sitting on its own
+         line above them. */
       var chips=orders.map(function(o){ var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count}; var amtTxt=(amt.total>0)?('\u20B9'+amt.total):'\u00b7'; var tm=typeMeta(o.type);
         return '<button class="hntm-chip'+(ostatus(o)==='billed'?' st-billed':'')+(live?' on':'')+'" type="button" onclick="HNTables.switchTo(\''+o.id+'\')"><span class="ty">'+tm.e+'</span><span class="t">'+esc(o.label)+'</span>'+stPill(o)+'<span class="a">'+amtTxt+'</span><span class="x" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span></button>'; }).join('');
-      body='<div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button></div>';
+      body='<div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button><span class="hntm-mode-sp"></span>'+modeBarMob()+'</div>';
     }
+    /* (audit fix — v34) Send to Kitchen, Bill, and More are one row now,
+       not a full-width primary button on its own line stacked over a
+       second row for the other two — exactly the layout reviewed in mock.
+       Kitchen keeps the most width since it's still the primary action. */
     var acts=activeId!=null?(
-      '<div class="hntm-acts-primary"><button class="kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button></div>'
-      +'<div class="hntm-acts">'
+      '<div class="hntm-acts-row">'
+      +'<button class="kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button>'
       +(billFirstOn()?'<button class="bill" type="button" onclick="HNTables.printBill()">\uD83E\uDDFE '+T('tables.printBill','Bill')+'</button>':'')
-      +'<button class="more" type="button" aria-label="More" onclick="HNTables.openActSheet()">\u22EE '+T('common.more','More')+'</button>'
+      +'<button class="more" type="button" aria-label="More" onclick="HNTables.openActSheet()">\u22EE</button>'
       +'</div>'
     ):'';
     strip.innerHTML=head+body+acts; }
@@ -95827,7 +95845,7 @@ var KB=[
     +'.hntm-board-prom .t2{font-size:10.5px;opacity:.65;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
     +'.hntm-board-prom .badge{background:#FF6B35;color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;flex-shrink:0}'
     +'.hntm-board-prom .chev{opacity:.5;font-size:16px;flex-shrink:0}'
-    +'.hntab-act.bill,.hntm-acts .bill{background:#FF6B35 !important;color:#fff !important;border-color:#FF6B35 !important}'
+    +'.hntab-act.bill,.hntm-acts-row .bill{background:#FF6B35 !important;color:#fff !important;border-color:#FF6B35 !important}'
     +'.hnob-c-acts{flex-wrap:wrap}.hnob-b{flex:1 1 40%}.hnob-b.settle{flex:1 1 100%;background:#10B981;color:#fff}'
     +'.hnob-c-pay{display:flex;flex-wrap:wrap;gap:6px}'
     +'.hnob-pb{flex:1 1 28%;border:none;border-radius:9px;padding:10px 6px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}'
