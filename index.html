@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1225';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1255';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -18209,11 +18209,11 @@ const App = {
     const ft = document.getElementById('appt-form-tiles');
     if (ft && ts.formTiles){
       ft.innerHTML = ts.formTiles.map((t,i) =>
-        `<button class="vert-card${i===0?' selected':''}" style="padding:12px"><div class="vert-emoji" style="font-size:28px">${t.emoji}</div><div class="vert-meta"><div class="vert-name" style="font-size:13.5px">${t.name}</div></div></button>`).join('');
+        `<button class="cat-tile${i===0?' selected':''}" onclick="App.catSelect(this)" style="padding:12px"><div class="cat-tile-emoji">${t.emoji}</div><div class="cat-tile-name">${t.name}</div></button>`).join('');
     }
 
     const tl = document.getElementById('appt-type-labels'); if (tl && ts.typeLabels){
-      tl.innerHTML = ts.typeLabels.map((l,i)=>`<button class="chip${i===0?' active':''}">${l}</button>`).join('');
+      tl.innerHTML = ts.typeLabels.map((l,i)=>`<button class="cat-tile${i===0?' selected':''}" onclick="App.catSelect(this)" style="flex-direction:row;justify-content:center;padding:11px"><span style="font-size:14px;font-weight:700">${l}</span></button>`).join('');
     }
 
     const al = document.getElementById('appt-staff-label'); if (al) al.textContent = ts.assignLabel || 'Assign Staff';
@@ -24690,14 +24690,22 @@ const App = {
        "Running" tile) — _supplyVerticalKey() prefers the ACTIVE shop's
        live cardType, which is what let a salon manager see "— pick barista —"
        instead of "— pick stylist —" at checkout. */
-    const cfg = VERTICAL_CONFIG[this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical];
+    const _ckVertKey = this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical;
+    const cfg = VERTICAL_CONFIG[_ckVertKey];
     const hasActiveStaff = (STAFF || []).filter(s => s && s.active !== false && !s._deleted).length > 0;
     const vertSaysHasStaff = (cfg && cfg.hasStaff !== false);
-    const hasStaff = vertSaysHasStaff || hasActiveStaff;
+    /* (audit fix — v34) hasActiveStaff used to override hasStaff:false for
+       ANY vertical the moment it had a Team member — bakery's hasStaff:false
+       is deliberate (a loaf isn't "served by" the way a haircut is), but
+       adding a Baker to Team silently turned the per-line picker back on.
+       Bakery opts out unconditionally here rather than relying on staff
+       count, which is exactly the signal that broke it. */
+    const _ckNoStaffPicker = { bakery: 1 };
+    const hasStaff = (vertSaysHasStaff || hasActiveStaff) && !_ckNoStaffPicker[_ckVertKey];
 
     const requiresBillStaff = (cfg && cfg.requireStaffPerBill === true) ||
 
-      (hasActiveStaff && !vertSaysHasStaff);
+      (hasActiveStaff && !vertSaysHasStaff && !_ckNoStaffPicker[_ckVertKey]);
     const showPerLinePicker = hasStaff && !requiresBillStaff;
 
     const staffLabel = (cfg && cfg.staffSingular) ? cfg.staffSingular.toLowerCase() : 'staff';
@@ -38280,6 +38288,19 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       nextSlot = `${(hour + 1) % 24}:00`;
     }
 
+    var _apptTypeVal = 'booked';
+    try {
+      var _typeWrap = document.getElementById('appt-type-labels');
+      if (_typeWrap) {
+        var _typeTiles = _typeWrap.querySelectorAll('.cat-tile');
+        var _selTypeIdx = -1;
+        for (var _ti = 0; _ti < _typeTiles.length; _ti++) {
+          if (_typeTiles[_ti].classList.contains('selected')) { _selTypeIdx = _ti; break; }
+        }
+        if (_selTypeIdx === 1) _apptTypeVal = 'walkin';
+      }
+    } catch(e){}
+
     const appt = {
       t:      Date.now(),
       date:   today,
@@ -38292,7 +38313,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       svcEmoji: partyOrService.emoji,
       staff:  assignedStaffName,
       staffId: assignedStaffId,
-      type:   'booked',
+      type:   _apptTypeVal,
       status: 'confirmed'
     };
     const saved = Store.add('appts', appt);
