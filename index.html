@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1302';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1319';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1323,7 +1323,7 @@ body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:tou
 .hero-axis span{font-size:10.5px;color:rgba(255,255,255,.65);font-weight:600;font-variant-numeric:tabular-nums}
 
 .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 18px 14px}
-.kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 11px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;min-width:0}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 11px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;min-width:0;overflow:hidden}
 .kpi-head{display:flex;align-items:flex-start;gap:9px;min-width:0}
 .kpi-icon{width:34px;height:34px;border-radius:10px;background:var(--p-100);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .kpi-text{min-width:0;flex:1}
@@ -2911,7 +2911,7 @@ html[data-shell="desktop"] #staff-list .li-avatar{box-shadow:0 3px 10px -3px rgb
 .kpi{padding:12px 12px 11px;gap:0;justify-content:flex-start}
 .kpi-label-v2{font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi-value-v2{font-size:24px;font-weight:800;color:var(--t1);letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.05;margin-top:6px}
-.kpi-delta-v2{font-size:12.5px;font-weight:700;color:var(--y-dark);display:flex;align-items:center;gap:3px;margin-top:auto;padding-top:8px;white-space:nowrap}
+.kpi-delta-v2{font-size:12.5px;font-weight:700;color:var(--y-dark);display:flex;align-items:center;flex-wrap:wrap;gap:3px;margin-top:auto;padding-top:8px;white-space:normal;overflow-wrap:break-word}
 .kpi-delta-v2 .vs{color:var(--t3);font-weight:500}
 .kpi-delta-v2.neg{color:var(--danger)}
 
@@ -18486,7 +18486,7 @@ const App = {
         return `<span style="opacity:.65">Yest: ${isCurrency ? fmtCurrency(yesterday) : yesterday}</span>`;
       }
       if (Math.abs(today - yesterday) < (isCurrency ? 1 : 1)) {
-        return `<span style="opacity:.5">· same as yest.</span>`;
+        return `<span style="opacity:.5">same as yest.</span>`;
       }
       const up = today >= yesterday;
       const arrow = up ? '▲' : '▼';
