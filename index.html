@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1454';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1643';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1272,7 +1272,7 @@ body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:tou
 .brand-mark{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
 .brand-name{font-size:19px;font-weight:800;letter-spacing:-.02em;display:inline-flex;align-items:baseline}
 .brand-name .wm1{color:var(--n)}.brand-name .wm2{color:var(--p);font-weight:900;letter-spacing:-.025em}
-.hdr-title{font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.02em;flex:1;text-align:center}
+.hdr-title{font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.02em;flex:1;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .greet{padding:6px 18px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .greet-text h1{font-size:22px;font-weight:800;letter-spacing:-.025em;line-height:1.2}
@@ -25955,7 +25955,6 @@ const App = {
     );
   },
   _clearStarterConfirmed(list){
-    var n = 0;
     /* ── (v34_180) Soft-delete, or the server puts all 168 back ───────────────
        This used Store.remove() -> Store.delete(), which splices the record out
        of the local array and leaves nothing behind. HisaabSync is a two-way
@@ -25966,11 +25965,18 @@ const App = {
        Everything else that must stay deleted already writes a tombstone —
        khata, staff, customers, quarantine. Store.list() hides _deleted records
        from every view, and the sync layer reads raw state so the tombstone
-       travels. This was the one delete path that skipped it. */
-    list.forEach(function(p){
-      try { if (Store.softDelete('prods', p.id, { active: false })) n++; }
-      catch(e){ console.warn('[clearStarter] failed on', p && p.id, e); }
-    });
+       travels. This was the one delete path that skipped it.
+
+       (audit fix — v34) Batched instead of looped. Calling Store.softDelete()
+       once per item ran a full catalog re-render + sync write per item too —
+       for a 100+ item starter list that's 100+ synchronous re-renders back to
+       back, which can hang or get killed by the OS on a modest phone well
+       before the loop finishes. Store.bulkSoftDelete() patches every record
+       in one pass and re-renders/syncs once. */
+    var ids = list.map(function(p){ return p && p.id; }).filter(function(id){ return id != null; });
+    var n = 0;
+    try { n = Store.bulkSoftDelete('prods', ids, { active: false }); }
+    catch(e){ console.warn('[clearStarter] bulk removal failed', e); }
     this.refreshCatalogUI();
     this.toast(n ? ('Removed ' + n + ' starter item' + (n===1?'':'s'))
                  : 'Could not remove \u2014 please reload and retry');
@@ -48908,6 +48914,39 @@ window.Store = {
     var patch = { _deleted: true, deletedAt: Date.now() };
     if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) patch[k] = extra[k];
     return this.update(coll, id, patch);
+  },
+
+  /* (audit fix — v34) Same job as softDelete(), but for many records at once
+     without the cost of calling it in a loop. softDelete() → update() calls
+     _emit(coll) on every single invocation, which runs every subscriber for
+     that collection synchronously — including whatever re-renders the
+     product list and whatever pushes a sync write. Bulk-removing starter
+     items is exactly the case where that loop runs 100+ times in a row:
+     each one a full list re-render plus a network write, back to back, with
+     no yield between them. On a modest phone this can take long enough that
+     the tab is judged unresponsive (or the user gives up and navigates
+     away) before the loop finishes — leaving the tail of the list
+     untouched, which reads exactly like "remove doesn't remove them all."
+     This patches every record in one pass through the array and emits
+     exactly once at the end. Returns the count actually patched. */
+  bulkSoftDelete: function(coll, ids, extra){
+    if (!Array.isArray(ids) || !ids.length) return 0;
+    var wanted = {};
+    for (var w = 0; w < ids.length; w++) if (ids[w] != null) wanted[ids[w]] = true;
+    var a = _arr(coll);
+    var now = Date.now();
+    var n = 0;
+    for (var i = 0; i < a.length; i++) {
+      var rec = a[i];
+      if (!rec || rec.id == null || !wanted[rec.id]) continue;
+      var patch = { _deleted: true, deletedAt: now };
+      if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) patch[k] = extra[k];
+      a[i] = Object.assign({}, rec, patch, { updatedAt: now });
+      try { a[i]._clientHash = this._computeClientHash(coll, a[i]); } catch(e){}
+      n++;
+    }
+    if (n > 0) _emit(coll);
+    return n;
   },
 
   /* (v33_435) Alias — several call sites use Store.remove(); delegate to delete()
@@ -94977,6 +95016,19 @@ var KB=[
 .hnkds-top{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #2A2722;color:#fff}
 .hnkds-top h3{margin:0;font-size:17px;font-weight:700}.hnkds-top .sub{font-size:12px;color:#9A958C}
 .hnkds-x{margin-left:auto;background:#2A2722;border:0;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px}
+/* (audit fix — v34) Status tabs — previously the Kitchen Display was one
+   flat chronological list with no way to see New vs Preparing vs Ready at
+   a glance; every real KDS (Toast, Square, Lightspeed) groups by status.
+   Colors match the existing per-card status borders below (.s-new/.s-prep/
+   .s-ready) rather than introducing a new palette. */
+.hnkds-tabs{display:flex;gap:7px;padding:12px 20px 4px;overflow-x:auto}
+.hnkds-tab{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:99px;font-size:12px;font-weight:700;background:#1F1C18;color:#9A958C;border:1.5px solid transparent;cursor:pointer;font-family:inherit}
+.hnkds-tab.on{background:#2A2722;border-color:#443E36;color:#fff}
+.hnkds-tab .dot{width:7px;height:7px;border-radius:50%;background:#55504A;flex-shrink:0}
+.hnkds-tab[data-f="new"] .dot{background:#F0A800}
+.hnkds-tab[data-f="prep"] .dot{background:#378ADD}
+.hnkds-tab[data-f="ready"] .dot{background:#1D9E75}
+.hnkds-tab .n{background:rgba(255,255,255,.12);border-radius:99px;padding:1px 6px;font-size:10.5px;font-variant-numeric:tabular-nums}
 .hnkds-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;padding:16px 20px;align-content:start}
 .hnkds-card{background:#1F1C18;border:1px solid #34302A;border-radius:11px;overflow:hidden;display:flex;flex-direction:column}
 .hnkds-card.s-new{border-top:4px solid #F0A800}.hnkds-card.s-prep{border-top:4px solid #378ADD}.hnkds-card.s-ready{border-top:4px solid #1D9E75}
@@ -95115,7 +95167,7 @@ var KB=[
   ];
   function typeMeta(k){ for(var i=0;i<ORDER_TYPES.length;i++) if(ORDER_TYPES[i].k===k) return ORDER_TYPES[i]; return ORDER_TYPES[0]; }
   var orders=[], activeId=null, seq=0, kots=[], kotSeq=0;
-  var _wrappedRender=false,_wrappedSale=false,_wrappedSummary=false,_busy=false,_menuOpen=false,_kdsOpen=false,_kdsTick=0,_boardOpen=false,_boardTick=0,_settleId=null,_loadedShop=null,_sheetMode=null,_typeAsked=false;
+  var _wrappedRender=false,_wrappedSale=false,_wrappedSummary=false,_busy=false,_menuOpen=false,_kdsOpen=false,_kdsTick=0,_kdsFilter='all',_boardOpen=false,_boardTick=0,_settleId=null,_loadedShop=null,_sheetMode=null,_typeAsked=false;
   function clone(o){ try{ return JSON.parse(JSON.stringify(o||{})); }catch(e){ return Array.isArray(o)?[]:{}; } }
   function A(){ return window.App; }
   function T(k,f){ return (A()&&A()._T)?A()._T(k,f):f; }
@@ -95189,8 +95241,17 @@ var KB=[
   function shopId(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&a.shopId)||(A()&&A().uid)||'default'; }catch(e){ return 'default'; } }
   function pkey(){ return 'hn_tables_v1_'+shopId(); }
   function kkey(){ return 'hn_kds_v1_'+shopId(); }
-  function mode(){ try{ var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; }catch(e){} return 'orders'; }  /* v33_147: default to Orders for every vertical (incl. restaurant) — Tables is still one tap away in the mode bar and the choice persists once set. */
-  function setMode(m){ if(m!=='tables'&&m!=='orders') return; try{ localStorage.setItem('hn_orders_mode',m); }catch(e){} _menuOpen=false; renderStrip(); }
+  /* (audit fix — v34) Temporary view override for "show the table map so the
+     user can pick one", separate from the persisted hn_orders_mode
+     preference. setMode('tables') would have permanently switched every
+     future visit to Tables — that's for the deliberate Orders/Tables toggle
+     tap, not for a one-time "pick a table for this dine-in order" detour.
+     Cleared the moment a table is picked (openTable) or a real mode change
+     happens (setMode), so the view reverts to Orders (the actual default)
+     right after. */
+  var _tablePickOverride = false;
+  function mode(){ if(_tablePickOverride) return 'tables'; try{ var m=localStorage.getItem('hn_orders_mode'); if(m==='tables'||m==='orders') return m; }catch(e){} return 'orders'; }  /* v33_147: default to Orders for every vertical (incl. restaurant) — Tables is still one tap away in the mode bar and the choice persists once set. */
+  function setMode(m){ if(m!=='tables'&&m!=='orders') return; _tablePickOverride=false; try{ localStorage.setItem('hn_orders_mode',m); }catch(e){} _menuOpen=false; renderStrip(); }
   function tableCount(){ try{ var n=parseInt(localStorage.getItem('hn_table_count'),10); if(n>0&&n<=60) return n; }catch(e){} return 12; }
   function setTableCount(){ var v=null; try{ v=window.prompt(T('tables.howMany','How many tables?'),String(tableCount())); }catch(e){ return; } var n=parseInt(v,10); if(n>0&&n<=60){ try{ localStorage.setItem('hn_table_count',String(n)); }catch(e){} renderStrip(); } }
   function load(){ orders=[]; seq=0; try{ var raw=localStorage.getItem(pkey()); if(raw){ var d=JSON.parse(raw); orders=Array.isArray(d.orders)?d.orders:[]; seq=d.seq||orders.length; } }catch(e){ orders=[]; } _loadedShop=shopId(); activeId=null; }
@@ -95228,7 +95289,18 @@ var KB=[
   function liveTotals(){ try{ var t=A().cartTotal(); return { total:Math.round(t.total||0), count:t.count||0 }; }catch(e){ var c=(A()&&A().cart)||{},n=0; for(var k in c)n+=(+c[k]||0); return {total:0,count:n}; } }
   function applySnap(s){ var a=A(); if(!a||!s) return; a.cart=clone(s.cart); a.customLines=clone(s.customLines)||[]; a._cartStaff=clone(s.staff); a._cartStaffOverridden=clone(s.staffOv); if(s.pay)a.paymentMode=s.pay; repaint(); }
   function clearLive(){ var a=A(); if(!a) return; a.cart={}; a.customLines=[]; a._cartStaff={}; a._cartStaffOverridden={}; repaint(); }
-  function repaint(){ try{ if(window.HNDPOS&&HNDPOS.renderCart) HNDPOS.renderCart(); }catch(e){} try{ if(A()&&A().updateCartSummary) A().updateCartSummary(); }catch(e){} }
+  function repaint(){
+    try{ if(window.HNDPOS&&HNDPOS.renderCart) HNDPOS.renderCart(); }catch(e){}
+    try{ if(A()&&A().updateCartSummary) A().updateCartSummary(); }catch(e){}
+    /* (audit fix — v34) Switching orders (switchTo/applySnap) calls repaint()
+       to refresh the cart total, but never the product grid itself — so a
+       tile's orange "in-cart" border and quantity badge kept showing
+       whichever order was active BEFORE the switch, not the one just
+       switched to, until the user searched or changed category. Real on
+       mobile specifically: HNDPOS.renderCart() above only exists on
+       desktop, so mobile got no grid refresh from this function at all. */
+    try{ if(window.App && App.current==='addsale' && App.renderServiceGrid) App.renderServiceGrid(); }catch(e){}
+  }
   function syncActive(){ if(_busy||activeId==null) return; var o=find(activeId); if(!o) return; o.snap=liveSnap(); var t=liveTotals(); o.total=t.total; o.count=t.count; }
   function parkActive(){ syncActive(); }
   function newOrder(type){ parkActive(); _busy=true; clearLive(); seq++; var tm=typeMeta(type||'dinein'); var id='t'+Date.now()+'_'+seq; var lbl=tm.l+' '+seq;
@@ -95279,8 +95351,10 @@ var KB=[
           if (_pcl.length && A() && A().customLines) { A().customLines = (A().customLines||[]).concat(_pcl); repaint(); }
         } catch(e){}
         _pendingAdoptSnap = null;
-        var o2 = find(ex.id); if (o2) { var t2 = liveTotals(); o2.total = t2.total; o2.count = t2.count; o2.snap = liveSnap(); save(); renderStrip(); }
+        var o2 = find(ex.id); if (o2) { var t2 = liveTotals(); o2.total = t2.total; o2.count = t2.count; o2.snap = liveSnap(); save(); }
       }
+      _tablePickOverride = false;
+      renderStrip();
       return;
     }
     parkActive();
@@ -95291,7 +95365,7 @@ var KB=[
     var id='t'+Date.now()+'_'+seq;
     var _t = _adopting ? liveTotals() : {total:0,count:0};
     orders.push({ id:id, tableNo:n, label:'Table '+n, type:'dinein', status:'open', note:'', total:_t.total, count:_t.count, snap:liveSnap(), createdAt:Date.now() });
-    activeId=id; _pendingAdoptSnap=null; _busy=false; save(); renderStrip();
+    activeId=id; _pendingAdoptSnap=null; _tablePickOverride=false; _busy=false; save(); renderStrip();
   }
   function clearTable(n){ var o=orders.filter(function(x){return x.tableNo===n;})[0]; if(o) removeTable(o.id); }
   function lblOf(key){ try{ if(A()._cartKeyLabel) return A()._cartKeyLabel(key); }catch(e){} try{ var bare=String(key).split('::')[0]; var p=(window.SERVICES||[]).find(function(s){return (s.id||s.name)===bare;}); return p?p.name:String(key); }catch(e){ return String(key); } }
@@ -95325,14 +95399,34 @@ var KB=[
   function ensureKDS(){ var ov=document.getElementById('hnkds'); if(ov) return ov; ov=document.createElement('div'); ov.id='hnkds';
     ov.innerHTML='<div class="hnkds-panel"><div class="hnkds-top"><div><h3>'+T('tables.kitchen','Kitchen Display')+'</h3><div class="sub" id="hnkds-sub"></div></div>'
       +'<button class="hnkds-b gh" style="flex:0;padding:8px 12px" onclick="HNTables.kdsClearReady()">'+T('tables.clearReady','Clear ready')+'</button>'
-      +'<button class="hnkds-x" onclick="HNTables.closeKDS()">\u2715</button></div><div class="hnkds-grid" id="hnkds-grid"></div></div>';
+      +'<button class="hnkds-x" onclick="HNTables.closeKDS()">\u2715</button></div>'
+      +'<div class="hnkds-tabs" id="hnkds-tabs"></div>'
+      +'<div class="hnkds-grid" id="hnkds-grid"></div></div>';
     document.body.appendChild(ov); return ov; }
   function openKDS(){ ensureKDS(); _kdsOpen=true; document.getElementById('hnkds').classList.add('on'); renderKDS(); }
   function closeKDS(){ _kdsOpen=false; var o=document.getElementById('hnkds'); if(o) o.classList.remove('on'); }
+  function kdsSetFilter(f){ _kdsFilter = f; renderKDS(); }
   function renderKDS(){ var g=document.getElementById('hnkds-grid'); if(!g) return; var sub=document.getElementById('hnkds-sub'); if(sub) sub.textContent=kots.length+' '+T('tables.openTickets','open tickets');
+    var tabsEl=document.getElementById('hnkds-tabs');
+    if(tabsEl){
+      var cAll=kots.length, cNew=0, cPrep=0, cReady=0;
+      kots.forEach(function(k){ if(k.status==='new')cNew++; else if(k.status==='prep')cPrep++; else cReady++; });
+      var TABS=[
+        {f:'all',  l:T('tables.fAll','All'),       n:cAll},
+        {f:'new',  l:T('tables.fNew','New'),       n:cNew},
+        {f:'prep', l:T('tables.fPrep','Preparing'),n:cPrep},
+        {f:'ready',l:T('tables.fReady','Ready'),   n:cReady}
+      ];
+      tabsEl.innerHTML=TABS.map(function(t){
+        var dot=(t.f==='all')?'':'<span class="dot"></span>';
+        return '<button type="button" class="hnkds-tab'+(_kdsFilter===t.f?' on':'')+'" data-f="'+t.f+'" onclick="HNTables.kdsSetFilter(\''+t.f+'\')">'+dot+' '+t.l+' <span class="n">'+t.n+'</span></button>';
+      }).join('');
+    }
     if(!kots.length){ g.innerHTML='<div class="hnkds-empty">'+T('tables.noTickets','No kitchen tickets yet. Send an order to the kitchen to see it here.')+'</div>'; return; }
+    var visible = (_kdsFilter==='all') ? kots.slice() : kots.filter(function(k){ return k.status===_kdsFilter; });
+    if(!visible.length){ g.innerHTML='<div class="hnkds-empty">'+T('tables.noneInStage','Nothing in this stage right now.')+'</div>'; return; }
     var now=Date.now();
-    g.innerHTML=kots.slice().sort(function(a,b){return a.ts-b.ts;}).map(function(k){ var tm=typeMeta(k.type); var mins=Math.floor((now-k.ts)/60000); var old=mins>=10;
+    g.innerHTML=visible.sort(function(a,b){return a.ts-b.ts;}).map(function(k){ var tm=typeMeta(k.type); var mins=Math.floor((now-k.ts)/60000); var old=mins>=10;
       var items=k.items.map(function(i){ return '<li><span>'+esc(i.name)+'</span><span class="q">\u00d7'+esc(i.qty)+'</span></li>'; }).join('');
       var btn=k.status==='new'?T('tables.start','Start cooking'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
       var ageCls=mins>=10?'t-red':(mins>=5?'t-amber':'t-green'); var ageTxt=mins<=0?T('tables.justNow','just now'):(mins+'m');
@@ -95470,15 +95564,16 @@ var KB=[
        _pendingAdoptSnap handling for how the cart survives the trip). */
     if(type==='dinein'){
       if(m==='adopt') _pendingAdoptSnap = liveSnap();
-      setMode('tables');
+      _tablePickOverride = true;
+      renderStrip();
       try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){}
       return;
     }
     if(m==='adopt'){ adoptCartAsOrder(type); return; }
     newOrder(type);
   }
-  function dismissSheet(){ var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt'){ var t=liveTotals(); if(activeId==null && t.count>0){ _pendingAdoptSnap = liveSnap(); setMode('tables'); try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){} } } }
-  function chooseAlwaysAsk(){ setDefault('ask'); var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt'){ var t=liveTotals(); if(activeId==null && t.count>0){ _pendingAdoptSnap = liveSnap(); setMode('tables'); try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){} } } if(typeof toast==='function') toast(T('tables.willAsk','Will ask each time')); }
+  function dismissSheet(){ var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt'){ var t=liveTotals(); if(activeId==null && t.count>0){ _pendingAdoptSnap = liveSnap(); _tablePickOverride = true; renderStrip(); try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){} } } }
+  function chooseAlwaysAsk(){ setDefault('ask'); var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt'){ var t=liveTotals(); if(activeId==null && t.count>0){ _pendingAdoptSnap = liveSnap(); _tablePickOverride = true; renderStrip(); try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){} } } if(typeof toast==='function') toast(T('tables.willAsk','Will ask each time')); }
   function closeSheet(){ var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); _sheetMode=null; }
   function ensureActSheet(){ if(document.getElementById('hntm-actsheet')) return; var s=document.createElement('div'); s.id='hntm-actsheet'; s.className='hntm-sheetwrap';
     s.innerHTML='<div class="hntm-scrim" onclick="HNTables.closeActSheet()"></div><div class="hntm-sheetcard"><div class="hntm-handle"></div><div class="hntm-types"><button class="hntm-type" type="button" onclick="HNTables.setNote();HNTables.closeActSheet()"><span class="e">\uD83D\uDCDD</span><span class="l">'+T('tables.note','Kitchen note')+'</span></button><button class="hntm-type" type="button" onclick="HNTables.renameTable();HNTables.closeActSheet()"><span class="e">\u270F\uFE0F</span><span class="l">'+T('tables.rename','Rename order')+'</span></button></div></div>';
@@ -95786,7 +95881,7 @@ var KB=[
       setTimeout(function(){ try{ renderBoard(); }catch(e){} }, 1300);
     }, 90);
   }
-  window.HNTables={ runningSummary:runningSummary, newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, pickType:pickType, dismissSheet:dismissSheet, chooseAlwaysAsk:chooseAlwaysAsk, setDefaultType:setDefault, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, printKOT:printByNo, isEnabled:isEnabled, setEnabled:setEnabled, activeChannel:activeChannel, printBill:billActive, billOrder:billOrder, openBoard:openBoard, closeBoard:closeBoard, openFromBoard:openFromBoard, settleStart:settleStart, settleCancel:settleCancel, settlePay:settlePay, settleSplit:settleSplit, boardUpiQrOn:boardUpiQrOn, setBoardUpiQr:setBoardUpiQr, billFirstOn:billFirstOn, setBillFirst:setBillFirst, ostatus:ostatus, syncState:function(){ return { on:_sync.on, sid:_sync.sid, dev:syncDev(), rev:_sync.rev, applied:_sync.applied }; }, _state:function(){ return { orders:orders, activeId:activeId, kots:kots, seq:seq, kotSeq:kotSeq }; } };
+  window.HNTables={ runningSummary:runningSummary, newOrder:newOrder, newTable:newTable, toggleNewMenu:toggleNewMenu, openTypeSheet:openTypeSheet, closeSheet:closeSheet, pickType:pickType, dismissSheet:dismissSheet, chooseAlwaysAsk:chooseAlwaysAsk, setDefaultType:setDefault, openActSheet:openActSheet, closeActSheet:closeActSheet, switchTo:switchTo, renameTable:renameTable, setNote:setNote, setType:setType, removeTable:removeTable, openTable:openTable, clearTable:clearTable, setMode:setMode, setTableCount:setTableCount, mode:mode, sendKOT:sendKOT, openKDS:openKDS, closeKDS:closeKDS, kdsAdvance:kdsAdvance, kdsClearReady:kdsClearReady, kdsSetFilter:kdsSetFilter, printKOT:printByNo, isEnabled:isEnabled, setEnabled:setEnabled, activeChannel:activeChannel, printBill:billActive, billOrder:billOrder, openBoard:openBoard, closeBoard:closeBoard, openFromBoard:openFromBoard, settleStart:settleStart, settleCancel:settleCancel, settlePay:settlePay, settleSplit:settleSplit, boardUpiQrOn:boardUpiQrOn, setBoardUpiQr:setBoardUpiQr, billFirstOn:billFirstOn, setBillFirst:setBillFirst, ostatus:ostatus, syncState:function(){ return { on:_sync.on, sid:_sync.sid, dev:syncDev(), rev:_sync.rev, applied:_sync.applied }; }, _state:function(){ return { orders:orders, activeId:activeId, kots:kots, seq:seq, kotSeq:kotSeq }; } };
 })();
 </script>
 <!-- ============== END Orders/Tables + KOT/KDS ============== -->
