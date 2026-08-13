@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1815';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1832';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1273,6 +1273,9 @@ body{min-height:100vh;margin:0;touch-action:pan-y;-webkit-overflow-scrolling:tou
 .brand-name{font-size:19px;font-weight:800;letter-spacing:-.02em;display:inline-flex;align-items:baseline}
 .brand-name .wm1{color:var(--n)}.brand-name .wm2{color:var(--p);font-weight:900;letter-spacing:-.025em}
 .hdr-title{font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.02em;flex:1;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-title-wrap{flex:1;min-width:0;text-align:center}
+.hdr-title-wrap .hdr-title{flex:none}
+.hdr-sub{font-size:10.5px;font-weight:700;color:var(--t3,#8C8577);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .greet{padding:6px 18px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .greet-text h1{font-size:22px;font-weight:800;letter-spacing:-.025em;line-height:1.2}
@@ -3890,7 +3893,7 @@ html[data-current-role="manager"] body{
 <div class="page" id="pg-addsale">
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.cancelSale()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    <div class="hdr-title" id="addsale-title" data-i18n="common.newSale">New Sale</div>
+    <div class="hdr-title-wrap" id="addsale-title-wrap"><div class="hdr-title" id="addsale-title" data-i18n="common.newSale">New Sale</div><div class="hdr-sub" id="addsale-sub" style="display:none"></div></div>
     <button class="icon-btn cw-btn-highlight" id="addsale-cw-btn" aria-label="Custom weight (gms/kg)" onclick="App.openCustomWeight()" style="margin-right:4px;background:linear-gradient(135deg,var(--y) 0%,var(--y-dark) 100%);color:#1a1a1a;box-shadow:0 2px 8px rgba(255,192,67,.4)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></button>
     <button class="icon-btn" id="addsale-kds-btn" aria-label="Kitchen Display" onclick="window.HNTables && HNTables.openKDS && HNTables.openKDS()" style="display:none;position:relative;background:#0A0A0A;color:#fff;font-size:19px"><span aria-hidden="true">🔥</span><span id="addsale-kds-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--p,#FF6B35);color:#fff;font-size:9px;font-weight:800;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center"></span></button>
     <button class="icon-btn" id="addsale-mic-btn" aria-label="Voice billing" onclick="App.startVoiceBill()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
@@ -95079,6 +95082,13 @@ var KB=[
 .hntm-tcell .n{font-size:14px;font-weight:700;color:#1a1a1a}.hntm-tcell .s{font-size:10px;font-weight:600}
 .hntm-tcell .x{position:absolute;top:1px;right:4px;color:#aaa;font-size:11px}
 .hntm-cfg{margin-top:7px;width:100%;border:0;background:none;font-family:inherit;font-size:11px;font-weight:600;color:#8A8A8A}
+/* (audit fix — v34, remove chips) Replaces the entire chip-strip +
+   mode-toggle row. Two plain buttons, nothing scrollable, nothing that can
+   get squeezed out regardless of how many orders exist elsewhere. */
+.hntm-quickrow{display:flex;gap:8px}
+.hntm-newbtn{flex:1;border:1.5px dashed #D9A62B;background:#fff;border-radius:12px;padding:11px;font-family:inherit;font-size:12.5px;font-weight:800;color:#B8860B;min-height:44px}
+.hntm-tablesbtn{flex:0 0 auto;border:1px solid #E2E2E2;background:#fff;border-radius:12px;padding:11px 16px;font-family:inherit;font-size:12.5px;font-weight:700;color:#1a1a1a;min-height:44px;white-space:nowrap}
+.hntm-back{border:0;background:none;font-family:inherit;font-size:12.5px;font-weight:700;color:#1a1a1a;padding:4px 8px 4px 0}
 /* (audit fix — v34) Kitchen/Bill/More combined into one row — was a
    full-width primary button stacked over a second row for the other two,
    which cost an extra row of height the product grid needed more. */
@@ -95465,17 +95475,26 @@ var KB=[
   function updateAddSaleTitle(){
     try {
       var t = document.getElementById('addsale-title');
+      var sub = document.getElementById('addsale-sub');
       if (!t) return;
       var o = (activeId != null) ? find(activeId) : null;
       if (o) {
         t.removeAttribute('data-i18n');
         t.textContent = o.label;
-      } else if (t.hasAttribute('data-i18n') === false) {
-        /* Only restore the default when we're the ones who overrode it —
-           if data-i18n is already present, some other code owns this label
-           right now and we shouldn't fight it. */
-        t.setAttribute('data-i18n', 'common.newSale');
-        t.textContent = T('common.newSale', 'New Sale');
+        if (sub) {
+          var tm = typeMeta(o.type);
+          sub.textContent = tm.e + ' ' + tm.l;
+          sub.style.display = '';
+        }
+      } else {
+        if (t.hasAttribute('data-i18n') === false) {
+          /* Only restore the default when we're the ones who overrode it —
+             if data-i18n is already present, some other code owns this label
+             right now and we shouldn't fight it. */
+          t.setAttribute('data-i18n', 'common.newSale');
+          t.textContent = T('common.newSale', 'New Sale');
+        }
+        if (sub) sub.style.display = 'none';
       }
     } catch(e){}
   }
@@ -95537,26 +95556,27 @@ var KB=[
     var head = boardBtnProminent();
     var body;
     if(m==='tables'){ var n=tableCount(),cells='';
-      head += '<div class="hntm-bar"><span class="hntm-lbl">'+T('tables.tablesLbl','Tables')+' <b>'+(occupiedCount()+'/'+tableCount())+'</b></span><span class="hntm-right">'+modeBarMob()+'</span></div>';
+      /* (audit fix — v34) No more toggle pill to switch back with, now that
+         the chip-list "Orders" view is gone — a plain back link does the
+         same job with less chrome. */
+      head += '<div class="hntm-bar"><button class="hntm-back" type="button" onclick="HNTables.setMode(\'orders\')">\u2190 '+T('common.back','Back')+'</button><span class="hntm-lbl">'+T('tables.tablesLbl','Tables')+' <b>'+(occupiedCount()+'/'+tableCount())+'</b></span></div>';
       for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
         cells+='<button class="hntm-tcell'+(occ?' occ':' free')+(live?' on':'')+'" type="button" onclick="HNTables.openTable('+i+')"><span class="n">'+i+'</span><span class="s">'+sub+'</span>'+(occ?'<span class="x" onclick="event.stopPropagation();HNTables.clearTable('+i+')">\u00d7</span>':'')+'</button>'; }
       body='<div class="hntm-grid">'+cells+'</div><button class="hntm-cfg" type="button" onclick="HNTables.setTableCount()">\u2699\uFE0F '+T('tables.setCount','Set number of tables')+'</button>';
     } else {
-      /* (audit fix — v34) The separate "OPEN ORDERS N" label row is gone —
-         the All Orders button above already says the count, so a second
-         row repeating it was pure redundancy. The mode toggle shares the
-         same row as the order chips instead of sitting on its own line
-         above them.
-         (audit fix — v34, follow-up) That row used to be ONE scrollable
-         flex container holding chips + New order + the toggle together —
-         so the toggle was only reachable by scrolling right, with no
-         visual hint that was possible, and on some tables even a single
-         chip pushed it fully off-screen. It's now split: chips scroll in
-         their own sub-container, the toggle sits outside that scroll area
-         and is always visible regardless of how many orders are open. */
-      var chips=orders.map(function(o){ var live=(o.id===activeId); var amt=live?liveTotals():{total:o.total,count:o.count}; var amtTxt=(amt.total>0)?('\u20B9'+amt.total):'\u00b7'; var tm=typeMeta(o.type);
-        return '<button class="hntm-chip'+(ostatus(o)==='billed'?' st-billed':'')+(live?' on':'')+'" type="button" onclick="HNTables.switchTo(\''+o.id+'\')"><span class="ty">'+tm.e+'</span><span class="t">'+esc(o.label)+'</span>'+stPill(o)+'<span class="a">'+amtTxt+'</span><span class="x" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span></button>'; }).join('');
-      body='<div class="hntm-chiprow"><div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button></div>'+modeBarMob()+'</div>';
+      /* (audit fix — v34, remove chips) The order-chip strip is gone
+         entirely, not just reorganized. It kept breaking at every scale —
+         "+ New order" pushed off-screen at 2 orders, the mode toggle
+         squeezed out, no real design at 30 orders. Which order is active
+         is already shown in the header title (updateAddSaleTitle); All
+         Orders is the real, full-screen tool for switching between
+         existing orders. This row is now just two plain, always-visible
+         buttons — nothing to scroll, nothing that can get pushed away
+         regardless of how many orders exist elsewhere in the shop. */
+      body='<div class="hntm-quickrow">'
+        +'<button class="hntm-newbtn" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button>'
+        +'<button class="hntm-tablesbtn" type="button" onclick="HNTables.setMode(\'tables\')">\uD83C\uDF7D\uFE0F '+T('tables.tablesLbl','Tables')+'</button>'
+        +'</div>';
     }
     /* (audit fix — v34) Send to Kitchen, Bill, and More are one row now,
        not a full-width primary button on its own line stacked over a
