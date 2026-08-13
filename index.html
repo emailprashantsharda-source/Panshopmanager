@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1832';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1838';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -95330,7 +95330,7 @@ var KB=[
   function setNote(id){ id=id||activeId; var o=find(id); if(!o) return; var n=null; try{ n=window.prompt(T('tables.kitchenNote','Kitchen note (e.g. less spicy, no onion)'),o.note||''); }catch(e){ return; } if(n!=null){ o.note=String(n).trim(); save(); renderStrip(); } }
   function removeTable(id){ var o=find(id); if(!o) return; if((o.count||0)>0){ if(!window.confirm(T('tables.removeConfirm','Remove '+o.label+' and discard its order?'))) return; } var wasActive=(activeId===id); orders=orders.filter(function(x){return x.id!==id;}); if(wasActive){ if(orders.length>0){ var nx=orders[orders.length-1]; _busy=true; applySnap(nx.snap); activeId=nx.id; _busy=false; } else { activeId=null; _busy=true; clearLive(); _busy=false; } } if(orders.length===0) seq=0; save(); renderStrip(); }
   function afterSale(){ if(activeId==null) return; orders=orders.filter(function(x){return x.id!==activeId;}); activeId=null; if(orders.length===0) seq=0; save(); renderStrip(); }
-  function lazySeed(){ if(!isEnabled()||mode()!=='orders') return; if(activeId!=null){ _typeAsked=false; return; } var t=liveTotals(); if(t.count>0){ var def=defaultType(); if(def==='ask'){
+  function lazySeed(){ if(!isEnabled()) return; if(activeId!=null){ _typeAsked=false; return; } var t=liveTotals(); if(t.count>0){ var def=defaultType(); if(def==='ask'){
       /* (audit fix — v34) Used to silently adoptCartAsOrder('dinein') here
          for a shop's very first-ever order (noSalesYet()), skipping the
          type sheet entirely to save one tap. That bypassed pickType() —
@@ -95341,7 +95341,7 @@ var KB=[
          doesn't behave like the rest. */
       if(!_typeAsked){ _typeAsked=true; openTypeSheet('adopt'); } return;
     } adoptCartAsOrder(def); } else { _typeAsked=false; } }
-  function reconcileOnLoad(){ if(!isEnabled()||mode()!=='orders') return; if(activeId!=null) return; var t=liveTotals(); if(t.count===0 && orders.length>0){ var o=orders[orders.length-1]; _busy=true; applySnap(o.snap); activeId=o.id; _busy=false; save(); renderStrip(); } }
+  function reconcileOnLoad(){ if(!isEnabled()) return; if(activeId!=null) return; var t=liveTotals(); if(t.count===0 && orders.length>0){ var o=orders[orders.length-1]; _busy=true; applySnap(o.snap); activeId=o.id; _busy=false; save(); renderStrip(); } }
   function setType(id,k){ var o=find(id); if(!o) return; o.type=typeMeta(k).k; save(); renderStrip(); }
   function occupiedCount(){ return orders.filter(function(o){ return o.tableNo!=null; }).length; }
   function openTable(n){
@@ -95554,12 +95554,14 @@ var KB=[
        pass, since the two-line 'prominent' version cost more space than
        it earned. */
     var head = boardBtnProminent();
+    /* (audit fix — v34) Orders/Tables toggle restored as a real pill, not a
+       plain 'Tables' button + back link — chips stay removed either way,
+       this only changes how you switch between the quick-actions view and
+       the table grid. Orders is the default (matches mode()'s own default
+       when nothing is persisted yet). */
+    head += '<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables')+' <b>'+occupiedCount()+'/'+tableCount()+'</b>':T('tables.openOrders','Orders'))+'</span><span class="hntm-right">'+modeBarMob()+'</span></div>';
     var body;
     if(m==='tables'){ var n=tableCount(),cells='';
-      /* (audit fix — v34) No more toggle pill to switch back with, now that
-         the chip-list "Orders" view is gone — a plain back link does the
-         same job with less chrome. */
-      head += '<div class="hntm-bar"><button class="hntm-back" type="button" onclick="HNTables.setMode(\'orders\')">\u2190 '+T('common.back','Back')+'</button><span class="hntm-lbl">'+T('tables.tablesLbl','Tables')+' <b>'+(occupiedCount()+'/'+tableCount())+'</b></span></div>';
       for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
         cells+='<button class="hntm-tcell'+(occ?' occ':' free')+(live?' on':'')+'" type="button" onclick="HNTables.openTable('+i+')"><span class="n">'+i+'</span><span class="s">'+sub+'</span>'+(occ?'<span class="x" onclick="event.stopPropagation();HNTables.clearTable('+i+')">\u00d7</span>':'')+'</button>'; }
       body='<div class="hntm-grid">'+cells+'</div><button class="hntm-cfg" type="button" onclick="HNTables.setTableCount()">\u2699\uFE0F '+T('tables.setCount','Set number of tables')+'</button>';
@@ -95570,12 +95572,11 @@ var KB=[
          squeezed out, no real design at 30 orders. Which order is active
          is already shown in the header title (updateAddSaleTitle); All
          Orders is the real, full-screen tool for switching between
-         existing orders. This row is now just two plain, always-visible
-         buttons — nothing to scroll, nothing that can get pushed away
+         existing orders. This row is now just one plain, always-visible
+         button — nothing to scroll, nothing that can get pushed away
          regardless of how many orders exist elsewhere in the shop. */
       body='<div class="hntm-quickrow">'
         +'<button class="hntm-newbtn" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button>'
-        +'<button class="hntm-tablesbtn" type="button" onclick="HNTables.setMode(\'tables\')">\uD83C\uDF7D\uFE0F '+T('tables.tablesLbl','Tables')+'</button>'
         +'</div>';
     }
     /* (audit fix — v34) Send to Kitchen, Bill, and More are one row now,
