@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1400';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1444';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3890,8 +3890,9 @@ html[data-current-role="manager"] body{
 <div class="page" id="pg-addsale">
   <header class="hdr solid">
     <button class="icon-btn" onclick="App.cancelSale()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    <div class="hdr-title" data-i18n="common.newSale">New Sale</div>
+    <div class="hdr-title" id="addsale-title" data-i18n="common.newSale">New Sale</div>
     <button class="icon-btn cw-btn-highlight" id="addsale-cw-btn" aria-label="Custom weight (gms/kg)" onclick="App.openCustomWeight()" style="margin-right:4px;background:linear-gradient(135deg,var(--y) 0%,var(--y-dark) 100%);color:#1a1a1a;box-shadow:0 2px 8px rgba(255,192,67,.4)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></button>
+    <button class="icon-btn" id="addsale-kds-btn" aria-label="Kitchen Display" onclick="window.HNTables && HNTables.openKDS && HNTables.openKDS()" style="display:none;position:relative;background:#0A0A0A;color:#fff"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span id="addsale-kds-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--p,#FF6B35);color:#fff;font-size:9px;font-weight:800;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center"></span></button>
     <button class="icon-btn" id="addsale-mic-btn" aria-label="Voice billing" onclick="App.startVoiceBill()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
   </header>
 
@@ -95025,17 +95026,18 @@ var KB=[
 .hntm-tcell .n{font-size:14px;font-weight:700;color:#1a1a1a}.hntm-tcell .s{font-size:10px;font-weight:600}
 .hntm-tcell .x{position:absolute;top:1px;right:4px;color:#aaa;font-size:11px}
 .hntm-cfg{margin-top:7px;width:100%;border:0;background:none;font-family:inherit;font-size:11px;font-weight:600;color:#8A8A8A}
-.hntm-acts{display:flex;gap:7px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.hntm-acts-primary{margin-top:8px}
+.hntm-acts-primary button.kot{width:100%;background:#0A0A0A;color:#FFC043;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:800;padding:13px;min-height:46px;display:flex;align-items:center;justify-content:center;gap:8px}
+.hntm-acts{display:flex;gap:7px;margin-top:7px;overflow-x:auto;scrollbar-width:none}
 .hntm-acts::-webkit-scrollbar{display:none}
-.hntm-acts button{flex:0 0 auto;border:1px solid #E2E2E2;background:#fff;border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 13px;color:#1a1a1a;min-height:40px;white-space:nowrap}
-.hntm-acts button.kot{background:#1C1C1C;color:#FFC043;border-color:#1C1C1C}
+.hntm-acts button{flex:1;border:1px solid #E2E2E2;background:#fff;border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 13px;color:#1a1a1a;min-height:40px;white-space:nowrap}
 .hntm-sheetwrap{position:fixed;inset:0;z-index:9600;visibility:hidden}
 .hntm-sheetwrap.on{visibility:visible}
 .hntm-scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
 .hntm-sheetwrap.on .hntm-scrim{opacity:1}
 .hntm-sheetcard{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1)}
 .hntm-sheetwrap.on .hntm-sheetcard{transform:translateY(0)}
-.hntm-acts button.more{flex:0 0 auto;min-width:42px;padding:9px 0;font-size:18px;line-height:1;text-align:center}
+.hntm-acts button.more{flex:0 0 auto;min-width:64px;padding:9px 14px;font-size:12.5px;font-weight:700;text-align:center}
 .hntm-handle{width:36px;height:4px;border-radius:99px;background:#DADADA;margin:6px auto 12px}
 .hntm-stitle{font-size:20px;font-weight:850;letter-spacing:-.02em;color:#16150f;margin:0 4px 2px}
 .hntm-shelp{font-size:12.5px;font-weight:500;color:#6B6B6B;margin:0 4px 12px}
@@ -95224,7 +95226,14 @@ var KB=[
   function syncActive(){ if(_busy||activeId==null) return; var o=find(activeId); if(!o) return; o.snap=liveSnap(); var t=liveTotals(); o.total=t.total; o.count=t.count; }
   function parkActive(){ syncActive(); }
   function newOrder(type){ parkActive(); _busy=true; clearLive(); seq++; var tm=typeMeta(type||'dinein'); var id='t'+Date.now()+'_'+seq; var lbl=tm.l+' '+seq;
-    orders.push({ id:id, label:lbl, type:tm.k, status:'open', note:'', total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; _menuOpen=false; save(); renderStrip(); }
+    orders.push({ id:id, label:lbl, type:tm.k, status:'open', note:'', total:0, count:0, snap:liveSnap(), createdAt:Date.now() }); activeId=id; _busy=false; _menuOpen=false; save(); renderStrip();
+    /* (audit fix — v34) Land on the billing screen with the new order ready,
+       instead of leaving the user wherever they happened to trigger this
+       from. Without this, picking a type from the board's "+ New order"
+       button created the order correctly but left the user staring at
+       Home — reads exactly like the flow silently failed. */
+    try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){}
+  }
   function newTable(){ newOrder('dinein'); }
   function switchTo(id){ if(id===activeId){ return; } parkActive(); var o=find(id); if(!o) return; _busy=true; applySnap(o.snap); activeId=id; _busy=false; save(); renderStrip(); }
   function renameTable(id){ id=id||activeId; var o=find(id); if(!o) return; var nm=null; try{ nm=window.prompt(T('tables.namePrompt','Customer name (optional)'),o.label); }catch(e){ return; } if(nm&&String(nm).trim()){ o.label=String(nm).trim(); save(); renderStrip(); } }
@@ -95285,17 +95294,55 @@ var KB=[
     }).join(''); }
   function isDesktop(){ try{ return document.documentElement.getAttribute('data-shell')==='desktop'; }catch(e){ return false; } }
   function host(){ if(isDesktop()) return document.querySelector('html[data-shell="desktop"] .hnd-pos-l') || document.querySelector('.hnd-pos-l'); return document.getElementById('pg-addsale'); }
-  function ensureStrip(){ if(!isEnabled()){ var ex=document.getElementById('hntab-strip'); if(ex)ex.remove(); return false; } var h=host(); if(!h) return false; var s=document.getElementById('hntab-strip'); if(!s){ s=document.createElement('div'); s.id='hntab-strip'; if(isDesktop()){ h.insertBefore(s,h.firstChild); } else { s.className='hntab-mob'; var sr=h.querySelector('.search-row'); if(sr&&sr.parentNode===h){ h.insertBefore(s, sr.nextSibling); } else { h.insertBefore(s, h.firstChild); } } } return true; }
+  function ensureStrip(){ if(!isEnabled()){ var ex=document.getElementById('hntab-strip'); if(ex)ex.remove();
+      try {
+        var kb=document.getElementById('addsale-kds-btn'); if(kb) kb.style.display='none';
+        var t=document.getElementById('addsale-title'); if(t && !t.hasAttribute('data-i18n')){ t.setAttribute('data-i18n','common.newSale'); t.textContent=T('common.newSale','New Sale'); }
+      } catch(e){}
+      return false; } var h=host(); if(!h) return false; var s=document.getElementById('hntab-strip'); if(!s){ s=document.createElement('div'); s.id='hntab-strip'; if(isDesktop()){ h.insertBefore(s,h.firstChild); } else { s.className='hntab-mob'; var sr=h.querySelector('.search-row'); if(sr&&sr.parentNode===h){ h.insertBefore(s, sr.nextSibling); } else { h.insertBefore(s, h.firstChild); } } } return true; }
   function typeMenuHTML(){ if(!_menuOpen) return ''; return '<div class="hntab-menu">'+ORDER_TYPES.map(function(t){ return '<button type="button" onclick="HNTables.newOrder(\''+t.k+'\')"><span>'+t.e+'</span> '+t.l+'</button>'; }).join('')+'</div>'; }
-  function kdsBtn(){ var n=kots.length; return '<button class="hntab-kds-btn" type="button" onclick="HNTables.openKDS()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.kitchen','Kitchen')+(n?'<span class="b">'+n+'</span>':'')+'</button>'; }
+  function kdsBtn(){ var n=kots.length; return '<button class="hntab-kds-btn" type="button" onclick="HNTables.openKDS()">\uD83D\uDDA5\uFE0F '+T('tables.kitchen','Kitchen')+(n?'<span class="b">'+n+'</span>':'')+'</button>'; }
   function modeBar(){ var m=mode(); return '<div class="hntab-modebar"><button class="hntab-mbtn'+(m==='orders'?' on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="hntab-mbtn'+(m==='tables'?' on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></div>'; }
   function actsRow(){ if(activeId==null) return ''; return '<div class="hntab-acts">'+(billFirstOn()?'<button class="hntab-act bill" type="button" onclick="HNTables.printBill()">\uD83E\uDDFE '+T('tables.printBill','Print bill')+'</button>':'')
       +'<button class="hntab-act kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button>'
       +'<button class="hntab-act" type="button" onclick="HNTables.setNote()">\uD83D\uDCDD '+T('tables.note','Note')+'</button>'
       +(mode()==='orders'?'<button class="hntab-act" type="button" onclick="HNTables.renameTable(\''+activeId+'\')">\u270F\uFE0F '+T('tables.rename','Rename')+'</button>':'')+'</div>'; }
-  function renderStrip(){ if(!ensureStrip()) return; syncActive(); var strip=document.getElementById('hntab-strip'); if(!strip) return; if(isDesktop()) renderDesk(strip); else renderMob(strip); }
+  function updateAddSaleTitle(){
+    try {
+      var t = document.getElementById('addsale-title');
+      if (!t) return;
+      var o = (activeId != null) ? find(activeId) : null;
+      if (o) {
+        t.removeAttribute('data-i18n');
+        t.textContent = o.label;
+      } else if (t.hasAttribute('data-i18n') === false) {
+        /* Only restore the default when we're the ones who overrode it —
+           if data-i18n is already present, some other code owns this label
+           right now and we shouldn't fight it. */
+        t.setAttribute('data-i18n', 'common.newSale');
+        t.textContent = T('common.newSale', 'New Sale');
+      }
+    } catch(e){}
+  }
+  function updateKdsHeaderBtn(){
+    try {
+      var b = document.getElementById('addsale-kds-btn');
+      if (!b) return;
+      var on = isEnabled();
+      b.style.display = on ? 'inline-flex' : 'none';
+      if (on) {
+        var n = kots.length;
+        var badge = document.getElementById('addsale-kds-badge');
+        if (badge) {
+          if (n > 0) { badge.textContent = String(n); badge.style.display = 'flex'; }
+          else badge.style.display = 'none';
+        }
+      }
+    } catch(e){}
+  }
+  function renderStrip(){ if(!ensureStrip()) return; syncActive(); var strip=document.getElementById('hntab-strip'); if(!strip) return; if(isDesktop()) renderDesk(strip); else renderMob(strip); updateAddSaleTitle(); updateKdsHeaderBtn(); }
   function renderDesk(strip){ var m=mode();
-    var head='<div class="hntab-head">\uD83E\uDDFE '+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <span class="hntab-n">'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</span>'+boardBtn()+kdsBtn()+modeBar()+'</div>';
+    var head='<div class="hntab-head">\uD83E\uDDFE '+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <span class="hntab-n">'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</span>'+boardBtn()+modeBar()+'</div>';
     var body;
     if(m==='tables'){ var n=tableCount(),cells='';
       for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
@@ -95308,9 +95355,9 @@ var KB=[
     }
     strip.innerHTML=head+body; }
   function modeBarMob(){ var m=mode(); return '<span class="hntm-mode"><button class="'+(m==='orders'?'on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="'+(m==='tables'?'on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></span>'; }
-  function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()"><span class="ic">\uD83D\uDC68\u200D\uD83C\uDF73</span> '+T('tables.kitchen','Kitchen')+(n?' <span class="b">'+n+'</span>':'')+'</button>'; }
+  function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()"><span class="ic">\uD83D\uDDA5\uFE0F</span> '+T('tables.kitchen','Kitchen')+(n?' <span class="b">'+n+'</span>':'')+'</button>'; }
   function renderMob(strip){ var m=mode();
-    var head='<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <b>'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</b></span><span class="hntm-right">'+modeBarMob()+kdsBtnMob()+boardBtnMob()+'</span></div>';
+    var head='<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <b>'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</b></span><span class="hntm-right">'+modeBarMob()+boardBtnMob()+'</span></div>';
     var body;
     if(m==='tables'){ var n=tableCount(),cells='';
       for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
@@ -95321,13 +95368,33 @@ var KB=[
         return '<button class="hntm-chip'+(ostatus(o)==='billed'?' st-billed':'')+(live?' on':'')+'" type="button" onclick="HNTables.switchTo(\''+o.id+'\')"><span class="ty">'+tm.e+'</span><span class="t">'+esc(o.label)+'</span>'+stPill(o)+'<span class="a">'+amtTxt+'</span><span class="x" onclick="event.stopPropagation();HNTables.removeTable(\''+o.id+'\')">\u00d7</span></button>'; }).join('');
       body='<div class="hntm-chips">'+chips+'<button class="hntm-new" type="button" onclick="HNTables.openTypeSheet(\'new\')">+ '+T('tables.newTable','New order')+'</button></div>';
     }
-    var acts=activeId!=null?('<div class="hntm-acts">'+(billFirstOn()?'<button class="bill" type="button" onclick="HNTables.printBill()">\uD83E\uDDFE '+T('tables.printBill','Bill')+'</button>':'')+'<button class="kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button><button class="more" type="button" aria-label="More" onclick="HNTables.openActSheet()">\u22EE</button></div>'):'';
+    var acts=activeId!=null?(
+      '<div class="hntm-acts-primary"><button class="kot" type="button" onclick="HNTables.sendKOT()">\uD83D\uDC68\u200D\uD83C\uDF73 '+T('tables.sendKitchen','Send to kitchen')+'</button></div>'
+      +'<div class="hntm-acts">'
+      +(billFirstOn()?'<button class="bill" type="button" onclick="HNTables.printBill()">\uD83E\uDDFE '+T('tables.printBill','Bill')+'</button>':'')
+      +'<button class="more" type="button" aria-label="More" onclick="HNTables.openActSheet()">\u22EE '+T('common.more','More')+'</button>'
+      +'</div>'
+    ):'';
     strip.innerHTML=head+body+acts; }
   function defaultType(){ try{ var d=localStorage.getItem('hn_otype_default'); if(d) return d; }catch(e){} return 'ask'; }
   // First-ever bill = zero completed sales. On that one bill we skip the order-type
   // sheet and silently use Dine-in, so a brand-new shop hits the "10 seconds"
   // promise with no extra tap. From the 2nd bill on, the picker asks normally.
-  function noSalesYet(){ try{ return (((window.Store && Store.list && Store.list('sales')) || []).length) === 0; }catch(e){ return false; } }
+  function noSalesYet(){
+    /* (audit fix — v34) Was: Store.list('sales').length === 0 — true for
+       every cart started before the shop's FIRST completed sale, not just
+       the first one. A cart that gets abandoned and restarted (normal while
+       exploring the app) kept re-triggering the silent dinein default on
+       every attempt, with no way back to the order-type sheet's own
+       "Always ask" reset since that reset lives inside the sheet this
+       branch was skipping. A one-time flag makes this fire exactly once,
+       matching what the comment above always said it should do. */
+    try {
+      if (localStorage.getItem('hn_first_order_used') === '1') return false;
+      localStorage.setItem('hn_first_order_used', '1');
+      return true;
+    } catch(e){ return false; }
+  }
   function setDefault(t){ try{ localStorage.setItem('hn_otype_default', t); }catch(e){} }
   function adoptCartAsOrder(type){ var tm=typeMeta(type||'dinein'); seq++; var id='t'+Date.now()+'_'+seq; var t=liveTotals();
     orders.push({ id:id, label:tm.l+' '+seq, type:tm.k, status:'open', note:'', snap:liveSnap(), total:t.total, count:t.count, createdAt:Date.now() });
@@ -95340,7 +95407,24 @@ var KB=[
     return '<div class="hntm-scrim" onclick="HNTables.dismissSheet()"></div><div class="hntm-sheetcard"><div class="hntm-handle"></div><div class="hntm-stitle">'+T('tables.newOrderType','Order type')+'</div><div class="hntm-shelp">'+T('tables.otHelp','Pick how this order came in — we tag every bill for you.')+'</div><div class="hntm-types">'+types+'</div><div class="hntm-deffoot"><label class="hntm-remember"><input type="checkbox" id="hntm-remember"> '+T('tables.remember','Remember as default')+'</label><button class="hntm-ask" type="button" onclick="HNTables.chooseAlwaysAsk()">'+T('tables.alwaysAsk','Always ask')+'</button></div></div>'; }
   function ensureSheet(){ if(document.getElementById('hntm-sheet')) return; var s=document.createElement('div'); s.id='hntm-sheet'; s.className='hntm-sheetwrap'; document.body.appendChild(s); }
   function openTypeSheet(mode){ _sheetMode=(mode==='adopt')?'adopt':'new'; ensureSheet(); var s=document.getElementById('hntm-sheet'); s.innerHTML=buildSheetHTML(); requestAnimationFrame(function(){ s.classList.add('on'); }); }
-  function pickType(type){ var rem=document.getElementById('hntm-remember'); if(rem&&rem.checked) setDefault(type); var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt') adoptCartAsOrder(type); else newOrder(type); }
+  function pickType(type){
+    var rem=document.getElementById('hntm-remember'); if(rem&&rem.checked) setDefault(type);
+    var m=_sheetMode; _sheetMode=null;
+    var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on');
+    if(m==='adopt'){ adoptCartAsOrder(type); return; }
+    /* (audit fix — v34) Dine-in ties to a specific table in every table-
+       service POS — it isn't its own generic order type. Route straight
+       into the table map instead of creating an untethered "Dine-in N"
+       order; tapping a free table there (openTable) does the actual
+       creation with a real table number attached. Takeaway/Delivery/
+       Swiggy/Zomato aren't table-bound, so they keep the direct behavior. */
+    if(type==='dinein'){
+      setMode('tables');
+      try { if (window.App && App.nav) App.nav(isDesktop() ? 'sales' : 'addsale'); } catch(e){}
+      return;
+    }
+    newOrder(type);
+  }
   function dismissSheet(){ var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt'){ var t=liveTotals(); if(activeId==null && t.count>0) adoptCartAsOrder('dinein'); } }
   function chooseAlwaysAsk(){ setDefault('ask'); var m=_sheetMode; _sheetMode=null; var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); if(m==='adopt'){ var t=liveTotals(); if(activeId==null && t.count>0) adoptCartAsOrder('dinein'); } if(typeof toast==='function') toast(T('tables.willAsk','Will ask each time')); }
   function closeSheet(){ var s=document.getElementById('hntm-sheet'); if(s) s.classList.remove('on'); _sheetMode=null; }
