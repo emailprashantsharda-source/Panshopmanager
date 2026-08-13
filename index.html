@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1643';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1705';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -95380,7 +95380,18 @@ var KB=[
     kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:delta, note:o.note||'', ts:Date.now(), status:'new' };
     kots.push(kot); markSent(o, full); o.kotSent=true; saveKDS(); save(); toast('KOT #'+kotSeq+' '+T('tables.sentKitchen','sent to kitchen')); if(_kdsOpen) renderKDS(); renderStrip(); return kot; }
   function autoKOT(o, items){ if(!o||!items||!items.length) return; var delta=deltaOf(o, items); if(!delta.length) return; kotSeq++; var kot={ id:'k'+Date.now()+'_'+kotSeq, no:kotSeq, orderId:o.id, label:o.label, type:o.type||'dinein', items:delta, note:o.note||'', ts:Date.now(), status:'new' }; kots.push(kot); markSent(o, items); o.kotSent=true; saveKDS(); if(_kdsOpen) renderKDS(); }
-  function kdsAdvance(kid){ var k=null; for(var i=0;i<kots.length;i++) if(kots[i].id===kid) k=kots[i]; if(!k) return; if(k.status==='new')k.status='prep'; else if(k.status==='prep')k.status='ready'; else { kots=kots.filter(function(x){return x.id!==kid;}); } saveKDS(); renderKDS(); renderStrip(); }
+  function kdsAdvance(kid){ var k=null; for(var i=0;i<kots.length;i++) if(kots[i].id===kid) k=kots[i]; if(!k) return; if(k.status==='new')k.status='prep'; else if(k.status==='prep')k.status='ready'; else {
+      kots=kots.filter(function(x){return x.id!==kid;});
+      saveKDS(); renderKDS(); renderStrip();
+      /* (audit fix — v34) Marking a ticket Done used to just remove it from
+         the board and leave the person staring at the Kitchen Display with
+         nothing to do next — but food being ready doesn't mean the table
+         has been paid. Take them to All Orders so settling that table is
+         the very next tap, not a separate thing they have to remember. */
+      closeKDS();
+      openBoard();
+      return;
+    } saveKDS(); renderKDS(); renderStrip(); }
   function kdsClearReady(){ kots=kots.filter(function(k){return k.status!=='ready';}); saveKDS(); renderKDS(); renderStrip(); }
   function printKOT(kot){ try{
     var rows=kot.items.map(function(i){ return '<tr><td style="font-weight:700;padding-right:8px">'+esc(i.qty)+'\u00d7</td><td>'+esc(i.name)+'</td></tr>'; }).join('');
@@ -95498,8 +95509,24 @@ var KB=[
     strip.innerHTML=head+body; }
   function modeBarMob(){ var m=mode(); return '<span class="hntm-mode"><button class="'+(m==='orders'?'on':'')+'" type="button" onclick="HNTables.setMode(\'orders\')">'+T('tables.modeOrders','Orders')+'</button><button class="'+(m==='tables'?'on':'')+'" type="button" onclick="HNTables.setMode(\'tables\')">'+T('tables.modeTables','Tables')+'</button></span>'; }
   function kdsBtnMob(){ var n=kots.length; return '<button class="hntm-kds" type="button" onclick="HNTables.openKDS()"><span class="ic">\uD83D\uDDA5\uFE0F</span> '+T('tables.kitchen','Kitchen')+(n?' <span class="b">'+n+'</span>':'')+'</button>'; }
+  function boardBtnProminent(){
+    var due = boardDue();
+    var sub = orders.length + ' ' + (orders.length===1?T('tables.openOne','open'):T('tables.openMany','open')) + ' \u00b7 ' + due + ' ' + T('tables.awaitingPay','awaiting payment');
+    return '<button class="hntm-board-prom" type="button" onclick="HNTables.openBoard()">'
+      + '<span class="ic">\uD83E\uDDFE</span>'
+      + '<span class="mid"><span class="t1">' + T('tables.allOrders','All Orders') + '</span><span class="t2">' + sub + '</span></span>'
+      + (due>0 ? '<span class="badge">'+due+'</span>' : '')
+      + '<span class="chev">\u203A</span>'
+      + '</button>';
+  }
   function renderMob(strip){ var m=mode();
-    var head='<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <b>'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</b></span><span class="hntm-right">'+modeBarMob()+boardBtnMob()+'</span></div>';
+    var head='<div class="hntm-bar"><span class="hntm-lbl">'+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <b>'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</b></span><span class="hntm-right">'+modeBarMob()+'</span></div>';
+    /* (audit fix — v34) The 'All Orders' entry point used to be a 24px
+       icon-only button squeezed into the mode-toggle row — same visual
+       weight as Orders/Tables, for the one screen that shows every table
+       awaiting payment (money sitting uncollected). Now its own full-width
+       row above the bar, with the actual counts printed on it. */
+    head = boardBtnProminent() + head;
     var body;
     if(m==='tables'){ var n=tableCount(),cells='';
       for(var i=1;i<=n;i++){ var o=orders.filter(function(x){return x.tableNo===i;})[0]; var occ=!!o,live=(o&&o.id===activeId); var amt=o?(live?liveTotals():{total:o.total}):{total:0}; var sub=occ?('\u20B9'+amt.total):T('tables.free','Free');
@@ -95793,6 +95820,13 @@ var KB=[
     +'.hntab-board-btn{margin-left:8px;background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}'
     +'.hntab-board-btn .b{background:#F59E0B;color:#fff;border-radius:10px;padding:0 6px;margin-left:4px;font-size:11px}'
     +'.hntm-board{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px}'
+    +'.hntm-board-prom{display:flex;align-items:center;gap:10px;width:100%;background:#0A0A0A;color:#fff;border:none;border-radius:13px;padding:12px 14px;font-family:inherit;text-align:left;margin-bottom:9px;cursor:pointer}'
+    +'.hntm-board-prom .ic{font-size:19px;flex-shrink:0}'
+    +'.hntm-board-prom .mid{flex:1;min-width:0;display:flex;flex-direction:column}'
+    +'.hntm-board-prom .t1{font-size:13.5px;font-weight:800}'
+    +'.hntm-board-prom .t2{font-size:10.5px;opacity:.65;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    +'.hntm-board-prom .badge{background:#FF6B35;color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;flex-shrink:0}'
+    +'.hntm-board-prom .chev{opacity:.5;font-size:16px;flex-shrink:0}'
     +'.hntab-act.bill,.hntm-acts .bill{background:#FF6B35 !important;color:#fff !important;border-color:#FF6B35 !important}'
     +'.hnob-c-acts{flex-wrap:wrap}.hnob-b{flex:1 1 40%}.hnob-b.settle{flex:1 1 100%;background:#10B981;color:#fff}'
     +'.hnob-c-pay{display:flex;flex-wrap:wrap;gap:6px}'
