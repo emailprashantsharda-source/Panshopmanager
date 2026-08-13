@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1122';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1131';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -18173,9 +18173,12 @@ const App = {
   renderApptsScreen(){
     const cfg = VERTICAL_CONFIG[this.vertical]; if (!cfg) return;
     const ts = cfg.timeSlots;
-    const t = document.getElementById('appts-title'); if (t) t.textContent = ts.enabled ? ts.title : 'Appointments';
-    const at = document.getElementById('add-appt-title'); if (at) at.textContent = ts.enabled ? ts.addTitle : 'Book Appointment';
-    const sl = document.getElementById('appts-section-label'); if (sl) sl.textContent = ts.enabled ? ts.sectionLabel : "Today's schedule";
+    const t = document.getElementById('appts-title');
+    if (t) { t.removeAttribute('data-i18n'); t.textContent = ts.enabled ? ts.title : this._T('nav.appointments','Appointments'); }
+    const at = document.getElementById('add-appt-title');
+    if (at) { at.removeAttribute('data-i18n'); at.textContent = ts.enabled ? ts.addTitle : this._T('appt.book','Book Appointment'); }
+    const sl = document.getElementById('appts-section-label');
+    if (sl) { sl.removeAttribute('data-i18n'); sl.textContent = ts.enabled ? ts.sectionLabel : this._T('rep.todaySchedule',"Today's schedule"); }
 
     const ss = document.getElementById('appts-stats');
     if (ss && ts.enabled){
@@ -18948,7 +18951,7 @@ const App = {
     cafe:       { s2:'running', s3:'margin'  },
     bar:        { s2:'running', s3:'barstock'},
     sweets:     { s2:'cash',    s3:'margin'  },
-    bakery:     { s2:'bookings', s3:'soldout' },
+    bakery:     { s2:'running', s3:'margin'  },
     grocery:    { s2:'cash',    s3:'reorder' },
     dairy:      { s2:'cash',    s3:'reorder' },
     stationery: { s2:'cash',    s3:'reorder' },
