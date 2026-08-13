@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1804';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1815';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -95495,7 +95495,7 @@ var KB=[
       }
     } catch(e){}
   }
-  function renderStrip(){ if(!ensureStrip()) return; syncActive(); var strip=document.getElementById('hntab-strip'); if(!strip) return; if(isDesktop()) renderDesk(strip); else renderMob(strip); updateAddSaleTitle(); updateKdsHeaderBtn(); }
+  function renderStrip(){ if(!ensureStrip()) return; injectBoardCSS(); syncActive(); var strip=document.getElementById('hntab-strip'); if(!strip) return; if(isDesktop()) renderDesk(strip); else renderMob(strip); updateAddSaleTitle(); updateKdsHeaderBtn(); }
   function renderDesk(strip){ var m=mode();
     var head='<div class="hntab-head">\uD83E\uDDFE '+(m==='tables'?T('tables.tablesLbl','Tables'):T('tables.openOrders','Open orders'))+' <span class="hntab-n">'+(m==='tables'?(occupiedCount()+'/'+tableCount()):orders.length)+'</span>'+boardBtn()+modeBar()+'</div>';
     var body;
