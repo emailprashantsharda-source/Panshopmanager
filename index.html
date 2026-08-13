@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1333';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1345';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -12632,8 +12632,14 @@ const App = {
       });
       /* (v34_185) The all-orders board is now reachable from the Running pill,
          so it needs the same rule — but #hnob is a class-toggled element the
-         module owns and re-renders, not a node to rip out. Ask it to close. */
-      try { if (window.HNTables && HNTables.closeBoard) HNTables.closeBoard(); } catch(e2){}
+         module owns and re-renders, not a node to rip out. Ask it to close.
+         (audit fix — v34) Only when the page is actually changing. This used
+         to fire unconditionally on every nav() call, including a same-page
+         re-nav (used elsewhere in this app as a "refresh the current screen"
+         pattern) — which would silently close a board the user had just
+         opened via the Running pill on Home, moments after opening it,
+         making the tap look completely dead. */
+      try { if (page !== this.current && window.HNTables && HNTables.closeBoard) HNTables.closeBoard(); } catch(e2){}
     } catch(e){ console.warn('[nav] module overlay cleanup failed (non-fatal):', e); }
 
     /* ── (v34_172) Remember where he came from ─────────────────────────────
