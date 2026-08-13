@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1838';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1846';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -18968,11 +18968,11 @@ const App = {
 
      Every number here already exists. Nothing new is computed. */
   _HOME_PILLS: {
-    restaurant: { s2:'running', s3:'margin'  },
-    cafe:       { s2:'running', s3:'margin'  },
+    restaurant: { s2:'profit',  s3:'running' },
+    cafe:       { s2:'profit',  s3:'running' },
     bar:        { s2:'running', s3:'barstock'},
     sweets:     { s2:'cash',    s3:'margin'  },
-    bakery:     { s2:'profit',  s3:'repeat'  },
+    bakery:     { s2:'profit',  s3:'running' },
     grocery:    { s2:'cash',    s3:'reorder' },
     dairy:      { s2:'cash',    s3:'reorder' },
     stationery: { s2:'cash',    s3:'reorder' },
@@ -19003,7 +19003,18 @@ const App = {
      module that is switched off can never leave a blank pill. */
   _pillRunning(){
     var r = null;
-    try { r = (window.HNTables && HNTables.runningSummary) ? HNTables.runningSummary() : null; } catch(e){}
+    try {
+      var _rv = (window.hnVert ? hnVert() : this.vertical);
+      var _isDefaultTableVert = !!(window.isTableVert && window.isTableVert(_rv));
+      if (!_isDefaultTableVert) {
+        /* Not a default table vertical (restaurant/cafe/bar) — only show
+           Running if this specific shop has actually turned Tables on
+           (the bakery opt-in case). Otherwise leave slot 3 on whatever the
+           margin ladder already put there. */
+        if (!(window.HNTables && HNTables.isEnabled && HNTables.isEnabled())) return null;
+      }
+      r = (window.HNTables && HNTables.runningSummary) ? HNTables.runningSummary() : null;
+    } catch(e){}
     if (!r) return null;
     var T = this._T.bind(this);
     if (!r.count){
