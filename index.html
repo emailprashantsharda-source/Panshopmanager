@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1319';
+    window.HISAABNOW_BUILD = 'v34_auto_20260813_1333';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -19238,9 +19238,26 @@ const App = {
   /* (v34_185) Slot 2 taps follow whatever it is currently showing \u2014 same
      pattern slot 3 has used since v33_27, not a second mechanism. */
   _handleKpi2Tap(){
+    /* (audit fix — v34) Recompute live instead of trusting the cached
+       this._kpi2Mode from the last renderKpis() pass — a re-render that
+       lands between "pill painted" and "pill tapped" (HNTables finishing
+       load, a sync pull, a cash-drawer update) can leave the cached mode
+       pointing at a different pill than what's actually on screen right
+       now. This is the same _buildPill(_homePlan().s2) call renderKpis()
+       itself uses, so the tap always matches what's currently displayed. */
     var mode = this._kpi2Mode;
+    try {
+      var _p2live = this._buildPill(this._homePlan().s2);
+      mode = _p2live ? _p2live.mode : 'profit';
+    } catch(e){ console.warn('[kpi2 tap] live mode recompute failed, using cached mode', e); }
     try { if (window.haptic) haptic.tap(); } catch(e){}
-    if (mode === 'running'){ try { if (window.HNTables && HNTables.openBoard) HNTables.openBoard(); } catch(e){} return; }
+    if (mode === 'running'){
+      try {
+        if (window.HNTables && HNTables.openBoard) HNTables.openBoard();
+        else { console.warn('[kpi2 tap] HNTables.openBoard unavailable'); this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading')); }
+      } catch(e){ console.warn('[kpi2 tap] HNTables.openBoard threw', e); this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading')); }
+      return;
+    }
     if (mode === 'udhaar'){ this.nav('udhaar'); return; }
     if (mode === 'cash'){ try { if (window.CashDrawer) CashDrawer.openSheet(); } catch(e){} return; }
     if (mode === 'waste'){
@@ -113017,122 +113034,19 @@ html[data-shell="desktop"] .ps-drawer .ps-body{ scrollbar-gutter: stable; }
 </style>
 <!-- ═══════════ END · BARCODE BILLING v34_130 ═══════════ -->
 
-<!-- ═══════════ HISAABNOW · CLEAR SAMPLE ITEMS · v34_137 ═══════════
-     v34_136 emptied the salon seed list so no NEW shop gets 40 greyed-out
-     services. It could not touch shops already seeded — the rows are data in
-     Firestore, not code — and there was no way in the UI to remove them. The
-     only clear-samples path in the app sat inside the menu importer and fired
-     only after a successful import.
+<!-- (audit fix — v34) CLEAR SAMPLE ITEMS v34_137 removed from here. It was
+     a second, independently-built "remove unused starter items" feature
+     (self-injecting a "Clear N samples" pill next to Add/Import) that
+     duplicated the already-existing dashed-border banner on this same
+     screen (App.clearStarter / _starterUntouched) — same job, same count,
+     shown to the user twice at once. It also deleted with Store.delete()
+     (no tombstone), the exact hard-delete bug already fixed for the other
+     banner in v34_180 — on a synced shop, the next pull silently restored
+     every "removed" item, which is why clicking either button appeared to
+     do nothing. Rather than fix two parallel implementations of one
+     feature, this one is retired; App.clearStarter() (soft-delete +
+     custom confirm sheet) is the single remaining path. -->
 
-     This adds a visible one, next to Add / Import on Catalog, Services and
-     Retail, and only when there is something to clear.
-
-     Deliberately narrow: seeded === true AND never priced AND still inactive.
-     Anything the shopkeeper has touched — priced, activated, renamed with a
-     price — is his and is never in scope. Confirmation names the count.
-============================================================================ -->
-<style>
-  .hnclr-btn{
-    height:36px; padding:0 13px; background:#fff; border:1.5px solid #E4DED2;
-    border-radius:99px; display:inline-flex; align-items:center; gap:6px;
-    color:#8A5A2B; font-family:inherit; font-weight:800; font-size:13px;
-    cursor:pointer; margin-right:8px; white-space:nowrap;
-  }
-  .hnclr-btn:hover{ border-color:#DC2626; color:#B91C1C; }
-  html[data-shell="desktop"] .hnclr-btn.hnd-btn{ margin-right:8px; }
-</style>
-<script>
-(function(){
-  'use strict';
-
-  /* A sample row is one WE created and he never touched. */
-  function samples(){
-    try {
-      return (window.Store && Store.list ? (Store.list('prods') || []) : []).filter(function(p){
-        return p && !p._deleted
-          && p.seeded === true
-          && !(Number(p.sp) > 0) && !(Number(p.price) > 0)
-          && p.active === false;
-      });
-    } catch(e){ return []; }
-  }
-
-  window.App = window.App || {};
-
-  App.clearSampleItems = async function(){
-    var list = samples();
-    if (!list.length){ try { App.toast('Nothing to clear'); } catch(e){} return; }
-
-    var noun = 'items';
-    try {
-      var v = String(App.vertical || '').toLowerCase();
-      noun = (v === 'salon') ? 'sample services' : 'sample items';
-    } catch(e){}
-
-    var ok = false;
-    try {
-      ok = await App.confirm({
-        title: 'Remove ' + list.length + ' ' + noun + '?',
-        message: 'These are the starter rows we created for you \u2014 none of them '
-               + 'has a price and none is switched on. Anything you have priced or '
-               + 'edited yourself is not touched.\n\nThis cannot be undone.',
-        confirmText: 'Remove ' + list.length,
-        dangerous: true
-      });
-    } catch(e){ ok = window.confirm('Remove ' + list.length + ' ' + noun + '?'); }
-    if (!ok) return;
-
-    var gone = 0;
-    list.forEach(function(p){
-      try { Store.delete('prods', p.id); gone++; } catch(e){}
-    });
-
-    try { App.toast('\u2713 Removed ' + gone + ' ' + noun); } catch(e){}
-    ['renderCatalog','renderInventory','renderServiceGrid'].forEach(function(fn){
-      try { if (typeof App[fn] === 'function') App[fn](); } catch(e){}
-    });
-    try { if (window.HND && HND.applySidebarFixed) HND.applySidebarFixed(); } catch(e){}
-    inject();
-  };
-
-  /* Sit beside the existing Add button, the same hook the importer uses. */
-  function inject(){
-    var n = samples().length;
-    var existing = document.querySelectorAll('.hnclr-btn');
-    if (!n){
-      for (var k = 0; k < existing.length; k++) existing[k].remove();
-      return;
-    }
-    for (var j = 0; j < existing.length; j++){
-      existing[j].innerHTML = '\uD83E\uDDF9 <span>Clear ' + n + ' samples</span>';
-    }
-
-    var addBtns = document.querySelectorAll('button[onclick*="openProductSheet"]');
-    for (var i = 0; i < addBtns.length; i++){
-      var addBtn = addBtns[i];
-      if (!addBtn || addBtn.getAttribute('data-hnclr')) continue;
-      if (addBtn.closest && (addBtn.closest('#mi-overlay') || addBtn.closest('.ps-drawer'))) continue;
-      if (!addBtn.parentNode) continue;
-      addBtn.setAttribute('data-hnclr','1');
-      var isDesktop = /hnd-btn/.test(addBtn.className || '');
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'hnclr-btn' + (isDesktop ? ' hnd-btn' : '');
-      b.setAttribute('data-role-min','manager');
-      b.onclick = function(e){ e.preventDefault(); e.stopPropagation(); App.clearSampleItems(); };
-      b.innerHTML = '\uD83E\uDDF9 <span>Clear ' + n + ' samples</span>';
-      addBtn.parentNode.insertBefore(b, addBtn);
-    }
-  }
-
-  var t = 0, iv = setInterval(function(){
-    t++; try { inject(); } catch(e){}
-    if (t > 240) clearInterval(iv);
-  }, 600);
-  document.addEventListener('click', function(){ setTimeout(inject, 350); }, true);
-})();
-</script>
-<!-- ═══════════ END · CLEAR SAMPLE ITEMS v34_137 ═══════════ -->
 
 <!-- (v34_143) The salon nav-order block that lived here is REMOVED.
 
