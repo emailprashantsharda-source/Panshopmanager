@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260814_1022';
+    window.HISAABNOW_BUILD = 'v34_auto_20260814_1123';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -15298,16 +15298,22 @@ const App = {
           const tierCfg = (typeof Subs.getTierConfig === 'function') ? Subs.getTierConfig(tier) : null;
           let badgeText = '', bg = '', fg = '';
           if (tier === 'trial') {
-            const safeDays = Math.max(0, Number(days) || 0);
-            /* ≤2 days matches the pre-expiry sync banner's own threshold, so
-               the card and the banner surface the warning at the same moment
-               rather than a day apart. */
-            if (safeDays <= 2) {
-              badgeText = '⏰ FREE TRIAL · ' + safeDays + ' day' + (safeDays === 1 ? '' : 's') + ' left · SUBSCRIBE';
+            /* (audit fix — v34) Was day-based (safeDays from
+               HND_getAccurateDaysLeft/Subs.daysLeft), independent of the
+               bills-only gate that actually controls billing — a shop with
+               bills remaining could see "2 days left · SUBSCRIBE" here even
+               though nothing was about to lock. Reads _freeBillsLeft(), the
+               same count _shouldGateBilling() itself checks, so this badge
+               and actual billing behavior can no longer disagree. */
+            let billsLeft = 0;
+            try { billsLeft = (window.App && App._freeBillsLeft) ? App._freeBillsLeft() : 0; } catch(e){}
+            const safeBills = Math.max(0, Number(billsLeft) || 0);
+            if (safeBills <= 3) {
+              badgeText = '⏰ FREE TRIAL · ' + safeBills + ' bill' + (safeBills === 1 ? '' : 's') + ' left · SUBSCRIBE';
               bg = '#FFE0B2';
               fg = '#8A3A00';
             } else {
-              badgeText = '⭐ FREE TRIAL · ' + safeDays + ' days left';
+              badgeText = '⭐ FREE TRIAL · ' + safeBills + ' bills left';
               bg = '#FFF3C4';
               fg = '#7A4E00';
             }
@@ -33306,6 +33312,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     const tier = (window.Subs && Subs.getCurrentTier()) || 'trial';
     const tCfg = (window.Subs && Subs.getTierConfig(tier)) || { name: 'Trial', color: '#F59E0B' };
     const days = (window.Subs && Subs.daysLeft()) || 0;
+    const _trialBillsLeft = (function(){ try { return (window.App && App._freeBillsLeft) ? App._freeBillsLeft() : 0; } catch(e){ return 0; } })();
     const isExpired = (window.Subs && Subs.isExpired()) || false;
     const isPaid = (window.Subs && Subs.isPaid()) || false;
 
@@ -33338,7 +33345,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       headerHtml = `
         <div style="padding:18px;background:linear-gradient(135deg,${tCfg.color} 0%,#D97706 100%);border-radius:16px;margin-bottom:16px;color:#fff;box-shadow:0 8px 20px -4px rgba(245,158,11,.4)">
           <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.85;margin-bottom:6px">${this._T("subs.freeTrial","Free trial")}</div>
-          <div style="font-size:24px;font-weight:900;letter-spacing:-.02em">${days} ${days === 1 ? this._T("more.day","day") : this._T("more.days","days")} ${this._T("more.left","left")}</div>
+          <div style="font-size:24px;font-weight:900;letter-spacing:-.02em">${_trialBillsLeft} ${_trialBillsLeft === 1 ? this._T("more.bill","bill") : this._T("more.bills","bills")} ${this._T("more.left","left")}</div>
           <div style="font-size:13px;opacity:.85;font-weight:600;margin-top:4px">${this._T("subs.pickPlanKeepGoing","Pick a plan to keep going after trial ends")}</div>
         </div>`;
     }
@@ -33462,7 +33469,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         </div>`;
     }
     const body = headerHtml + '<div id="hn-plan-cards-wrap">' + this._planCardsHtml() + '</div>' + footerHtml;
-    const sub = (pitch === 'activation' && !isPaid) ? this._T('subs.pitchSub','Unlock everything for your shop') : (isExpired ? this._T('subs.renewContinue','Renew to continue') : (isPaid ? `${tCfg.name} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}` : `${this._T('subs.trialShort','Trial')} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}`));
+    const sub = (pitch === 'activation' && !isPaid) ? this._T('subs.pitchSub','Unlock everything for your shop') : (isExpired ? this._T('subs.renewContinue','Renew to continue') : (isPaid ? `${tCfg.name} · ${days}${this._T('sub.dShort','d')} ${this._T('more.left','left')}` : `${this._T('subs.trialShort','Trial')} · ${_trialBillsLeft} ${_trialBillsLeft === 1 ? this._T('more.bill','bill') : this._T('more.bills','bills')} ${this._T('more.left','left')}`));
     this.openInfoSheet({ title: this._T('subs.subscription','Subscription'), sub: sub, bodyHTML: body, iconSvg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FACC15"><path d="M3 8l3.5 3L12 5l5.5 6L21 8l-1.5 9h-15L3 8z"/></svg>' });
     /* Warm payuCreateOrder + bolt SDK while the user reads the plans, so Pay
        opens fast. Default selection is Pro Monthly; review re-prefetches the
@@ -76216,6 +76223,7 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
       isPaid: false,
       isExpired: false,
       daysLeft: 0,
+      billsLeft: 0,
       cycle: null,
       color: '#F59E0B'
     };
@@ -76223,6 +76231,11 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
       if (!window.Subs) return out;
       out.tier = (typeof Subs.getCurrentTier === 'function') ? Subs.getCurrentTier() : 'trial';
       out.daysLeft = (typeof Subs.daysLeft === 'function') ? (Subs.daysLeft() || 0) : 0;
+      /* (audit fix — v34) Free trial is bills-only now, same as every other
+         trial-status surface fixed this session (More screen, hero card,
+         subscription modal) — this is the last one, the desktop topbar
+         pill. Reads the same count _shouldGateBilling() itself checks. */
+      try { out.billsLeft = (window.App && App._freeBillsLeft) ? App._freeBillsLeft() : 0; } catch(e2){}
       out.isTrial = (typeof Subs.isInTrial === 'function') ? Subs.isInTrial() : (out.tier === 'trial');
       out.isPaid = (typeof Subs.isPaid === 'function') ? Subs.isPaid() : false;
       out.isExpired = (typeof Subs.isExpired === 'function') ? Subs.isExpired() : false;
@@ -76259,15 +76272,15 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
     if (state.isExpired || state.tier === 'trial-expired' || state.tier === 'expired'){
       cls = 'expired';
       text = T('sub.trialExpiredCta', 'Trial expired · Choose plan');
-    } else if (state.isTrial && state.daysLeft <= 2){
+    } else if (state.isTrial && state.billsLeft <= 3){
       cls = 'trial-urgent';
-      text = state.daysLeft <= 0
-        ? T('sub.trialEndsToday', 'Trial ends today')
-        : (state.daysLeft === 1 ? T('sub.oneDayLeftTrial', '1 day left in trial')
-                                 : state.daysLeft + ' ' + T('more.days','days') + ' ' + T('more.left','left'));
+      text = state.billsLeft <= 0
+        ? T('sub.lastBillUsed', 'Free bills used up')
+        : (state.billsLeft === 1 ? T('sub.oneBillLeftTrial', '1 bill left in trial')
+                                 : state.billsLeft + ' ' + T('more.bills','bills') + ' ' + T('more.left','left'));
     } else if (state.isTrial){
       cls = 'trial';
-      text = T('more.freeTrial','Free trial') + ' · ' + state.daysLeft + ' ' + (state.daysLeft === 1 ? T('more.day','day') : T('more.days','days')) + ' ' + T('more.left','left');
+      text = T('more.freeTrial','Free trial') + ' · ' + state.billsLeft + ' ' + (state.billsLeft === 1 ? T('more.bill','bill') : T('more.bills','bills')) + ' ' + T('more.left','left');
     } else if (state.tier === 'basic'){
       cls = 'basic';
       text = T('sub.basic','Basic') + ' · ' + T('sub.upgradeShort','Upgrade');
@@ -76320,7 +76333,11 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
   ═══════════════════════════════════════════════════════ */
   function buildSidebarStripContent(state){
     var cls, tag, emoji, title, sub, bar, cta;
-    var TRIAL_TOTAL = (window.Subs && Subs.TRIAL_DAYS) || 7;
+    /* (audit fix — v34) Free trial is bills-only now — TRIAL_TOTAL stays
+       for reference by nothing below (paid-tier days-remaining still uses
+       state.daysLeft directly, correctly, since that's calendar-based) but
+       the trial progress bar now measures bills against _FREE_BILLS. */
+    var BILLS_TOTAL = (window.App && App._FREE_BILLS) || 20;
     var T = (window.App && window.App._T) ? window.App._T.bind(window.App) : function(k,f){ return f; };
 
     if (state.isExpired || state.tier === 'trial-expired' || state.tier === 'expired'){
@@ -76331,25 +76348,25 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
       sub = T('sub.pickPlanKeepUsing', 'Pick a plan to keep using HisaabNow');
       bar = '';
       cta = T('sub.seePlans', 'See plans');
-    } else if (state.isTrial && state.daysLeft <= 2){
+    } else if (state.isTrial && state.billsLeft <= 3){
       cls = 'trial-urgent';
       tag = T('sub.tagUrgent', '🔥 URGENT');
       emoji = '⏰';
-      title = state.daysLeft <= 0
-        ? T('sub.trialEndsToday','Trial ends today')
-        : (state.daysLeft === 1 ? T('sub.oneDayLeft','1 day left')
-                                 : state.daysLeft + ' ' + T('more.days','days') + ' ' + T('more.left','left'));
+      title = state.billsLeft <= 0
+        ? T('sub.lastBillUsed','Free bills used up')
+        : (state.billsLeft === 1 ? T('sub.oneBillLeft','1 bill left')
+                                 : state.billsLeft + ' ' + T('more.bills','bills') + ' ' + T('more.left','left'));
       sub = T('sub.subscribeNowKeep', 'Subscribe now to keep your data and bills');
-      var pct = Math.max(0, Math.round((state.daysLeft / TRIAL_TOTAL) * 100));
+      var pct = Math.max(0, Math.round((state.billsLeft / BILLS_TOTAL) * 100));
       bar = '<div class="hnd-sb-sub-bar"><div class="hnd-sb-sub-bar-fill" style="width:' + pct + '%"></div></div>';
       cta = T('sub.upgradeNow', 'Upgrade now ⚡');
     } else if (state.isTrial){
       cls = 'trial';
       tag = T('sub.tagFreeTrial', 'FREE TRIAL');
       emoji = '🎁';
-      title = state.daysLeft + ' ' + (state.daysLeft === 1 ? T('more.day','day') : T('more.days','days')) + ' ' + T('more.left','left');
+      title = state.billsLeft + ' ' + (state.billsLeft === 1 ? T('more.bill','bill') : T('more.bills','bills')) + ' ' + T('more.left','left');
       sub = T('sub.enjoyingLockIn', 'Enjoying HisaabNow? Lock it in.');
-      var pct2 = Math.max(0, Math.min(100, Math.round((state.daysLeft / TRIAL_TOTAL) * 100)));
+      var pct2 = Math.max(0, Math.min(100, Math.round((state.billsLeft / BILLS_TOTAL) * 100)));
       bar = '<div class="hnd-sb-sub-bar"><div class="hnd-sb-sub-bar-fill" style="width:' + pct2 + '%"></div></div>';
       cta = T('sub.seePlans', 'See plans');
     } else if (state.tier === 'basic'){
@@ -76401,7 +76418,7 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
     /* Figure out CSS class for the wrapper */
     var cls;
     if (state.isExpired || state.tier === 'trial-expired' || state.tier === 'expired') cls = 'expired';
-    else if (state.isTrial && state.daysLeft <= 2) cls = 'trial-urgent';
+    else if (state.isTrial && state.billsLeft <= 3) cls = 'trial-urgent';
     else if (state.isTrial) cls = 'trial';
     else if (state.tier === 'pro') cls = 'pro';
     else if (state.tier === 'king') cls = 'king';
