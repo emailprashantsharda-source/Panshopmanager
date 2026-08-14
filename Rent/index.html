@@ -6365,22 +6365,88 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     const days = (DB.d.daily||[]).filter(d => this._period==='all' || keys.has(d.id));
     const sum = f => days.reduce((a,d)=>a+(Number(d[f])||0),0);
 
-    const earned = sum('revenue'), got = sum('collected');
-    const depIn = sum('depositsIn'), depOut = sum('depositsOut');
-    const owed = sum('outstanding'), rentals = sum('rentals');
-
     const open = DB.d.rentals.filter(x=>x.status==='open');
     const held = open.reduce((a,x)=>a+(Number(x.depositHeld)||0),0);
+    const closed = this._closed || [];
+
+    /* ── where these numbers come from, and why it changed ───────────────
+       This screen used to read every headline figure from the /daily rollup
+       documents while the per-vehicle list below read the settled rentals
+       directly. Two sources for one screen, and when the rollups were
+       missing or stale the page showed a confident ₹0 sitting above a list
+       of real rentals — the app contradicting itself in front of a shop
+       owner, on the one screen that is only about money.
+
+       Both halves now derive from the rentals. The rollups remain the right
+       structure for long history (365 documents instead of 70,000 rentals),
+       so 'All' still uses them; but every bounded period is computed from
+       the same rentals the list shows, which makes the two physically
+       incapable of disagreeing. It costs nothing extra: recentClosed() is
+       already loaded for the list.
+
+       The day each figure belongs to follows the same rule the rollups use,
+       so switching source does not move any money between days:
+         REVENUE and the pickup deposit  -> check-out day (outAt)
+         balance, refund, unpaid         -> settle day    (settledAt) */
+    const inWin = ms => { const t = Number(ms)||0; return t >= rng.start && t <= rng.end; };
+    const live = { revenue:0, rentals:0, collected:0, depositsIn:0, depositsOut:0,
+                   outstanding:0, cashIn:0, upiIn:0, cashOut:0, upiOut:0 };
+    /* Open rentals carry a deposit and possibly an advance taken at pickup;
+       they are not in the closed cache, so both lists are walked. */
+    const seen = new Set();
+    closed.concat(open).forEach(r => {
+      if (!r || seen.has(r.id)) return; seen.add(r.id);
+      if (r.voidedAt || r.status === 'void') return;
+      const dep = Number(r.depositHeld)||0, adv = Number(r.advancePaid)||0;
+      const outCash = Number(r.outCash)||0;
+      if (inWin(r.outAt)){
+        live.depositsIn += dep;
+        live.collected  += adv;
+        live.cashIn     += outCash;
+        live.upiIn      += Math.max(0, (dep+adv) - outCash);
+        if (r.status === 'closed'){
+          live.revenue += Number(r.revenue)||0;
+          live.rentals += 1;
+        }
+      }
+      if (r.status === 'closed' && inWin(r.settledAt)){
+        const coll = Number(r.balanceCollected)||0, inCash = Number(r.inCash)||0;
+        const ref  = Number(r.depositRefunded)||0;
+        const refCash = (r.refundMode || 'cash') !== 'upi';
+        live.collected   += coll;
+        live.depositsOut += ref;
+        live.outstanding += Number(r.unpaid)||0;
+        live.cashIn      += inCash;
+        live.upiIn       += Math.max(0, coll - inCash);
+        live.cashOut     += refCash ? ref : 0;
+        live.upiOut      += refCash ? 0 : ref;
+      } else if (r.status === 'cancelled' && inWin(r.cancelledAt || r.settledAt || r.outAt)){
+        const inTotal = dep + adv;
+        live.depositsOut += dep;
+        live.collected   -= adv;
+        live.cashOut     += Math.min(inTotal, outCash);
+        live.upiOut      += Math.max(0, inTotal - outCash);
+      }
+    });
+
+    /* 'All' can reach further back than the 400-settlement cache, so the
+       rollups stay authoritative there — unless they are empty, in which
+       case the cache is still better than showing nothing. */
+    const useLive = this._period !== 'all' || !sum('revenue');
+    const pick = f => useLive ? live[f] : sum(f);
+
+    const earned = pick('revenue'), got = pick('collected');
+    const depIn = pick('depositsIn'), depOut = pick('depositsOut');
+    const owed = pick('outstanding'), rentals = pick('rentals');
     /* Split the drawer from the bank. Before payment mode existed this line
        added UPI into "net cash", so a counted drawer could never match it —
        and a reconciliation that is always wrong is one staff learn to ignore. */
-    const cashIn = sum('cashIn'), upiIn = sum('upiIn');
-    const cashOut = sum('cashOut'), upiOut = sum('upiOut');
+    const cashIn = pick('cashIn'), upiIn = pick('upiIn');
+    const cashOut = pick('cashOut'), upiOut = pick('upiOut');
     const netCash = cashIn - cashOut;
     const netUpi  = upiIn - upiOut;
     const legacy  = (cashIn + upiIn) === 0 && (got + depIn) > 0;
 
-    const closed = this._closed || [];
     if (!this._closed && window.Cloud && Cloud.ready){
       this._closed = [];
       Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
@@ -6430,65 +6496,18 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <div><div class="bs-l">${label}</div><div class="bs-v">${val}</div></div>
       </div>`;
 
-    /* The two halves of this screen come from different places: the hero and
-       the cash rows sum the /daily rollup documents, while the per-vehicle
-       list below reads settled rentals directly. They should never disagree.
-       When they do — rentals visible in the period but /daily summing to
-       nothing — the rollup for those days is missing, and showing a
-       confident ₹0 over a list of real rentals is the app calling itself a
-       liar. Say so instead, and offer the repair that rebuilds /daily from
-       the rentals themselves. */
-    /* The two halves of this screen come from different places: the hero and
-       the cash rows sum the /daily rollup documents, while the per-vehicle
-       list below reads settled rentals directly. They should never disagree.
-
-       When they do — rentals visible in the period but /daily summing to
-       nothing — the rollup for those days is missing, and the screen would
-       otherwise show a confident ₹0 above a list of real rentals.
-
-       This heals itself rather than asking. A shop owner should never be
-       told to press a button to make their own earnings reappear; they did
-       not break it and they cannot be expected to understand it. The rebuild
-       is idempotent (it recomputes every day from the rentals rather than
-       adjusting), so running it unprompted is safe. Once per session, owner
-       only, and only when there is a real contradiction to fix. */
-    const ghost = !earned && !got && !depIn && !depOut && per.length > 0;
-    if (ghost && !this._healed && !this._healing && this.isOwner()
-        && window.Cloud && Cloud.ready && Cloud.online){
-      this._healing = true;
-      Cloud.repairDailyRollups().then(res => {
-        this._healing = false;
-        this._healed = true;          /* once per session either way */
-        if (res && res.ok){ this._closed = null; this.render(); }
-        else console.error('auto-heal daily failed', res);
-      }).catch(e => { this._healing = false; this._healed = true;
-        console.error('auto-heal daily failed', e); });
-    }
-    const _gTitle = this._dailyErr
-      ? 'Daily totals could not be loaded'
-      : (this._healing ? 'Restoring your earnings\u2026' : 'Daily totals are missing for this period');
-    const _gBody = this._dailyErr
-      ? 'The Earned and cash figures above are blank because the daily summary did not sync ('
-        + esc(this._dailyErr) + '), not because nothing was earned. The rentals listed below are real.'
-      : (this._healing
-        ? 'The rentals below are real \u2014 their daily summary is being rebuilt now. This takes a few seconds.'
-        : 'The rentals below settled in this period but their daily summary was missing, so Earned '
-          + 'read \u20B90. It has been rebuilt from the rentals themselves.');
-    /* No button in the normal case: by the time this is read the rebuild has
-       already run. The manual control stays only for the two cases the app
-       cannot fix itself — a sync failure, and a non-owner who lacks the
-       permission to write the rollups. */
-    const _gAct = this._dailyErr
-      ? (this.isOwner()
-          ? '<button class="mn-ghost-b" onclick="R.repairMoney()">Try rebuilding</button>' : '')
-      : (!this.isOwner()
-          ? '<div class="s" style="margin-top:6px">Ask the owner to open this screen once \u2014 it repairs itself.</div>'
-          : '');
-    const moneyWarn = (!ghost && !this._dailyErr) ? '' :
-      '<div class="mn-ghost' + (this._healing ? ' busy' : '') + '"><div class="mn-ghost-i">'
-      + (this._healing ? '\u21BB' : '\u26A0\uFE0F') + '</div>'
-      + '<div class="grow"><b>' + _gTitle + '</b><div class="s">' + _gBody + '</div>'
-      + _gAct + '</div></div>';
+    /* Kept only for a genuine sync failure. The "rentals visible but totals
+       zero" contradiction this used to detect and auto-repair cannot happen
+       any more: both halves of the screen are computed from the same
+       rentals above. What remains is the case where the /daily listener
+       itself failed, which only matters on the 'All' period since every
+       bounded period no longer reads it. */
+    const moneyWarn = !this._dailyErr ? '' :
+      '<div class="mn-ghost"><div class="mn-ghost-i">\u26A0\uFE0F</div>'
+      + '<div class="grow"><b>Long-range totals could not be loaded</b>'
+      + '<div class="s">The daily summary did not sync (' + esc(this._dailyErr)
+      + '). Recent periods are unaffected \u2014 they are calculated from your '
+      + 'rentals directly.</div></div></div>';
 
     const peak = Math.max(earned, got, depIn, depOut, 1);
     const bar = (l,val,col) => `
