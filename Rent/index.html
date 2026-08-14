@@ -7631,18 +7631,26 @@ const Cloud = {
        that grows without bound. But revenue still has to be visible, so the
        daily rollups written at settle carry it: one small document per day,
        which is all the dashboard and the Money tab actually need. */
-    /* orderBy(documentId()) descending, NOT unordered. A limit() with no
-       ordering is not "the cheapest 800" — Firestore returns documents in
-       document-id order, and these ids are date keys (2026-08-12), so an
-       unordered limit silently returned the 800 OLDEST days and dropped
-       the newest. A shop past 800 days of history, or one whose repair run
-       created a long historical range, settled a rental and watched Money
-       still read zero: the write had landed, the listener just never asked
-       for that day. Descending puts today first, which is the one day that
-       must never fall outside the window.
-       (An earlier note here said orderBy was unnecessary; that was true
-       only while the collection was smaller than the limit.) */
-    bind(query(S('daily'), orderBy(documentId(), 'desc'), limit(800)), 'daily', null, true);
+    /* No query at all — the whole collection, unordered and unlimited.
+       This went through two wrong shapes before landing here:
+
+       `limit(800)` alone returned the 800 OLDEST days, because an unordered
+       limit falls back to document-id order and these ids are date keys, so
+       today's rollup was the first thing dropped.
+
+       Adding `orderBy(documentId(),'desc')` fixed the ordering but needs a
+       descending __name__ index, which this project does not have — the
+       listener failed with failed-precondition and the whole collection
+       silently vanished instead.
+
+       So: take everything. A rollup document is one small row of numbers and
+       there is exactly one per day, so five years of trading is under two
+       thousand tiny documents. There is nothing here worth an index or a
+       limit, and no ordering is needed because renderMoney filters by date
+       key and the UI sorts what it shows. Bounded periods no longer read
+       this collection at all now that Money computes them from the rentals;
+       it is only the 'All' total that depends on it. */
+    bind(S('daily'), 'daily', null, true);
     /* One doc per vehicle — bounded by fleet size, not rental history, same
        reasoning as /daily. This is what Fleet's Earned/Idle days read. */
     bind(S('vehicleStats'), 'vehicleStats', null, true);
