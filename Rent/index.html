@@ -550,6 +550,20 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   font-variant-numeric:tabular-nums}
 .mn-hero-s{font-size:12.5px;opacity:.85;font-weight:600}
 .mn-track{background:#EFEBE3;border-radius:6px;height:7px;overflow:hidden}
+/* Shown only when the /daily rollups contradict the rentals below them. */
+.mn-ghost{display:flex;gap:11px;background:var(--y-tint);border:1px solid var(--y-bd);
+  border-radius:13px;padding:13px 15px;margin-bottom:13px}
+.mn-ghost-i{font-size:18px;flex:none}
+.mn-ghost b{font-size:13.5px;color:#8A5A06}
+.mn-ghost .s{font-size:12.5px;color:#7A5209;margin-top:3px;line-height:1.5}
+.mn-ghost-b{margin-top:9px;background:var(--y);border:0;border-radius:9px;padding:8px 14px;
+  font:750 13px/1 inherit;font-family:inherit;color:#0A0A0A;cursor:pointer}
+.mn-ghost.busy{background:var(--p-50);border-color:#CFDDE7}
+.mn-ghost.busy b{color:var(--p)}
+.mn-ghost.busy .s{color:var(--t2)}
+.mn-ghost.busy .mn-ghost-i{color:var(--p-mid);animation:mn-spin 1s linear infinite}
+@keyframes mn-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.mn-ghost.busy .mn-ghost-i{animation:none}}
 /* ── Fleet screen ────────────────────────────────────────────────────
    KPI strip, then one card per vehicle with a footer fact strip. The
    card answers, top to bottom: which bike, what state, what it made
@@ -6416,6 +6430,66 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <div><div class="bs-l">${label}</div><div class="bs-v">${val}</div></div>
       </div>`;
 
+    /* The two halves of this screen come from different places: the hero and
+       the cash rows sum the /daily rollup documents, while the per-vehicle
+       list below reads settled rentals directly. They should never disagree.
+       When they do — rentals visible in the period but /daily summing to
+       nothing — the rollup for those days is missing, and showing a
+       confident ₹0 over a list of real rentals is the app calling itself a
+       liar. Say so instead, and offer the repair that rebuilds /daily from
+       the rentals themselves. */
+    /* The two halves of this screen come from different places: the hero and
+       the cash rows sum the /daily rollup documents, while the per-vehicle
+       list below reads settled rentals directly. They should never disagree.
+
+       When they do — rentals visible in the period but /daily summing to
+       nothing — the rollup for those days is missing, and the screen would
+       otherwise show a confident ₹0 above a list of real rentals.
+
+       This heals itself rather than asking. A shop owner should never be
+       told to press a button to make their own earnings reappear; they did
+       not break it and they cannot be expected to understand it. The rebuild
+       is idempotent (it recomputes every day from the rentals rather than
+       adjusting), so running it unprompted is safe. Once per session, owner
+       only, and only when there is a real contradiction to fix. */
+    const ghost = !earned && !got && !depIn && !depOut && per.length > 0;
+    if (ghost && !this._healed && !this._healing && this.isOwner()
+        && window.Cloud && Cloud.ready && Cloud.online){
+      this._healing = true;
+      Cloud.repairDailyRollups().then(res => {
+        this._healing = false;
+        this._healed = true;          /* once per session either way */
+        if (res && res.ok){ this._closed = null; this.render(); }
+        else console.error('auto-heal daily failed', res);
+      }).catch(e => { this._healing = false; this._healed = true;
+        console.error('auto-heal daily failed', e); });
+    }
+    const _gTitle = this._dailyErr
+      ? 'Daily totals could not be loaded'
+      : (this._healing ? 'Restoring your earnings\u2026' : 'Daily totals are missing for this period');
+    const _gBody = this._dailyErr
+      ? 'The Earned and cash figures above are blank because the daily summary did not sync ('
+        + esc(this._dailyErr) + '), not because nothing was earned. The rentals listed below are real.'
+      : (this._healing
+        ? 'The rentals below are real \u2014 their daily summary is being rebuilt now. This takes a few seconds.'
+        : 'The rentals below settled in this period but their daily summary was missing, so Earned '
+          + 'read \u20B90. It has been rebuilt from the rentals themselves.');
+    /* No button in the normal case: by the time this is read the rebuild has
+       already run. The manual control stays only for the two cases the app
+       cannot fix itself — a sync failure, and a non-owner who lacks the
+       permission to write the rollups. */
+    const _gAct = this._dailyErr
+      ? (this.isOwner()
+          ? '<button class="mn-ghost-b" onclick="R.repairMoney()">Try rebuilding</button>' : '')
+      : (!this.isOwner()
+          ? '<div class="s" style="margin-top:6px">Ask the owner to open this screen once \u2014 it repairs itself.</div>'
+          : '');
+    const moneyWarn = (!ghost && !this._dailyErr) ? '' :
+      '<div class="mn-ghost' + (this._healing ? ' busy' : '') + '"><div class="mn-ghost-i">'
+      + (this._healing ? '\u21BB' : '\u26A0\uFE0F') + '</div>'
+      + '<div class="grow"><b>' + _gTitle + '</b><div class="s">' + _gBody + '</div>'
+      + _gAct + '</div></div>';
+
     const peak = Math.max(earned, got, depIn, depOut, 1);
     const bar = (l,val,col) => `
       <div style="margin-bottom:10px">
@@ -6433,11 +6507,12 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     if (this.isWide()) return this.moneyTable({
       rng, days, earned, got, depIn, depOut, owed, rentals, held,
       cashIn, upiIn, cashOut, upiOut, netCash, netUpi, legacy,
-      per, sCompleted, sCancelled, sOngoing, sTotal });
+      per, sCompleted, sCancelled, sOngoing, sTotal, moneyWarn });
 
     document.getElementById('money-body').innerHTML = `
       <div class="mn-chips">${this.PERIODS.map(p=>`<button class="mn-chip ${this._period===p.k?'on':''}"
         onclick="R.setPeriod('${p.k}')">${p.label}</button>`).join('')}</div>
+      ${moneyWarn}
 
       <div class="mn-hero">
         <div class="mn-hero-l">Earned · ${esc(rng.label)}</div>
@@ -6550,7 +6625,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
   moneyTable(d){
     const { rng, days, earned, got, depIn, depOut, owed, rentals, held,
             cashIn, upiIn, cashOut, upiOut, netCash, netUpi, legacy,
-            per, sCompleted, sCancelled, sOngoing, sTotal } = d;
+            per, sCompleted, sCancelled, sOngoing, sTotal, moneyWarn } = d;
 
     /* Shape over time is the one thing a phone genuinely cannot show, and
        it needs no new plumbing: /daily already holds one document per day
@@ -6612,6 +6687,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <button class="dfl-chip" onclick="R.history(true)">\u{1F4C4} Past rentals &amp; bills</button>
         ${this.isOwner()?`<button class="dfl-chip" onclick="R.repairMoney()">Fix past earnings</button>`:''}
       </div>
+      ${moneyWarn}
 
       <div class="dmn-top">
         <div class="dmn-hero">
@@ -7444,12 +7520,18 @@ const Cloud = {
           if (!window.DB || !window.DB.d) { console.error('DB not exposed to module'); return; }
           window.DB.d[key] = snap.docs.map(d => Object.assign({ id:d.id }, d.data()))
                                   .filter(x => !x.deletedAt);
+          if (key === 'daily' && window.R) window.R._dailyErr = null;
           this.pending = snap.metadata.hasPendingWrites ? this.pending : 0;
           this.chip();
           if (after) after();
           if (this.ready && window.R) window.R.render();
         }, err => {
           console.error(key, err.code||err, 'try', tries);
+          /* Remembered so the Money page can say WHY it is showing zeros.
+             A silently-failed /daily listener and a genuinely quiet day
+             look identical on screen — ₹0 either way — which is the worst
+             possible ambiguity on the one screen about money. */
+          if (key === 'daily' && window.R) window.R._dailyErr = (err && err.code) || 'unknown';
           if (err.code === 'permission-denied' && tries < RETRY_DELAYS_MS.length){
             setTimeout(attach, RETRY_DELAYS_MS[tries]); tries++; return;
           }
