@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260814_1123';
+    window.HISAABNOW_BUILD = 'v34_auto_20260814_1341';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -18994,7 +18994,7 @@ const App = {
     bar:        { s2:'running', s3:'barstock'},
     sweets:     { s2:'cash',    s3:'margin'  },
     bakery:     { s2:'profit',  s3:'running' },
-    grocery:    { s2:'cash',    s3:'reorder' },
+    grocery:    { s2:'profit',  s3:'repeat'  },
     dairy:      { s2:'cash',    s3:'reorder' },
     stationery: { s2:'cash',    s3:'reorder' },
     pan:        { s2:'cash',    s3:'reorder' },
@@ -19323,8 +19323,21 @@ const App = {
 
   /* (v33_27 Phase 2) Handle taps on the 3rd KPI tile based on its current mode */
   _handleKpi3Tap(){
-    const mode = this._kpi3Mode;
-    if (mode === 'cash' && window.CashDrawer) {
+    var mode = this._kpi3Mode;
+    try {
+      var _p3live = this._buildPill(this._homePlan().s3);
+      if (_p3live) mode = _p3live.mode;
+    } catch(e){ console.warn('[kpi3 tap] live mode recompute failed, using cached mode', e); }
+    if (mode === 'running'){
+      /* (audit fix — v34) Missing entirely — 'running' moved to slot 3 for
+         restaurant/cafe/bakery in the pill-reorder change, but this handler
+         was never taught about it, so tapping it did nothing at all. Same
+         action slot 2's Running pill already uses. */
+      try {
+        if (window.HNTables && HNTables.openBoard) HNTables.openBoard();
+        else this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading'));
+      } catch(e){ console.warn('[kpi3 tap] HNTables.openBoard threw', e); this.toast(this._T('toast.tablesUnavailable','Tables board unavailable — try reloading')); }
+    } else if (mode === 'cash' && window.CashDrawer) {
       // Open cash drawer sheet
       try {
         if (window.haptic) haptic.tap();
@@ -25940,6 +25953,17 @@ const App = {
      the screen and came back. Anything that adds or removes products calls
      this instead of picking two of the four by hand. */
   refreshCatalogUI(){
+    /* (audit fix — v34) renderCatalog()/renderCatalogScreen() read from the
+       module-level SERVICES cache, not from Store directly — and nothing
+       here ever refreshed that cache. Store.bulkSoftDelete() (and
+       softDelete()) replace each patched record with a new object rather
+       than mutating in place, so SERVICES kept holding the old, pre-delete
+       object references after a removal. The toast reported the correct
+       count (it comes straight from the delete function, not from the UI),
+       but the rendered list was still built from the exact same stale
+       array it had before the deletion — "toast says removed, items still
+       visible." Refresh the cache first, same way _syncFromStore() does. */
+    try { if (window.Store) SERVICES = Store.list('prods') || []; } catch(e){}
     try { this.renderCatalogScreen(); } catch(e){ console.warn('[catalog] screen refresh failed', e); }
     try { this.renderCatalog(); }       catch(e){ console.warn('[catalog] list refresh failed', e); }
     try { this._mountStarterBtn(); }    catch(e){}
