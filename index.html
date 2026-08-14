@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260814_1341';
+    window.HISAABNOW_BUILD = 'v34_auto_20260814_1458';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3651,8 +3651,6 @@ html[data-current-role="manager"] body{
     </div>
   </section>
 
-  <div id="hn-feature-strip" style="display:none;margin:2px 16px 14px"></div>
-
   <section id="home-udhaar-tile" data-role-min="manager" style="display:none;padding:0 18px 14px">
     <div onclick="App.nav('udhaar')" role="button" style="cursor:pointer;background:#fff;border:1.5px solid var(--border-strong);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:transform .15s">
       <div id="home-udhaar-icon" style="width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#D1FAE5;color:#065F46">
@@ -3866,6 +3864,13 @@ html[data-current-role="manager"] body{
       <span data-i18n="dash.viewReports">View Reports</span>
     </button>
   </section>
+
+  <!-- (audit fix — v34) Moved to the bottom of Home per request — was
+       sitting right after the KPI row, ahead of everything the shopkeeper
+       actually opens the app to check (udhaar, peak hours, payments). Now
+       it's the last thing on the page instead of competing with real data
+       for the most valuable scroll position. -->
+  <div id="hn-feature-strip" style="display:none;margin:14px 16px 4px"></div>
 </div>
 
 <div class="page" id="pg-sales">
