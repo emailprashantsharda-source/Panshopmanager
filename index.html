@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260813_1846';
+    window.HISAABNOW_BUILD = 'v34_auto_20260814_1022';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -15483,14 +15483,29 @@ const App = {
     if (subStatus && window.Subs) {
       const tier = Subs.getCurrentTier();
       const cfg = Subs.getTierConfig(tier);
-      const days = Subs.daysLeft();
-      var _daysWord = days === 1 ? this._T('more.day','day') : this._T('more.days','days');
       var _leftWord = this._T('more.left','left');
-      if (tier === 'trial') {
-        subStatus.textContent = `${this._T('more.freeTrial','Free trial')} · ${days} ${_daysWord} ${_leftWord}`;
-      } else if (tier === 'trial-expired' || tier === 'expired') {
+      if (tier === 'trial' || tier === 'trial-expired') {
+        /* (audit fix — v34) Free trial is bills-only now — this used to read
+           Subs.daysLeft(), a calendar count independent of the bills-only
+           gate that actually controls billing (_shouldGateBilling). A shop
+           with bills still remaining could see "Trial expired" here purely
+           because 7 calendar days had passed, while billing itself kept
+           working — two systems disagreeing about the same state, the exact
+           pattern this codebase keeps getting bitten by. _freeBillsLeft() is
+           the same count _shouldGateBilling() itself checks, so this text
+           and actual billing behavior can no longer contradict each other. */
+        var billsLeft = this._freeBillsLeft();
+        if (billsLeft > 0) {
+          var _billWord = billsLeft === 1 ? this._T('more.bill','bill') : this._T('more.bills','bills');
+          subStatus.textContent = `${this._T('more.freeTrial','Free trial')} · ${billsLeft} ${_billWord} ${_leftWord}`;
+        } else {
+          subStatus.textContent = this._T('more.expiredRenew', 'Expired · tap to renew');
+        }
+      } else if (tier === 'expired') {
         subStatus.textContent = this._T('more.expiredRenew', 'Expired · tap to renew');
       } else {
+        const days = Subs.daysLeft();
+        var _daysWord = days === 1 ? this._T('more.day','day') : this._T('more.days','days');
         subStatus.textContent = `${cfg.name} ${this._T('more.planLc','plan')} · ${days} ${_daysWord} ${_leftWord}`;
       }
     }
@@ -35164,7 +35179,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
   },
 
-  _FREE_BILLS: 15,   /* free-bill runway before the HARD paywall lock. Single source of truth: drives _shouldGateBilling, the "free bills left" toast, the home subscribe banner, and the full-screen lock. */
+  _FREE_BILLS: 20,   /* free-bill runway before the HARD paywall lock. Single source of truth: drives _shouldGateBilling, the "free bills left" toast, the home subscribe banner, and the full-screen lock. (audit fix — v34) Was 15 while several other comments in this file already said 20 (isTrialExpired, the desktop lock screen) — the classic two-numbers-drift bug this codebase has been bitten by before. 20 is now the actual value everywhere. */
   _freeBillsUsed(){
     try {
       var shopId = (window.MShop && MShop.getActive && MShop.getActive() || {}).shopId || 'default';
@@ -35222,25 +35237,23 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
     if (this._isPaidUser()) return false;
     try { if (window.Subs && Subs.hasEverPaid && Subs.hasEverPaid()) return true; } catch(e){}
-    /* (Aug 2026 fix) ROOT CAUSE of a confusing, silent billing failure: this
-       function only ever checked the 15-free-bill COUNT, never the trial's
-       actual CALENDAR expiry — even though isTrialExpired() (a separate
-       function elsewhere in this file) is literally named for that and
-       simply delegates back to this same function, assuming it already
-       covered it. It didn't. A shop that used fewer than 15 bills but whose
-       trial window had elapsed by date was told "12 free bills left" and
-       allowed to keep billing client-side — while Firestore's own,
-       correctly date-based subscription check rejected every one of those
-       writes server-side with permission-denied. The bill "saved" locally,
-       the toast said bills remained, and it silently never reached the
-       cloud. getAccurateDaysLeft() already computes the correct calendar
-       answer (it's what the diagnostic panel's "Trial expired · 0 days
-       left" comes from) — it just was never consulted here. Wiring it in
-       makes the client refuse up front, matching what the server already
-       enforces, instead of quarantining doomed writes after the fact. */
-    try {
-      if (typeof window.HND_getAccurateDaysLeft === 'function' && window.HND_getAccurateDaysLeft() <= 0) return true;
-    } catch(e){}
+    /* (audit fix — v34) Free trial is bills-only now, by explicit decision —
+       replacing the calendar-day check entirely, not running alongside it.
+       The calendar check below is REMOVED.
+
+       ⚠️ CAVEAT this removal reintroduces, worth verifying before relying on
+       it: the day-check existed because a prior fix (Aug 2026, see git
+       history / the comment this replaced) found that Firestore's security
+       rules ALSO enforce trial expiry by calendar date, server-side,
+       independently of this client function. If those rules are still
+       date-based, a shop that's used fewer than 20 bills but whose 7-day
+       trial window has calendar-elapsed will have this client say "bills
+       remain," accept the sale locally, and then have Firestore silently
+       reject the write with permission-denied — the exact silent-failure
+       bug that Aug-2026 fix was written to close. This file has no
+       visibility into firestore.rules; if that file still date-gates
+       trial writes, it needs the equivalent change (bills-only, or removed
+       entirely) or this reopens that bug. */
     return this._freeBillsUsed() >= this._FREE_BILLS;
   },
   _freeBillNudgeAfterSale(){
@@ -47779,7 +47792,7 @@ log('module loaded — call StaffDiscovery.discoverFromUser(user) after sign-in'
 'use strict';
 if (window.Subs) return;
 
-var TRIAL_DAYS    = 0;
+var TRIAL_DAYS    = 7;
 var STORAGE_KEY   = 'kf_subs';
 
 /* NOTE (v34_160): monthlyPrice / annualPrice below are DEAD — nothing reads
