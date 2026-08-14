@@ -3371,9 +3371,20 @@ const R = {
        through render() rather than renderFleet() directly: if the user has
        switched to Money while this was in flight, Money rendered against the
        empty placeholder below and needs the same wake-up. */
-    if (!this._closed && window.Cloud && Cloud.ready){
-      this._closed = [];
-      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+      this._closedBusy = true;
+      if (!this._closed) this._closed = [];
+      Cloud.recentClosed(400).then(rows => {
+        this._closedBusy = false; this._closedStale = false;
+        /* Merge, never replace. A locally-settled rental that the server
+           query has not caught up with yet must not be thrown away by its
+           own refresh — and if the query fails and returns [], the rentals
+           already on screen must survive it. */
+        const by = new Map();
+        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
+        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
+        this.render();
+      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
     }
 
     const live = DB.d.vehicles.filter(v => !v.deletedAt);
@@ -3540,9 +3551,20 @@ const R = {
     /* Same closed-rentals cache Money and the phone Fleet use, for the
        "Earned today" column. Loading it here means whichever screen the
        owner opens first warms it for the others. */
-    if (!this._closed && window.Cloud && Cloud.ready){
-      this._closed = [];
-      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+      this._closedBusy = true;
+      if (!this._closed) this._closed = [];
+      Cloud.recentClosed(400).then(rows => {
+        this._closedBusy = false; this._closedStale = false;
+        /* Merge, never replace. A locally-settled rental that the server
+           query has not caught up with yet must not be thrown away by its
+           own refresh — and if the query fails and returns [], the rentals
+           already on screen must survive it. */
+        const by = new Map();
+        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
+        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
+        this.render();
+      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
     }
 
     /* Identical bucketing to the phone list, so the two screens never
@@ -4662,9 +4684,20 @@ const R = {
     /* Earned per model over 30 days, from the closed cache Money loads.
        Pricing without knowing what a model actually earns is guesswork,
        and this is the only screen where that number changes a decision. */
-    if (!this._closed && window.Cloud && Cloud.ready){
-      this._closed = [];
-      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+      this._closedBusy = true;
+      if (!this._closed) this._closed = [];
+      Cloud.recentClosed(400).then(rows => {
+        this._closedBusy = false; this._closedStale = false;
+        /* Merge, never replace. A locally-settled rental that the server
+           query has not caught up with yet must not be thrown away by its
+           own refresh — and if the query fails and returns [], the rentals
+           already on screen must survive it. */
+        const by = new Map();
+        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
+        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
+        this.render();
+      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
     }
     const since = Date.now() - 30*24*HOUR;
     const earnedOf = rc => {
@@ -6004,7 +6037,16 @@ Please return on time to get your full deposit back.`;
         if (res.reason === 'settled') return toast('This rental was already settled on another device');
         return toast('Could not settle — try again');
       }
-      this._closed = null;   /* force a reload so Money reflects this settlement */
+      /* Put the settled rental straight into the closed cache rather than
+         only invalidating it. Nulling the cache left this rental in NEITHER
+         list for the next render — gone from the open-rentals listener,
+         not yet in the refetched closed set — so Money showed zero for a
+         freshly settled bike. If the refetch then failed, `_closed` stayed
+         an empty array, which is truthy, so the guard never retried and the
+         zero was permanent. The record is complete locally (r merged with
+         the patch just written), so there is nothing to wait for. */
+      this._closed = [Object.assign({}, r, patch)].concat(this._closed || []);
+      this._closedStale = true;   /* still refresh in the background */
       Cloud.audit('rental.in', r.id, { status:'open', deposit:r.depositHeld }, {
         revenue: patch.revenue, refund: patch.depositRefunded,
         collected: patch.balanceCollected, extraHours: patch.extraHours });
@@ -6357,7 +6399,12 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     }
     return out;
   },
-  setPeriod(k){ this._period = k; this._closed = null; Haptic.tap(); this.render(); },
+  /* The closed-rentals cache is not period-scoped — it is the most recent
+     400 settlements regardless of which chip is selected, and renderMoney
+     filters it by date itself. Clearing it here forced a network round trip
+     on every chip tap and, worse, discarded any rental settled locally in
+     this session before its refresh had landed. */
+  setPeriod(k){ this._period = k; Haptic.tap(); this.render(); },
 
   renderMoney(){
     const rng = this._range();
@@ -6447,9 +6494,20 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     const netUpi  = upiIn - upiOut;
     const legacy  = (cashIn + upiIn) === 0 && (got + depIn) > 0;
 
-    if (!this._closed && window.Cloud && Cloud.ready){
-      this._closed = [];
-      Cloud.recentClosed(400).then(rows => { this._closed = rows; this.render(); });
+    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+      this._closedBusy = true;
+      if (!this._closed) this._closed = [];
+      Cloud.recentClosed(400).then(rows => {
+        this._closedBusy = false; this._closedStale = false;
+        /* Merge, never replace. A locally-settled rental that the server
+           query has not caught up with yet must not be thrown away by its
+           own refresh — and if the query fails and returns [], the rentals
+           already on screen must survive it. */
+        const by = new Map();
+        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
+        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
+        this.render();
+      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
     }
     /* Filtered by outAt, not settledAt — for the same reason revenue now rolls
        up to check-out day. A rental out at 10pm and back at 4am belongs to
