@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260814_1458';
+    window.HISAABNOW_BUILD = 'v34_auto_20260815_1912';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -40173,22 +40173,36 @@ window.App = App;
     function _hnFlowT(x){ var t=Number((x&&(x.t||x.time))||0); if(t) return t; if(x&&x.date){ var d=new Date(String(x.date)+'T12:00:00'); if(!isNaN(d.getTime())) return d.getTime(); } return asOfT; }
     try {
       var opening = _uq(safeList('cashOpening'));
-      // (v33_314) CARRY-FORWARD baseline. The old model (v33_277) took the LATEST
-      // opening as an absolute reset and discarded every rupee before its day — so
-      // one stray/duplicate/mis-synced opening silently wiped the carried-forward
-      // drawer (the recurring A-1 complaint). Now the EARLIEST opening seeds the
-      // drawer and ALL cash flows carry forward on top; later openings never reset
-      // it. Real drawer changes go through Reconcile (cashAdjust 'correction'),
-      // Take-out (withdrawal) and Add-cash (deposit), all counted below.
+      /* (audit fix — v34) v33_314's 'earliest opening, never reset' was a
+         real fix for a real incident — v33_277's 'latest opening = absolute
+         reset' wiped legitimate carried-forward cash whenever a stray
+         duplicate opening synced in from another device. But it
+         over-corrected: now that a new opening only ever gets created
+         through the per-day-gated morning banner (hasOpeningToday()), a
+         genuine new day's opening SHOULD become the new baseline — instead,
+         'earliest, forever' meant an old stray entry from days ago kept
+         inflating every later day's total, which is exactly the live bug
+         this was traced from (a transaction from an earlier day still
+         showing up in "today's" expected drawer). Reset to the latest
+         opening DAY as intended by the newer (v33_425) design applied
+         elsewhere in this file — same-day duplicates still get summed
+         together below rather than one overwriting the other, so the
+         original A-1 scenario (a second same-day opening wiping the first)
+         still can't happen; only an actual NEW DAY resets the baseline. */
       var _seed = null;
       opening.forEach(function(o){
         var ds = _hnDayStart(o);
         if (ds > asOfT) return;
         if (!_seed){ _seed = o; return; }
         var sds = _hnDayStart(_seed);
-        if (ds < sds || (ds === sds && Number(o.t||0) < Number(_seed.t||0))) _seed = o;
+        if (ds > sds || (ds === sds && Number(o.t||0) > Number(_seed.t||0))) _seed = o;
       });
-      if (_seed){ cash = Number(_seed.amount || _seed.amt || 0); baseT = _hnDayStart(_seed); }
+      if (_seed){
+        var _seedDay = _hnDayStart(_seed);
+        cash = 0;
+        opening.forEach(function(o){ if (_hnDayStart(o) === _seedDay) cash += Number(o.amount || o.amt || 0); });
+        baseT = _seedDay;
+      }
     } catch(e){}
     var sales = _uq(safeList('sales'));
     sales.forEach(function(s){
@@ -40651,8 +40665,17 @@ window.App = App;
         /* (v33_425) Baseline from the LATEST opening on-or-before now — the app
            prompts a fresh opening each day, so the drawer must reset to today's
            count, not accumulate every cash flow since the very first opening.
-           No-ops for shops that set an opening only once. */
-        opening.forEach(function(o){ var ds=_hnDayStart(o); if (ds>_now) return; if (!_seed){ _seed=o; return; } var sds=_hnDayStart(_seed); if (ds<sds || (ds===sds && Number(o.t||0)<Number(_seed.t||0))) _seed=o; });
+           No-ops for shops that set an opening only once.
+           (audit fix — v34) The comparison below did the OPPOSITE of what this
+           comment says — ds<sds keeps replacing _seed with whichever opening is
+           EARLIER, so it converged on the oldest opening ever recorded, not the
+           latest. A shop that set an opening days ago and a fresh one today had
+           its balance still anchored to the old day, silently folding in every
+           cash sale since then — confirmed by a stray transaction from a prior
+           day still appearing in "today's" expected drawer total. Flipped to
+           ds>sds so the most recent same-or-earlier-than-now opening wins,
+           matching what the comment always said it should do. */
+        opening.forEach(function(o){ var ds=_hnDayStart(o); if (ds>_now) return; if (!_seed){ _seed=o; return; } var sds=_hnDayStart(_seed); if (ds>sds || (ds===sds && Number(o.t||0)>Number(_seed.t||0))) _seed=o; });
         if (_seed){ var _seedDay=_hnDayStart(_seed); _bt=_seedDay; cash=0; opening.forEach(function(o){ if (_hnDayStart(o)===_seedDay) cash += Number(o.amount || o.amt || 0); }); }
         sales.forEach(function(s){
           var t = _hnFlowT(s);
@@ -62600,16 +62623,28 @@ html[data-shell="desktop"] body.hnd-on-cashflow #hnd-cashflow {
     /* (v33_301) opening anchors to start of its day; that day's flows count on top */
     try {
       var opening = _uq(safeList('cashOpening'));
-      // (v33_314) carry-forward: earliest opening seeds; later openings never reset. See mobile cashPositionAt.
+      /* (audit fix — v34) Was 'earliest opening seeds; later openings never
+         reset' (see mobile cashPositionAt for the full history — that
+         behavior was itself a fix for a real incident, but over-corrected
+         once openings became per-day-gated). Now resets to the latest
+         opening DAY, summing any same-day duplicates rather than letting
+         one overwrite the other — so a genuine new day resets the baseline
+         correctly, while a second same-day opening still can't wipe out the
+         first (the original incident this was guarding against). */
       var _seed = null;
       opening.forEach(function(o){
         var ds = _hnDayStart(o);
         if (ds > asOfT) return;
         if (!_seed){ _seed = o; return; }
         var sds = _hnDayStart(_seed);
-        if (ds < sds || (ds === sds && Number(o.t||0) < Number(_seed.t||0))) _seed = o;
+        if (ds > sds || (ds === sds && Number(o.t||0) > Number(_seed.t||0))) _seed = o;
       });
-      if (_seed){ cash = Number(_seed.amount || _seed.amt || 0); baseT = _hnDayStart(_seed); }
+      if (_seed){
+        var _seedDay = _hnDayStart(_seed);
+        cash = 0;
+        opening.forEach(function(o){ if (_hnDayStart(o) === _seedDay) cash += Number(o.amount || o.amt || 0); });
+        baseT = _seedDay;
+      }
     } catch(e){}
 
     /* Cash sales */
@@ -101081,10 +101116,21 @@ var KB=[
 
   function _cashBalAt(asOf){
     var baseT = 0, cash = 0;
-    // (v33_314) carry-forward: earliest opening seeds the drawer; later openings
-    // never reset it (see cashPositionAt). Stray/duplicate openings are inert.
+    /* (audit fix — v34) This comment used to document "earliest opening
+       seeds the drawer; later openings never reset it" as the deliberate
+       behavior — but that's backwards from how the app actually works: the
+       morning banner prompts a FRESH opening every single day
+       (hasOpeningToday() is a per-day check), so an opening from days ago
+       should never still anchor today's balance once a new one is set. This
+       directly contradicted the correct fix (v33_425) already applied to
+       the other cash-balance implementation in this file, which resets to
+       the latest opening. Confirmed live: a stray transaction from an
+       earlier day was still showing up in "today's" expected drawer total
+       because this function kept using that earlier day as the seed. Now
+       picks the most recent same-or-earlier-than-now opening, matching the
+       other implementation and what the daily-reset design actually needs. */
     var seed = null;
-    list('cashOpening').forEach(function(o){ var ds=dayStartTs(o); if (ds>asOf) return; if (!seed){ seed=o; return; } var sds=dayStartTs(seed); if (ds<sds || (ds===sds && num(o.t)<num(seed.t))) seed=o; });
+    list('cashOpening').forEach(function(o){ var ds=dayStartTs(o); if (ds>asOf) return; if (!seed){ seed=o; return; } var sds=dayStartTs(seed); if (ds>sds || (ds===sds && num(o.t)>num(seed.t))) seed=o; });
     if (seed){ cash = num(seed.amount||seed.amt); baseT = dayStartTs(seed); }
     list('sales').forEach(function(s){ var t=flowTs(s,asOf); if (t>asOf||t<baseT) return; var ca=0; if(Array.isArray(s.splits)&&s.splits.length){ s.splits.forEach(function(p){ if((p.mode||'').toLowerCase()==='cash') ca+=num(p.amount); }); } else if((s.mode||s.paymentMode||'cash').toLowerCase()==='cash') ca=num(s.total||s.amt); cash+=ca; });
     list('khataSettle').forEach(function(st){ var t=flowTs(st,asOf); if(t>asOf||t<baseT) return; if((st.mode||'cash').toLowerCase()!=='cash') return; var k=null; try{k=Store.get('khata',st.khataId);}catch(e){} var typ=k?(k.type||'lena'):'lena'; var a=num(st.amount||st.amt); if(typ==='dena') cash-=a; else cash+=a; });
@@ -101128,8 +101174,16 @@ var KB=[
     // (v33_314) "Opening set" only when the SEED (first-ever) opening falls in
     // this period — that's the only opening that establishes the balance. Every
     // later period shows carried-forward cash, so it reads "Brought forward".
+    // (audit fix — v34) Was tracking the EARLIEST-ever opening ('first-ever
+    // opening establishes the balance, every later period is brought
+    // forward') — but _cashBalAt() above now correctly anchors to the
+    // LATEST opening on-or-before this period, per the fix applied earlier
+    // in this file. Left mismatched, a day with a genuine fresh opening
+    // would show "Brought forward" right next to a balance number that had
+    // already reset for that same fresh opening. Track the latest instead,
+    // matching what actually establishes the balance now.
     var _seedDs = null;
-    list('cashOpening').forEach(function(o){ var ds = dayStartTs(o); if (ds <= to && (_seedDs===null || ds < _seedDs)) _seedDs = ds; });
+    list('cashOpening').forEach(function(o){ var ds = dayStartTs(o); if (ds <= to && (_seedDs===null || ds > _seedDs)) _seedDs = ds; });
     var seedInPeriod = (_seedDs !== null && _seedDs >= from && _seedDs <= to);
     // authoritative end balance, then derive the starting cash so the statement always balances
     var endCash = _cashBalAt(to);
