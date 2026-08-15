@@ -6436,6 +6436,17 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
          REVENUE and the pickup deposit  -> check-out day (outAt)
          balance, refund, unpaid         -> settle day    (settledAt) */
     const inWin = ms => { const t = Number(ms)||0; return t >= rng.start && t <= rng.end; };
+    /* ONE predicate for "this rental earned money", used by both the totals
+       and the per-vehicle table below. They had two: the table counted
+       anything not cancelled, the totals counted only status === 'closed'.
+       A rental whose status was neither — anything legacy, renamed, or
+       written by an older build — was therefore shown as ₹5,000 against its
+       bike and ₹0 in the hero above it, on the same screen at the same
+       moment. Defined negatively on purpose: a rental earns unless it was
+       voided, cancelled, or is still out, so an unfamiliar status counts
+       rather than silently vanishing. */
+    const earns = r => !!r && !r.voidedAt && r.status !== 'void'
+      && r.status !== 'cancelled' && r.status !== 'open';
     const live = { revenue:0, rentals:0, collected:0, depositsIn:0, depositsOut:0,
                    outstanding:0, cashIn:0, upiIn:0, cashOut:0, upiOut:0 };
     /* Open rentals carry a deposit and possibly an advance taken at pickup;
@@ -6451,12 +6462,12 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         live.collected  += adv;
         live.cashIn     += outCash;
         live.upiIn      += Math.max(0, (dep+adv) - outCash);
-        if (r.status === 'closed'){
+        if (earns(r)){
           live.revenue += Number(r.revenue)||0;
           live.rentals += 1;
         }
       }
-      if (r.status === 'closed' && inWin(r.settledAt)){
+      if (earns(r) && inWin(r.settledAt)){
         const coll = Number(r.balanceCollected)||0, inCash = Number(r.inCash)||0;
         const ref  = Number(r.depositRefunded)||0;
         const refCash = (r.refundMode || 'cash') !== 'upi';
@@ -6514,7 +6525,8 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
        the day it happened, not the day the paperwork closed; filtering by
        settledAt put it on the wrong side of a "Yesterday" / "Today" boundary
        exactly when a shop is most likely to check. */
-    const inRange = closed.filter(x => !x.voidedAt && x.status !== 'cancelled'
+    /* Same `earns` predicate the totals above use — see the note there. */
+    const inRange = closed.filter(x => earns(x)
       && (this._period==='all' || (x.outAt >= rng.start && x.outAt <= rng.end)));
 
     const per = DB.d.vehicles.map(v=>{
@@ -7202,7 +7214,7 @@ if (Install.isIOS()) setTimeout(() => Install.banner(), 4000);
       replays, which is what Firestore's persistence is for.
    ═══════════════════════════════════════════════════════════════════ */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { initializeAppCheck, ReCaptchaV3Provider }
+import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
 import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -7224,15 +7236,49 @@ const cfg = {
   appId: "1:448042777087:web:9b4c4a0bd4dbc425bccfca"
 };
 const app = initializeApp(cfg);
+/* On localhost a reCAPTCHA site key cannot be validated, so App Check would
+   reject every sign-in on a dev machine. This asks the SDK for a debug
+   token instead, which it prints to the console once — register that token
+   under Firebase Console → App Check → Apps → Manage debug tokens and local
+   testing works without weakening anything in production. Guarded by
+   hostname so a real deployment never takes this path. */
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    || location.protocol === 'file:'){
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+let _appCheck = null;
 try {
-  initializeAppCheck(app, {
+  _appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider('6LfZQcYsAAAAAL9TGObuIHv-SllzTi_aHkmNdlnH'),
     isTokenAutoRefreshEnabled: true
   });
+  /* Start minting the first token immediately rather than on first use.
+     initializeAppCheck() returns synchronously but the reCAPTCHA script has
+     to load and produce a token asynchronously, and App Check is ENFORCED on
+     Identity Toolkit for this project — so a Send OTP tapped before that
+     first token exists was rejected outright with
+     auth/firebase-app-check-token-is-invalid. It then worked on the second
+     tap, because by then the token had arrived. Warming it here means the
+     token is usually ready before the gate is even filled in. */
+  getAppCheckToken(_appCheck).catch(e => console.warn('appcheck warm', (e&&e.code)||e));
 } catch(e){
   /* App Check is defence in depth, not a login requirement. If the site key
      is not registered for this path it must not take phone auth down with it. */
   console.warn('appcheck init failed (continuing without it)', e);
+}
+
+/* Belt and braces for the same race: block the auth call until a token
+   exists, but never for long. If App Check is slow or broken the sign-in
+   should still be attempted — a possible rejection beats a button that
+   hangs, and the retry path below covers it. */
+async function appCheckReady(ms){
+  if (!_appCheck) return;
+  try {
+    await Promise.race([
+      getAppCheckToken(_appCheck),
+      new Promise(res => setTimeout(res, ms || 2500))
+    ]);
+  } catch(e){ /* proceed regardless */ }
 }
 
 const auth = getAuth(app);
@@ -7347,7 +7393,21 @@ const Cloud = {
     try {
       if (!this._verifier)
         this._verifier = new RecaptchaVerifier(auth, 'recap', { size:'invisible' });
-      this._conf = await signInWithPhoneNumber(auth, '+91'+ph, this._verifier);
+      /* Wait for the App Check token before the first attempt. */
+      await appCheckReady();
+      try {
+        this._conf = await signInWithPhoneNumber(auth, '+91'+ph, this._verifier);
+      } catch(e1){
+        /* One silent retry, only for the cold-token race. Asking a shop
+           owner to press Send OTP twice — with a Firebase error code in
+           between — to work around our own startup timing is not something
+           to explain in a support message; it is something to not do. */
+        if ((e1 && e1.code) === 'auth/firebase-app-check-token-is-invalid'){
+          console.warn('appcheck token cold, retrying send once');
+          await appCheckReady(4000);
+          this._conf = await signInWithPhoneNumber(auth, '+91'+ph, this._verifier);
+        } else throw e1;
+      }
       this.gateBusy(false);
       this.showGate(`
         <p style="opacity:.8;font-size:14px;margin:0 0 16px">OTP sent to +91 ${esc(ph)}</p>
@@ -7369,7 +7429,18 @@ const Cloud = {
         'auth/quota-exceeded': 'Daily SMS limit reached on this project.',
         'auth/operation-not-allowed':
           'Phone sign-in is switched off. Firebase Console → Authentication → Sign-in method → enable Phone.',
-        'auth/network-request-failed': 'No internet connection.'
+        'auth/network-request-failed': 'No internet connection.',
+        /* App Check is enforced on Identity Toolkit for this project (it is
+           what stopped the SMS toll fraud), so a missing or rejected token
+           blocks sign-in entirely. The cause is almost always that the
+           domain being browsed is not on the reCAPTCHA site key's allowed
+           list — a new Pages path, a preview URL, an IP address — rather
+           than anything the person at the keyboard did wrong. Name the
+           actual domain so it can be pasted straight into the console. */
+        'auth/firebase-app-check-token-is-invalid':
+          'This site is not authorised for sign-in yet. Add "' + location.hostname
+          + '" to the reCAPTCHA site key\'s allowed domains (Firebase Console → App Check), '
+          + 'then reload.'
       };
       this.hap('error');
       this.gateErr((map[code] || 'Could not send OTP.') + (code ? ' [' + code + ']' : ''));
