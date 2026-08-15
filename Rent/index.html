@@ -6358,7 +6358,8 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
      MONEY
      Three numbers a rental shop actually needs, kept apart on purpose:
 
-       EARNED     rent + overtime + recoveries on rentals settled in the period
+       EARNED     rent + overtime + recoveries, booked to the day the vehicle
+                  went OUT (not the day it was settled)
        COLLECTED  cash that actually reached the drawer
        HELD       customer deposits — never revenue, always owed back
 
@@ -6606,7 +6607,13 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       <div class="mn-hero">
         <div class="mn-hero-l">Earned · ${esc(rng.label)}</div>
         <div class="mn-hero-v">${money(earned)}</div>
-        <div class="mn-hero-s">${rentals} rental${rentals===1?'':'s'} settled${
+        <!-- "rented out", not "settled": this count is incremented in the
+             outAt branch, exactly like Earned, because revenue belongs to
+             check-out day. Calling it "settled" made an overnight rental
+             read "1 rental settled" on the day it left and "0 rentals
+             settled" on the day the customer actually paid and returned —
+             both statements false, on the two days a shop would check. -->
+        <div class="mn-hero-s">${rentals} rental${rentals===1?'':'s'} rented out${
           owed>0?' · <b style="color:#FFD9A0">'+money(owed)+' still to collect</b>':''}</div>
       </div>
 
@@ -6782,7 +6789,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         <div class="dmn-hero">
           <div class="dmn-hero-l">Earned \u00b7 ${esc(rng.label)}</div>
           <div class="dmn-hero-v">${money(earned)}</div>
-          <div class="dmn-hero-s">${rentals} rental${rentals===1?'':'s'} settled${
+          <div class="dmn-hero-s">${rentals} rental${rentals===1?'':'s'} rented out${
             owed>0?' \u00b7 <b>'+money(owed)+' still to collect</b>':''}</div>
         </div>
         <div class="dmn-k got"><div class="dmn-k-l">Collected</div>
