@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260815_1912';
+    window.HISAABNOW_BUILD = 'v34_auto_20260817_1648';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -18559,12 +18559,17 @@ const App = {
     if (revDelta) {
       /* (v34_185) The average rides along with the count. 40 bills says he was
          busy; ₹210 a bill says whether to push a starter — and it costs no
-         extra tile. Falls back to the plain delta on a day with no bills. */
+         extra tile. Falls back to the plain delta on a day with no bills.
+         (audit fix — v34) Delta now leads and avg trails, not the other way
+         round — it was sitting right after "avg" with only a dot between
+         them, reading as if the delta belonged to the average value rather
+         than to the bill count above it. Same two facts, reordered so the
+         trend sits next to the number it actually describes. */
       var _avg = todayBills > 0 ? Math.round(todayRev / todayBills) : 0;
       var _d = renderDelta(todayBills, yestBills, false, false);
       revDelta.innerHTML = _avg
-        ? ('<span style="opacity:.8">₹' + _avg.toLocaleString('en-IN') + ' avg</span>'
-           + (_d ? (' <span style="opacity:.55">·</span> ' + _d) : ''))
+        ? ((_d ? (_d + ' <span style="opacity:.55">·</span> ') : '')
+           + '<span style="opacity:.8">₹' + _avg.toLocaleString('en-IN') + ' avg</span>')
         : _d;
     }
 
