@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260817_1648';
+    window.HISAABNOW_BUILD = 'v34_auto_20260820_1301';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -97945,10 +97945,21 @@ var KB=[
         else ok = window.confirm(T('sup.markPaidQ','Mark {amt} paid to {name}?').replace('{amt}',rupee(amt)).replace('{name}',s.name));
       } catch(e){ ok = false; }
       if (!ok) return;
+      /* (audit fix — v34) Was always settled at the exact moment "Mark paid"
+         was tapped, with no way to back-date — unlike the customer-facing
+         udhaar settle flow, which already asks for a date. A supplier
+         payment made physically on one day but recorded in the app later
+         (even the same day, after reopening) silently landed under the
+         wrong day's cash reconciliation — traced from a live client report
+         of a cash-count mismatch matching exactly this pattern. Prompts for
+         the date now, defaulting to today, same as the customer flow. */
+      var _sd = window.prompt(T('sup.settleDatePrompt','Payment date (YYYY-MM-DD) — leave blank for today:'), (window.td ? window.td() : ''));
+      if (_sd === null) return;
+      _sd = String(_sd).trim();
       try {
         (s.dueEntries||[]).forEach(function(e){
           var out = Number(e.amount||0) - Number(e.paidAmount||0);
-          if (out > 0 && window.Khata && Khata.settle) Khata.settle(e.id, out, 'cash', 'Settled from Suppliers');
+          if (out > 0 && window.Khata && Khata.settle) Khata.settle(e.id, out, 'cash', 'Settled from Suppliers', _sd || undefined);
         });
       } catch(e){}
       this._refresh();
@@ -112051,12 +112062,17 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
     // keep INVOICED label if invoiced but not fully paid
     if (c.invoiceNo && st === 'PARTPAID') st = 'PARTPAID';
     Store.update('challans', id, { paid: paid, state: st });
+    /* (audit fix — v34) Was a direct Store.update on khata.paidAmount with no
+       khataSettle audit record created at all — completely invisible to
+       Cashflow's breakdown, not just mis-dated like the Suppliers flow
+       above. Routed through Khata.settle() so it's tracked the same way
+       every other payment in the app is, and asks for the date to match. */
     try {
-      if (c.khataId && window.Store) {
-        var k = Store.get('khata', c.khataId);
-        if (k) {
-          var kpaid = _num(k.paidAmount) + v; if (kpaid > _num(k.amount)) kpaid = _num(k.amount);
-          Store.update('khata', c.khataId, { paidAmount: kpaid, status: (kpaid >= _num(k.amount) - 0.5 ? 'settled' : 'open') });
+      if (c.khataId && window.Khata && Khata.settle) {
+        var _sd = window.prompt('Payment date (YYYY-MM-DD) — leave blank for today:', (window.td ? window.td() : ''));
+        if (_sd !== null) {
+          _sd = String(_sd).trim();
+          Khata.settle(c.khataId, v, 'cash', 'Settled from Challan ' + c.no, _sd || undefined);
         }
       }
     } catch (e) {}
