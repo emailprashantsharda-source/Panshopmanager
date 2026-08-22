@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260822_1752';
+    window.HISAABNOW_BUILD = 'v34_auto_20260822_1800';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -95571,19 +95571,21 @@ var KB=[
     kots.forEach(function(k){ byId[k.id] = k; });
     var cards = g.querySelectorAll('.hnkds-card[data-kid]');
     for (var i = 0; i < cards.length; i++) {
-      var card = cards[i];
-      var k = byId[card.getAttribute('data-kid')];
-      if (!k) continue;
-      var mins = Math.floor((now - k.ts) / 60000);
-      var old = mins >= 10;
-      var timerEl = card.querySelector('.hnkds-timer');
-      if (timerEl) {
-        var ageCls = mins >= 10 ? 't-red' : (mins >= 5 ? 't-amber' : 't-green');
-        var ageTxt = mins <= 0 ? T('tables.justNow','just now') : (mins + 'm');
-        timerEl.className = 'hnkds-timer ' + ageCls;
-        timerEl.textContent = '\u23F1 ' + ageTxt;
-      }
-      card.classList.toggle('old', old);
+      try {
+        var card = cards[i];
+        var k = byId[card.getAttribute('data-kid')];
+        if (!k) continue;
+        var mins = Math.floor((now - k.ts) / 60000);
+        var old = mins >= 10;
+        var timerEl = card.querySelector('.hnkds-timer');
+        if (timerEl) {
+          var ageCls = mins >= 10 ? 't-red' : (mins >= 5 ? 't-amber' : 't-green');
+          var ageTxt = mins <= 0 ? T('tables.justNow','just now') : (mins + 'm');
+          timerEl.className = 'hnkds-timer ' + ageCls;
+          timerEl.textContent = '\u23F1 ' + ageTxt;
+        }
+        card.classList.toggle('old', old);
+      } catch(e){ console.warn('[kdsUpdateTimers] skipped one card', e); }
     }
   }
   function renderKDS(){ var g=document.getElementById('hnkds-grid'); if(!g) return; var sub=document.getElementById('hnkds-sub'); if(sub) sub.textContent=kots.length+' '+T('tables.openTickets','open tickets');
@@ -95606,13 +95608,28 @@ var KB=[
     var visible = (_kdsFilter==='all') ? kots.slice() : kots.filter(function(k){ return k.status===_kdsFilter; });
     if(!visible.length){ g.innerHTML='<div class="hnkds-empty">'+T('tables.noneInStage','Nothing in this stage right now.')+'</div>'; return; }
     var now=Date.now();
-    g.innerHTML=visible.sort(function(a,b){return a.ts-b.ts;}).map(function(k){ var tm=typeMeta(k.type); var mins=Math.floor((now-k.ts)/60000); var old=mins>=10;
-      var items=k.items.map(function(i){ return '<li><span>'+esc(i.name)+'</span><span class="q">\u00d7'+esc(i.qty)+'</span></li>'; }).join('');
-      var btn=k.status==='new'?T('tables.start','Start cooking'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
-      var ageCls=mins>=10?'t-red':(mins>=5?'t-amber':'t-green'); var ageTxt=mins<=0?T('tables.justNow','just now'):(mins+'m');
-      return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'" data-kid="'+k.id+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="hnkds-timer '+ageCls+'">\u23F1 '+ageTxt+'</span><span class="kno">#'+k.no+'</span></div>'
-        +'<ul class="hnkds-items">'+items+'</ul>'+(k.note?'<div class="hnkds-note">\uD83D\uDCDD '+esc(k.note)+'</div>':'')
-        +'<div class="hnkds-cf"><button class="hnkds-b gh" style="flex:0;padding:9px 11px" onclick="HNTables.printKOT('+k.no+')">\uD83D\uDDA8</button><button class="hnkds-b go" onclick="HNTables.kdsAdvance(\''+k.id+'\')">'+btn+'</button></div></div>';
+    g.innerHTML=visible.sort(function(a,b){return a.ts-b.ts;}).map(function(k){
+      /* (audit fix — v34) One malformed ticket used to be able to throw
+         uncaught inside this callback (e.g. k.items not being an array),
+         which aborts the ENTIRE g.innerHTML assignment for this render
+         pass — not just that one card. The rest of the list silently kept
+         showing whatever it last successfully rendered (stale/partial
+         markup), while tick() kept calling this every cycle and failing
+         the same way every time — matching a reported hang plus visibly
+         broken cards happening together. Now isolated per ticket. */
+      try {
+        var tm=typeMeta(k.type); var mins=Math.floor((now-k.ts)/60000); var old=mins>=10;
+        var itemsArr = Array.isArray(k.items) ? k.items : [];
+        var items=itemsArr.map(function(i){ return '<li><span>'+esc(i && i.name || '?')+'</span><span class="q">\u00d7'+esc(i && i.qty || 1)+'</span></li>'; }).join('');
+        var btn=k.status==='new'?T('tables.start','Start cooking'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
+        var ageCls=mins>=10?'t-red':(mins>=5?'t-amber':'t-green'); var ageTxt=mins<=0?T('tables.justNow','just now'):(mins+'m');
+        return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'" data-kid="'+k.id+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="hnkds-timer '+ageCls+'">\u23F1 '+ageTxt+'</span><span class="kno">#'+k.no+'</span></div>'
+          +'<ul class="hnkds-items">'+items+'</ul>'+(k.note?'<div class="hnkds-note">\uD83D\uDCDD '+esc(k.note)+'</div>':'')
+          +'<div class="hnkds-cf"><button class="hnkds-b gh" style="flex:0;padding:9px 11px" onclick="HNTables.printKOT('+k.no+')">\uD83D\uDDA8</button><button class="hnkds-b go" onclick="HNTables.kdsAdvance(\''+k.id+'\')">'+btn+'</button></div></div>';
+      } catch(e){
+        console.warn('[renderKDS] bad ticket, rendering fallback card', k && k.id, e);
+        return '<div class="hnkds-card s-new" data-kid="'+(k&&k.id||'')+'"><div class="hnkds-ch"><span class="lbl">'+T('tables.brokenTicket','Ticket needs attention')+'</span></div><div class="hnkds-cf"><button class="hnkds-b go" onclick="HNTables.kdsAdvance(\''+(k&&k.id||'')+'\')">'+T('tables.done','Done \u2713')+'</button></div></div>';
+      }
     }).join(''); }
   function isDesktop(){ try{ return document.documentElement.getAttribute('data-shell')==='desktop'; }catch(e){ return false; } }
   function host(){ if(isDesktop()) return document.querySelector('html[data-shell="desktop"] .hnd-pos-l') || document.querySelector('.hnd-pos-l'); return document.getElementById('pg-addsale'); }
