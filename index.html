@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260820_1301';
+    window.HISAABNOW_BUILD = 'v34_auto_20260822_1752';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -30921,6 +30921,16 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     this._pickedCat = null;
     this._editingId = null;
     this._wizardStep = 0;
+    /* (audit fix — v34) SERVICES (the cache addToCart() actually reads from,
+       not Store directly) was never refreshed after a product save — only
+       the bulk-delete flow got this fix earlier. A cost price set here
+       wasn't visible to the very next sale in the same session: addToCart()
+       still found the old, costless product object, so the bill's line
+       item carried no cost and profit had nothing to calculate from —
+       "cost price is set, but profit isn't showing." Refreshing the cache
+       right after every save (edit or new) closes this for good, not just
+       for the one flow that happened to get fixed already. */
+    try { if (window.Store) SERVICES = Store.list('prods') || []; } catch(e){}
     /* (v34_163) A thing you just created must be on screen. Set this BEFORE
        closeProductSheet(), which is what triggers the desktop re-render.
        stockFilter and search are cleared too — a live "Low margin" pill or a
@@ -31067,6 +31077,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     }
     this._editingId = null;
     this.toast(this._T('toast.deletedPrefix','Deleted') + ' · ' + item.name);
+    /* (audit fix — v34) Same SERVICES staleness fix as saveProduct() — a
+       just-deleted product would otherwise still be addable to a cart via
+       addToCart() until something else happened to refresh the cache. */
+    try { if (window.Store) SERVICES = Store.list('prods') || []; } catch(e){}
     this.closeProductSheet();
     if (this.current === 'inventory') this.renderInventory();
     if (this.current === 'catalog')   this.renderCatalog();
@@ -95539,6 +95553,39 @@ var KB=[
   function openKDS(){ ensureKDS(); _kdsOpen=true; document.getElementById('hnkds').classList.add('on'); renderKDS(); }
   function closeKDS(){ _kdsOpen=false; var o=document.getElementById('hnkds'); if(o) o.classList.remove('on'); }
   function kdsSetFilter(f){ _kdsFilter = f; renderKDS(); }
+  function _kdsUpdateTimers(){
+    /* (audit fix — v34) Lightweight companion to renderKDS() for the
+       periodic tick — updates only each card's elapsed-time text and
+       urgency color in place, without touching the rest of the DOM. The
+       periodic tick used to call the full renderKDS() every 5 seconds
+       purely to refresh these numbers, which meant a full sort + rebuild +
+       re-parse + re-layout of every ticket in the list, unconditionally,
+       for as long as the Kitchen Display stayed open — the likely cause of
+       a reported hang once enough tickets had accumulated. renderKDS()
+       itself is untouched and still runs in full whenever the actual
+       ticket set or filter changes (advance, new KOT, filter tap). */
+    var g = document.getElementById('hnkds-grid');
+    if (!g || !kots.length) return;
+    var now = Date.now();
+    var byId = {};
+    kots.forEach(function(k){ byId[k.id] = k; });
+    var cards = g.querySelectorAll('.hnkds-card[data-kid]');
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var k = byId[card.getAttribute('data-kid')];
+      if (!k) continue;
+      var mins = Math.floor((now - k.ts) / 60000);
+      var old = mins >= 10;
+      var timerEl = card.querySelector('.hnkds-timer');
+      if (timerEl) {
+        var ageCls = mins >= 10 ? 't-red' : (mins >= 5 ? 't-amber' : 't-green');
+        var ageTxt = mins <= 0 ? T('tables.justNow','just now') : (mins + 'm');
+        timerEl.className = 'hnkds-timer ' + ageCls;
+        timerEl.textContent = '\u23F1 ' + ageTxt;
+      }
+      card.classList.toggle('old', old);
+    }
+  }
   function renderKDS(){ var g=document.getElementById('hnkds-grid'); if(!g) return; var sub=document.getElementById('hnkds-sub'); if(sub) sub.textContent=kots.length+' '+T('tables.openTickets','open tickets');
     var tabsEl=document.getElementById('hnkds-tabs');
     if(tabsEl){
@@ -95563,7 +95610,7 @@ var KB=[
       var items=k.items.map(function(i){ return '<li><span>'+esc(i.name)+'</span><span class="q">\u00d7'+esc(i.qty)+'</span></li>'; }).join('');
       var btn=k.status==='new'?T('tables.start','Start cooking'):k.status==='prep'?T('tables.markReady','Mark ready'):T('tables.done','Done \u2713');
       var ageCls=mins>=10?'t-red':(mins>=5?'t-amber':'t-green'); var ageTxt=mins<=0?T('tables.justNow','just now'):(mins+'m');
-      return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="hnkds-timer '+ageCls+'">\u23F1 '+ageTxt+'</span><span class="kno">#'+k.no+'</span></div>'
+      return '<div class="hnkds-card s-'+k.status+(old?' old':'')+'" data-kid="'+k.id+'"><div class="hnkds-ch"><span class="hnkds-ty" style="background:'+tm.bg+';color:'+tm.c+'">'+esc(tm.l)+'</span><span class="lbl">'+esc(k.label)+'</span><span class="hnkds-timer '+ageCls+'">\u23F1 '+ageTxt+'</span><span class="kno">#'+k.no+'</span></div>'
         +'<ul class="hnkds-items">'+items+'</ul>'+(k.note?'<div class="hnkds-note">\uD83D\uDCDD '+esc(k.note)+'</div>':'')
         +'<div class="hnkds-cf"><button class="hnkds-b gh" style="flex:0;padding:9px 11px" onclick="HNTables.printKOT('+k.no+')">\uD83D\uDDA8</button><button class="hnkds-b go" onclick="HNTables.kdsAdvance(\''+k.id+'\')">'+btn+'</button></div></div>';
     }).join(''); }
@@ -95776,7 +95823,7 @@ var KB=[
   document.addEventListener('click', function(e){ try{ if(isDesktop()) return; var b=e.target && e.target.closest && e.target.closest('.ck-collect-btn'); if(b) armBill(); }catch(_){} }, true);
   document.addEventListener('keydown', function(e){ try{ if(e.key==='F12' && document.body && document.body.classList.contains('hnd-on-pos')){ var b=document.getElementById('hnd-pos-complete'); if(b && !b.disabled) armBill(); } }catch(_){} }, true);
   function wrapSummary(){ if(_wrappedSummary||!A()||typeof A().updateCartSummary!=='function') return; var orig=A().updateCartSummary.bind(A()); A().updateCartSummary=function(){ var r=orig.apply(A(),arguments); try{ if(!_busy&&isEnabled()){ lazySeed(); renderStrip(); } }catch(e){} return r; }; _wrappedSummary=true; }
-  function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); try{ var _cs=shopId(); if(_loadedShop!==null && _cs!==_loadedShop){ load(); loadKDS(); setTimeout(reconcileOnLoad,60); renderStrip(); } }catch(e){} try{ var _bb=document.getElementById('hnd-pos-billbtn'); if(_bb) _bb.style.display=(isDesktop()&&billFirstOn())?'':'none'; var _sb=document.getElementById('hnd-pos-splitbtn'); if(_sb) _sb.style.display=isDesktop()?'':'none'; }catch(e){} try{ if(syncEnabled()&&isEnabled()){ var csid=syncSid(); if(_sync.on&&_sync.sid&&csid&&_sync.sid!==csid) syncStop(); if(!_sync.on) syncStart(); } else if(_sync.on&&!isEnabled()){ syncStop(); } }catch(e){} if(_kdsOpen){ _kdsTick=(_kdsTick||0)+1; if(_kdsTick%5===0) renderKDS(); } if(_boardOpen){ _boardTick=(_boardTick||0)+1; if(_boardTick%3===0) renderBoard(); } if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
+  function tick(){ try{ wrapRender(); wrapSale(); wrapSummary(); try{ var _cs=shopId(); if(_loadedShop!==null && _cs!==_loadedShop){ load(); loadKDS(); setTimeout(reconcileOnLoad,60); renderStrip(); } }catch(e){} try{ var _bb=document.getElementById('hnd-pos-billbtn'); if(_bb) _bb.style.display=(isDesktop()&&billFirstOn())?'':'none'; var _sb=document.getElementById('hnd-pos-splitbtn'); if(_sb) _sb.style.display=isDesktop()?'':'none'; }catch(e){} try{ if(syncEnabled()&&isEnabled()){ var csid=syncSid(); if(_sync.on&&_sync.sid&&csid&&_sync.sid!==csid) syncStop(); if(!_sync.on) syncStart(); } else if(_sync.on&&!isEnabled()){ syncStop(); } }catch(e){} if(_kdsOpen){ _kdsTick=(_kdsTick||0)+1; if(_kdsTick%5===0) _kdsUpdateTimers(); if(_kdsTick%60===0) renderKDS(); } if(_boardOpen){ _boardTick=(_boardTick||0)+1; if(_boardTick%3===0) renderBoard(); } if(isEnabled()&&host()){ lazySeed(); renderStrip(); } else { var ex=document.getElementById('hntab-strip'); if(ex&&!isEnabled()) ex.remove(); } }catch(e){} }
   function init(){ load(); loadKDS(); setInterval(tick,1000); tick(); setTimeout(reconcileOnLoad,500); }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
   function activeChannel(){ try{ if(!isEnabled()) return null; var o=find(activeId); if(!o) return null; var tm=typeMeta(o.type); return { type:tm.k, label:tm.l, emoji:tm.e }; }catch(e){ return null; } }
