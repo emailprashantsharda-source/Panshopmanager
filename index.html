@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260823_1246';
+    window.HISAABNOW_BUILD = 'v34_auto_20260823_1258';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -71308,6 +71308,16 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
     var el = item.querySelector('.lbl');
     if (!el) return;
     if (text){
+      /* (audit fix — v34) Skip the write entirely if this element already
+         shows this exact override — five independent triggers (see the
+         comment above applySidebarFixed: boot x15 @ 500ms, a 250ms poller
+         for 30s, nav hook, Store events, shellchange) can all call this
+         within the same startup or shop-switch window, often computing the
+         identical final text. Rewriting textContent to the SAME value
+         repeatedly is still a DOM write every time, and enough of them in
+         quick succession is itself visible as flicker in the browser —
+         independent of whether the text is ever actually wrong. */
+      if (!el.hasAttribute('data-i18n') && el.textContent === text) return;
       /* Stash the original key ONCE. Overriding twice in a row — grocery
          "Products" then a switch to cafe "Menu" — would otherwise stash the
          already-removed attribute, i.e. '', and the restore below would then
