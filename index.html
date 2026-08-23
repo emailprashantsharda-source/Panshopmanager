@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260823_1258';
+    window.HISAABNOW_BUILD = 'v34_auto_20260823_1541';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -24787,9 +24787,14 @@ const App = {
        ANY vertical the moment it had a Team member — bakery's hasStaff:false
        is deliberate (a loaf isn't "served by" the way a haircut is), but
        adding a Baker to Team silently turned the per-line picker back on.
-       Bakery opts out unconditionally here rather than relying on staff
-       count, which is exactly the signal that broke it. */
-    const _ckNoStaffPicker = { bakery: 1 };
+       Grocery has the exact same problem for the same reason — a bag of
+       toor daal isn't "served by" a staff member either — and hits it the
+       moment the shop has any Team member at all, which is a normal thing
+       for a grocery shop to have (a helper, a delivery boy) even though it
+       has nothing to do with per-item service attribution. Both opt out
+       unconditionally here rather than relying on staff count, which is
+       exactly the signal that broke it. */
+    const _ckNoStaffPicker = { bakery: 1, grocery: 1 };
     const hasStaff = (vertSaysHasStaff || hasActiveStaff) && !_ckNoStaffPicker[_ckVertKey];
 
     const requiresBillStaff = (cfg && cfg.requireStaffPerBill === true) ||
@@ -24900,8 +24905,14 @@ const App = {
 
     const hasActiveStaff = (STAFF || []).filter(s => s && s.active !== false && !s._deleted).length > 0;
     const vertSaysHasStaff = (cfg.hasStaff !== false);
+    /* (audit fix — v34) Same exclusion as the per-line picker in the
+       checkout function above — bakery and grocery both declare
+       hasStaff:false deliberately, but hasActiveStaff was overriding that
+       the moment either shop had any Team member at all. */
+    const _ckNoStaffPicker2 = { bakery: 1, grocery: 1 };
+    const _ckVertKey2 = this._supplyVerticalKey ? this._supplyVerticalKey() : this.vertical;
     const requires = cfg.requireStaffPerBill === true ||
-                     (hasActiveStaff && !vertSaysHasStaff);
+                     (hasActiveStaff && !vertSaysHasStaff && !_ckNoStaffPicker2[_ckVertKey2]);
 
     /* (Aug 2026 fix) 'manager' and 'owner' were missing from this list —
        cashier and helper were already correctly excluded as roles that
