@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260822_1900';
+    window.HISAABNOW_BUILD = 'v34_auto_20260823_1238';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -71975,7 +71975,14 @@ html[data-shell="desktop"] #pg-home {
     var bannerId = 'hnd-cat-starter-banner';
     var oldBanner = document.getElementById(bannerId);
     if (oldBanner) oldBanner.remove();
-    if (seededCount > 0 && !_retire){
+    /* (audit fix — v34) "N starter products waiting" removed entirely per
+       explicit request — was showing unconditionally until the shop's
+       first price/bill (see v34_046 above for why that threshold existed).
+       The seeded catalog is still fully discoverable via "Add prices in
+       bulk" in the sidebar, same count, same place the actual pricing work
+       happens. The salon empty-state hint below (else branch) is
+       unaffected and still shows when relevant. */
+    if (false){
       var banner = document.createElement('div');
       banner.id = bannerId;
       banner.className = 'hnd-cat-starter-banner';
@@ -101731,7 +101738,36 @@ var KB=[
     host.insertBefore(b, host.firstChild);
   }
 
-  function injectAll(){ try { injectBtn(); } catch(e){} try { injectBtnDesktop(); } catch(e){} }
+  function injectAll(){ try { injectBtn(); } catch(e){} try { injectBtnDesktop(); } catch(e){} try { injectRemoveUnusedBtnDesktop(); } catch(e){} }
+
+  /* (audit fix — v34) Desktop had "Activate priced" (the seeded-catalog
+     banner) but nothing for the opposite direction — removing the ones
+     never priced or used. Mobile has had this for a while (App.clearStarter,
+     the confirm sheet, the batched delete) via a banner button; desktop's
+     banner was removed per a separate request, and desktop never had its
+     own entry point for this action regardless. Reuses the exact same
+     App.clearStarter() flow mobile already uses — same confirm sheet, same
+     Store.bulkSoftDelete batching, same SERVICES cache refresh — just
+     exposed as a header button here, next to Manage Categories. */
+  function injectRemoveUnusedBtnDesktop(){
+    var host = document.querySelector('#hnd-cat .hnd-pgh-r');
+    if (!host) return;
+    var n = 0;
+    try { n = (window.App && App._starterUntouched) ? App._starterUntouched().length : 0; } catch(e){}
+    var existing = document.getElementById('hn-removeunused-btn-d');
+    if (!n){ if (existing) existing.remove(); return; }
+    if (existing){ var lbl = existing.querySelector('span'); if (lbl) lbl.textContent = n + ' unused'; return; }
+    var b = document.createElement('button');
+    b.id = 'hn-removeunused-btn-d';
+    b.type = 'button';
+    b.className = 'hnd-btn';
+    b.style.cssText = 'margin-right:8px;color:#B01818;border-color:#F3D0D0';
+    b.innerHTML = '\uD83D\uDDD1\uFE0F <span>' + n + ' unused</span>';
+    b.title = (window.I18n && I18n.t) ? I18n.t('cat.removeUnusedTip','Remove starter items you never priced or used') : 'Remove starter items you never priced or used';
+    b.onclick = function(){ try { App.clearStarter(); } catch(e){} };
+    var manageBtn = document.getElementById('hn-managecats-btn-d');
+    if (manageBtn) host.insertBefore(b, manageBtn); else host.insertBefore(b, host.firstChild);
+  }
 
   function hook(){
     if (!window.App || typeof App.renderCatalogScreen !== 'function') return false;
