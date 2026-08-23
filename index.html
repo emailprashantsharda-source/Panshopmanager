@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260823_1541';
+    window.HISAABNOW_BUILD = 'v34_auto_20260823_1816';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -27163,7 +27163,7 @@ const App = {
     try {
       const today = new Date();
       const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-      Store.add('exps', {
+      const _rsExp = Store.add('exps', {
         desc: g.name + ' · restock',
         amt: amt,
         cat: 'Raw Material / Stock',
@@ -27174,6 +27174,20 @@ const App = {
         ingredientId: id,
         source: 'supply_restock'
       });
+      /* (audit fix — v34) Same gap as the product-save auto-expense: this
+         logged an expense for the restock but never created the linked
+         purchases record PurchaseReg actually reads, so a supply restock
+         showed in Expenses but never in Purchases. */
+      try {
+        if (_rsExp && _rsExp.id) {
+          Store.add('purchases', {
+            date: dateStr, supplier: '', supplierId: null, phone: '',
+            payMode: 'cash', total: amt, invoiceNo: '', inputGst: 0,
+            lines: [{ iid: id, name: g.name, qty: qtyBase, cost: amt / qtyBase }],
+            expenseId: _rsExp.id, khataId: null
+          });
+        }
+      } catch(e){ console.warn('[restock] auto-purchase link failed (non-fatal):', e); }
     } catch(e){ console.warn('[restock] expense log failed:', e); }
 
     this.toast('✓ Restocked · ₹' + amt.toLocaleString('en-IN') + ' logged');
@@ -30877,7 +30891,39 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       console.warn('[saveProduct] auto-expense failed (non-fatal):', e);
     }
 
+    /* (audit fix — v34) The auto-expense above only ever created the
+       expense — it never created the linked 'purchases' record that
+       PurchaseReg (the Purchases screen) actually reads. Creating a new
+       grocery product with initial stock+cost correctly showed up in
+       Expenses (confirmed live: "toor daal · 500g · purchase") but never
+       in Purchases ("0 bills" even though real purchase money was
+       logged). Same schema Purchase.open()'s own save step writes, so this
+       is fully compatible with the existing Purchases register and its
+       delete/reversal logic — just created from the simpler product-form
+       path instead of the full multi-line Purchase sheet. */
+    function _logAutoPurchase(pid){
+      if (!(_autoExpAmt > 0 && _autoExpId && pid)) return;
+      try {
+        const _today2 = new Date();
+        const _dateStr2 = _today2.getFullYear() + '-' + String(_today2.getMonth() + 1).padStart(2, '0') + '-' + String(_today2.getDate()).padStart(2, '0');
+        Store.add('purchases', {
+          date: _dateStr2,
+          supplier: '',
+          supplierId: null,
+          phone: '',
+          payMode: 'cash',
+          total: _autoExpAmt,
+          invoiceNo: '',
+          inputGst: 0,
+          lines: [{ pid: pid, name: name, qty: _stockDeltaProd, cost: cp }],
+          expenseId: _autoExpId,
+          khataId: null
+        });
+      } catch(e){ console.warn('[saveProduct] auto-purchase link failed (non-fatal):', e); }
+    }
+
     if (this._editingId) {
+      _logAutoPurchase(this._editingId);
       if (Store.patchByIdOrName) { if (Store.patchByIdOrName('prods', this._editingId, fields) == null) Store.update('prods', this._editingId, fields); }
       else Store.update('prods', this._editingId, fields);
 
@@ -30903,7 +30949,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         this.toast(this._T('toast.updatedPrefix','Updated') + ' · ' + name);
       }
     } else {
-      Store.add('prods', fields);
+      const _newProd = Store.add('prods', fields);
+      _logAutoPurchase(_newProd && _newProd.id);
       /* (v34_163) Remember where it landed — the desktop Menu keeps whatever
          chip was last tapped, so adding a Cold Drink while sitting on "Combos"
          saved fine and then showed "no products". See the jump below. */
