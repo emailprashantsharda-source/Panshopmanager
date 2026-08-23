@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260823_1238';
+    window.HISAABNOW_BUILD = 'v34_auto_20260823_1246';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -71390,6 +71390,23 @@ html[data-shell="desktop"] .hnd-nav-item.hnd-l-hidden {
   /* Apply visibility + labels to the sidebar */
   function _doApplyToSidebar(){
     if (document.documentElement.getAttribute('data-shell') !== 'desktop') return;
+    /* (audit fix — v34) This used to independently recompute and apply the
+       same visibility + label overrides that applySidebarFixed() (Step M,
+       further down this file) ALSO computes and applies — both wired to
+       fire on the exact same Store events (prods, khata), just with
+       different debounce timing (this one waits 150ms after the last
+       event, applySidebarFixed runs immediately). Two independent
+       executors of the identical job, refiring on every product/khata
+       change with mismatched timing, is a solid explanation for the
+       reported "Products ⇄ Catalogue" flicker in the left nav even though
+       both read the same cfg.catalogTitle. applySidebarFixed() is also the
+       more complete of the two (it additionally handles the bulk-price
+       label), so this now delegates to it entirely instead of duplicating
+       the work — there's only one actual executor left. */
+    if (window.HND && typeof window.HND.applySidebarFixed === 'function') {
+      window.HND.applySidebarFixed();
+      return;
+    }
     var sb = document.querySelector('.hnd-sb');
     if (!sb) return;
 
