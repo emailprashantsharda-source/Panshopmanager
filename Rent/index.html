@@ -1781,14 +1781,25 @@ const R = {
 
     if (t.renewSoon){
       const price = p ? (/year/.test(cyc) || !cyc ? p.y : p.m) : 0;
+      /* Name the last day outright. "1 day left" is what this said both for
+         a plan ending tonight and one ending tomorrow morning, and a shop
+         reading it on the final day had no way to tell that today was its
+         last chance to renew before renting stopped. */
+      const head = t.lastDay
+        ? 'Today is the last day of your ' + esc(name)
+        : d + ' day' + (d===1?'':'s') + ' left in your ' + esc(name);
+      const sub  = t.lastDay
+        ? 'Renew today to keep renting out tomorrow. Taking ' + noun(1)
+          + ' back and refunding deposits never stops.'
+        : 'Ends ' + esc(ends) + '. Renting out pauses after that — taking '
+          + noun(1) + ' back and refunding deposits never does.';
       return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
         <div class="row">
           <div class="grow">
-            <b style="font-size:13.5px">${d} day${d===1?'':'s'} left in your ${esc(name)}</b>
-            <div class="muted" style="margin-top:3px">Ends ${esc(ends)}. Renting out pauses after
-            that — taking ${noun(1)} back and refunding deposits never does.</div>
+            <b style="font-size:13.5px">${head}</b>
+            <div class="muted" style="margin-top:3px">${sub}</div>
           </div>
-          <span class="pill warn">DUE</span>
+          <span class="pill ${t.lastDay?'late':'warn'}">${t.lastDay?'LAST DAY':'DUE'}</span>
         </div>
         <div class="pbar warn"><i style="width:${pct}%"></i></div>
         ${p ? `<button class="btn sm" style="margin-top:11px;width:100%" onclick="R.renewNow()">
@@ -1857,7 +1868,8 @@ const R = {
             : ' of ' + p.bikes + ' bikes') : ' bikes'}</b></div>
         ${t.subEnds ? `<div class="line"><span>Renews on</span><b>${esc(fmtDay(t.subEnds))}</b></div>` : ''}
         <div class="line" style="border-top:1.5px solid var(--bd);margin-top:6px;padding-top:11px">
-          <span>Days remaining</span><b style="font-size:16px">${t.subDaysLeft}</b></div>
+          <span>Days remaining</span><b style="font-size:16px">${
+            t.lastDay ? 'Last day' : t.subDaysLeft}</b></div>
         ${over ? `<div class="muted" style="margin-top:8px;color:var(--danger)">You have more bikes
           than this plan covers (${p.bikes}). Upgrade to stay inside it.</div>` : ''}
         ${!p ? `<div class="muted" style="margin-top:8px">Your payment is recorded but the plan name
@@ -2114,7 +2126,7 @@ const R = {
       ${t && t.paid ? `<div class="card" style="background:${t.renewSoon?'var(--y-tint)':'var(--success-tint)'};
         border-color:${t.renewSoon?'var(--y-bd)':'#B7ECD1'}">
         <b style="font-size:13.5px;color:${t.renewSoon?'#95610A':'var(--success-d)'}">${esc(this.planLabel(t))} active
-          · ${t.subDaysLeft} day${t.subDaysLeft===1?'':'s'} left</b>
+          · ${t.lastDay ? 'last day today' : t.subDaysLeft + ' day' + (t.subDaysLeft===1?'':'s') + ' left'}</b>
         <div class="muted" style="margin-top:3px">Changing plan is done by hand so the days you
           have already paid for are not lost. Tap any plan and we will set it up.</div>
       </div>` : ''}
@@ -8088,16 +8100,40 @@ const Cloud = {
     const ends = created + this.TRIAL_DAYS * 86400000;
     const ent   = this.entitlement();
     const subMs = ent.expMs;
-    const paid  = subMs > Date.now();
+    /* A subscription runs to the END of the day it expires, not to the
+       instant on the clock. The webhook stamps expiry at whatever time of
+       day the payment was taken, so a shop that paid at 9am a month ago was
+       having renting switched off at 9am on its final day — mid-morning,
+       mid-customer, on a day it had paid for. Worse, it went straight from
+       "1 day left" to blocked with nothing in between. Extending to
+       23:59:59 local costs at most a few hours of grace and matches what
+       "my plan runs to the 15th" means to the person paying. */
+    const dayEnd = ms => { const d = new Date(ms); d.setHours(23,59,59,999); return d.getTime(); };
+    const graceMs = subMs ? dayEnd(subMs) : 0;
+    const now   = Date.now();
+    const paid  = graceMs > now;
     const tier  = ent.tier;
     const cycle = ent.cycle;
     /* trialDaysLeft stays separate from subDaysLeft on purpose. One number
        serving both meant a paying shop's "days left" was silently the count
        since its trial died — a large negative number one render away from
        being shown to a customer who had just paid. */
-    const trialDaysLeft = Math.ceil((ends - Date.now())/86400000);
-    const subDaysLeft   = subMs ? Math.ceil((subMs - Date.now())/86400000) : 0;
-    return { paid, ends, subEnds: subMs || 0, tier, cycle,
+    const trialDaysLeft = Math.ceil((ends - now)/86400000);
+    /* Counted in whole calendar days between today and the expiry DATE, not
+       in 24-hour blocks from this instant. A shop thinks "it runs out on the
+       18th", not "in 62 hours", and the date arithmetic makes today 0 and
+       tomorrow 1 no matter what time either happens at. It also keeps the
+       renew-soon window honest: measuring from the end-of-day grace above
+       would have made a plan expiring in exactly 7 days read 8 and drop out
+       of the warning entirely. */
+    const dayStart = ms => { const d = new Date(ms); d.setHours(0,0,0,0); return d.getTime(); };
+    const subDaysLeft = subMs
+      ? Math.round((dayStart(subMs) - dayStart(now)) / 86400000) : 0;
+    /* "1 day left" was shown both for a plan ending tonight and one ending
+       tomorrow morning — the shop could not tell which, on the one day the
+       distinction decides whether they must act today. */
+    const lastDay = paid && !!subMs && subDaysLeft === 0;
+    return { paid, ends, subEnds: subMs || 0, tier, cycle, lastDay,
              /* daysLeft keeps its old trial meaning so existing callers,
                 all of which are inside !paid branches, are unaffected. */
              daysLeft: trialDaysLeft, trialDaysLeft, subDaysLeft,
@@ -8106,8 +8142,8 @@ const Cloud = {
              /* Carried so the diagnostic sheet can show a support caller
                 exactly which field this shop's billing was read from. */
              src: ent,
-             expired: !paid && Date.now() >= ends,
-             active: paid || Date.now() < ends };
+             expired: !paid && now >= ends,
+             active: paid || now < ends };
   },
 
   /* ── audit: append-only, created on every mutation ─────────────
