@@ -1781,6 +1781,17 @@ const R = {
 
     if (t.renewSoon){
       const price = p ? (/year/.test(cyc) || !cyc ? p.y : p.m) : 0;
+      /* Escalate. A monthly shop meets this banner twelve times a year, so a
+         single flat amber card for the whole final week is one they stop
+         seeing by about day three — and then miss the day it mattered. Three
+         steps instead: quiet notice for the back half of the week, a firmer
+         one at three days, and an unmissable red on the final day. The point
+         is not to shout for seven days; it is to be quiet enough early that
+         the loud version still registers. */
+      const urgent = t.lastDay ? 2 : (d <= 3 ? 1 : 0);
+      const skin = ['background:var(--y-tint);border-color:var(--y-bd)',
+                    'background:var(--y-tint);border-color:var(--y)',
+                    'background:var(--danger-tint);border-color:var(--danger)'][urgent];
       /* Name the last day outright. "1 day left" is what this said both for
          a plan ending tonight and one ending tomorrow morning, and a shop
          reading it on the final day had no way to tell that today was its
@@ -1793,16 +1804,18 @@ const R = {
           + ' back and refunding deposits never stops.'
         : 'Ends ' + esc(ends) + '. Renting out pauses after that — taking '
           + noun(1) + ' back and refunding deposits never does.';
-      return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+      const pill = ['DUE', 'RENEW', 'LAST DAY'][urgent];
+      return `<div class="card" style="${skin}">
         <div class="row">
           <div class="grow">
-            <b style="font-size:13.5px">${head}</b>
+            <b style="font-size:${urgent?14.5:13.5}px;${urgent===2?'color:var(--danger)':''}">${head}</b>
             <div class="muted" style="margin-top:3px">${sub}</div>
           </div>
-          <span class="pill ${t.lastDay?'late':'warn'}">${t.lastDay?'LAST DAY':'DUE'}</span>
+          <span class="pill ${urgent===2?'late':'warn'}">${pill}</span>
         </div>
         <div class="pbar warn"><i style="width:${pct}%"></i></div>
-        ${p ? `<button class="btn sm" style="margin-top:11px;width:100%" onclick="R.renewNow()">
+        ${p ? `<button class="btn sm" style="margin-top:11px;width:100%${
+              urgent===2?';background:var(--danger);color:#fff':''}" onclick="R.renewNow()">
             Renew ${esc(p.name)} · ${money(price)}</button>`
             : `<button class="btn sm" style="margin-top:11px;width:100%" onclick="R.plans()">
             See plans</button>`}</div>`;
