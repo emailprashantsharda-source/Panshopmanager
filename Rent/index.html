@@ -3413,11 +3413,20 @@ const R = {
        through render() rather than renderFleet() directly: if the user has
        switched to Money while this was in flight, Money rendered against the
        empty placeholder below and needs the same wake-up. */
-    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+    /* Throttled. Every settle marks this stale, so a counter settling five
+       bikes in a row fired five 400-document queries — the app got slower
+       the faster it was used, which is exactly backwards and is what "fast
+       fast entry karte hain to slow ho jata hai" describes. The refetch is
+       not urgent: the settled rental is already inserted locally, so the
+       screen is correct without it. It exists only to pick up edits made on
+       another device, which can wait a minute. A first load (no cache at
+       all) still fetches immediately. */
+    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
+        && window.Cloud && Cloud.ready && !this._closedBusy){
       this._closedBusy = true;
       if (!this._closed) this._closed = [];
       Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false;
+        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
         /* Merge, never replace. A locally-settled rental that the server
            query has not caught up with yet must not be thrown away by its
            own refresh — and if the query fails and returns [], the rentals
@@ -3613,11 +3622,20 @@ const R = {
     /* Same closed-rentals cache Money and the phone Fleet use, for the
        "Earned today" column. Loading it here means whichever screen the
        owner opens first warms it for the others. */
-    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+    /* Throttled. Every settle marks this stale, so a counter settling five
+       bikes in a row fired five 400-document queries — the app got slower
+       the faster it was used, which is exactly backwards and is what "fast
+       fast entry karte hain to slow ho jata hai" describes. The refetch is
+       not urgent: the settled rental is already inserted locally, so the
+       screen is correct without it. It exists only to pick up edits made on
+       another device, which can wait a minute. A first load (no cache at
+       all) still fetches immediately. */
+    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
+        && window.Cloud && Cloud.ready && !this._closedBusy){
       this._closedBusy = true;
       if (!this._closed) this._closed = [];
       Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false;
+        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
         /* Merge, never replace. A locally-settled rental that the server
            query has not caught up with yet must not be thrown away by its
            own refresh — and if the query fails and returns [], the rentals
@@ -4762,11 +4780,20 @@ const R = {
     /* Earned per model over 30 days, from the closed cache Money loads.
        Pricing without knowing what a model actually earns is guesswork,
        and this is the only screen where that number changes a decision. */
-    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+    /* Throttled. Every settle marks this stale, so a counter settling five
+       bikes in a row fired five 400-document queries — the app got slower
+       the faster it was used, which is exactly backwards and is what "fast
+       fast entry karte hain to slow ho jata hai" describes. The refetch is
+       not urgent: the settled rental is already inserted locally, so the
+       screen is correct without it. It exists only to pick up edits made on
+       another device, which can wait a minute. A first load (no cache at
+       all) still fetches immediately. */
+    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
+        && window.Cloud && Cloud.ready && !this._closedBusy){
       this._closedBusy = true;
       if (!this._closed) this._closed = [];
       Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false;
+        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
         /* Merge, never replace. A locally-settled rental that the server
            query has not caught up with yet must not be thrown away by its
            own refresh — and if the query fails and returns [], the rentals
@@ -6584,11 +6611,20 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     const netUpi  = upiIn - upiOut;
     const legacy  = (cashIn + upiIn) === 0 && (got + depIn) > 0;
 
-    if ((!this._closed || this._closedStale) && window.Cloud && Cloud.ready && !this._closedBusy){
+    /* Throttled. Every settle marks this stale, so a counter settling five
+       bikes in a row fired five 400-document queries — the app got slower
+       the faster it was used, which is exactly backwards and is what "fast
+       fast entry karte hain to slow ho jata hai" describes. The refetch is
+       not urgent: the settled rental is already inserted locally, so the
+       screen is correct without it. It exists only to pick up edits made on
+       another device, which can wait a minute. A first load (no cache at
+       all) still fetches immediately. */
+    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
+        && window.Cloud && Cloud.ready && !this._closedBusy){
       this._closedBusy = true;
       if (!this._closed) this._closed = [];
       Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false;
+        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
         /* Merge, never replace. A locally-settled rental that the server
            query has not caught up with yet must not be thrown away by its
            own refresh — and if the query fails and returns [], the rentals
@@ -8733,20 +8769,36 @@ const Cloud = {
   async checkin(rentalId, vehicleId, patch, vpatch){
     this.pending++; this.chip();
     try {
-      if (navigator.onLine) {
-        await runTransaction(db, async tx => {
-          const rRef = this.p('rentals', rentalId);
-          const r = await tx.get(rRef);
-          if (r.exists() && r.data().status !== 'open') throw new Error('settled');
-          tx.update(rRef, patch);
-          tx.update(this.p('vehicles', vehicleId), vpatch);
-        });
-      } else {
-        const b = writeBatch(db);
-        b.set(this.p('rentals', rentalId), patch, { merge:true });
-        b.set(this.p('vehicles', vehicleId), vpatch, { merge:true });
-        await b.commit();
-      }
+      /* A batch, not a transaction — online as well as off.
+
+         runTransaction() cannot use the offline cache: it must read from the
+         server, then write, then wait for confirmation. That is a full round
+         trip the person at the counter waits through on EVERY settle, and
+         settling several bikes in a row meant several sequential waits on a
+         shop's mobile connection. It also made the app measurably faster
+         offline than online, since the offline branch here was already a
+         batch. This is what "fast fast entry karte hain to slow ho jata hai"
+         was describing.
+
+         The transaction existed to stop two devices settling one rental at
+         once. That check is not lost, it has moved earlier and cheaper:
+         DB.d.rentals is a live listener scoped to status=='open', so a
+         rental settled on another device leaves it within about a second and
+         checkinSave() returns before reaching here. The residual window is
+         two people pressing Settle inside the same second — rare, obvious
+         immediately in the bill list, and undoable with Void bill. A better
+         trade than making every settle wait on the network. */
+      const b = writeBatch(db);
+      b.set(this.p('rentals', rentalId), patch, { merge:true });
+      b.set(this.p('vehicles', vehicleId), vpatch, { merge:true });
+      /* Not awaited: Firestore commits to the local cache synchronously and
+         syncs in the background, so the counter can move on the moment the
+         bike is handed back. A sync failure surfaces via the chip and the
+         toast below rather than by blocking. */
+      b.commit().catch(e => {
+        console.error('checkin commit', e);
+        if (window.toast) toast('Settlement saved here — still syncing');
+      });
       return { ok:true };
     } catch(e){
       if (e && e.message==='settled') return { ok:false, reason:'settled' };
