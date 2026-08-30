@@ -2488,6 +2488,23 @@ const R = {
     return this.checkoutStart();
   },
 
+  /* Coalesce listener-driven renders into one per frame.
+
+     Eight Firestore listeners are live (vehicles, rates, bookings, rentals,
+     daily, vehicleStats, members, the shop doc) and each snapshot called
+     render() directly — a full innerHTML rebuild of the whole page. On open
+     they all land within a few hundred milliseconds, so the app rebuilt
+     itself eight times before showing anything, and every settle or edit
+     did it several times more. On a 39-bike fleet that rebuild is not cheap.
+
+     render() itself stays synchronous, because ~37 call sites use it as
+     "redraw now" and some read the DOM straight after. Only the snapshot
+     path goes through this, which is the one that fires in bursts. */
+  renderSoon(){
+    if (this._rafQ) return;
+    this._rafQ = requestAnimationFrame(() => { this._rafQ = null; this.render(); });
+  },
+
   render(){
     const titles = { out:'Out Now', fleet:'Fleet', rates:'Rate cards', money:'Money' };
     /* One meaning on every tab. It used to read Add bike on Fleet and Add rate
@@ -3429,17 +3446,33 @@ const R = {
       || String(v.model||'').toLowerCase().includes(q);
     const shown = live.filter(match);
 
+
+    /* Precompute once per vehicle instead of inside the sort comparator.
+       earnedToday() filters the whole 400-rental cache on every call, and a
+       comparator calls it twice per comparison — sorting 39 bikes meant
+       roughly 160,000 array steps before a single card was drawn, then the
+       same work again while rendering each row. bucketOf() was worse: it
+       re-ran docBlocked() and a rates .find() per comparison. One pass up
+       front, then every lookup is a Map hit. */
+    const M = new Map();
+    live.forEach(v => M.set(v.id, {
+      earnedToday: this.earnedToday(v),
+      idle:        this.idleDays(v),
+      bucket:      bucketOf(v),
+      label:       String(vLabel(v)||'')
+    }));
+    const mv = v => M.get(v.id) || { earnedToday:0, idle:0, bucket:1, label:'' };
     const sortKey = this._fsort || 'status';
     const sorters = {
-      status:  (a,b)=> (bucketOf(a)-bucketOf(b)) || String(vLabel(a)).localeCompare(String(vLabel(b))),
-      earning: (a,b)=> this.earnedToday(b) - this.earnedToday(a),
-      idle:    (a,b)=> (this.idleDays(b)||0) - (this.idleDays(a)||0),
-      name:    (a,b)=> String(vLabel(a)).localeCompare(String(vLabel(b))),
+      status:  (a,b)=> (mv(a).bucket-mv(b).bucket) || mv(a).label.localeCompare(mv(b).label),
+      earning: (a,b)=> mv(b).earnedToday - mv(a).earnedToday,
+      idle:    (a,b)=> (mv(b).idle||0) - (mv(a).idle||0),
+      name:    (a,b)=> mv(a).label.localeCompare(mv(b).label),
     };
     const vs = shown.slice().sort(sorters[sortKey]);
 
     const nOut = live.filter(v=>v.status==='rented').length;
-    const nBlocked = live.filter(v=>bucketOf(v)===2).length;
+    const nBlocked = live.filter(v=>mv(v).bucket===2).length;
     const nReady = live.length - nOut - nBlocked;
 
     const kpi = `
@@ -3465,9 +3498,9 @@ const R = {
       const r = openOf(v);
       const docs = this.docWarn(v);
       const noRate = !rc || !this.rateReady(rc);
-      const b = bucketOf(v);
+      const b = mv(v).bucket;
       const tone = b===0 ? 'rented' : (b===2 ? 'svc' : 'avail');
-      const et = this.earnedToday(v);
+      const et = mv(v).earnedToday;
       const plate = (v.regNo||'').split(' ').slice(-2).join(' ') || (v.regNo||'');
       const overdue = r && r.dueAt && Date.now() > r.dueAt;
 
@@ -3524,9 +3557,13 @@ const R = {
     if (!vs.length){
       body = `<div class="card"><div class="muted">No ${noun(1)} match \u201C${esc(this._fq||'')}\u201D.</div></div>`;
     } else if (sortKey === 'status'){
-      body = group('Out on rent', vs.filter(v=>bucketOf(v)===0).length, vs.filter(v=>bucketOf(v)===0))
-           + group('Ready to rent', vs.filter(v=>bucketOf(v)===1).length, vs.filter(v=>bucketOf(v)===1))
-           + group('Cannot rent out', vs.filter(v=>bucketOf(v)===2).length, vs.filter(v=>bucketOf(v)===2));
+      /* Bucket once, then slice. This ran bucketOf over the whole fleet six
+         times — and bucketOf calls docBlocked() and a rates lookup each time. */
+      const g0=[],g1=[],g2=[];
+      vs.forEach(v=>{ const b=mv(v).bucket; (b===0?g0:b===1?g1:g2).push(v); });
+      body = group('Out on rent', g0.length, g0)
+           + group('Ready to rent', g1.length, g1)
+           + group('Cannot rent out', g2.length, g2);
     } else {
       body = vs.map(card).join('');
     }
@@ -3607,27 +3644,43 @@ const R = {
       || String(v.regNo||'').toLowerCase().includes(q)
       || String(v.model||'').toLowerCase().includes(q);
     const filt = this._ffilter || 'all';
-    const matchF = v => filt==='all' || (filt==='out' && bucketOf(v)===0)
-      || (filt==='ready' && bucketOf(v)===1) || (filt==='blocked' && bucketOf(v)===2);
+    const matchF = v => filt==='all' || (filt==='out' && mv(v).bucket===0)
+      || (filt==='ready' && mv(v).bucket===1) || (filt==='blocked' && mv(v).bucket===2);
 
+
+    /* Precompute once per vehicle instead of inside the sort comparator.
+       earnedToday() filters the whole 400-rental cache on every call, and a
+       comparator calls it twice per comparison — sorting 39 bikes meant
+       roughly 160,000 array steps before a single card was drawn, then the
+       same work again while rendering each row. bucketOf() was worse: it
+       re-ran docBlocked() and a rates .find() per comparison. One pass up
+       front, then every lookup is a Map hit. */
+    const M = new Map();
+    live.forEach(v => M.set(v.id, {
+      earnedToday: this.earnedToday(v),
+      idle:        this.idleDays(v),
+      bucket:      bucketOf(v),
+      label:       String(vLabel(v)||'')
+    }));
+    const mv = v => M.get(v.id) || { earnedToday:0, idle:0, bucket:1, label:'' };
     const sortKey = this._fsort || 'status';
     const sorters = {
-      status:  (a,b)=> (bucketOf(a)-bucketOf(b)) || String(vLabel(a)).localeCompare(String(vLabel(b))),
-      earning: (a,b)=> this.earnedToday(b) - this.earnedToday(a),
-      idle:    (a,b)=> (this.idleDays(b)||0) - (this.idleDays(a)||0),
-      name:    (a,b)=> String(vLabel(a)).localeCompare(String(vLabel(b))),
+      status:  (a,b)=> (mv(a).bucket-mv(b).bucket) || mv(a).label.localeCompare(mv(b).label),
+      earning: (a,b)=> mv(b).earnedToday - mv(a).earnedToday,
+      idle:    (a,b)=> (mv(b).idle||0) - (mv(a).idle||0),
+      name:    (a,b)=> mv(a).label.localeCompare(mv(b).label),
     };
     const list = live.filter(v=>matchQ(v)&&matchF(v)).slice().sort(sorters[sortKey]);
     const ids = list.map(v=>v.id);
     const n = this.selCount();
 
-    const nOut = live.filter(v=>bucketOf(v)===0).length;
-    const nBlocked = live.filter(v=>bucketOf(v)===2).length;
+    const nOut = live.filter(v=>mv(v).bucket===0).length;
+    const nBlocked = live.filter(v=>mv(v).bucket===2).length;
     const nReady = live.length - nOut - nBlocked;
     const nOverdue = live.filter(v=>{ const r=openOf(v); return r && r.dueAt && Date.now()>r.dueAt; }).length;
     const invested = live.reduce((a,v)=>a+(Number(v.cost)||0),0);
     const util = live.length ? Math.round(nOut/live.length*100) : 0;
-    const todayTotal = live.reduce((a,v)=>a+this.earnedToday(v),0);
+    const todayTotal = live.reduce((a,v)=>a+mv(v).earnedToday,0);
     const lifeTotal = live.reduce((a,v)=>a+this.earnedBy(v),0);
 
     const kpi = `<div class="dfl-kpi">
@@ -3679,9 +3732,9 @@ const R = {
           const r = openOf(v);
           const docs = this.docWarn(v);
           const noRate = noRateOf(v);
-          const b = bucketOf(v);
-          const idle = this.idleDays(v);
-          const et = this.earnedToday(v);
+          const b = mv(v).bucket;
+          const idle = mv(v).idle;
+          const et = mv(v).earnedToday;
           const life = this.earnedBy(v);
           const sel = this.selHas(v.id);
           const overdue = r && r.dueAt && Date.now() > r.dueAt;
@@ -7704,7 +7757,7 @@ const Cloud = {
           this.pending = snap.metadata.hasPendingWrites ? this.pending : 0;
           this.chip();
           if (after) after();
-          if (this.ready && window.R) window.R.render();
+          if (this.ready && window.R) window.R.renderSoon();
         }, err => {
           console.error(key, err.code||err, 'try', tries);
           /* Remembered so the Money page can say WHY it is showing zeros.
@@ -7779,7 +7832,7 @@ const Cloud = {
            missing membership record can no longer strip the owner of their
            own account. */
         if (this.shop && this.shop.ownerUid === this.uid) this.role = 'owner';
-        if (this.ready && window.R) window.R.render();
+        if (this.ready && window.R) window.R.renderSoon();
       }, err => {
         console.error('shop', err.code||err, 'try', shopTries);
         if (err.code === 'permission-denied' && shopTries < RETRY_DELAYS_MS.length){
