@@ -1834,6 +1834,90 @@ const R = {
   /* Renew on the tier and cycle already on the shop document. Making a man
      re-pick, twelve months later, the plan he is already on is how you get a
      Growth customer accidentally buying Starter. */
+  /* "I paid and nothing happened."
+
+     PayU takes the money on its own hosted page and redirects the shop
+     back; a separate webhook then writes subscriptionExpiry on the shop
+     document via the Admin SDK. Those are two independent things, and the
+     second one can be delayed, retried, or fail outright — leaving a shop
+     that has genuinely paid looking at "Your plan has ended" with nothing
+     to press.
+
+     This reads the shop document straight from the server (not the offline
+     cache, which is exactly what would still be holding the stale expiry)
+     and the receipts the webhook writes, then says which of three things
+     is true. Distinguishing them matters: "no receipt" is a payment that
+     never reached us and they may need to try again, while "receipt but no
+     expiry" is our problem and they must NOT pay twice. */
+  async recheckPayment(){
+    if (!(window.Cloud && Cloud.ready && Cloud.shopId))
+      return toast('Sign in first');
+    toast('Checking with the payment server\u2026');
+    try {
+      /* The Firestore SDK lives in the module script; R is in the plain
+         script and has no db, doc() or getDocFromServer() in scope. Cloud
+         is the boundary between the two, so the server read belongs there
+         and this function stays pure UI. */
+      const res = await Cloud.refreshEntitlement();
+      if (!res.ok) throw new Error(res.code || 'failed');
+      const t = Cloud.trialInfo();
+      if (t.paid){
+        Haptic.success();
+        closeSheet();
+        this.render();
+        return toast('Payment confirmed \u2014 you can rent out again.');
+      }
+      /* Not entitled yet. Whether a receipt exists decides what to tell
+         them, and the two answers are opposites. */
+      this.render();
+      return this.payStuck(!!res.receipts);
+    } catch(e){
+      console.error('recheckPayment', e);
+      toast('Could not reach the server \u2014 check your connection and try again');
+    }
+  },
+
+  payStuck(hasReceipt){
+    openSheet(`<div class="sheet-hd"><h2>${hasReceipt
+        ? 'Payment received'
+        : 'No payment found yet'}</h2></div>
+      <div class="card" style="background:${hasReceipt?'var(--y-tint);border-color:var(--y-bd)'
+        :'var(--p-50);border-color:#CFDDE7'}">
+        <div class="muted">${hasReceipt
+          ? 'We can see your payment, but your plan has not switched on yet. '
+            + '<b>Do not pay again.</b> This is on our side and usually clears within '
+            + 'a few minutes. If it does not, send us the message below and we will '
+            + 'activate it by hand.'
+          : 'We cannot see a completed payment on this account yet. If the money has '
+            + 'left your bank, it may still be settling \u2014 wait a few minutes and '
+            + 'check again. If it was not charged, you can try the payment once more.'}
+        </div>
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="R.recheckPayment()">Check again</button>
+      <button class="btn ghost" style="margin-top:9px" onclick="R.helpWhatsApp('${
+        hasReceipt ? 'paid-not-active' : 'payment-missing'}')">Message us on WhatsApp</button>
+      ${hasReceipt ? '' : `<button class="btn ghost" style="margin-top:9px"
+        onclick="R.plans()">Try payment again</button>`}`);
+  },
+
+  /* Pre-filled so the shop does not have to explain the problem, and so we
+     get the shop id and phone without a back-and-forth. */
+  helpWhatsApp(kind){
+    const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    const lines = [
+      kind === 'paid-not-active'
+        ? 'I have paid for RentalNow but my plan is still showing as ended.'
+        : 'I tried to pay for RentalNow but it is not showing as paid.',
+      '',
+      'Shop: ' + ((Cloud.shopName || '') || '(unnamed)'),
+      'Shop ID: ' + (Cloud.shopId || '-'),
+      'Phone: ' + ((window.auth && auth.currentUser && auth.currentUser.phoneNumber) || '-'),
+      t && t.subEnds ? 'Plan ended: ' + fmtDay(t.subEnds) : 'No plan recorded'
+    ];
+    const url = 'https://wa.me/919289792666?text=' + encodeURIComponent(lines.join('\n'));
+    window.open(url, '_blank');
+  },
+
   renewNow(){
     const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
     if (!t || !t.tier) return this.plans();
@@ -2154,6 +2238,16 @@ const R = {
         <div class="muted" style="margin-top:3px">${t.active
           ? 'Everything keeps working. Renting out pauses when it ends — returns never do.'
           : 'Returns and settlements still work, so no customer is left stranded. Renting out is paused.'}</div>
+        ${!t.active ? `<!-- The gap between paying and being unblocked belongs to
+             us, not to the shop. PayU takes the money and redirects; a
+             separate webhook writes the new expiry. If that webhook is
+             slow, retried, or failed, the shop is left staring at "plan
+             ended" seconds after their money left — with nothing to press
+             and no way to tell whether the payment even registered. This
+             checks the server directly and says plainly which of the two
+             happened. -->
+          <button class="btn ghost sm" style="margin-top:11px;width:100%"
+            onclick="R.recheckPayment()">Already paid? Check again</button>` : ''}
       </div>` : ''}
 
       <div class="pl-toggle">
@@ -5297,7 +5391,17 @@ const R = {
 
   /* ── CHECK-OUT ──────────────────────────────────────────────────── */
   checkoutStart(){
-    if (!this.canRentOut()) return toast('Trial ended — returns still work. Tap "Talk to us" to continue.');
+    /* A shop that paid for months and then lapsed was told "Trial ended".
+       It is the wrong word for the wrong person at the worst moment — the
+       one time they are blocked and deciding whether to pay again. Say which
+       of the two actually happened. */
+    if (!this.canRentOut()){
+      const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+      const everPaid = !!(t && t.subEnds);
+      return toast(everPaid
+        ? 'Your plan has expired — renew to rent out again. Returns and deposit refunds still work.'
+        : 'Trial ended — returns still work. Tap "Talk to us" to continue.');
+    }
     const avail = DB.d.vehicles.filter(v=>v.status==='available');
     if (!DB.d.vehicles.length) { this.nav('fleet'); return toast('Add a '+noun()+' first — rates are only prices, not '+noun(1)); }
     if (!avail.length){
@@ -5863,6 +5967,12 @@ const R = {
         if (res.reason === 'cancelled') return toast('Check-out cancelled');
         if (res.reason === 'missing')
           return toast('That ' + noun() + ' is not in your account yet — open Fleet and add it');
+        /* The server refused, not the network. Almost always an expired plan:
+           the rules gate renting out (and only renting out) on entitlement.
+           Telling this shop to "check your connection" would send them to
+           their router when the answer is a renewal. */
+        if (res.reason === 'denied')
+          return toast('Your plan has expired — renew to rent out again. Returns and refunds still work.');
         return toast('Could not rent out — check your connection and try again');
       }
       if (ph) Cloud.put('customers', 'ph_'+ph, { name, phone: ph, kyc: rental.customerKyc });
@@ -7344,7 +7454,8 @@ import { getFunctions, httpsCallable }
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   doc, collection, query, where, orderBy, limit, startAfter, documentId,
-  onSnapshot, getDoc, getDocs, setDoc, updateDoc, runTransaction,
+  onSnapshot, getDoc, getDocs, getDocFromServer, getDocsFromServer,
+  setDoc, updateDoc, runTransaction,
   serverTimestamp, writeBatch, onSnapshotsInSync, increment, collectionGroup
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -8579,6 +8690,42 @@ const Cloud = {
     }
   },
 
+  /* Re-read entitlement straight from the server, bypassing the cache.
+
+     Called when a shop says "I have paid but it still says expired". The
+     offline cache is exactly what would still be holding the stale expiry,
+     so getDoc() would just confirm the bad news — getDocFromServer() is the
+     whole point of this. Also counts receipts, because that distinguishes
+     "the money never reached us" from "the money reached us and the webhook
+     has not written the new expiry yet". Those two need opposite advice,
+     and getting it wrong means either a shop that pays twice or a shop that
+     waits for something that is never coming. */
+  async refreshEntitlement(){
+    if (!this.shopId) return { ok:false, code:'no-shop' };
+    try {
+      const snap = await getDocFromServer(doc(db,'rn_shops',this.shopId));
+      if (snap.exists()){
+        this.shop = snap.data();
+        this.shopName = this.shop.name || this.shopName;
+        if (this.shop.ownerUid === this.uid) this.role = 'owner';
+      }
+      let receipts = 0;
+      try {
+        const rs = await getDocsFromServer(collection(db,'rn_shops',this.shopId,'receipts'));
+        receipts = rs.size;
+      } catch(e){
+        /* /receipts is manager-and-above, so a counter-staff device gets
+           permission-denied here. Not worth surfacing: zero just means
+           "cannot tell", and the copy it drives stays honest either way. */
+        console.warn('receipts read', (e&&e.code)||e);
+      }
+      return { ok:true, receipts };
+    } catch(e){
+      console.error('refreshEntitlement', e);
+      return { ok:false, code:(e&&e.code)||'unknown' };
+    }
+  },
+
   /* PayU hosted checkout. The client never sends an amount — it sends the
      plan, and the server prices it. That is the whole point: a price in the
      browser is a price a customer can edit. */
@@ -8731,6 +8878,13 @@ const Cloud = {
     catch(e){
       if (e && e.message === 'taken')   return { ok:false, reason:'taken' };
       if (e && e.message === 'missing') return { ok:false, reason:'missing' };
+      /* A rules rejection is NOT a connectivity problem, and treating it as
+         one was the worse of the two failures: rnEntitled() denies a lapsed
+         shop's rent-out, waitAndRetry() then showed "Waiting for signal…"
+         and retried forever on a perfectly good connection. The shop would
+         sit watching a spinner that could never finish, with nothing saying
+         the plan had expired. */
+      if (e && e.code === 'permission-denied') return { ok:false, reason:'denied' };
       /* Almost certainly no connection. Hold it and finish automatically. */
       return await this.waitAndRetry(attempt);
     }
