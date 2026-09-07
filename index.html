@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260825_1350';
+    window.HISAABNOW_BUILD = 'v34_auto_20260907_1520';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -37615,6 +37615,26 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
   },
 
   saveExpense(){
+    /* (audit fix — v34) Guard against double-submit — traced from a live
+       client report of duplicate expense records (rent, HR/Salaries,
+       utilities, each saved twice with identical content). This function
+       had no protection against being invoked twice in quick succession,
+       and takes 800ms before navigating away on success — a real window
+       for an impatient or unsure second tap, especially on a device
+       showing unclear offline-save feedback, to create a genuine second
+       record. The sync layer's own duplicate check only catches re-uploads
+       of the SAME local record by id; two separately-created records with
+       matching content are invisible to it by design. */
+    if (this._savingExpense) return;
+    this._savingExpense = true;
+    try {
+      this._saveExpenseInner();
+    } finally {
+      setTimeout(() => { this._savingExpense = false; }, 1000);
+    }
+  },
+
+  _saveExpenseInner(){
     const amtRaw = (document.getElementById('exp-amount')||{}).value || '';
     const desc = ((document.getElementById('exp-desc')||{}).value || '').trim();
     const amt = parseFloat(amtRaw) || 0;
