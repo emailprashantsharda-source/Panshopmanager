@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260907_1520';
+    window.HISAABNOW_BUILD = 'v34_auto_20260915_0748';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -45157,8 +45157,22 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     /* invalid-argument: data is malformed, will NEVER succeed — quarantine fast */
     if (code === 'invalid-argument' && attempts >= 1) return 'invalid-argument';
 
-    /* permission-denied: rules reject this record, won't fix itself — quarantine fast */
-    if (code === 'permission-denied' && attempts >= 3) return 'permission-denied';
+    /* permission-denied: rules reject this record, won't fix itself by
+       retrying the identical write — so there is no benefit to waiting
+       for repeated failures before surfacing this, only downside.
+       (Sep 2026 fix) Was `attempts >= 3` — three back-to-back rejections
+       had to accumulate before this became visible in Sync Health as a
+       stuck record. Until then it sat silently retrying in the outbox
+       with zero user-facing signal. If the app closed, lost connectivity,
+       or the user navigated away inside that window, the record could be
+       lost without ever surfacing as stuck at all — confirmed as the
+       actual mechanism behind two separate live data-loss incidents,
+       where a temporary server-side rules issue rejected a batch of
+       writes and the affected shop had no way to know anything was wrong
+       until they noticed their totals didn't match. Quarantining on the
+       very first rejection makes the failure visible immediately, with a
+       Retry option ready the moment the underlying cause is fixed. */
+    if (code === 'permission-denied' && attempts >= 1) return 'permission-denied';
 
     /* unauthenticated: session expired — DON'T quarantine, user needs to re-login.
        Returning null keeps it in outbox where it'll retry once auth recovers. */
