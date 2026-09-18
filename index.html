@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260915_0748';
+    window.HISAABNOW_BUILD = 'v34_auto_20260918_1406';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -34605,6 +34605,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       '  Appointments: ' + (counts.appts || 0),
       '  Coupons:      ' + (counts.coupons || 0),
       '',
+      'Storage full (writes failing to save): ' + (window.__hnStorageFull ? '⚠️ YES — check Records vs localStorage scan counts below for a mismatch' : 'no'),
+      '',
       'Device: ' + (typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 100) : '—'),
       'TWA: ' + (window.__hnIsTWA ? 'yes' : 'no'),
       'Storage: ' + (this._estimateStorage()),
@@ -41452,6 +41454,33 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function applySyncState(s){
     if (!pill || !pillText) return;
+
+    /* (Sep 2026 fix) Storage-full check — deliberately FIRST, before
+       every other state below. A full local disk means writes are being
+       silently lost even when sync itself looks completely healthy
+       (online, zero pending) — worse than being offline, where data at
+       least survives locally until connectivity returns. This must
+       override the "hide pill, everything's fine" clean-state branch
+       further down, since that's exactly the state this device was
+       actually in while data was silently failing to save. */
+    if (window.__hnStorageFull) {
+      _stopCountdown();
+      pill.style.display = 'block';
+      pill.style.background = '#FEF2F2';
+      pill.style.border = '1px solid #FECACA';
+      pill.style.color = '#991B1B';
+      pill.style.cursor = 'pointer';
+      pillText.innerHTML = '⚠️ Storage full · some data may not be saving · <u>Tap for help</u>';
+      pill.onclick = function(){
+        try {
+          if (window.App && App.toast) {
+            App.toast('Your device storage is full. Free up space (delete old photos/apps) then reopen HisaabNow so new sales and expenses save correctly.');
+          }
+        } catch(e){}
+      };
+      return;
+    }
+
     const online = s ? s.online !== false : (typeof navigator !== 'undefined' && navigator.onLine !== false);
     const pending = s ? (s.pending || 0) : 0;
     const backoffUntil = s ? (s.backoffUntil || 0) : 0;
@@ -41726,6 +41755,16 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('online',  () => applySyncState({ online: true,  pending: 0 }));
   window.addEventListener('offline', () => applySyncState({ online: false, pending: 0 }));
   applySyncState();  // initial paint
+
+  /* (Sep 2026 fix) Lets window.ls() force an immediate pill refresh the
+     moment a localStorage write fails or later succeeds again, instead
+     of waiting for the next scheduled sync-status poll — the whole point
+     is surfacing this the instant it happens, not on a delay. */
+  window.__hnRerenderSyncPill = function(){
+    try {
+      applySyncState((window.HisaabSync && typeof HisaabSync.getStatus === 'function') ? HisaabSync.getStatus() : null);
+    } catch(e){}
+  };
 });
 </script>
 
@@ -41895,7 +41934,43 @@ window.tdAt = function(dateOrMs){
   return y + '-' + m + '-' + day;
 };
 window.lg  = window.lg  || function(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } };
-window.ls  = window.ls  || function(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+window.ls  = window.ls  || function(k,v){
+  try {
+    localStorage.setItem(k,JSON.stringify(v));
+    /* (Sep 2026 fix) A write succeeding after a prior failure means
+       whatever caused it (usually the device freeing up space, or the
+       user clearing something) has resolved — clear the flag so the
+       warning banner goes away automatically rather than sticking
+       around forever after the underlying problem is gone. */
+    if (window.__hnStorageFull) {
+      window.__hnStorageFull = false;
+      try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e2){}
+    }
+  } catch(e){
+    /* (Sep 2026 fix) THE ACTUAL ROOT CAUSE of a live, multi-week data-loss
+       mystery — traced directly from a client's own diagnostic report,
+       where the in-memory record count (2041) and the persisted
+       localStorage count (2040) were off by exactly one, matching a test
+       entry made moments before. This catch block used to swallow the
+       error completely: the in-memory Store updates immediately (so the
+       app LOOKS like it saved, for the rest of that session), but nothing
+       actually reaches disk. The moment the app reloads or closes, that
+       data is gone — and because the sync outbox itself also lives in
+       localStorage, a failed write here never even gets a chance to
+       upload to the cloud first. This was never a sync bug or a rules
+       bug; it was a silently-failing local write, hidden by this exact
+       catch block, on a device whose storage had likely filled up after
+       years of accumulated local data (2000+ sales, hundreds of products
+       and expenses all kept locally forever).
+       Fix: set a flag and immediately re-render the sync-status pill
+       (rather than waiting for its next scheduled poll) so the user sees
+       a clear warning the moment a save actually fails, instead of
+       everything looking fine until data has already silently vanished. */
+    window.__hnStorageFull = true;
+    try { console.error('[ls] localStorage write failed', k, e && e.message); } catch(e3){}
+    try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e2){}
+  }
+};
 window.toast = window.toast || function(msg){
   var t=document.createElement('div');
   t.textContent=msg; t.setAttribute('role','status');
