@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260919_2017';
+    window.HISAABNOW_BUILD = 'v34_auto_20260919_2028';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -77996,76 +77996,45 @@ html[data-shell="desktop"] #pg-settings .toggle {
   }
 
   function getAccurateDaysLeft(){
+    /* (Sep 2026 fix — consolidation) This used to be a second, independent
+       implementation of the exact same "how many days of access does this
+       shop have left" calculation that Subs.daysLeft() already computes
+       correctly — including its own separate paid-vs-trial branching and
+       its own separate read of state.paidExpiryMs.
+
+       Two independent implementations of the same logic is itself the
+       structural risk that produced this investigation's actual root
+       cause: this function's paid-check and Subs.daysLeft()'s paid-check
+       happened to agree today, but nothing enforced that they always
+       would, and nothing would have caught it quickly if a future change
+       updated one and not the other — which is exactly the shape of bug
+       that took this long to trace once it happened between the server
+       rules and the client.
+
+       A same-day fallback was added here earlier for a field
+       (state.expiry) that, after tracing the full data flow through
+       reconcileSubFromServer() -> markPurchased() -> _save()/_load(),
+       turns out to never actually exist on Subs._state at all — every
+       payment path, PayU included, already converts to paidExpiryMs
+       before it reaches this module. That fallback was harmless but
+       unnecessary, and is removed here in favor of the real fix: this
+       function no longer maintains its own copy of the calculation at
+       all. It delegates entirely to Subs.daysLeft(), which is also what
+       Subs.isPaid() and every other paid-status check in the app already
+       depend on via _recomputeTier() — so there is now genuinely one
+       function computing this, not two that happen to agree.
+
+       Minor, harmless behavioral note: Subs.daysLeft()'s trial-day
+       arithmetic doesn't snap to start-of-day boundaries the way this
+       function's removed trial branch used to, so the displayed trial
+       day count may differ by at most one day in some edge cases. Never
+       affects paid users, and consistency with every other paid-status
+       check in the app is a stronger correctness guarantee than the
+       exact trial-day rounding was. */
     try {
-      if (!window.Subs || !window.Subs._state) return 7;
-      var state = window.Subs._state;
-      var TRIAL_DAYS = (window.Subs && Subs.TRIAL_DAYS) || 7;
-
-      /* If user is paid — Google Play Billing path (paidExpiryMs, a number) */
-      if (state.paidExpiryMs && state.paidExpiryMs > Date.now()){
-        var paidLeft = Math.ceil((state.paidExpiryMs - Date.now()) / (1000 * 60 * 60 * 24));
-        return Math.max(0, paidLeft);
-      }
-
-      /* (Sep 2026 fix) THE ACTUAL ROOT CAUSE of a multi-week live
-         data-loss investigation. This function only ever checked
-         paidExpiryMs above — a field that exists ONLY for customers who
-         paid via Google Play Billing. This product's actual primary
-         payment method is PayU, and PayU's webhook (payu.js) writes a
-         completely different field, `expiry`, as a genuine Firestore
-         Timestamp — confirmed directly by reading payu.js's actual
-         source and by inspecting a real paying customer's live
-         subscription document. paidExpiryMs was therefore always
-         undefined for any PayU customer, and this function fell straight
-         through to the trial-day calculation below every single time,
-         regardless of how recently or generously they'd actually paid.
-         For a shop whose trial started months ago, that calculation
-         correctly (given the false premise) produces zero days left —
-         so the app itself showed "Trial expired," and everything
-         downstream of that (the lock screen, whatever this value gates
-         in the sync layer) behaved as if unpaid, independent of and
-         unaffected by the separate server-side rules fix for the same
-         field-name bug, since that fix only changed what the SERVER
-         checks, not what this CLIENT function checks.
-         state.expiry may arrive as either a Firestore Timestamp object
-         (with a .toMillis() method, if Subs syncs the raw doc) or an
-         already-converted number/ISO string depending on how Subs._state
-         gets populated — handled defensively here since, unlike the
-         rules layer, JS can attempt a couple of reasonable conversions
-         rather than being restricted to a strict type check. */
-      if (state.expiry){
-        var expiryMs = null;
-        if (typeof state.expiry.toMillis === 'function') {
-          try { expiryMs = state.expiry.toMillis(); } catch(e){}
-        } else if (state.expiry instanceof Date) {
-          expiryMs = state.expiry.getTime();
-        } else if (typeof state.expiry === 'number') {
-          expiryMs = state.expiry;
-        } else if (typeof state.expiry === 'string') {
-          var parsed = Date.parse(state.expiry);
-          if (!isNaN(parsed)) expiryMs = parsed;
-        }
-        if (expiryMs && expiryMs > Date.now()){
-          var payuLeft = Math.ceil((expiryMs - Date.now()) / (1000 * 60 * 60 * 24));
-          return Math.max(0, payuLeft);
-        }
-      }
-
-      /* Trial calculation — use accurate day diff */
-      if (!state.trialStartMs) return TRIAL_DAYS; /* Not yet started */
-
-      /* Use start-of-day boundaries for stable day counting */
-      var start = new Date(state.trialStartMs);
-      start.setHours(0, 0, 0, 0);
-      var trialEnd = new Date(start.getTime() + (TRIAL_DAYS * 86400000));
-      var now = new Date();
-      var msLeft = trialEnd.getTime() - now.getTime();
-      if (msLeft <= 0) return 0;
-      var daysLeft = Math.ceil(msLeft / 86400000);
-      return Math.max(0, Math.min(TRIAL_DAYS, daysLeft));
-    } catch(e){
-      return 0;
-    }
+      if (window.Subs && typeof Subs.daysLeft === 'function') return Subs.daysLeft();
+    } catch(e){}
+    return 7;
   }
   window.HND_getAccurateDaysLeft = getAccurateDaysLeft;
 
@@ -85076,7 +85045,8 @@ body.hnd-pre-banner-active .hnd-sb { top: 44px !important; height: calc(100vh - 
   function getTrialEndMs(){
     try {
       if (window.Subs && Subs._state && Subs._state.trialStartMs){
-        return Subs._state.trialStartMs + (7 * 24 * 60 * 60 * 1000);
+        var _td = (window.Subs.TRIAL_DAYS) || 7;
+        return Subs._state.trialStartMs + (_td * 24 * 60 * 60 * 1000);
       }
     } catch(e){}
     return 0;
