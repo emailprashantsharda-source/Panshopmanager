@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260918_1406';
+    window.HISAABNOW_BUILD = 'v34_auto_20260919_2017';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -44608,13 +44608,45 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
                    this user has no subscription, a local paid record here is
                    someone else's leftovers or a forgery. Revoke. */
                 window.App.reconcileSubFromServer({ allowRevoke: true }).then(function(ok){
-                  if (ok) console.log('[v33_222] Paid subscription restored from server on sign-in');
+                  if (ok) {
+                    console.log('[v33_222] Paid subscription restored from server on sign-in');
+                    /* (Sep 2026 fix) Force the sync-status pill to re-check
+                       immediately rather than waiting for its next scheduled
+                       poll — a "Trial expired" banner rendered before this
+                       reconciliation completed would otherwise keep showing
+                       stale for a paying customer until something else
+                       happened to trigger a refresh. */
+                    try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e2){}
+                  }
                 }).catch(function(e){
                   console.warn('[v33_222] reconcileSubFromServer on sign-in failed (non-fatal):', e && e.message);
                 });
                 return;
               }
-              if (tries < 20) setTimeout(attempt, 1000); /* up to ~20s for CFs to warm */
+              /* (Sep 2026 fix) This originally gave up silently after 20
+                 tries (~20s), with no fallback and nothing else ever
+                 retrying it for the rest of that session. That's the exact
+                 gap this comment block itself describes as the bug being
+                 fixed — a PayU customer's device without local paid-sub
+                 data falls through to trial-expired — except the fix's own
+                 retry budget could itself be exceeded on a slow cold start
+                 or a brand-new device processing a large shop's data for
+                 the first time, silently re-breaking the exact thing it
+                 exists to fix. Extended with a backoff instead of a hard
+                 cutoff: every 1s for the first 20 tries (~20s, same as
+                 before, for the common case), then every 5s after that,
+                 continuing for up to 5 more minutes total. A paying
+                 customer stuck on "Trial expired" is a serious, trust-
+                 damaging failure mode — worth tolerating a few extra
+                 background retries to avoid, and this still gives up
+                 eventually rather than polling forever if something is
+                 genuinely, permanently unavailable (e.g. truly signed out). */
+              var _elapsedMs = tries <= 20 ? tries * 1000 : (20 * 1000) + (tries - 20) * 5000;
+              if (_elapsedMs < 5 * 60 * 1000) {
+                setTimeout(attempt, tries < 20 ? 1000 : 5000);
+              } else {
+                console.warn('[v33_222] reconcileSubFromServer readiness never arrived after 5 minutes — giving up for this session');
+              }
             })();
           })();
         } catch (e) {
@@ -77969,10 +78001,54 @@ html[data-shell="desktop"] #pg-settings .toggle {
       var state = window.Subs._state;
       var TRIAL_DAYS = (window.Subs && Subs.TRIAL_DAYS) || 7;
 
-      /* If user is paid */
+      /* If user is paid — Google Play Billing path (paidExpiryMs, a number) */
       if (state.paidExpiryMs && state.paidExpiryMs > Date.now()){
         var paidLeft = Math.ceil((state.paidExpiryMs - Date.now()) / (1000 * 60 * 60 * 24));
         return Math.max(0, paidLeft);
+      }
+
+      /* (Sep 2026 fix) THE ACTUAL ROOT CAUSE of a multi-week live
+         data-loss investigation. This function only ever checked
+         paidExpiryMs above — a field that exists ONLY for customers who
+         paid via Google Play Billing. This product's actual primary
+         payment method is PayU, and PayU's webhook (payu.js) writes a
+         completely different field, `expiry`, as a genuine Firestore
+         Timestamp — confirmed directly by reading payu.js's actual
+         source and by inspecting a real paying customer's live
+         subscription document. paidExpiryMs was therefore always
+         undefined for any PayU customer, and this function fell straight
+         through to the trial-day calculation below every single time,
+         regardless of how recently or generously they'd actually paid.
+         For a shop whose trial started months ago, that calculation
+         correctly (given the false premise) produces zero days left —
+         so the app itself showed "Trial expired," and everything
+         downstream of that (the lock screen, whatever this value gates
+         in the sync layer) behaved as if unpaid, independent of and
+         unaffected by the separate server-side rules fix for the same
+         field-name bug, since that fix only changed what the SERVER
+         checks, not what this CLIENT function checks.
+         state.expiry may arrive as either a Firestore Timestamp object
+         (with a .toMillis() method, if Subs syncs the raw doc) or an
+         already-converted number/ISO string depending on how Subs._state
+         gets populated — handled defensively here since, unlike the
+         rules layer, JS can attempt a couple of reasonable conversions
+         rather than being restricted to a strict type check. */
+      if (state.expiry){
+        var expiryMs = null;
+        if (typeof state.expiry.toMillis === 'function') {
+          try { expiryMs = state.expiry.toMillis(); } catch(e){}
+        } else if (state.expiry instanceof Date) {
+          expiryMs = state.expiry.getTime();
+        } else if (typeof state.expiry === 'number') {
+          expiryMs = state.expiry;
+        } else if (typeof state.expiry === 'string') {
+          var parsed = Date.parse(state.expiry);
+          if (!isNaN(parsed)) expiryMs = parsed;
+        }
+        if (expiryMs && expiryMs > Date.now()){
+          var payuLeft = Math.ceil((expiryMs - Date.now()) / (1000 * 60 * 60 * 24));
+          return Math.max(0, payuLeft);
+        }
       }
 
       /* Trial calculation — use accurate day diff */
