@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260919_2028';
+    window.HISAABNOW_BUILD = 'v34_auto_20260921_2311';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -75320,10 +75320,103 @@ html[data-shell="desktop"] .hnd-gst-settings-card {
           }
         }
       } catch(e){ console.warn('[Q-1] schema stamp failed', e); }
-      return origAdd(coll, record);
+      var _savedSaleResult = origAdd(coll, record);
+
+      /* (Sep 2026 — customer-stats maintenance) Separate, isolated try/catch,
+         deliberately placed AFTER the sale has already been saved above.
+         Maintains c.visits / c.lastVisit / c.spent on the associated
+         customer record — field names the customer-dashboard read code
+         (both the mobile enriched() function and the desktop customer
+         panel) already checks as fallbacks, just never had anything
+         actually writing them. Today, with full sales history still
+         locally available, those dashboards recompute by scanning every
+         sale and always get an accurate answer — but that scan is exactly
+         what breaks the moment any archiving/storage-cleanup strategy
+         ever removes older records from local storage, since a customer's
+         visit count and lifetime spend would silently undercount with no
+         indication anything's missing. Maintaining these incrementally
+         here means the correct numbers keep existing independent of
+         whether the raw sales they were built from are still around —
+         the actual prerequisite for making local-storage archiving safe.
+         A failure in this block never touches _savedSaleResult, which is
+         already the real, saved sale by this point — this logic can only
+         ever fail to make the dashboard-numbers more future-proof, never
+         fail the sale itself. */
+      try {
+        if (coll === 'sales' && record && (record.cid || record.custId) && window.Store && typeof Store.update === 'function' && typeof Store.get === 'function'){
+          var _custId = record.cid || record.custId;
+          var _cust = Store.get('custs', _custId);
+          if (_cust){
+            var _saleT = record.t || (record.date ? Date.parse(record.date) : Date.now()) || Date.now();
+            var _newVisits = (Number(_cust.visits) || 0) + 1;
+            var _newSpent = (Number(_cust.spent) || 0) + (Number(record.total) || 0);
+            var _newLastVisit = (!_cust.lastVisit || _saleT > _cust.lastVisit) ? _saleT : _cust.lastVisit;
+            Store.update('custs', _custId, {
+              visits: _newVisits,
+              spent: _newSpent,
+              lastVisit: _newLastVisit
+            });
+          }
+        }
+      } catch(e){ console.warn('[customer-stats] increment failed (non-fatal, sale already saved):', e); }
+
+      return _savedSaleResult;
     };
     Store.__hnd_q1_hooked = true;
   }
+
+  /* (Sep 2026 — customer-stats one-time backfill) Companion to the
+     incremental maintenance above. A shop's EXISTING customers have
+     accumulated sales history that predates this fix and was never
+     counted into c.visits/c.spent/c.lastVisit — those fields would read
+     as 0/undefined for every customer until this runs once. Safe to
+     re-run any number of times: always SETS the fields to the customer's
+     current, actual totals recomputed from whatever sales history is
+     still locally present, rather than incrementing on top of a possibly-
+     already-correct value, so running it twice never double-counts.
+     Modeled directly on the existing fixOldBillDates() one-tap migration
+     pattern elsewhere in this file — same shape: read everything, compute
+     what SHOULD be true, report what changed, let the user trigger it
+     deliberately rather than running silently on every load.
+     IMPORTANT: this only produces correct results while full sales
+     history is still locally present — it is the safe, one-time act of
+     capturing that history into a maintained summary BEFORE any future
+     archiving strategy ever removes it. Running this after archiving has
+     already discarded old records would just recompute the same
+     already-incomplete picture the archiving created. */
+  window.backfillCustomerStats = function(){
+    try {
+      if (!window.Store || typeof Store.list !== 'function' || typeof Store.update !== 'function'){
+        return { ok: false, error: 'Store not ready' };
+      }
+      var custs = Store.list('custs') || [];
+      var sales = Store.list('sales') || [];
+      var visits = {}, spent = {}, lastVisit = {};
+      sales.forEach(function(s){
+        var cid = s.cid || s.custId;
+        if (!cid) return;
+        visits[cid] = (visits[cid] || 0) + 1;
+        spent[cid] = (spent[cid] || 0) + (Number(s.total) || 0);
+        var t = s.t || (s.date ? Date.parse(s.date) : 0) || 0;
+        if (!lastVisit[cid] || t > lastVisit[cid]) lastVisit[cid] = t;
+      });
+      var updated = 0;
+      custs.forEach(function(c){
+        var newVisits = visits[c.id] || 0;
+        var newSpent = spent[c.id] || 0;
+        var newLastVisit = lastVisit[c.id] || null;
+        if (c.visits === newVisits && c.spent === newSpent && c.lastVisit === newLastVisit) return;
+        Store.update('custs', c.id, { visits: newVisits, spent: newSpent, lastVisit: newLastVisit });
+        updated++;
+      });
+      var result = { ok: true, totalCustomers: custs.length, updated: updated };
+      console.log('[backfillCustomerStats] complete', result);
+      return result;
+    } catch(e){
+      console.warn('[backfillCustomerStats] failed:', e);
+      return { ok: false, error: e && e.message };
+    }
+  };
 
   /* ═══════════════════════════════════════════════════════
      SETTINGS UI — Inject GST configuration card
