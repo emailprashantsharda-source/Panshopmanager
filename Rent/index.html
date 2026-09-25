@@ -6590,17 +6590,44 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     { k:'d15',   label:'15 days',   days:15 },
     { k:'d30',   label:'Month',     days:30 },
     { k:'all',   label:'All',       days:9999 },
+    { k:'custom', label:'\u{1F4C5} Custom', days:0 },
   ],
   _period: 'today',
+  /* Custom range as local 'YYYY-MM-DD' strings — the same shape the date
+     input gives and the /daily doc ids use, so no timezone conversion. */
+  _custom: null,
+  _ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+  _fromYmd(s){ const [y,m,d] = String(s).split('-').map(Number); return new Date(y, m-1, d); },
+  /* "12 Sep", "12–18 Sep", "28 Aug – 3 Sep", "28 Dec 2025 – 3 Jan" */
+  _customLabel(){
+    const c = this._custom; if (!c) return 'Custom';
+    const a = this._fromYmd(c.from), b = this._fromYmd(c.to);
+    const M = d => 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[d.getMonth()];
+    const yr = new Date().getFullYear();
+    const Y = d => d.getFullYear() !== yr ? ' ' + d.getFullYear() : '';
+    if (c.from === c.to) return a.getDate()+' '+M(a)+Y(a);
+    if (a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear())
+      return a.getDate()+'\u2013'+b.getDate()+' '+M(b)+Y(b);
+    return a.getDate()+' '+M(a)+(a.getFullYear()!==b.getFullYear()?Y(a):'')+' \u2013 '+b.getDate()+' '+M(b)+Y(b);
+  },
+  _chipLabel(p){ return p.k==='custom' && this._period==='custom' && this._custom
+    ? '\u{1F4C5} ' + this._customLabel() : p.label; },
 
   _range(){
-    const p = this.PERIODS.find(x=>x.k===this._period) || this.PERIODS[2];
+    if (this._period === 'custom' && this._custom){
+      const s = this._fromYmd(this._custom.from), e = this._fromYmd(this._custom.to);
+      e.setHours(23,59,59,999);
+      const label = this._customLabel();
+      return { start: s.getTime(), end: e.getTime(), label,
+               phrase: (this._custom.from===this._custom.to ? 'on ' : 'during ') + label };
+    }
+    const p = this.PERIODS.find(x=>x.k===this._period && x.k!=='custom') || this.PERIODS[2];
     const end = new Date(); end.setHours(23,59,59,999);
     const start = new Date(); start.setHours(0,0,0,0);
     if (p.k === 'yest'){ start.setDate(start.getDate()-1); end.setTime(start.getTime()+86399999); }
     else if (p.k !== 'today') start.setDate(start.getDate() - (p.days - 1));
     if (p.k === 'all') start.setTime(0);
-    return { start: start.getTime(), end: end.getTime(), label: p.label };
+    return { start: start.getTime(), end: end.getTime(), label: p.label, phrase: p.label.toLowerCase() };
   },
   _dayKeys(){
     /* 'all' means every day since the epoch — 20,000+ iterations building a
@@ -6620,7 +6647,55 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
      filters it by date itself. Clearing it here forced a network round trip
      on every chip tap and, worse, discarded any rental settled locally in
      this session before its refresh had landed. */
-  setPeriod(k){ this._period = k; Haptic.tap(); this.render(); },
+  setPeriod(k){
+    /* Custom does not switch the period until dates are applied, so closing
+       the picker leaves the screen on whatever it was showing. */
+    if (k === 'custom') return this.customRange();
+    this._period = k; Haptic.tap(); this.render();
+  },
+
+  customRange(){
+    Haptic.tap();
+    const now = new Date(), today = this._ymd(now);
+    const c = this._custom || { from: this._ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate()-6)), to: today };
+    const mStart = this._ymd(new Date(now.getFullYear(), now.getMonth(), 1));
+    const lmStart = this._ymd(new Date(now.getFullYear(), now.getMonth()-1, 1));
+    const lmEnd = this._ymd(new Date(now.getFullYear(), now.getMonth(), 0));
+    const quick = (l,f,t) => `<button class="mn-chip" onclick="R.customApply('${f}','${t}')">${l}</button>`;
+    openSheet(`<div class="sheet-hd"><h2>Pick dates</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="mn-chips">${quick('This month', mStart, today)}${quick('Last month', lmStart, lmEnd)}</div>
+      <div class="row" style="gap:10px">
+        <div class="fld grow"><label class="lbl">From</label>
+          <input class="in" id="cr-from" type="date" max="${today}" value="${c.from}"></div>
+        <div class="fld grow"><label class="lbl">To</label>
+          <input class="in" id="cr-to" type="date" max="${today}" value="${c.to}"></div>
+      </div>
+      <button class="btn" onclick="R.customApply()">Show earnings</button>`);
+  },
+
+  customApply(from, to){
+    const today = this._ymd(new Date());
+    from = from || (document.getElementById('cr-from')||{}).value || '';
+    to   = to   || (document.getElementById('cr-to')||{}).value   || '';
+    const ok = v => /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (!ok(from) || !ok(to)){ Haptic.error(); return toast('Pick both dates'); }
+    if (from > to) [from, to] = [to, from];          /* picked backwards — just swap */
+    if (to > today) to = today;
+    if (from > today) from = today;
+    this._custom = { from, to }; this._period = 'custom';
+    closeSheet(); Haptic.tap(); this.render();
+  },
+
+  /* Bounded periods are computed from the recent-closed cache (most recent
+     ~400 settlements). A custom range can reach back past that, where the
+     cache would silently undercount — so check whether it covers the start. */
+  _closedCovers(start){
+    const c = this._closed || [];
+    if (c.length < 400) return true;                 /* cache is whole history */
+    const oldest = c.reduce((m,x)=>Math.min(m, Number(x.settledAt)||Infinity), Infinity);
+    return oldest <= start;
+  },
 
   renderMoney(){
     const rng = this._range();
@@ -6706,7 +6781,11 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     /* 'All' can reach further back than the 400-settlement cache, so the
        rollups stay authoritative there — unless they are empty, in which
        case the cache is still better than showing nothing. */
-    const useLive = this._period !== 'all' || !sum('revenue');
+    /* Custom ranges older than the cache fall back to the rollups, exactly
+       like 'All' — the rollups follow the same day rules, so the totals
+       agree; only the per-bike list below is limited to recent rentals. */
+    const coversRange = this._period !== 'custom' || this._closedCovers(rng.start);
+    const useLive = (this._period !== 'all' && coversRange) || !sum('revenue');
     const pick = f => useLive ? live[f] : sum(f);
 
     const earned = pick('revenue'), got = pick('collected');
@@ -6797,12 +6876,18 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
        rentals above. What remains is the case where the /daily listener
        itself failed, which only matters on the 'All' period since every
        bounded period no longer reads it. */
-    const moneyWarn = !this._dailyErr ? '' :
+    let moneyWarn = !this._dailyErr ? '' :
       '<div class="mn-ghost"><div class="mn-ghost-i">\u26A0\uFE0F</div>'
       + '<div class="grow"><b>Long-range totals could not be loaded</b>'
       + '<div class="s">The daily summary did not sync (' + esc(this._dailyErr)
       + '). Recent periods are unaffected \u2014 they are calculated from your '
       + 'rentals directly.</div></div></div>';
+    const rangeNote = (this._period === 'custom' && !coversRange)
+      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u2139\uFE0F</div>'
+        + '<div class="grow"><b>Older dates</b><div class="s">Totals are from your daily '
+        + 'summary and are complete. The bike-wise list below only includes your most '
+        + 'recent 400 rentals, so it may show less for this range.</div></div></div>' : '';
+    moneyWarn = moneyWarn + rangeNote;
 
     const peak = Math.max(earned, got, depIn, depOut, 1);
     const bar = (l,val,col) => `
@@ -6825,7 +6910,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
 
     document.getElementById('money-body').innerHTML = `
       <div class="mn-chips">${this.PERIODS.map(p=>`<button class="mn-chip ${this._period===p.k?'on':''}"
-        onclick="R.setPeriod('${p.k}')">${p.label}</button>`).join('')}</div>
+        onclick="R.setPeriod('${p.k}')">${esc(this._chipLabel(p))}</button>`).join('')}</div>
       ${moneyWarn}
 
       <div class="mn-hero">
@@ -6859,7 +6944,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
             <div class="pm-v">${money(netCash)}</div>
             <div class="pm-s">${money(cashIn)} in · ${money(cashOut)} out</div>
             ${netCash<0 ? `<div class="pm-note"><b>Nothing is missing.</b> Of the ${money(cashOut)}
-              that left the drawer ${esc(rng.label.toLowerCase())}, ${money(Math.min(cashOut,depOut))}
+              that left the drawer ${esc(rng.phrase)}, ${money(Math.min(cashOut,depOut))}
               was a deposit refund \u2014 giving back money a customer had already handed you on an
               earlier day. That money was counted as income back then, not now, so the drawer looks
               light on paper even though nothing is actually wrong. Keep enough change on hand to
@@ -6870,7 +6955,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
             <div class="pm-v">${money(netUpi)}</div>
             <div class="pm-s">${money(upiIn)} in · ${money(upiOut)} out</div>
             ${netUpi<0 ? `<div class="pm-note"><b>Nothing is missing.</b> Of the ${money(upiOut)}
-              sent out ${esc(rng.label.toLowerCase())}, ${money(Math.min(upiOut,depOut))} was a
+              sent out ${esc(rng.phrase)}, ${money(Math.min(upiOut,depOut))} was a
               deposit refund \u2014 sending back money a customer had already paid you on an
               earlier day. That money was counted as income back then, not now, so this figure
               looks light on paper even though nothing is actually wrong.</div>` : ''}
@@ -7002,7 +7087,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     document.getElementById('money-body').innerHTML = `
       <div class="dmn-hrow">
         <div class="mn-chips" style="margin:0">${this.PERIODS.map(p=>`<button class="mn-chip ${
-          this._period===p.k?'on':''}" onclick="R.setPeriod('${p.k}')">${p.label}</button>`).join('')}</div>
+          this._period===p.k?'on':''}" onclick="R.setPeriod('${p.k}')">${esc(this._chipLabel(p))}</button>`).join('')}</div>
         <span class="grow"></span>
         <button class="dfl-chip" onclick="R.history(true)">\u{1F4C4} Past rentals &amp; bills</button>
         ${this.isOwner()?`<button class="dfl-chip" onclick="R.repairMoney()">Fix past earnings</button>`:''}
