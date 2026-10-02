@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20260921_2311';
+    window.HISAABNOW_BUILD = 'v34_auto_20261002_1415';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -11916,10 +11916,38 @@ window.hnExpenseInPL = function(e){
    are compared raw, trimmed, case-folded, and short-circuit before any name
    search runs. */
 window.hnBarcodeNorm = function(c){ return String(c == null ? '' : c).trim().toUpperCase(); };
-window.hnFindByBarcode = function(code){
-  var c = window.hnBarcodeNorm(code);
-  if (c.length < 6) return null;              /* EAN/UPC are 8–13; 6 is a floor */
-  if (!/^[0-9A-Z\-]+$/.test(c)) return null;  /* a name, not a code */
+/* (v35 Phase 0) Barcode index. A supermarket catalogue of ~15,000 products
+   made every scan walk the whole list. The index is a map of normalised code
+   -> product plus a sorted code list for the prefix check, rebuilt only when
+   the products change (Store 'prods' events, list swapped or resized).
+   Every hit is re-checked against the product itself, and a miss falls back
+   to the old full scan, so a stale index can never return a wrong product or
+   hide one that exists. */
+window.__hnProdsVer = 0;
+window.__hnBcIndex = function(){
+  try {
+    if (!window.__hnBcSub && window.Store && typeof Store.on === 'function') {
+      Store.on('prods', function(){ window.__hnProdsVer++; });
+      window.__hnBcSub = true;
+    }
+    var raw = (window.S && Array.isArray(window.S.prods)) ? window.S.prods : [];
+    var ix = window.__hnBcIdx;
+    if (ix && ix.ref === raw && ix.len === raw.length && ix.ver === window.__hnProdsVer) return ix;
+    var map = Object.create(null), codes = [];
+    for (var i = 0; i < raw.length; i++){
+      var p = raw[i];
+      if (!p || p._deleted || p.deletedAt || p.active === false) continue;
+      var b = window.hnBarcodeNorm(p.barcode);
+      if (!b) continue;
+      if (!(b in map)) { map[b] = p; codes.push(b); }
+    }
+    codes.sort();
+    ix = { ref: raw, len: raw.length, ver: window.__hnProdsVer, map: map, codes: codes };
+    window.__hnBcIdx = ix;
+    return ix;
+  } catch(e){ return null; }
+};
+window.__hnBcScan = function(c){
   var list = [];
   try { list = (window.Store && Store.list) ? (Store.list('prods') || []) : []; } catch(e){ return null; }
   for (var i = 0; i < list.length; i++){
@@ -11929,11 +11957,30 @@ window.hnFindByBarcode = function(code){
   }
   return null;
 };
+window.hnFindByBarcode = function(code){
+  var c = window.hnBarcodeNorm(code);
+  if (c.length < 6) return null;              /* EAN/UPC are 8–13; 6 is a floor */
+  if (!/^[0-9A-Z\-]+$/.test(c)) return null;  /* a name, not a code */
+  var ix = window.__hnBcIndex();
+  if (ix) {
+    var hit = ix.map[c];
+    if (hit && !hit._deleted && !hit.deletedAt && hit.active !== false && window.hnBarcodeNorm(hit.barcode) === c) return hit;
+  }
+  var found = window.__hnBcScan(c);
+  if (found) window.__hnBcIdx = null;         /* index was stale: rebuild next time */
+  return found;
+};
 /* True when some OTHER code merely starts with this one — used to hold off the
    no-Enter safety net so a short code can't fire while a longer one is mid-scan. */
 window.hnBarcodeAmbiguous = function(code){
   var c = window.hnBarcodeNorm(code);
   if (c.length < 6) return true;
+  var ix = window.__hnBcIndex();
+  if (ix) {
+    var lo = 0, hi = ix.codes.length;
+    while (lo < hi) { var mid = (lo + hi) >> 1; if (ix.codes[mid] <= c) lo = mid + 1; else hi = mid; }
+    return lo < ix.codes.length && ix.codes[lo].indexOf(c) === 0;
+  }
   var list = [];
   try { list = (window.Store && Store.list) ? (Store.list('prods') || []) : []; } catch(e){ return true; }
   for (var i = 0; i < list.length; i++){
@@ -34610,6 +34657,10 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       'Device: ' + (typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 100) : '—'),
       'TWA: ' + (window.__hnIsTWA ? 'yes' : 'no'),
       'Storage: ' + (this._estimateStorage()),
+      'Saved data size: ' + (function(){ try { var ks = Object.keys(localStorage), tot = 0, a = ks.map(function(k){ var n = (localStorage.getItem(k) || '').length; tot += n + k.length; return [k, n]; }); a.sort(function(x, y){ return y[1] - x[1]; }); return Math.round(tot / 1024) + 'K chars total · largest: ' + a.slice(0, 8).map(function(p){ return p[0] + ' ' + Math.round(p[1] / 1024) + 'K'; }).join(', '); } catch(e){ return '—'; } })(),
+      'Duplicate copies removed at start-up: ' + (window.__hnDedupeFreed ? Math.round(window.__hnDedupeFreed / 1024) + 'K chars' : 'none'),
+      'Persistent storage: ' + (window.__hnPersist || 'unknown'),
+      'IndexedDB: ' + (window.HNDB && HNDB.available() ? 'available' : 'unavailable') + ' (Phase 1 store, not yet in use)',
       '',
       'localStorage scan (data keys):',
     ];
@@ -41815,6 +41866,45 @@ window.addEventListener('DOMContentLoaded', () => {
 
   var activeShopId = null;
   try { activeShopId = localStorage.getItem('mshop_active'); } catch(e){}
+  /* (v35 Phase 0) if the active-shop marker is missing, a legacy owner's shop
+     id is their uid; reading the scoped key avoids a blank boot. */
+  if (!activeShopId) { try { activeShopId = localStorage.getItem('hn_last_uid') || null; } catch(e){} }
+
+  /* (v35 Phase 0) Remove the duplicate unscoped copies (ks, kp, ...) that sat
+     beside the scoped ones (ks_<uid>). Whichever copy holds MORE records is
+     kept, under the scoped key; records are never removed, only tombstoned,
+     so the longer list is the newer one. Runs only while an unscoped key
+     exists, so after the first clean start it costs nothing. */
+  (function dedupeUnscopedCollections(){
+    try {
+      var uid = localStorage.getItem('hn_last_uid');
+      if (!uid) return;
+      var K = ['ks','kp','kc','ku','ke','kstaff','ksu','kappts','kcoup','kig','krec','kkhata','kkhataSet','kcashopen','kcashadj','kwait','kpurch','ksubsc','kpacks','kcamp','knotes','kwaste','kchallan','kgodown','kstockmv','kagent','kcomm'];
+      var freed = 0;
+      K.forEach(function(k){
+        try {
+          var u = localStorage.getItem(k);
+          if (u == null) return;
+          var uLen = -1;
+          try { var ua = JSON.parse(u); uLen = Array.isArray(ua) ? ua.length : -1; } catch(e){}
+          if (uLen < 0) return;
+          var sk = k + '_' + uid;
+          var sv = localStorage.getItem(sk);
+          var sLen = -1;
+          if (sv != null) { try { var sa = JSON.parse(sv); sLen = Array.isArray(sa) ? sa.length : -1; } catch(e){} }
+          if (sv != null && sLen >= uLen) { localStorage.removeItem(k); freed += u.length; return; }
+          if (sv == null && activeShopId !== uid) return;
+          localStorage.removeItem(k);
+          try { localStorage.setItem(sk, u); freed += (sv ? sv.length : 0); }
+          catch(e){ try { localStorage.setItem(k, u); } catch(e2){} }
+        } catch(e){}
+      });
+      if (freed) {
+        window.__hnDedupeFreed = freed;
+        try { console.log('[storage] duplicate copies removed, chars freed:', freed); } catch(e){}
+      }
+    } catch(e){}
+  })();
 
   function loadColl(unscopedKey, scopedPrefix){
     if (activeShopId) {
@@ -41934,6 +42024,303 @@ window.tdAt = function(dateOrMs){
   return y + '-' + m + '-' + day;
 };
 window.lg  = window.lg  || function(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } };
+/* (v35 Phase 0) Raw string write that keeps the "Storage full" flag in step.
+   Used for the scoped collection keys, which used to fail silently. */
+window.__hnLsSetRaw = window.__hnLsSetRaw || function(k, str){
+  try {
+    localStorage.setItem(k, str);
+    if (window.__hnStorageFull) {
+      window.__hnStorageFull = false;
+      try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e2){}
+    }
+    return true;
+  } catch(e){
+    window.__hnStorageFull = true;
+    try { console.error('[ls] localStorage write failed', k, e && e.message); } catch(e3){}
+    try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e2){}
+    return false;
+  }
+};
+/* ══════════════════════ HNDB — IndexedDB record store (Phase 1) ══════════════════════
+   v35. The durable home for shop data, replacing whole-collection JSON strings
+   in localStorage (≈5 MB per site). See "HisaabNow Offline Storage Architecture
+   — Supermarket Scale".
+
+   Shape: one database 'hisaabnow', object store 'records', one row per record,
+   keyed [shopId, collection, id] with index 'sc' = [shopId, collection]. A small
+   'meta' store holds per-shop flags (migration state, cursors later).
+
+   Writes are queued and coalesced: queuePut() remembers the LIVE record object
+   and the queue is flushed in one transaction ~DELAY ms later, so ten edits to
+   one bill cost one write and the stored copy is always the newest. flush()
+   returns a promise that resolves once everything queued so far is committed —
+   bill save awaits it before printing. Transactions run strictly one after
+   another, so a later write can never be overtaken by an earlier one.
+
+   A failed transaction puts its entries back in the queue (unless a newer
+   version was queued meanwhile) and retries with backoff; a quota failure also
+   raises the existing "Storage full" flag.
+
+   Inert on its own: nothing calls it until the Store adapter is switched over.
+   ═════════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if (window.HNDB) return;
+
+var DB_NAME = 'hisaabnow', DB_VER = 1, REC = 'records', META = 'meta';
+var DELAY = 200, MAX_BACKOFF = 30000;
+var SEP = '\u0001';
+
+var _dbp = null;
+var pending = new Map();
+var timer = null;
+var chain = Promise.resolve();
+var backoff = 0;
+var status = { lastError: null, lastFlushAt: 0, flushedTotal: 0, failures: 0 };
+
+function _idbFactory(){ try { return window.indexedDB || null; } catch(e){ return null; } }
+
+function available(){ return !!_idbFactory(); }
+
+function open(){
+  if (_dbp) return _dbp;
+  _dbp = new Promise(function(resolve, reject){
+    var f = _idbFactory();
+    if (!f) { reject(new Error('indexeddb-unavailable')); return; }
+    var rq;
+    try { rq = f.open(DB_NAME, DB_VER); } catch(e){ reject(e); return; }
+    rq.onupgradeneeded = function(){
+      var db = rq.result;
+      if (!db.objectStoreNames.contains(REC)) {
+        var os = db.createObjectStore(REC, { keyPath: ['s', 'c', 'id'] });
+        os.createIndex('sc', ['s', 'c'], { unique: false });
+      }
+      if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+    };
+    rq.onsuccess = function(){
+      var db = rq.result;
+      db.onversionchange = function(){ try { db.close(); } catch(e){} _dbp = null; };
+      db.onclose = function(){ _dbp = null; };
+      resolve(db);
+    };
+    rq.onerror = function(){ _dbp = null; reject(rq.error || new Error('idb-open-failed')); };
+    rq.onblocked = function(){ /* another tab holds an older version; open completes when it closes */ };
+  });
+  return _dbp;
+}
+
+function _isQuota(err){
+  var n = err && (err.name || '');
+  return n === 'QuotaExceededError' || /quota/i.test(String(err && err.message || ''));
+}
+
+function _key(s, c, id){ return s + SEP + c + SEP + id; }
+
+function _row(e){
+  /* The record goes in as a structured clone at flush time. Records are plain
+     JSON in practice; if one ever carries something unclonable, store a JSON
+     copy instead of failing the whole batch. */
+  return { s: e.s, c: e.c, id: e.id, r: e.r };
+}
+
+function _schedule(ms){
+  if (timer) return;
+  timer = setTimeout(function(){ timer = null; flush().catch(function(){}); }, ms == null ? DELAY : ms);
+}
+
+function queuePut(s, c, rec){
+  if (!s || !c || !rec || rec.id === undefined || rec.id === null) return false;
+  var id = String(rec.id);
+  pending.set(_key(s, c, id), { s: String(s), c: String(c), id: id, r: rec });
+  _schedule();
+  return true;
+}
+
+function queueDelete(s, c, id){
+  if (!s || !c || id === undefined || id === null) return false;
+  id = String(id);
+  pending.set(_key(s, c, id), { s: String(s), c: String(c), id: id, del: true });
+  _schedule();
+  return true;
+}
+
+/* Run fn(db) as the next link in the strictly ordered write chain. */
+function _enqueue(fn){
+  var p = chain.then(function(){ return open(); }).then(fn);
+  chain = p.catch(function(){});
+  return p;
+}
+
+function _commit(batch){
+  return _enqueue(function(db){
+    return new Promise(function(resolve, reject){
+      var tx;
+      try { tx = db.transaction(REC, 'readwrite'); } catch(e){ reject(e); return; }
+      var os = tx.objectStore(REC);
+      batch.forEach(function(e){
+        if (e.del) { os.delete([e.s, e.c, e.id]); return; }
+        try { os.put(_row(e)); }
+        catch(cloneErr){ os.put({ s: e.s, c: e.c, id: e.id, r: JSON.parse(JSON.stringify(e.r)) }); }
+      });
+      tx.oncomplete = function(){ resolve(batch.size); };
+      tx.onerror = function(){ reject(tx.error || new Error('idb-tx-error')); };
+      tx.onabort = function(){ reject(tx.error || new Error('idb-tx-abort')); };
+    });
+  });
+}
+
+function flush(){
+  if (timer) { clearTimeout(timer); timer = null; }
+  if (!pending.size) return chain.then(function(){ return 0; });
+  var batch = pending;
+  pending = new Map();
+  return _commit(batch).then(function(n){
+    backoff = 0;
+    status.lastError = null;
+    status.lastFlushAt = Date.now();
+    status.flushedTotal += n;
+    if (window.__hnIdbFull) {
+      window.__hnIdbFull = false;
+      window.__hnStorageFull = false;
+      try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e){}
+    }
+    return n;
+  }, function(err){
+    /* Put back whatever was not superseded by a newer queued version. */
+    batch.forEach(function(e, k){ if (!pending.has(k)) pending.set(k, e); });
+    status.lastError = (err && (err.name + ': ' + err.message)) || String(err);
+    status.failures++;
+    if (_isQuota(err)) {
+      window.__hnIdbFull = true;
+      window.__hnStorageFull = true;
+      try { if (typeof window.__hnRerenderSyncPill === 'function') window.__hnRerenderSyncPill(); } catch(e){}
+    }
+    try { console.error('[HNDB] write failed, will retry', status.lastError); } catch(e){}
+    backoff = Math.min(MAX_BACKOFF, backoff ? backoff * 2 : 1000);
+    _schedule(backoff);
+    throw err;
+  });
+}
+
+/* Write a whole collection directly (migration, first fill). Ordered after
+   anything already queued. Resolves on commit. */
+function putAll(s, c, records){
+  s = String(s); c = String(c);
+  var rows = [];
+  for (var i = 0; i < (records || []).length; i++){
+    var r = records[i];
+    if (!r || r.id === undefined || r.id === null) continue;
+    rows.push({ s: s, c: c, id: String(r.id), r: r });
+  }
+  return flush().catch(function(){}).then(function(){
+    var m = new Map();
+    rows.forEach(function(e){ m.set(_key(e.s, e.c, e.id), e); });
+    return _commit(m);
+  });
+}
+
+function _readTx(storeName, fn){
+  return open().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx;
+      try { tx = db.transaction(storeName, 'readonly'); } catch(e){ reject(e); return; }
+      var out;
+      fn(tx.objectStore(storeName), function(v){ out = v; });
+      tx.oncomplete = function(){ resolve(out); };
+      tx.onerror = function(){ reject(tx.error || new Error('idb-read-error')); };
+      tx.onabort = function(){ reject(tx.error || new Error('idb-read-abort')); };
+    });
+  });
+}
+
+/* All records of one collection for one shop, as plain objects. */
+function loadColl(s, c){
+  return _readTx(REC, function(os, set){
+    var rq = os.index('sc').getAll([String(s), String(c)]);
+    rq.onsuccess = function(){ set((rq.result || []).map(function(row){ return row.r; })); };
+  });
+}
+
+/* Several collections in one read transaction: { coll: [records] }. */
+function loadShop(s, colls){
+  return _readTx(REC, function(os, set){
+    var out = {}, left = colls.length;
+    if (!left) { set(out); return; }
+    colls.forEach(function(c){
+      var rq = os.index('sc').getAll([String(s), String(c)]);
+      rq.onsuccess = function(){
+        out[c] = (rq.result || []).map(function(row){ return row.r; });
+        if (--left === 0) set(out);
+      };
+    });
+  });
+}
+
+function count(s, c){
+  return _readTx(REC, function(os, set){
+    var rq = os.index('sc').count([String(s), String(c)]);
+    rq.onsuccess = function(){ set(rq.result || 0); };
+  });
+}
+
+function metaGet(key){
+  return _readTx(META, function(os, set){
+    var rq = os.get(String(key));
+    rq.onsuccess = function(){ set(rq.result); };
+  });
+}
+
+function metaSet(key, value){
+  return _enqueue(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(META, 'readwrite');
+      tx.objectStore(META).put(value, String(key));
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(){ reject(tx.error); };
+      tx.onabort = function(){ reject(tx.error || new Error('idb-meta-abort')); };
+    });
+  });
+}
+
+/* Flush when the app is hidden or closed, so a backgrounded app keeps its writes. */
+try {
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'hidden') flush().catch(function(){});
+  });
+  window.addEventListener('pagehide', function(){ flush().catch(function(){}); });
+} catch(e){}
+
+window.HNDB = {
+  available: available,
+  open: open,
+  queuePut: queuePut,
+  queueDelete: queueDelete,
+  flush: flush,
+  putAll: putAll,
+  loadColl: loadColl,
+  loadShop: loadShop,
+  count: count,
+  metaGet: metaGet,
+  metaSet: metaSet,
+  pendingCount: function(){ return pending.size; },
+  status: function(){ return Object.assign({ pending: pending.size, backoffMs: backoff }, status); },
+  _DB_NAME: DB_NAME
+};
+})();
+
+/* (v35 Phase 0) Ask the browser to keep this app's storage under pressure.
+   Matters most for IndexedDB (Phase 1); harmless where already granted. */
+window.__hnPersist = 'unknown';
+(function(){
+  try {
+    if (!(navigator.storage && navigator.storage.persisted)) { window.__hnPersist = 'unsupported'; return; }
+    navigator.storage.persisted().then(function(on){
+      if (on) { window.__hnPersist = 'granted'; return; }
+      if (!navigator.storage.persist) { window.__hnPersist = 'not granted'; return; }
+      return navigator.storage.persist().then(function(ok){ window.__hnPersist = ok ? 'granted' : 'not granted'; });
+    }).catch(function(){ window.__hnPersist = 'error'; });
+  } catch(e){ window.__hnPersist = 'error'; }
+})();
 window.ls  = window.ls  || function(k,v){
   try {
     localStorage.setItem(k,JSON.stringify(v));
@@ -48622,15 +49009,16 @@ function _emit(coll){
         var isLegacySingleShop = activeShopForPersist
           && (activeShopForPersist === window.currentUserId)
           && shopCountForPersist <= 1;
-        if (isLegacySingleShop) {
-
-          window.ls(lk, data);
-        }
+        /* (v35 Phase 0) The unscoped duplicate (ks, kp, ...) is no longer
+           written once a shop is active. Every reader prefers the scoped
+           key (ks_<shopId>), so the second copy only doubled storage use and
+           filled A1 Foods' device. Leftover copies are removed at start-up
+           by dedupeUnscopedCollections(). */
 
         if (activeShopForPersist) {
           try {
             var scopedKey = lk + '_' + activeShopForPersist;
-            localStorage.setItem(scopedKey, JSON.stringify(data));
+            window.__hnLsSetRaw(scopedKey, JSON.stringify(data));
 
             var s = window.S || {};
             if (s.store) {
@@ -48684,15 +49072,13 @@ window.sA = window.sA || function(){
 
     for (var k in keys) {
       if (s[k] !== undefined) {
-        if (isLegacySingleShopSA || !activeShopId) {
-
-          try { localStorage.setItem(keys[k], JSON.stringify(s[k])); }
-          catch (e) {  }
+        /* (v35 Phase 0) unscoped copy only before any shop is active */
+        if (!activeShopId) {
+          window.__hnLsSetRaw(keys[k], JSON.stringify(s[k]));
         }
 
         if (activeShopId) {
-          try { localStorage.setItem(keys[k] + '_' + activeShopId, JSON.stringify(s[k])); }
-          catch (e) {}
+          window.__hnLsSetRaw(keys[k] + '_' + activeShopId, JSON.stringify(s[k]));
         }
       }
     }
