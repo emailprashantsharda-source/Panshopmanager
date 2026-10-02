@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261002_1700';
+    window.HISAABNOW_BUILD = 'v34_auto_20261002_2000';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -34661,6 +34661,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       'Duplicate copies removed at start-up: ' + (window.__hnDedupeFreed ? Math.round(window.__hnDedupeFreed / 1024) + 'K chars' : 'none'),
       'Persistent storage: ' + (window.__hnPersist || 'unknown'),
       'IndexedDB: ' + (window.HNDB && HNDB.available() ? 'available' : 'unavailable'),
+      'Scale mode: ' + (function(){ try { var d = window.HNScale && HNScale.diag(); if (!d) return '—'; return (d.on ? 'ON' : (d.flag ? 'flag set but inactive' + (d.error ? ' (' + d.error + ')' : '') : 'off')) + (d.on ? ' · ledger sent ' + d.ledgerSent + ' · evicted ' + d.evicted + (d.evictDays ? ' (keeps ' + d.evictDays + ' days)' : ' (eviction off)') : ''); } catch(e){ return '—'; } })(),
       'Storage engine: ' + (function(){ try { var d = window.HNIdb && HNIdb.diag(); if (!d) return '—'; var st = d.db || {}; return (d.on ? 'IndexedDB' : 'localStorage') + (d.engine === 'idb' && !d.on ? ' (IndexedDB requested but off: ' + (d.error || 'unavailable') + ')' : '') + (d.on ? ' · loaded ' + (d.hydrated ? 'yes in ' + d.restoreMs + ' ms' : 'no') + ' · pending ' + (st.pending || 0) + ' · write errors ' + (st.failures || 0) + (st.lastError ? ' (last: ' + st.lastError + ')' : '') + (d.migrated && d.migrated.counts ? ' · migrated sales ' + (d.migrated.counts.sales || 0) + ', products ' + (d.migrated.counts.prods || 0) : '') : ''); } catch(e){ return '—'; } })(),
       '',
       'localStorage scan (data keys):',
@@ -42624,6 +42625,158 @@ window.HNIdb = {
 };
 })();
 
+/* ══════════════════════ HNScale — supermarket-scale mode (Phases 2–4) ══════════════════════
+   v35. Everything here is OFF unless this shop has scaleMode on AND this device
+   is running the IndexedDB engine. Off = the app behaves exactly as before.
+
+   When on:
+     • Sync bookkeeping (the per-record "what did I last upload" snapshots) lives
+       in IndexedDB instead of localStorage, so 100k bills don't fill 5 MB.
+     • Records missing from this device are NEVER turned into cloud deletes.
+       Deletes happen only when the user deletes (Store.remove writes a
+       tombstone). That makes it safe to keep only recent bills on the phone.
+     • Stock changes travel as small ledger entries (+/- quantity) instead of
+       overwriting the product's whole stock number, so two tills selling the
+       same item cannot erase each other's sales. A Cloud Function applies them.
+     • Old, fully-synced, settled bills can be dropped from the phone (opt-in
+       via the shop's scaleEvictDays). The cloud keeps them.
+   The flag is read from the shop document (scaleMode) and cached on the device;
+   it takes effect on the next app load. ?scale=1 / ?scale=0 forces it on one
+   device for testing.
+   ═════════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if (window.HNScale) return;
+var shop = null, flag = false, evictDays = 0, loaded = false;
+var snaps = {}, dirty = {}, timer = null;
+var diag = { flag: false, loaded: false, error: null, seeded: 0, ledgerSent: 0, evicted: 0, lastEvict: 0 };
+
+function _lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function _lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+function _flagKey(s){ return 'hn_scale_' + s; }
+function _daysKey(s){ return 'hn_scale_evict_' + s; }
+
+function _readFlag(s){
+  try {
+    var q = (location.search || '').match(/[?&]scale=([01])(?:&|$)/);
+    if (q) _lsSet('hn_scale_force', q[1]);
+  } catch(e){}
+  var force = _lsGet('hn_scale_force');
+  if (force === '1') return true;
+  if (force === '0') return false;
+  return _lsGet(_flagKey(s)) === '1';
+}
+
+function on(){
+  return !!(shop && loaded && flag && window.HNIdb && HNIdb.isOn() && HNIdb.isHydrated());
+}
+
+function _snapKey(c){ return 'snap:' + shop + ':' + c; }
+
+/* Called by MShop after HNIdb.restore(). Loads snapshots into memory. */
+function load(shopId){
+  shop = shopId; loaded = false; snaps = {}; dirty = {};
+  flag = _readFlag(shopId);
+  evictDays = parseInt(_lsGet(_daysKey(shopId)) || '0', 10) || 0;
+  diag.flag = flag; diag.loaded = false; diag.error = null;
+  if (!flag || !(window.HNIdb && HNIdb.isOn() && HNIdb.isHydrated())) return Promise.resolve(false);
+  var colls = (window.HisaabSync && HisaabSync.collections) ? HisaabSync.collections() : [];
+  return Promise.all(colls.map(function(c){
+    return HNDB.metaGet(_snapKey(c)).then(function(v){
+      if (v && typeof v === 'object') { snaps[c] = v; return; }
+      /* first time: carry over the old localStorage snapshot, then it can go */
+      var old = null;
+      try { old = JSON.parse(_lsGet('hisaab_' + shopId + '_snap_' + c) || 'null'); } catch(e){}
+      snaps[c] = (old && typeof old === 'object') ? old : {};
+      if (old) { diag.seeded += Object.keys(old).length; dirty[c] = true; }
+    });
+  })).then(function(){
+    loaded = true; diag.loaded = true;
+    _flushSnaps();
+    return true;
+  }).catch(function(e){
+    diag.error = (e && e.message) || String(e);
+    loaded = false; snaps = {};
+    try { console.error('[HNScale] load failed — scale mode off this session:', diag.error); } catch(e2){}
+    return false;
+  });
+}
+
+function snapGet(c){ return snaps[c] || (snaps[c] = {}); }
+function snapSet(c, v){
+  snaps[c] = v; dirty[c] = true;
+  if (!timer) timer = setTimeout(_flushSnaps, 8000);
+}
+function _flushSnaps(){
+  if (timer) { clearTimeout(timer); timer = null; }
+  if (!shop || !loaded) return Promise.resolve();
+  var cs = Object.keys(dirty); dirty = {};
+  return Promise.all(cs.map(function(c){
+    return HNDB.metaSet(_snapKey(c), snaps[c]).then(function(){
+      /* once safely in IndexedDB the localStorage copy is dead weight */
+      try { localStorage.removeItem('hisaab_' + shop + '_snap_' + c); } catch(e){}
+    }).catch(function(e){ dirty[c] = true; diag.error = 'snap write: ' + (e && e.message); });
+  }));
+}
+try {
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') _flushSnaps(); });
+  window.addEventListener('pagehide', function(){ _flushSnaps(); });
+} catch(e){}
+
+/* Shop-level switches live on shops/{id}. Read at most every 6 hours. */
+function refreshFlag(sdkDeps, shopId){
+  try {
+    var last = parseInt(_lsGet('hn_scale_chk_' + shopId) || '0', 10);
+    if (Date.now() - last < 6 * 3600 * 1000) return Promise.resolve();
+    var d = sdkDeps;
+    return d.sdk.getDoc(d.sdk.doc(d.db, 'shops', shopId)).then(function(s){
+      var v = s && s.exists() ? s.data() : {};
+      _lsSet(_flagKey(shopId), v.scaleMode === true ? '1' : '0');
+      _lsSet(_daysKey(shopId), String(parseInt(v.scaleEvictDays, 10) || 0));
+      _lsSet('hn_scale_chk_' + shopId, String(Date.now()));
+    }).catch(function(){});
+  } catch(e){ return Promise.resolve(); }
+}
+
+/* Stock ledger: one entry per checkpoint, id = device + running number. */
+function _dev(){
+  var d = _lsGet('hn_sync_dev');
+  if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); _lsSet('hn_sync_dev', d); }
+  return d;
+}
+function ledgerEntry(lines){
+  var seq = (parseInt(_lsGet('hn_ledger_seq_' + shop) || '0', 10) || 0) + 1;
+  _lsSet('hn_ledger_seq_' + shop, String(seq));
+  var dev = _dev(), t = Date.now();
+  diag.ledgerSent++;
+  return { id: dev + '_' + seq, dev: dev, seq: seq, lines: lines, at: t, createdAt: t, updatedAt: t };
+}
+
+/* Rollups written by the Cloud Function (shops/{id}/daily, customerStats). */
+function fetchDaily(fromDate, toDate){
+  var d = window.HisaabSyncDeps;
+  if (!d || !shop) return Promise.resolve([]);
+  var q = d.sdk.query(d.sdk.collection(d.db, 'shops', shop, 'daily'),
+    d.sdk.where('date', '>=', fromDate), d.sdk.where('date', '<=', toDate), d.sdk.orderBy('date', 'asc'));
+  return d.sdk.getDocs(q).then(function(s){ var out = []; s.forEach(function(x){ out.push(x.data()); }); return out; });
+}
+function fetchCustomerStats(cid){
+  var d = window.HisaabSyncDeps;
+  if (!d || !shop || !cid) return Promise.resolve(null);
+  return d.sdk.getDoc(d.sdk.doc(d.db, 'shops', shop, 'customerStats', String(cid)))
+    .then(function(s){ return s.exists() ? s.data() : null; });
+}
+
+window.HNScale = {
+  on: on, load: load, snapGet: snapGet, snapSet: snapSet, flush: _flushSnaps,
+  refreshFlag: refreshFlag, ledgerEntry: ledgerEntry,
+  evictDays: function(){ return evictDays; },
+  fetchDaily: fetchDaily, fetchCustomerStats: fetchCustomerStats,
+  noteEvicted: function(n){ diag.evicted += n; diag.lastEvict = Date.now(); },
+  diag: function(){ return Object.assign({}, diag, { on: on(), shop: shop, evictDays: evictDays }); }
+};
+})();
+
 /* (v35 Phase 0) Ask the browser to keep this app's storage under pressure.
    Matters most for IndexedDB (Phase 1); harmless where already granted. */
 window.__hnPersist = 'unknown';
@@ -45567,7 +45720,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
      owner/manager-only. A cashier device must NEVER push those or they fail
      permission-denied, clog the outbox, flip the "Network blocked" pill, and
      block the sales behind them. */
-  const CASHIER_WRITABLE = { sales:1, customers:1, custs:1, udh:1, udhar:1, khata:1, khataSettle:1, appts:1, subscriptions:1, notes:1 };
+  const CASHIER_WRITABLE = { stockLedger:1, sales:1, customers:1, custs:1, udh:1, udhar:1, khata:1, khataSettle:1, appts:1, subscriptions:1, notes:1 };
   /* (v33_309) HARD GUARDRAIL: a bill/sale record must NEVER be dropped from the
      outbox or quarantine, no matter what — even if the whitelist above is ever
      wrong. Anything sales-like is always kept and always allowed to sync. */
@@ -46002,9 +46155,10 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     return null;
   }
 
+  function _scaleOn(){ try { return !!(window.HNScale && window.HNScale.on()); } catch(e){ return false; } }
   const Snapshot = {
-    get(coll) { return safeGet(KEYS.SNAPSHOT(coll), {}); },
-    set(coll, snap) { safeSet(KEYS.SNAPSHOT(coll), snap); },
+    get(coll) { if (_scaleOn()) return window.HNScale.snapGet(coll); return safeGet(KEYS.SNAPSHOT(coll), {}); },
+    set(coll, snap) { if (_scaleOn()) { window.HNScale.snapSet(coll, snap); return; } safeSet(KEYS.SNAPSHOT(coll), snap); },
   };
 
   const Meta = {
@@ -46281,6 +46435,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       let changes = 0;
 
       const _suppressPush = NO_PUSH_COLLECTIONS[coll] === true;
+      const _scale = _scaleOn();
+      const _ledgerLines = [];
 
       for (const rec of arr) {
         if (!rec || rec.id === undefined || rec.id === null) continue;
@@ -46293,12 +46449,30 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
 
           rec.updatedAt = now();
           if (rec.deletedAt === undefined) rec.deletedAt = null;
+          let _out = deepClone(rec);
+          let _stk;
+          if (_scale && coll === 'products') {
+            /* (scale) Stock travels as +/- ledger entries so two devices can't
+               overwrite each other's number. Existing products push everything
+               EXCEPT stock; the Cloud Function applies the ledger. */
+            _stk = Number(rec.stock) || 0;
+            if (prev && typeof prev.s === 'number') {
+              const dlt = Math.round((_stk - prev.s) * 1000) / 1000;
+              if (dlt !== 0) _ledgerLines.push({ pid: id, d: dlt });
+              delete _out.stock; delete _out.status; delete _out.value;
+            }
+          }
           if (!_suppressPush) {
-            Outbox.enqueue({ collection: coll, record: deepClone(rec) });
+            Outbox.enqueue({ collection: coll, record: _out });
           }
           snap[id] = { h: hashRecord(rec), t: rec.updatedAt };
+          if (_stk !== undefined) snap[id].s = _stk;
           changes++;
         }
+      }
+      if (_ledgerLines.length) {
+        try { Outbox.enqueue({ collection: 'stockLedger', record: window.HNScale.ledgerEntry(_ledgerLines) }); }
+        catch (e) { err('ledger enqueue failed', e); }
       }
 
       /* ────────────────────────────────────────────────────────────────
@@ -46311,7 +46485,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
          next checkpoint runs, the state will match cloud and tombstones
          will only fire for actual user deletions.
       ──────────────────────────────────────────────────────────────── */
-      if (_initialPullDone) {
+      if (_scale) {
+        /* (scale) Explicit deletes only. A record missing from this device was
+           evicted or never loaded, NOT deleted — user deletes already arrive as
+           tombstones via Store.remove(). Just forget it in the snapshot. */
+        for (const id in snap) { if (!seenIds.has(id)) { delete snap[id]; changes++; } }
+      } else if (_initialPullDone) {
         /* Collect would-be tombstones first */
         const _missing = [];
         for (const id in snap) { if (!seenIds.has(id)) _missing.push(id); }
@@ -46869,7 +47048,18 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         if (r.docs.length) {
           changed += mergeIntoState(r.coll, r.docs);
           const snap = Snapshot.get(r.coll);
-          for (const d of r.docs) snap[String(d.id)] = { h: hashRecord(d), t: d.updatedAt };
+          let _liveById = null;
+          if (r.coll === 'products' && _scaleOn()) { _liveById = new Map(); for (const x of (getStateArray('products') || [])) if (x && x.id != null) _liveById.set(String(x.id), x); }
+          for (const d of r.docs) {
+            snap[String(d.id)] = { h: hashRecord(d), t: d.updatedAt };
+            if (_liveById) {
+              /* (scale) remember the stock this device actually holds now (it may have kept
+                 its own newer value), so only genuinely new local changes become ledger deltas */
+              const lv = _liveById.get(String(d.id));
+              const st = lv ? Number(lv.stock) : Number(d.stock);
+              if (Number.isFinite(st)) snap[String(d.id)].s = st;
+            }
+          }
           Snapshot.set(r.coll, snap);
           Meta.setCursor(r.coll, r.newCursor);
           pulled += r.docs.length;
@@ -46924,6 +47114,9 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     /* (v33_29y) Pass through force so a manual retry / forceSync bypasses
        any active upload backoff. */
     await drainOutbox(opts && opts.force ? { force: true } : undefined);
+    /* (scale) Drop old, fully-synced, settled bills from this device. Off unless
+       the shop sets scaleEvictDays. Runs after the outbox is empty. */
+    try { if (_scaleOn() && Outbox.size() === 0) _evictOld(window.HNScale.evictDays()); } catch(e){ err('evict', e); }
   }
 
   function runInitialMigration() {
@@ -46998,7 +47191,35 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     _watchdogTimer = setInterval(_watchdogTick, WATCHDOG_INTERVAL_MS);
   }
 
+  function _evictOld(days) {
+    if (!_scaleOn() || !days || days < 7) return 0;
+    const arr = getStateArray('sales');
+    if (!arr || !_initialPullDone || Outbox.size() > 0) return 0;
+    const cutoff = now() - days * 86400000;
+    const snap = Snapshot.get('sales');
+    const held = new Set();
+    try { Quarantine._load().forEach(e => { if (e.collection === 'sales') held.add(String(e.record.id)); }); } catch(e){}
+    const keep = []; let n = 0;
+    for (const rec of arr) {
+      const id = rec && rec.id != null ? String(rec.id) : null;
+      const t = rec ? (Number(rec.t) || Number(rec.createdAt) || 0) : 0;
+      const owes = rec && ((Number(rec.due) > 0) || (Number(rec.pending) > 0) || /credit|udhar|udhaar|khata/i.test(String(rec.mode || rec.paymentMode || '')));
+      if (id && t && t < cutoff && !owes && !held.has(id) && snap[id] && snap[id].h === hashRecord(rec) && !rec.hold && !rec.parked) {
+        n++; delete snap[id];
+      } else keep.push(rec);
+    }
+    if (n) {
+      arr.splice(0, arr.length, ...keep);
+      Snapshot.set('sales', snap);
+      try { window.HNScale.noteEvicted(n); } catch(e){}
+      try { if (window.HNIdb) window.HNIdb.persistColl('sales'); } catch(e){}
+      try { if (typeof window.sA === 'function') window.sA(); } catch(e){}
+    }
+    return n;
+  }
   const HisaabSync = {
+    collections() { return CFG.collections.slice(); },
+    evictOld(days) { return _evictOld(days); },
     VERSION,
 
     async init(opts) {
@@ -47025,6 +47246,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       try { _wipeLegacyKeys(); } catch(e){}
 
       try { deps(); } catch (e) { err(e.message); throw e; }
+      try { if (window.HNScale) window.HNScale.refreshFlag(deps(), CFG.shopId); } catch(e){}
 
       status.pending = Outbox.size();
       status.online = detectOnline();
@@ -48037,6 +48259,7 @@ async function bootstrap(user, options){
     _restoreShopData(state.activeShopId);
     /* (v35 Phase 1) IndexedDB engine: load (first time: migrate) before sync starts. */
     if (window.HNIdb) { try { await window.HNIdb.restore(state.activeShopId); } catch(e){ console.error('[MShop] HNIdb.restore failed:', e); } }
+    if (window.HNScale) { try { await window.HNScale.load(state.activeShopId); } catch(e){ console.error('[MShop] HNScale.load failed:', e); } }
 
     /* (audit fix Jun 2026) Resolve role NOW, from the shop metadata already
        loaded above (_isStaffShop / _staffRole), BEFORE the awaited
@@ -48340,6 +48563,7 @@ async function switchShop(newShopId){
     _clearMemoryState();
     _restoreShopData(newShopId);
     if (window.HNIdb) { try { await window.HNIdb.restore(newShopId); } catch(e){ console.error('[MShop] HNIdb.restore (switch) failed:', e); } }
+    if (window.HNScale) { try { await window.HNScale.load(newShopId); } catch(e){ console.error('[MShop] HNScale.load (switch) failed:', e); } }
 
     if (window.HisaabSync && typeof window.HisaabSync.init === 'function') {
       try { await window.HisaabSync.init({ shopId: newShopId, debug: false }); }
