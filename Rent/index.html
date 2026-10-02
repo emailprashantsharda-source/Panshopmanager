@@ -1283,7 +1283,21 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_26_0_phase3';
+const BUILD = 'rn_v3_41_0_autorenew';
+
+/* ── auto-renew: off until PayU says the mandate works ────────────────
+   PayU enables Standing Instruction per merchant account, and it is not on
+   by default. Until it is, a shop tapping "turn on auto-renew" would be sent
+   to a checkout PayU refuses — so the shop fails to renew at the exact
+   moment it was trying to pay, which is worse than having no auto-renew at
+   all.
+
+   So the consent screen stays hidden and monthly checkout behaves exactly as
+   it does today. Flip this to true only after a mandate has been registered
+   and debited end to end. Shops already enrolled still see their status and
+   can still cancel while this is false: turning the offer off must never
+   trap anyone inside it. */
+const AUTOPAY_ON = false;
 
 /* ── storage ──────────────────────────────────────────────────────── */
 const DB = {
@@ -2228,6 +2242,24 @@ const R = {
           have already paid for are not lost. Tap any plan and we will set it up.</div>
       </div>` : ''}
 
+      ${(() => {
+        /* Shown wherever the plan is shown, not buried in a settings page.
+           An auto-renew the shop cannot find is one they discover on a bank
+           statement, and that is how trust in a small product ends. */
+        const ap = (window.Cloud && Cloud.ready) ? Cloud.autopay() : null;
+        if (!ap) return '';
+        return `<div class="card">
+          <div class="row"><div class="grow">
+            <b style="font-size:13.5px">Auto-renew is on</b>
+            <div class="muted" style="margin-top:3px">${money(ap.amount)} will be taken${
+              ap.nextAt ? ' on ' + fmtDay(ap.nextAt) : ' on your renewal date'
+            }. Your bank notifies you before it happens.</div>
+          </div></div>
+          <button class="btn ghost sm" style="margin-top:10px"
+            onclick="R.autopayOff()">Switch off auto-renew</button>
+        </div>`;
+      })()}
+
       ${t && !t.paid ? `<div class="card" style="background:${t.active?'var(--y-tint)':'var(--danger-tint)'};
         border-color:${t.active?'var(--y-bd)':'var(--danger)'}">
         <b style="font-size:13.5px">${t.active
@@ -2367,11 +2399,48 @@ const R = {
     const promo = (this._promo && this._promo.prices &&
                    typeof this._promo.prices[p.id] === 'number') ? this._promo.code : null;
     const shown = promo ? this._promo.prices[p.id] : (yearly ? p.y : p.m);
+    /* Monthly gets the choice; yearly does not. A mandate that fires once a
+       year is a charge nobody remembers agreeing to, and the chasing this
+       exists to stop is a monthly problem. AUTOPAY_ON gates the offer until
+       PayU has enabled standing instructions — see the note by it. */
+    if (!yearly && AUTOPAY_ON) return this.autopayAsk(p.id, promo, shown);
+    return this.goCheckout(p.id, yearly ? 'annual' : 'monthly', promo, shown, false);
+  },
+
+  /* The consent step. A standing instruction on someone's bank account is
+     not something to slip into a "continue" button, so it is its own screen
+     with the amount, the date and the way out stated before anything is
+     signed — and paying once stays a first-class choice, not the greyed
+     alternative. */
+  autopayAsk(id, promo, shown){
+    const p = this.PLANS.find(x=>x.id===id) || {};
+    openSheet(`<div class="sheet-hd"><h2>How would you like to pay?</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card" style="background:var(--p-50);border-color:#D9E2EA">
+        <div class="line"><span>${esc(p.name||'Plan')}</span><b>${money(shown)}/month</b></div>
+      </div>
+      <button class="btn" onclick="R.goCheckout('${esc(id)}','monthly',${
+        promo?"'"+esc(promo)+"'":'null'},${Number(shown)||0},true)">
+        Pay ${money(shown)} and turn on auto-renew</button>
+      <div class="muted" style="margin:7px 2px 14px;font-size:12.5px">
+        We take ${money(shown)} today, then the same amount each month on your
+        renewal date. Your bank asks you to approve this once, and warns you
+        before each payment. You can switch it off any time on this Plans
+        screen \u2014 the days you have already paid for stay yours.</div>
+      <button class="btn ghost" onclick="R.goCheckout('${esc(id)}','monthly',${
+        promo?"'"+esc(promo)+"'":'null'},${Number(shown)||0},false)">
+        Pay ${money(shown)} just for this month</button>`);
+  },
+
+  async goCheckout(id, cycle, promo, shown, autopay){
+    const p = this.PLANS.find(x=>x.id===id) || {};
+    const yearly = cycle === 'annual';
+    Haptic.primary();
     openSheet(`<div class="sheet-hd"><h2>Opening payment\u2026</h2></div>
       <div class="empty"><div class="e">\u{1F4B3}</div><b>Taking you to PayU</b>
-      <span>${esc(p.name)} \u00b7 ${money(shown)} ${yearly?'per year':'per month'}${
-        promo?' \u00b7 '+esc(promo):''}</span></div>`);
-    const res = await Cloud.startCheckout(p.id, yearly ? 'annual' : 'monthly', promo);
+      <span>${esc(p.name||'')} \u00b7 ${money(shown)} ${yearly?'per year':'per month'}${
+        promo?' \u00b7 '+esc(promo):''}${autopay?' \u00b7 auto-renew':''}</span></div>`);
+    const res = await Cloud.startCheckout(id, cycle, promo, !!autopay);
     if (!res.ok){
       Haptic.error();
       openSheet(`<div class="sheet-hd"><h2>Could not start payment</h2>
@@ -2382,6 +2451,31 @@ const R = {
         </div>
         <button class="btn" onclick="R.payHelp('${esc(id)}')">Pay on WhatsApp instead</button>`);
     }
+  },
+
+  /* Switching it off. Confirmed once, because an accidental tap here costs
+     the shop the thing it signed up for; and stated plainly that the days
+     already paid for are not touched, because that is the first thing anyone
+     cancelling a subscription is afraid of. */
+  autopayOff(){
+    const ap = (window.Cloud && Cloud.ready) ? Cloud.autopay() : null;
+    if (!ap) return;
+    openSheet(`<div class="sheet-hd"><h2>Switch off auto-renew?</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card">
+        <div class="muted">Your plan stays active for every day you have already
+          paid for. After that we will stop taking ${money(ap.amount)} automatically,
+          and you renew by hand like before.</div>
+      </div>
+      <button class="btn d" onclick="R.autopayOffGo()">Yes, switch it off</button>
+      <button class="btn ghost" style="margin-top:9px" onclick="R.plans()">Keep it on</button>`);
+  },
+  async autopayOffGo(){
+    const res = await Cloud.cancelAutopay();
+    if (!res.ok){ Haptic.error(); return toast(res.msg || 'Could not switch it off'); }
+    Haptic.success();
+    toast('Auto-renew is off' + (res.paidUntil ? ' \u00b7 paid until ' + fmtDay(res.paidUntil) : ''));
+    this.plans();
   },
 
   /* ── promo codes, on the plans list ──────────────────────────────────
@@ -2788,7 +2882,15 @@ const R = {
   },
 
   welcome(){
-    const who = (Cloud.shopName||'').trim().split(/\s+/)[0] || 'there';
+    /* window.Cloud, not a bare Cloud. This is reached from the very first
+       render, which R.boot() fires from this script — and this script runs
+       BEFORE the module below assigns window.Cloud. A bare identifier is a
+       ReferenceError at that moment, not undefined, so it threw straight out
+       of render() and killed the first paint: the screen a shop sees on
+       opening the app. The next render recovered, which is why it looked
+       like a one-off console message rather than a bug. The line below
+       already had the guard. */
+    const who = ((window.Cloud && Cloud.shopName)||'').trim().split(/\s+/)[0] || 'there';
     const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
     const step = (n, title, sub, state) => `
       <div class="sr ${state}"><span class="n">${state==='done'?'\u2713':n}</span>
@@ -3515,22 +3617,7 @@ const R = {
        screen is correct without it. It exists only to pick up edits made on
        another device, which can wait a minute. A first load (no cache at
        all) still fetches immediately. */
-    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
-        && window.Cloud && Cloud.ready && !this._closedBusy){
-      this._closedBusy = true;
-      if (!this._closed) this._closed = [];
-      Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
-        /* Merge, never replace. A locally-settled rental that the server
-           query has not caught up with yet must not be thrown away by its
-           own refresh — and if the query fails and returns [], the rentals
-           already on screen must survive it. */
-        const by = new Map();
-        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
-        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
-        this.render();
-      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
-    }
+    this._loadClosed();
 
     const live = DB.d.vehicles.filter(v => !v.deletedAt);
     const openOf = v => DB.d.rentals.find(x=>x.vehicleId===v.id && x.status==='open');
@@ -3724,22 +3811,7 @@ const R = {
        screen is correct without it. It exists only to pick up edits made on
        another device, which can wait a minute. A first load (no cache at
        all) still fetches immediately. */
-    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
-        && window.Cloud && Cloud.ready && !this._closedBusy){
-      this._closedBusy = true;
-      if (!this._closed) this._closed = [];
-      Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
-        /* Merge, never replace. A locally-settled rental that the server
-           query has not caught up with yet must not be thrown away by its
-           own refresh — and if the query fails and returns [], the rentals
-           already on screen must survive it. */
-        const by = new Map();
-        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
-        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
-        this.render();
-      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
-    }
+    this._loadClosed();
 
     /* Identical bucketing to the phone list, so the two screens never
        disagree about what "blocked" means: expired papers, no rate set, or
@@ -4882,22 +4954,7 @@ const R = {
        screen is correct without it. It exists only to pick up edits made on
        another device, which can wait a minute. A first load (no cache at
        all) still fetches immediately. */
-    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
-        && window.Cloud && Cloud.ready && !this._closedBusy){
-      this._closedBusy = true;
-      if (!this._closed) this._closed = [];
-      Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
-        /* Merge, never replace. A locally-settled rental that the server
-           query has not caught up with yet must not be thrown away by its
-           own refresh — and if the query fails and returns [], the rentals
-           already on screen must survive it. */
-        const by = new Map();
-        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
-        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
-        this.render();
-      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
-    }
+    this._loadClosed();
     const since = Date.now() - 30*24*HOUR;
     const earnedOf = rc => {
       const ids = new Set((DB.d.vehicles||[]).filter(v=>v.rateId===rc.id).map(v=>v.id));
@@ -6510,7 +6567,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       { revenue: rev, collected: newColl, refund: ref });
 
     Object.assign(r, { charges: ch, revenue: rev, balanceCollected: coll, depositRefunded: ref });
-    this._closed = null;
+    this._closed = null; this._winKey = null;   /* a fetched older window lived in _closed too — forget it with the rest, or the range would claim to be loaded while its rentals were gone */
     Haptic.success(); closeSheet(); this.render(); toast('Bill corrected');
   },
 
@@ -6563,7 +6620,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       });
       Cloud.bumpVehicleStat(r.vehicleId, { earned: -(Number(r.revenue)||0), closedTrips: -1 });
       Cloud.audit('bill.void', id, { revenue:r.revenue }, null);
-      this._closed = null;
+      this._closed = null; this._winKey = null;   /* a fetched older window lived in _closed too — forget it with the rest, or the range would claim to be loaded while its rentals were gone */
       Haptic.success(); closeSheet(); this.render(); toast('Bill voided');
     })();
   },
@@ -6687,9 +6744,68 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     closeSheet(); Haptic.tap(); this.render();
   },
 
-  /* Bounded periods are computed from the recent-closed cache (most recent
-     ~400 settlements). A custom range can reach back past that, where the
-     cache would silently undercount — so check whether it covers the start. */
+  /* ── the closed-rental cache ────────────────────────────────────────
+     One loader, called from four screens. It used to be the same twenty
+     lines copied into each of them, which is how the two halves of Money
+     drifted apart in the first place. */
+  _loadClosed(){
+    if (!(window.Cloud && Cloud.ready) || this._closedBusy) return;
+    const fresh = this._closed && !(this._closedStale
+      && Date.now() - (this._closedAt||0) > 60000);
+    if (fresh) return;
+    this._closedBusy = true;
+    if (!this._closed) this._closed = [];
+    Cloud.recentClosed(400).then(rows => {
+      this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
+      this._absorbClosed(rows || []);
+      this.render();
+    }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
+  },
+
+  /* Merge, never replace. A locally-settled rental the server query has not
+     caught up with must not be thrown away by its own refresh — and if a
+     query fails and returns [], the rentals already on screen must survive
+     it. Older window fetches land here too, so once August has been pulled
+     its bills stay openable while the shop moves around the app. */
+  _absorbClosed(rows){
+    const by = new Map();
+    (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
+    const all = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
+    /* Bounded so a session spent paging through two years of history does
+       not grow without limit. Dropping the oldest is safe: the window fetch
+       pulls any of them back the moment they are asked for. */
+    this._closed = all.length > 10000 ? all.slice(0, 10000) : all;
+  },
+
+  /* Pull exactly the rentals a selected range needs, when the rolling cache
+     cannot reach back that far.
+
+     This is what was missing. The cache holds the last 400 settlements —
+     about seven weeks at 250 rentals a month — so a range in August had
+     correct totals from /daily above an empty bike-wise list and no bills.
+     The banner said so honestly and left the shop with nothing to do about
+     it. Now the range itself is fetched. Keyed on the range, so switching
+     chips back and forth does not refetch. */
+  _loadWindow(rng, covers){
+    const key = rng.start + '|' + rng.end;
+    if (this._period === 'all' || covers) return { need:false, have:true, busy:false };
+    if (this._winKey === key) return { need:true, have:true, busy:false, trunc:this._winTrunc };
+    if (this._winBusy === key) return { need:true, have:false, busy:true };
+    this._winBusy = key;
+    Cloud.closedInWindow(rng.start, rng.end).then(res => {
+      this._winBusy = null; this._winKey = key; this._winTrunc = !!res.truncated;
+      this._winErr = null;
+      this._absorbClosed(res.rows);
+      this.render();
+    }).catch(e => {
+      this._winBusy = null; this._winErr = (e && e.code) || 'failed';
+      console.error('closedInWindow', e); this.render();
+    });
+    return { need:true, have:false, busy:true };
+  },
+
+  /* Does the rolling cache reach back to `start`? A short page means it is
+     the shop's entire settled history, so nothing is missing at any depth. */
   _closedCovers(start){
     const c = this._closed || [];
     if (c.length < 400) return true;                 /* cache is whole history */
@@ -6781,11 +6897,31 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
     /* 'All' can reach further back than the 400-settlement cache, so the
        rollups stay authoritative there — unless they are empty, in which
        case the cache is still better than showing nothing. */
-    /* Custom ranges older than the cache fall back to the rollups, exactly
-       like 'All' — the rollups follow the same day rules, so the totals
-       agree; only the per-bike list below is limited to recent rentals. */
-    const coversRange = this._period !== 'custom' || this._closedCovers(rng.start);
-    const useLive = (this._period !== 'all' && coversRange) || !sum('revenue');
+    /* Which source wins.
+
+       Coverage is now checked for EVERY bounded period, not only custom. A
+       shop doing 250 rentals a month runs out of the 400-settlement cache
+       inside two months, so 'Month' can miss its own start just as a custom
+       range can; the old check let that through silently.
+
+       When the cache cannot reach, the rollups carry the totals and the
+       window fetch goes after the rentals. The two agree — the rollups are
+       built from these same rentals under these same day rules — so the
+       handover does not move a rupee.
+
+       The last guard matters most to a shop: never show a confident zero
+       over a period the rollups say earned money. A settled rental written
+       without a settledAt is invisible to a query ordered by that field yet
+       counted in /daily; whatever the cause, an empty live total beside a
+       non-empty rollup means the rentals are the incomplete source. It can
+       only ever replace a zero, so it cannot damage a figure already right. */
+    const coversRange = this._period === 'all' || this._closedCovers(rng.start);
+    const win = this._loadWindow(rng, coversRange);
+    const liveBlank = !live.revenue && !live.collected && !live.depositsIn;
+    const rollupHas = !!(sum('revenue') || sum('collected') || sum('depositsIn'));
+    const useLive = this._period === 'all'
+      ? !sum('revenue')
+      : ((coversRange || win.have) && !(liveBlank && rollupHas));
     const pick = f => useLive ? live[f] : sum(f);
 
     const earned = pick('revenue'), got = pick('collected');
@@ -6808,22 +6944,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
        screen is correct without it. It exists only to pick up edits made on
        another device, which can wait a minute. A first load (no cache at
        all) still fetches immediately. */
-    if ((!this._closed || (this._closedStale && Date.now() - (this._closedAt||0) > 60000))
-        && window.Cloud && Cloud.ready && !this._closedBusy){
-      this._closedBusy = true;
-      if (!this._closed) this._closed = [];
-      Cloud.recentClosed(400).then(rows => {
-        this._closedBusy = false; this._closedStale = false; this._closedAt = Date.now();
-        /* Merge, never replace. A locally-settled rental that the server
-           query has not caught up with yet must not be thrown away by its
-           own refresh — and if the query fails and returns [], the rentals
-           already on screen must survive it. */
-        const by = new Map();
-        (rows||[]).concat(this._closed||[]).forEach(x => { if (x && !by.has(x.id)) by.set(x.id, x); });
-        this._closed = Array.from(by.values()).sort((a,b)=>(b.settledAt||0)-(a.settledAt||0));
-        this.render();
-      }).catch(e => { this._closedBusy = false; console.error('recentClosed', e); });
-    }
+    this._loadClosed();
     /* Filtered by outAt, not settledAt — for the same reason revenue now rolls
        up to check-out day. A rental out at 10pm and back at 4am belongs to
        the day it happened, not the day the paperwork closed; filtering by
@@ -6882,11 +7003,31 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       + '<div class="s">The daily summary did not sync (' + esc(this._dailyErr)
       + '). Recent periods are unaffected \u2014 they are calculated from your '
       + 'rentals directly.</div></div></div>';
-    const rangeNote = (this._period === 'custom' && !coversRange)
-      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u2139\uFE0F</div>'
-        + '<div class="grow"><b>Older dates</b><div class="s">Totals are from your daily '
-        + 'summary and are complete. The bike-wise list below only includes your most '
-        + 'recent 400 rentals, so it may show less for this range.</div></div></div>' : '';
+    /* The old copy told the shop the list "only includes your most recent
+       400 rentals" and stopped there — true, and a limitation it could do
+       nothing about. Each of these is a state that resolves itself. */
+    const rangeNote = win.busy
+      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u23F3</div><div class="grow">'
+        + '<b>Fetching the bike-wise detail for ' + esc(rng.label) + '</b>'
+        + '<div class="s">Older dates are not kept on the phone, so they are being '
+        + 'loaded from your account. The totals below are already final.</div></div></div>'
+      : (this._winErr && win.need && !win.have)
+      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u26A0\uFE0F</div><div class="grow">'
+        + '<b>Could not load the bike-wise detail</b>'
+        + '<div class="s">The totals below are complete. The breakdown for this range '
+        + 'did not load (' + esc(this._winErr) + ') — check your connection and tap '
+        + 'the period again.</div></div></div>'
+      : win.trunc
+      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u2139\uFE0F</div><div class="grow">'
+        + '<b>Very large range</b><div class="s">The totals below cover every rental. '
+        + 'The bike-wise list shows the most recent 1,200 of them — pick a shorter '
+        + 'range to see all of it.</div></div></div>'
+      : (this._period === 'all' && !this._closedCovers(0))
+      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u2139\uFE0F</div><div class="grow">'
+        + '<b>All-time totals are complete</b><div class="s">The bike-wise list below '
+        + 'covers your most recent 400 rentals. Pick a month or a date range to see the '
+        + 'full breakdown for that period.</div></div></div>'
+      : '';
     moneyWarn = moneyWarn + rangeNote;
 
     const peak = Math.max(earned, got, depIn, depOut, 1);
@@ -7214,7 +7355,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
       const res = await Cloud.repairDailyRollups();
       if (!res.ok) return toast(res.msg || 'Could not repair — ' + (res.code||'try again'));
       Haptic.success();
-      this._closed = null;
+      this._closed = null; this._winKey = null;   /* a fetched older window lived in _closed too — forget it with the rest, or the range would claim to be loaded while its rentals were gone */
       /* The vehicleStats half can fail on its own (new collection, rules
          not deployed for it yet) without the daily half being touched —
          say so plainly instead of a blanket success message that would
@@ -7243,7 +7384,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
        it — the total in this sheet and the number on the card it was
        opened from could silently disagree. */
     const rows = (this._closed||[]).filter(x => x.vehicleId===vid && !x.voidedAt
-      && x.status!=='cancelled'
+      && x.status!=='cancelled' && x.status!=='void' && x.status!=='open'
       && (this._period==='all' || (x.outAt>=rng.start && x.outAt<=rng.end)))
       .sort((a,b)=>(b.outAt||0)-(a.outAt||0));
     const total = rows.reduce((a,x)=>a+(Number(x.revenue)||0),0);
@@ -8671,11 +8812,25 @@ const Cloud = {
         bump(pickupDay, 'cashIn', outCash);
         bump(pickupDay, 'upiIn', Math.max(0, (dep+adv) - outCash));
 
-        if (r.status === 'closed'){
+        /* The SAME predicate the Money screen uses, defined negatively for
+           the same reason: a rental earns unless it was voided, cancelled,
+           or still out. This tested `status === 'closed'` while the screen
+           tested "not cancelled and not open", so a rental with any other
+           status — legacy, renamed, written by an older build — was counted
+           on screen and left out of the rollup. The two then disagreed about
+           the same month, which is the drift a repair tool exists to remove.
+           (Voided rentals returned above, so they reach neither branch.) */
+        const earnsR = r.status !== 'open' && r.status !== 'cancelled';
+        if (earnsR){
           bump(pickupDay, 'revenue', r.revenue);
           bump(pickupDay, 'rentals', 1);
           vbump(r.vehicleId, 'earned', r.revenue);
           vbump(r.vehicleId, 'closedTrips', 1);
+        }
+        /* Cash only once it has actually moved. An earning rental with no
+           settledAt has not been paid out yet, and localDayKey(undefined)
+           would quietly file its money under today. */
+        if (earnsR && r.settledAt){
           const settleDay = localDayKey(r.settledAt);
           const coll = Number(r.balanceCollected)||0, inCash = Number(r.inCash)||0;
           bump(settleDay, 'collected', coll);
@@ -8686,7 +8841,8 @@ const Cloud = {
           const refundWasCash = (r.refundMode || 'cash') !== 'upi';
           bump(settleDay, 'cashOut', refundWasCash ? r.depositRefunded : 0);
           bump(settleDay, 'upiOut', refundWasCash ? 0 : r.depositRefunded);
-        } else if (r.status === 'cancelled'){
+        }
+        if (r.status === 'cancelled'){
           const cancelDay = localDayKey(r.cancelledAt || r.settledAt || r.outAt);
           bump(cancelDay, 'depositsOut', dep);
           bump(cancelDay, 'collected', -adv);
@@ -8814,15 +8970,45 @@ const Cloud = {
   /* PayU hosted checkout. The client never sends an amount — it sends the
      plan, and the server prices it. That is the whole point: a price in the
      browser is a price a customer can edit. */
-  async startCheckout(tier, cycle, promoCode){
+  /* Auto-renew state, straight off the shop document the listener already
+     holds — no extra read, and it cannot disagree with what the server
+     believes, because it IS what the server wrote. */
+  autopay(){
+    const a = (this.shop && this.shop.rnAutopay) || null;
+    if (!a || a.status !== 'active') return null;
+    const n = a.nextDebitAt;
+    return { amount: Number(a.amount) || 0,
+             nextAt: n && n.toMillis ? n.toMillis() : (n ? new Date(n).getTime() : null),
+             mode: a.mode || null };
+  },
+
+  async cancelAutopay(){
+    if (!this.shopId) return { ok:false, msg:'Sign in first' };
+    try {
+      const fn = httpsCallable(fns, 'payuAutopayCancel');
+      const res = await fn({ shopId: this.shopId });
+      return { ok:true, paidUntil: (res && res.data && res.data.paidUntil) || null };
+    } catch(e){
+      console.error('cancelAutopay', e);
+      return { ok:false, msg:(e && (e.message || e.code)) || 'Could not switch it off' };
+    }
+  },
+
+  async startCheckout(tier, cycle, promoCode, autopay){
     if (!this.shopId) return { ok:false, msg:'Sign in first' };
     try {
       const fn = httpsCallable(fns, 'payuCreateOrder');
       /* The code travels as a string and nothing else. The server re-evaluates
          it and decides the amount; the price shown on the review sheet is a
          preview, never an instruction. */
+      /* autopay is a request, never a promise: the server decides whether
+         the plan is eligible (monthly only) and the reply says what it
+         actually set up. Reading that back rather than assuming is what
+         stops the app telling a shop auto-renew is on when PayU declined to
+         register the mandate. */
       const res = await fn({ product:'rentalnow', tier, cycle, shopId:this.shopId,
-                             promoCode: promoCode || undefined });
+                             promoCode: promoCode || undefined,
+                             autopay: !!autopay });
       const d = (res && res.data) || {};
       if (!d.paymentUrl || !d.params) return { ok:false, msg:'Could not start payment' };
 
@@ -9068,6 +9254,55 @@ const Cloud = {
         orderBy('settledAt','desc'), limit(n||400)));
       return snap.docs.map(d => Object.assign({ id:d.id }, d.data()));
     } catch(e){ console.warn('recentClosed', e); return []; }
+  },
+
+  /* Every rental belonging to one date window, however far back it is.
+
+     recentClosed() above is a rolling cache of the last 400 settlements —
+     about seven weeks for a shop doing 250 rentals a month. Ask it for
+     August and it has nothing to say, which is why Money could show a
+     confident ₹69,920 above the words "no settled rentals in this period":
+     the total came from /daily, the list came from a cache that stopped in
+     September.
+
+     TWO queries, not one, because a rental has two dates that matter and
+     they are not always the same day. Revenue belongs to the day the bike
+     went out (outAt); the cash belongs to the day it was settled
+     (settledAt). A bike out on 22 August and settled on the 23rd has to
+     appear in a 1–22 August window for its revenue and in a 23 August
+     window for its cash, so both fields are queried and merged by id. Each
+     is a single-field range, which Firestore indexes automatically — no
+     composite index to deploy before this works.
+
+     Capped, and the cap is reported rather than swallowed, so a shop
+     selecting a whole year is told its breakdown is partial instead of
+     being shown a short list as though it were whole. */
+  async closedInWindow(start, end, cap){
+    const base = collection(db,'rn_shops',this.shopId,'rentals');
+    const lim = cap || 1200;
+    const run = async (field) => {
+      try {
+        const snap = await getDocs(query(base,
+          where(field, '>=', start), where(field, '<=', end),
+          orderBy(field, 'desc'), limit(lim)));
+        return snap.docs.map(d => Object.assign({ id:d.id }, d.data()));
+      } catch(e){ console.warn('closedInWindow(' + field + ')', e); return { err:e }; }
+    };
+    const [a, b] = await Promise.all([run('outAt'), run('settledAt')]);
+    /* Both failing is a real failure worth surfacing; one failing — an older
+       shop whose rentals predate the settledAt field, say — is not. */
+    if (a && a.err && b && b.err) throw a.err;
+    const rowsA = Array.isArray(a) ? a : [], rowsB = Array.isArray(b) ? b : [];
+    const by = new Map();
+    /* Still-open rentals are dropped. The outAt query returns them — a bike
+       taken in August and never brought back is a real row — but the live
+       open-rentals listener already holds every one, and a second copy in
+       the closed cache would put the same rental in two lists that several
+       screens concatenate. */
+    rowsA.concat(rowsB).forEach(x => {
+      if (x && x.status !== 'open' && !by.has(x.id)) by.set(x.id, x); });
+    return { rows: Array.from(by.values()),
+             truncated: rowsA.length >= lim || rowsB.length >= lim };
   },
 
   /* ── sync status ──────────────────────────────────────────────── */
