@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261002_1415';
+    window.HISAABNOW_BUILD = 'v34_auto_20261002_1700';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -34660,7 +34660,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       'Saved data size: ' + (function(){ try { var ks = Object.keys(localStorage), tot = 0, a = ks.map(function(k){ var n = (localStorage.getItem(k) || '').length; tot += n + k.length; return [k, n]; }); a.sort(function(x, y){ return y[1] - x[1]; }); return Math.round(tot / 1024) + 'K chars total · largest: ' + a.slice(0, 8).map(function(p){ return p[0] + ' ' + Math.round(p[1] / 1024) + 'K'; }).join(', '); } catch(e){ return '—'; } })(),
       'Duplicate copies removed at start-up: ' + (window.__hnDedupeFreed ? Math.round(window.__hnDedupeFreed / 1024) + 'K chars' : 'none'),
       'Persistent storage: ' + (window.__hnPersist || 'unknown'),
-      'IndexedDB: ' + (window.HNDB && HNDB.available() ? 'available' : 'unavailable') + ' (Phase 1 store, not yet in use)',
+      'IndexedDB: ' + (window.HNDB && HNDB.available() ? 'available' : 'unavailable'),
+      'Storage engine: ' + (function(){ try { var d = window.HNIdb && HNIdb.diag(); if (!d) return '—'; var st = d.db || {}; return (d.on ? 'IndexedDB' : 'localStorage') + (d.engine === 'idb' && !d.on ? ' (IndexedDB requested but off: ' + (d.error || 'unavailable') + ')' : '') + (d.on ? ' · loaded ' + (d.hydrated ? 'yes in ' + d.restoreMs + ' ms' : 'no') + ' · pending ' + (st.pending || 0) + ' · write errors ' + (st.failures || 0) + (st.lastError ? ' (last: ' + st.lastError + ')' : '') + (d.migrated && d.migrated.counts ? ' · migrated sales ' + (d.migrated.counts.sales || 0) + ', products ' + (d.migrated.counts.prods || 0) : '') : ''); } catch(e){ return '—'; } })(),
       '',
       'localStorage scan (data keys):',
     ];
@@ -36215,6 +36216,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
 
       const explicitKeys = [...COLL_KEYS, ...SETTING_KEYS];
       explicitKeys.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+      try { if (window.HNIdb) window.HNIdb.clearDevice(); } catch (e) {}
 
       const ALL_KEYS = [...COLL_KEYS, ...SETTING_KEYS];
       const prefixUnion = ALL_KEYS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
@@ -42120,7 +42122,7 @@ function _row(e){
   /* The record goes in as a structured clone at flush time. Records are plain
      JSON in practice; if one ever carries something unclonable, store a JSON
      copy instead of failing the whole batch. */
-  return { s: e.s, c: e.c, id: e.id, r: e.r };
+  return { s: e.s, c: e.c, id: e.id, o: (typeof e.o === 'number' ? e.o : 0), r: e.r };
 }
 
 function _schedule(ms){
@@ -42128,10 +42130,12 @@ function _schedule(ms){
   timer = setTimeout(function(){ timer = null; flush().catch(function(){}); }, ms == null ? DELAY : ms);
 }
 
-function queuePut(s, c, rec){
+/* o = the record's position in its list, so a reload restores the original
+   order (IndexedDB itself returns rows sorted by id). */
+function queuePut(s, c, rec, o){
   if (!s || !c || !rec || rec.id === undefined || rec.id === null) return false;
   var id = String(rec.id);
-  pending.set(_key(s, c, id), { s: String(s), c: String(c), id: id, r: rec });
+  pending.set(_key(s, c, id), { s: String(s), c: String(c), id: id, o: o, r: rec });
   _schedule();
   return true;
 }
@@ -42160,7 +42164,7 @@ function _commit(batch){
       batch.forEach(function(e){
         if (e.del) { os.delete([e.s, e.c, e.id]); return; }
         try { os.put(_row(e)); }
-        catch(cloneErr){ os.put({ s: e.s, c: e.c, id: e.id, r: JSON.parse(JSON.stringify(e.r)) }); }
+        catch(cloneErr){ os.put({ s: e.s, c: e.c, id: e.id, o: (typeof e.o === 'number' ? e.o : 0), r: JSON.parse(JSON.stringify(e.r)) }); }
       });
       tx.oncomplete = function(){ resolve(batch.size); };
       tx.onerror = function(){ reject(tx.error || new Error('idb-tx-error')); };
@@ -42210,7 +42214,7 @@ function putAll(s, c, records){
   for (var i = 0; i < (records || []).length; i++){
     var r = records[i];
     if (!r || r.id === undefined || r.id === null) continue;
-    rows.push({ s: s, c: c, id: String(r.id), r: r });
+    rows.push({ s: s, c: c, id: String(r.id), o: i, r: r });
   }
   return flush().catch(function(){}).then(function(){
     var m = new Map();
@@ -42237,7 +42241,47 @@ function _readTx(storeName, fn){
 function loadColl(s, c){
   return _readTx(REC, function(os, set){
     var rq = os.index('sc').getAll([String(s), String(c)]);
-    rq.onsuccess = function(){ set((rq.result || []).map(function(row){ return row.r; })); };
+    rq.onsuccess = function(){ set((rq.result || []).sort(_byOrder).map(function(row){ return row.r; })); };
+  });
+}
+
+function _byOrder(a, b){ return (a.o || 0) - (b.o || 0); }
+
+/* Rows (id, o, r) of several collections in one read transaction, each list
+   sorted by saved position: { coll: [{id, o, r}] }. */
+function loadShopRows(s, colls){
+  return _readTx(REC, function(os, set){
+    var out = {}, left = colls.length;
+    if (!left) { set(out); return; }
+    colls.forEach(function(c){
+      var rq = os.index('sc').getAll([String(s), String(c)]);
+      rq.onsuccess = function(){
+        out[c] = (rq.result || []).sort(_byOrder).map(function(row){ return { id: row.id, o: row.o || 0, r: row.r }; });
+        if (--left === 0) set(out);
+      };
+    });
+  });
+}
+
+/* Remove every record and flag for one shop, or everything when shopId is
+   omitted (sign-out / account switch). */
+function clear(shopId){
+  pending = new Map();
+  if (timer) { clearTimeout(timer); timer = null; }
+  return _enqueue(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction([REC, META], 'readwrite');
+      if (shopId == null) {
+        tx.objectStore(REC).clear();
+        tx.objectStore(META).clear();
+      } else {
+        var range = IDBKeyRange.bound([String(shopId)], [String(shopId), []]);
+        tx.objectStore(REC).delete(range);
+      }
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(){ reject(tx.error); };
+      tx.onabort = function(){ reject(tx.error || new Error('idb-clear-abort')); };
+    });
   });
 }
 
@@ -42249,7 +42293,7 @@ function loadShop(s, colls){
     colls.forEach(function(c){
       var rq = os.index('sc').getAll([String(s), String(c)]);
       rq.onsuccess = function(){
-        out[c] = (rq.result || []).map(function(row){ return row.r; });
+        out[c] = (rq.result || []).sort(_byOrder).map(function(row){ return row.r; });
         if (--left === 0) set(out);
       };
     });
@@ -42299,12 +42343,284 @@ window.HNDB = {
   putAll: putAll,
   loadColl: loadColl,
   loadShop: loadShop,
+  loadShopRows: loadShopRows,
+  clear: clear,
   count: count,
   metaGet: metaGet,
   metaSet: metaSet,
   pendingCount: function(){ return pending.size; },
   status: function(){ return Object.assign({ pending: pending.size, backoffMs: backoff }, status); },
   _DB_NAME: DB_NAME
+};
+})();
+
+/* ══════════════════════ HNIdb — switches shop data onto HNDB (Phase 1) ══════════════════════
+   v35. Off unless this device has opted in: open the app once with ?storage=idb
+   (and ?storage=ls to switch back). Off = every code path below is a no-op and
+   the app behaves exactly as before.
+
+   When on:
+   - restore(shopId) runs inside MShop.bootstrap / switchShop, right after the
+     old localStorage restore and BEFORE HisaabSync.init, so sync never sees a
+     half-loaded shop. First time per shop it migrates: copies every list into
+     IndexedDB, checks the counts, records a 'migrated:<shop>' flag, and only
+     then deletes the localStorage copies. A failed check leaves localStorage
+     untouched and turns the engine off for this session.
+   - Saving: Store.update/delete/add always put a NEW object in the list, so
+     persistColl() writes only objects it has not seen before (WeakSet). A bill
+     save touches a handful of records, not the whole history.
+   - Order: each record keeps a saved position, so lists reload in the order
+     the app built them.
+   - Safety net every 2 minutes (and when the app is hidden): records removed
+     from a list are deleted from IndexedDB, and records edited in place
+     (without a new object) are caught by a content hash and re-saved.
+   - Switching back (?storage=ls) copies IndexedDB into localStorage scoped
+     keys on the next start; if they no longer fit, the cloud refills them.
+   ════════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if (window.HNIdb) return;
+
+var LS_OF = {
+  sales:'ks', prods:'kp', custs:'kc', udh:'ku', exps:'ke', staff:'kstaff', sups:'ksu',
+  appts:'kappts', coupons:'kcoup', ingredients:'kig', recurring:'krec', khata:'kkhata',
+  khataSettle:'kkhataSet', cashOpening:'kcashopen', cashAdjust:'kcashadj', waiters:'kwait',
+  purchases:'kpurch', subscriptions:'ksubsc', packs:'kpacks', campaigns:'kcamp', notes:'knotes',
+  waste:'kwaste', challans:'kchallan', godowns:'kgodown', stockmoves:'kstockmv', agents:'kagent',
+  commissions:'kcomm', suppliers:'ksupp'
+};
+var COLLS = Object.keys(LS_OF);
+
+var engine = 'ls';
+try {
+  var q = (location.search || '').match(/[?&]storage=(idb|ls)(?:&|$)/);
+  if (q) localStorage.setItem('hn_storage_engine', q[1]);
+  engine = localStorage.getItem('hn_storage_engine') === 'idb' ? 'idb' : 'ls';
+} catch(e){}
+
+var ON = (engine === 'idb') && !!(window.HNDB && HNDB.available());
+var shop = null, hydrated = false;
+var seen = {}, ord = {}, maxO = {}, hashes = {};
+var diag = { engine: engine, on: ON, hydratedAt: 0, migrated: null, error: null, restoreMs: 0, lastReconcile: 0 };
+
+function _seen(c){ return seen[c] || (seen[c] = new WeakSet()); }
+function _ord(c){ return ord[c] || (ord[c] = new Map()); }
+function _S(){ return window.S || (window.S = {}); }
+
+function _hash(rec){
+  var s; try { s = JSON.stringify(rec); } catch(e){ return 0; }
+  var h = 0;
+  for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
+}
+
+function _orderFor(c, id){
+  var m = _ord(c);
+  var o = m.get(id);
+  if (o === undefined) { o = (maxO[c] || 0) + 1; maxO[c] = o; m.set(id, o); }
+  return o;
+}
+
+/* Queue every object in S[c] not yet written. Cheap: one WeakSet check each. */
+function persistColl(c){
+  if (!ON || !hydrated || !shop || !LS_OF[c]) return;
+  var a = _S()[c];
+  if (!Array.isArray(a)) return;
+  var ws = _seen(c);
+  for (var i = 0; i < a.length; i++){
+    var r = a[i];
+    if (!r || typeof r !== 'object' || ws.has(r) || r.id === undefined || r.id === null || r.id === '') continue;
+    var id = String(r.id);
+    if (HNDB.queuePut(shop, c, r, _orderFor(c, id))) ws.add(r);
+  }
+}
+function persistAll(){ for (var i = 0; i < COLLS.length; i++) persistColl(COLLS[i]); }
+
+function hardDelete(c, id){
+  if (!ON || !shop || id === undefined || id === null) return;
+  id = String(id);
+  HNDB.queueDelete(shop, c, id);
+  _ord(c).delete(id);
+}
+
+function _withTimeout(p, ms, label){
+  return Promise.race([p, new Promise(function(_, rej){ setTimeout(function(){ rej(new Error(label + ' timed out')); }, ms); })]);
+}
+
+function _newId(){
+  try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){}
+  return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+/* First run per shop: S already holds the lists _restoreShopData read from
+   localStorage. Copy, verify, then free localStorage. */
+function _migrate(shopId){
+  var S = _S(), counts = {};
+  COLLS.forEach(function(c){
+    var a = S[c];
+    if (!Array.isArray(a)) return;
+    for (var i = 0; i < a.length; i++) if (a[i] && (a[i].id === undefined || a[i].id === null || a[i].id === '')) a[i].id = _newId();
+  });
+  return COLLS.reduce(function(p, c){
+    return p.then(function(){
+      var a = Array.isArray(S[c]) ? S[c] : [];
+      counts[c] = a.length;
+      return a.length ? HNDB.putAll(shopId, c, a) : null;
+    });
+  }, Promise.resolve()).then(function(){
+    return COLLS.reduce(function(p, c){
+      return p.then(function(){
+        if (!counts[c]) return;
+        return HNDB.count(shopId, c).then(function(n){
+          var uniq = new Set((S[c] || []).map(function(r){ return String(r.id); })).size;
+          if (n !== uniq) throw new Error('verify failed for ' + c + ': ' + n + ' stored vs ' + uniq);
+        });
+      });
+    }, Promise.resolve());
+  }).then(function(){
+    return HNDB.metaSet('migrated:' + shopId, { at: Date.now(), counts: counts });
+  }).then(function(){
+    var uid = null; try { uid = localStorage.getItem('hn_last_uid'); } catch(e){}
+    COLLS.forEach(function(c){
+      try { localStorage.removeItem(LS_OF[c] + '_' + shopId); } catch(e){}
+      if (uid && uid === shopId) { try { localStorage.removeItem(LS_OF[c]); } catch(e){} }
+    });
+    try { localStorage.setItem('hn_idb_used', '1'); } catch(e){}
+    diag.migrated = { at: Date.now(), counts: counts };
+    try { console.log('[HNIdb] migrated shop', shopId, counts); } catch(e){}
+  });
+}
+
+/* Copy IndexedDB back into localStorage scoped keys (engine switched to ls). */
+function _rollback(shopId){
+  return HNDB.metaGet('migrated:' + shopId).then(function(m){
+    if (!m) return false;
+    return HNDB.loadShop(shopId, COLLS).then(function(data){
+      var S = _S(), ok = true;
+      COLLS.forEach(function(c){
+        var arr = data[c] || [];
+        if (!arr.length) return;
+        S[c] = arr;
+        try { localStorage.setItem(LS_OF[c] + '_' + shopId, JSON.stringify(arr)); }
+        catch(e){ ok = false; }
+      });
+      return HNDB.metaSet('migrated:' + shopId, null).then(function(){
+        try { console.log('[HNIdb] switched back to localStorage for', shopId, ok ? '' : '(some lists did not fit; cloud will refill)'); } catch(e){}
+        return true;
+      });
+    });
+  });
+}
+
+/* Called by MShop after _restoreShopData(shopId), before HisaabSync.init. */
+function restore(shopId){
+  var t0 = Date.now();
+  if (!shopId) return Promise.resolve(false);
+  if (!ON) {
+    var used = null; try { used = localStorage.getItem('hn_idb_used'); } catch(e){}
+    if (!used || !(window.HNDB && HNDB.available())) return Promise.resolve(false);
+    return _withTimeout(_rollback(shopId), 8000, 'rollback').catch(function(e){ diag.error = 'rollback: ' + (e && e.message); return false; });
+  }
+  shop = shopId; hydrated = false;
+  seen = {}; ord = {}; maxO = {}; hashes = {};
+  return _withTimeout(HNDB.metaGet('migrated:' + shopId), 5000, 'meta read').then(function(m){
+    if (m) { diag.migrated = m; return; }
+    return _withTimeout(_migrate(shopId), 60000, 'migration');
+  }).then(function(){
+    return _withTimeout(HNDB.loadShopRows(shopId, COLLS), 20000, 'load');
+  }).then(function(data){
+    var S = _S();
+    COLLS.forEach(function(c){
+      var rows = data[c] || [];
+      var m = _ord(c), ws = _seen(c), byId = new Map(), max = 0;
+      rows.forEach(function(row){ byId.set(row.id, row.r); m.set(row.id, row.o); ws.add(row.r); if (row.o > max) max = row.o; });
+      maxO[c] = max;
+      var merged = rows.map(function(row){ return row.r; });
+      var idx = new Map(); rows.forEach(function(row, i){ idx.set(row.id, i); });
+      /* Records made while loading (or not yet saved) win when newer. */
+      var cur = Array.isArray(S[c]) ? S[c] : [];
+      cur.forEach(function(r){
+        if (!r || r.id === undefined || r.id === null) return;
+        var k = String(r.id), at = idx.get(k);
+        if (at === undefined) { merged.push(r); idx.set(k, merged.length - 1); return; }
+        var d = merged[at];
+        if (d !== r && (+r.updatedAt || 0) > (+d.updatedAt || 0)) merged[at] = r;
+      });
+      S[c] = merged;
+    });
+    hydrated = true;
+    diag.hydratedAt = Date.now();
+    diag.restoreMs = Date.now() - t0;
+    persistAll();
+    try { if (typeof window.sA === 'function') window.sA(); } catch(e){}
+    return HNDB.flush().then(function(){ return true; });
+  }).catch(function(e){
+    /* Anything wrong: stay on localStorage for this session. Nothing was
+       deleted from localStorage unless the migration fully verified. */
+    diag.error = (e && e.message) || String(e);
+    ON = false; hydrated = false;
+    try { console.error('[HNIdb] restore failed — using localStorage this session:', diag.error); } catch(e2){}
+    return false;
+  });
+}
+
+/* Catch what identity tracking cannot: records dropped from a list, and
+   records edited in place. Runs in small slices so the app never stalls. */
+var reconciling = false;
+function reconcile(){
+  if (!ON || !hydrated || !shop || reconciling) return Promise.resolve();
+  reconciling = true;
+  var S = _S(), list = COLLS.slice();
+  return new Promise(function(resolve){
+    function nextColl(){
+      var c = list.shift();
+      if (!c) { reconciling = false; diag.lastReconcile = Date.now(); resolve(); return; }
+      var a = Array.isArray(S[c]) ? S[c] : [];
+      var present = new Set(), hs = hashes[c] || (hashes[c] = new Map()), ws = _seen(c), i = 0;
+      (function slice(){
+        var end = Math.min(a.length, i + 400);
+        for (; i < end; i++){
+          var r = a[i];
+          if (!r || r.id === undefined || r.id === null) continue;
+          var id = String(r.id); present.add(id);
+          var h = _hash(r), prev = hs.get(id);
+          if (prev !== undefined && prev !== h && ws.has(r)) HNDB.queuePut(shop, c, r, _orderFor(c, id));
+          hs.set(id, h);
+        }
+        if (i < a.length) { setTimeout(slice, 0); return; }
+        _ord(c).forEach(function(_, id){ if (!present.has(id)) { HNDB.queueDelete(shop, c, id); _ord(c).delete(id); hs.delete(id); } });
+        setTimeout(nextColl, 0);
+      })();
+    }
+    nextColl();
+  });
+}
+
+if (ON) {
+  try {
+    setInterval(function(){ reconcile(); }, 120000);
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'hidden') { persistAll(); HNDB.flush().catch(function(){}); }
+    });
+  } catch(e){}
+}
+
+window.HNIdb = {
+  isOn: function(){ return ON; },
+  isHydrated: function(){ return hydrated; },
+  restore: restore,
+  persistColl: persistColl,
+  persistAll: persistAll,
+  hardDelete: hardDelete,
+  reconcile: reconcile,
+  flush: function(){ if (!ON) return Promise.resolve(0); persistAll(); return HNDB.flush(); },
+  clearDevice: function(){
+    var used = null; try { used = localStorage.getItem('hn_idb_used'); } catch(e){}
+    if (!used || !(window.HNDB && HNDB.available())) return Promise.resolve();
+    return HNDB.clear().catch(function(){});
+  },
+  diag: function(){ return Object.assign({}, diag, { on: ON, hydrated: hydrated, shop: shop, db: (window.HNDB && HNDB.status) ? HNDB.status() : null }); },
+  COLLS: COLLS
 };
 })();
 
@@ -44828,6 +45144,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
      left untouched, so the new user stays signed in across the reload; cloud
      data is the source of truth and re-pulls on the clean boot. */
   function _wipeAccountLocalData(){
+    try { if (window.HNIdb) window.HNIdb.clearDevice(); } catch(e){}
     try {
       var COLL_KEYS = ['ks','kp','kc','ku','ke','kstaff','ksu','kappts','kcoup','kig','krec','kkhata','kkhataSet','kcashopen','kcashadj','kwait','kpurch','ksubsc','kpacks','kcamp','knotes','kwaste','kchallan','kgodown','kstockmv','kagent','kcomm'];
       var SETTING_KEYS = ['kstore','kprof','klang','kupi','kon','kwa','kstar','kcm','kf_subs','mshop_shops_cache','mshop_active','kgst','kpro','kmtg','kmunimcache','kmunimlog','khata','hisaab_migration_v2_complete'];
@@ -47279,7 +47596,9 @@ function _loadCacheLocal(){
 
 function _backupCurrentShopData(){
   if (!state.activeShopId || !window.S) return;
+  var __idbOnBk = !!(window.HNIdb && window.HNIdb.isOn());
   for (var coll in LS_KEYS) {
+    if (__idbOnBk) break;
     var arr = window.S[coll];
     if (!Array.isArray(arr)) continue;
     var key = LS_KEYS[coll] + '_' + state.activeShopId;
@@ -47716,6 +48035,8 @@ async function bootstrap(user, options){
     _saveCacheLocal();
 
     _restoreShopData(state.activeShopId);
+    /* (v35 Phase 1) IndexedDB engine: load (first time: migrate) before sync starts. */
+    if (window.HNIdb) { try { await window.HNIdb.restore(state.activeShopId); } catch(e){ console.error('[MShop] HNIdb.restore failed:', e); } }
 
     /* (audit fix Jun 2026) Resolve role NOW, from the shop metadata already
        loaded above (_isStaffShop / _staffRole), BEFORE the awaited
@@ -48006,6 +48327,7 @@ async function switchShop(newShopId){
       }
     }
 
+    if (window.HNIdb && window.HNIdb.isOn()) { try { await window.HNIdb.flush(); } catch(e){} }
     _backupCurrentShopData();
 
     if (typeof window._fbSetActiveShop === 'function') {
@@ -48017,6 +48339,7 @@ async function switchShop(newShopId){
     _saveCacheLocal();
     _clearMemoryState();
     _restoreShopData(newShopId);
+    if (window.HNIdb) { try { await window.HNIdb.restore(newShopId); } catch(e){ console.error('[MShop] HNIdb.restore (switch) failed:', e); } }
 
     if (window.HisaabSync && typeof window.HisaabSync.init === 'function') {
       try { await window.HisaabSync.init({ shopId: newShopId, debug: false }); }
@@ -49018,7 +49341,9 @@ function _emit(coll){
         if (activeShopForPersist) {
           try {
             var scopedKey = lk + '_' + activeShopForPersist;
-            window.__hnLsSetRaw(scopedKey, JSON.stringify(data));
+            /* (v35 Phase 1) IndexedDB engine: write only the records that changed. */
+            if (window.HNIdb && HNIdb.isOn()) HNIdb.persistColl(coll);
+            else window.__hnLsSetRaw(scopedKey, JSON.stringify(data));
 
             var s = window.S || {};
             if (s.store) {
@@ -49034,7 +49359,7 @@ function _emit(coll){
               try { localStorage.setItem('kprof_' + activeShopForPersist, s.prof); } catch(e){}
             }
           } catch (e) {  }
-        } else {
+        } else if (!(window.HNIdb && HNIdb.isOn())) {
 
           window.ls(lk, data);
         }
@@ -49070,7 +49395,12 @@ window.sA = window.sA || function(){
       && (activeShopId === window.currentUserId)
       && shopCountSA <= 1;
 
+    /* (v35 Phase 1) IndexedDB engine: persist changed records instead of
+       rewriting every list into localStorage. */
+    var __idbOnSA = !!(window.HNIdb && HNIdb.isOn());
+    if (__idbOnSA) { try { HNIdb.persistAll(); } catch(e){} }
     for (var k in keys) {
+      if (__idbOnSA) break;
       if (s[k] !== undefined) {
         /* (v35 Phase 0) unscoped copy only before any shop is active */
         if (!activeShopId) {
@@ -49518,6 +49848,7 @@ window.Store = {
     if (i < 0) i = a.findIndex(function(x){ return x && x.id != null && x.id !== '' && String(x.id) === String(id); });
     if (i < 0) i = a.findIndex(function(x){ return x && (x.id == null || x.id === '') && x.name === id; });
     if (i < 0) return false;
+    try { if (window.HNIdb) HNIdb.hardDelete(coll, a[i].id); } catch(e){}
     a.splice(i, 1);
     _emit(coll);
     return true;
