@@ -7823,6 +7823,20 @@ const Cloud = {
           /* Clear it from the address bar so a shared or bookmarked link does
              not carry someone else's number. */
           history.replaceState(null, '', location.pathname);
+          /* (Oct 2026) Auto-send ONLY when this same browser tab typed this
+             exact number on our own landing/install page in the last two
+             minutes. That marker lives in sessionStorage, which a shared or
+             bookmarked link (a new tab) never has — so opening a link still
+             never spends an SMS by accident. Anything unexpected here simply
+             leaves the old behaviour: number prefilled, one tap to send. */
+          let intent = null;
+          try {
+            intent = JSON.parse(sessionStorage.getItem('rn_intent') || 'null');
+            sessionStorage.removeItem('rn_intent');
+          } catch(e){}
+          if (intent && intent.ph === ph && Date.now() - Number(intent.t || 0) < 120000) {
+            setTimeout(() => { try { this.sendOtp(); } catch(e){} }, 0);
+          }
         }
       }
     } catch(e){}
@@ -7870,10 +7884,14 @@ const Cloud = {
       this.showGate(`
         <p style="opacity:.8;font-size:14px;margin:0 0 16px">OTP sent to +91 ${esc(ph)}</p>
         <div class="fld"><input class="in" id="g-otp" type="tel" inputmode="numeric" maxlength="6"
-          placeholder="6-digit OTP"></div>
+          autocomplete="one-time-code" placeholder="6-digit OTP"
+          oninput="if((this.value||'').replace(/[^0-9]/g,'').length===6)Cloud.verifyOtp()"></div>
         <button class="btn y" onclick="Cloud.verifyOtp()">Verify &amp; continue</button>
         <button class="btn ghost" style="margin-top:9px;background:transparent;color:#fff;border-color:rgba(255,255,255,.3)"
           onclick="Cloud.showGate()">Change number</button>`);
+      /* Keyboard up and the SMS code offered above it (one-time-code), so
+         the shop taps the suggestion and verification starts by itself. */
+      setTimeout(() => { const o = $('g-otp'); if (o) o.focus(); }, 60);
     } catch(e){
       console.error('sendOtp', e);
       this.gateBusy(false);
@@ -7909,9 +7927,13 @@ const Cloud = {
   },
 
   async verifyOtp(){
+    /* Auto-verify on the 6th digit and the button can both fire; confirm()
+       must run once. */
+    if (this._verifying) return;
     this.hap('primary');
     const code = ($('g-otp').value||'').replace(/\D/g,'');
     if (code.length<6) return window.toast('Enter the 6-digit OTP');
+    this._verifying = true;
     try { this.gateBusy(true,'Checking…'); await this._conf.confirm(code); }
     catch(e){
       console.error('verifyOtp', e);
@@ -7920,6 +7942,7 @@ const Cloud = {
         ? 'That OTP is wrong. Check the SMS and try again.'
         : 'Could not verify — ' + ((e && e.code) || 'try again'));
     }
+    finally { this._verifying = false; }
   },
 
   /* Boot used to be six sequential round trips before a single pixel of the

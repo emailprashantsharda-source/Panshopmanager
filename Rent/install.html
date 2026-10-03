@@ -8,6 +8,7 @@
 <link rel="canonical" href="https://app.hisaabnow.com/Rent/install.html">
 <meta name="theme-color" content="#0A2C43">
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="prefetch" href="./">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
 <!-- What WhatsApp, Facebook and LinkedIn show when the link is shared.
@@ -765,6 +766,14 @@ footer a{color:#BFD4E2;font-weight:700;text-decoration:none}
     var v=(lp.value||'').replace(/[^0-9]/g,'').slice(-10);
     lg.href='./'+(v.length===10?'?ph='+v:'');
   }
+  /* (Oct 2026) Tell the app this tab really asked for a code: it then sends
+     the OTP straight away instead of asking "Send OTP?" a second time. A
+     shared link has no such marker, so it never sends an SMS by itself. */
+  if(lg) lg.addEventListener('click',function(){
+    var v=((lp&&lp.value)||'').replace(/[^0-9]/g,'').slice(-10);
+    if(v.length===10){ try{ sessionStorage.setItem('rn_intent',
+      JSON.stringify({ph:v,t:Date.now(),src:'install'})); }catch(e){} }
+  });
   if(lp&&lg){ lp.addEventListener('input',sync);
     lp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ sync(); lg.click(); } });
     sync(); }
