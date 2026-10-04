@@ -85,6 +85,22 @@ td{padding:11px 8px;border-bottom:1px solid #F0EDE6;vertical-align:middle}
 tr:last-child td{border-bottom:0}
 tbody tr{cursor:pointer}
 tbody tr:hover{background:#FAF8F4}
+tbody tr.picked{background:var(--dg-t)}
+tbody tr.picked:hover{background:#FBE3E0}
+td input[type=checkbox],th input[type=checkbox]{width:17px;height:17px;cursor:pointer;accent-color:var(--p)}
+/* Sticky because a selection made at the bottom of a long list is acted on
+   without scrolling back up, and because a destructive action that scrolls
+   out of view is one people lose track of mid-task. */
+.pickbar{position:sticky;top:8px;z-index:20;display:flex;align-items:center;gap:10px;
+  background:var(--dg-t);border:1.5px solid #F6C9C3;border-radius:12px;
+  padding:10px 14px;margin-bottom:10px}
+.btn.d{background:var(--dg);color:#fff}
+.btn.d:disabled{background:#E9E5DD;color:var(--t4);cursor:not-allowed}
+.dz{border:1.5px solid #F6C9C3;background:var(--dg-t);border-radius:14px;padding:14px;margin-top:14px}
+.dz h3{color:#8C1200}
+.blk{background:#fff;border:1.5px solid var(--y-bd);border-radius:10px;padding:10px;margin-top:8px}
+.cfm{width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:10px;
+  font-size:15px;font-weight:700;letter-spacing:.08em;margin-top:10px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .nm{font-weight:800;letter-spacing:-.01em}
 .nm span{display:block;font-size:11.5px;font-weight:600;color:var(--t3)}
@@ -274,6 +290,11 @@ window.logout = () => signOut(auth);
 
 /* ── data ──────────────────────────────────────────────────────────────── */
 let SHOPS = [], TOTALS = {}, FILTER = 'all', BUSY = false;
+/* Ticked shops, by id. Kept across filter switches on purpose: picking
+   "never started", ticking four, then switching to "dormant" and ticking two
+   more is how this actually gets used. The confirmation lists every one by
+   name, so a selection that outlived its filter cannot surprise anyone. */
+let PICKED = new Set();
 
 async function load(){
   if (BUSY) return; BUSY = true;
@@ -446,16 +467,27 @@ function render(){
                     : LABEL[f].toLowerCase() + ' (' + SHOPS.filter(s=>s.status===f).length + ')'
         }</span>`).join('')}
     </div>
+    ${PICKED.size ? `<div class="pickbar">
+      <b>${PICKED.size} shop${PICKED.size===1?'':'s'} selected</b>
+      <span class="grow"></span>
+      <button class="btn g sm" onclick="pickClear()">Clear</button>
+      <button class="btn d sm" onclick="pickDelete()">Delete selected…</button>
+    </div>` : ''}
     <div class="card" style="padding:6px 10px">
       ${rows.length ? `<table>
         <thead><tr>
+          <th style="width:30px"><input type="checkbox" id="pick-all"
+            onclick="pickAll(this.checked)" ${rows.length && rows.every(r=>PICKED.has(r.shopId))?'checked':''}></th>
           <th>Shop</th><th class="hide-s">City</th>
           <th class="num">Bikes</th><th class="num hide-s">Out</th>
           <th class="num">30d</th><th class="num hide-s">Deposits</th>
           <th>Plan</th><th>Status</th><th class="hide-s">Last rental</th>
         </tr></thead>
         <tbody>${rows.map(s => `
-          <tr onclick="openShop('${esc(s.shopId)}')">
+          <tr onclick="openShop('${esc(s.shopId)}')" class="${PICKED.has(s.shopId)?'picked':''}">
+            <td onclick="event.stopPropagation()"><input type="checkbox"
+              ${PICKED.has(s.shopId)?'checked':''}
+              onclick="pickOne('${esc(s.shopId)}',this.checked)"></td>
             <td class="nm">${esc(s.name)}<span>${esc(s.shopId.slice(0,12))}…</span></td>
             <td class="hide-s muted">${esc(s.city)||'—'}</td>
             <td class="num">${s.bikes==null?'—':s.bikes}</td>
@@ -483,6 +515,150 @@ function actionCard(title, hint, list, right){
     ${list.length>8?`<div class="muted" style="margin-top:8px">and ${list.length-8} more</div>`:''}
   </div>`;
 }
+
+/* ── selecting and deleting shops ──────────────────────────────────────── */
+window.pickOne = (id, on) => { on ? PICKED.add(id) : PICKED.delete(id); render(); };
+window.pickClear = () => { PICKED.clear(); render(); };
+/* Via a window function, not `onclick="askDelete(Array.from(PICKED))"`. An
+   inline handler is compiled in GLOBAL scope, and PICKED is a module-scoped
+   `let` — so the attribute form throws ReferenceError on click and the button
+   silently does nothing. Everything the markup calls has to be on window. */
+window.pickDelete = () => askDelete(Array.from(PICKED));
+window.pickAll = (on) => {
+  /* "All" means the rows actually on screen under the current filter, not
+     every shop in the account. A select-all that silently reaches past what
+     is visible is how the wrong thing gets deleted. */
+  visibleShops().forEach(s => on ? PICKED.add(s.shopId) : PICKED.delete(s.shopId));
+  render();
+};
+function visibleShops(){
+  return FILTER === 'all' ? SHOPS : SHOPS.filter(s => s.status === FILTER);
+}
+
+/* The confirmation. Its numbers come from the SERVER, not from the list in
+   this browser: that list was fetched when the page loaded and a shop can
+   have taken a booking since. Deleting on the strength of a stale count is
+   the mistake this whole screen exists to avoid. */
+window.askDelete = async function(ids){
+  const w = document.createElement('div'); w.className = 'sheet';
+  w.innerHTML = '<div class="box"><div class="loading">Checking what would be deleted…</div></div>';
+  w.onclick = e => { if (e.target === w) w.remove(); };
+  document.body.appendChild(w);
+
+  let facts;
+  try {
+    const r = await call('adminRentalDeleteShops', { shopIds: ids, preview: true });
+    facts = r.shops || [];
+  } catch(e){
+    w.querySelector('.box').innerHTML =
+      '<div class="err"><b>Could not check.</b><br>' + esc(e.message || '') + '</div>'
+      + '<button class="btn g" style="margin-top:12px" onclick="this.closest(\'.sheet\').remove()">Close</button>';
+    return;
+  }
+
+  const missing = facts.filter(f => !f.found);
+  const live    = facts.filter(f => f.found);
+  const blocked = live.filter(f => f.blockers.length);
+
+  const row = f => `<div class="line">
+    <span class="grow"><b style="font-weight:800">${esc(f.name)}</b>
+      <span class="muted"> · ${esc(f.city) || 'no city'}</span>
+      <div class="muted" style="font-size:12px">
+        ${f.vehicles == null ? '?' : f.vehicles} bikes ·
+        ${f.rentals == null ? '?' : f.rentals} rentals ·
+        ${f.members == null ? '?' : f.members} team</div></span>
+  </div>`;
+
+  const blockRow = f => `<div class="blk">
+    <b>${esc(f.name)}</b>
+    <div class="muted" style="margin:4px 0 8px">${f.blockers.map(esc).join(' · ')}</div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px">
+      <input type="checkbox" class="force" value="${esc(f.shopId)}" onchange="dzSync()">
+      <span>Delete it anyway. I understand this destroys the record of
+        ${f.depositsHeld ? money(f.depositsHeld) + ' owed back to customers' : 'a live business'}.</span>
+    </label>
+  </div>`;
+
+  w.querySelector('.box').innerHTML = `
+    <div class="row" style="margin-bottom:12px">
+      <div class="grow"><h2 style="margin:0">Delete ${live.length} shop${live.length===1?'':'s'}?</h2>
+        <div class="muted">This cannot be undone. Everything below goes with it:
+          bikes, rentals, bills, rate cards, team.</div></div>
+      <button class="btn g sm" onclick="this.closest('.sheet').remove()">Cancel</button>
+    </div>
+
+    ${missing.length ? `<div class="card" style="background:var(--y-t);border-color:var(--y-bd)">
+      <b>${missing.length} already gone</b>
+      <div class="h">${missing.map(f=>esc(f.shopId.slice(0,12))+'…').join(', ')} —
+        no longer in the database. They will be skipped.</div></div>` : ''}
+
+    ${live.length ? `<div class="card">${live.map(row).join('')}</div>` : ''}
+
+    ${blocked.length ? `<div class="card" style="background:var(--y-t);border-color:var(--y-bd)">
+      <h3>${blocked.length} of these ${blocked.length===1?'is':'are'} not safe to delete</h3>
+      <div class="h">Each one is ticked separately. There is no "ignore all" —
+        that is how a paying customer gets deleted alongside the test shops.</div>
+      ${blocked.map(blockRow).join('')}
+    </div>` : ''}
+
+    <div class="dz">
+      <h3>Type DELETE to confirm</h3>
+      <input class="cfm" id="dz-word" placeholder="DELETE" autocomplete="off"
+             oninput="dzSync()" onkeydown="if(event.key==='Enter')document.getElementById('dz-go').click()">
+      <button class="btn d" id="dz-go" style="margin-top:10px" disabled
+        onclick="doDelete(${JSON.stringify(live.map(f=>f.shopId)).replace(/"/g,'&quot;')})">
+        Delete permanently</button>
+      <div class="h" id="dz-why" style="margin-top:8px"></div>
+    </div>`;
+  dzSync();
+};
+
+/* The button stays dead until the word is typed AND every blocked shop has
+   been individually acknowledged — and it says which of the two is missing,
+   because a disabled button with no reason is just a broken page. */
+window.dzSync = function(){
+  const box = document.querySelector('.sheet .box'); if (!box) return;
+  const go = box.querySelector('#dz-go'); if (!go) return;
+  const word = (box.querySelector('#dz-word') || {}).value === 'DELETE';
+  const boxes = Array.from(box.querySelectorAll('.force'));
+  const unticked = boxes.filter(b => !b.checked).length;
+  go.disabled = !word || unticked > 0;
+  box.querySelector('#dz-why').textContent = go.disabled
+    ? (!word ? 'Type DELETE in the box above.'
+             : unticked + (unticked===1 ? ' shop still needs' : ' shops still need')
+                 + ' acknowledging.')
+    : '';
+};
+
+window.doDelete = async function(ids){
+  const box = document.querySelector('.sheet .box'); if (!box) return;
+  const force = Array.from(box.querySelectorAll('.force'))
+                  .filter(b => b.checked).map(b => b.value);
+  box.innerHTML = '<div class="loading">Deleting… this can take a minute for a busy shop.</div>';
+  let res;
+  try {
+    res = await call('adminRentalDeleteShops', { shopIds: ids, confirm: 'DELETE', force });
+  } catch(e){
+    box.innerHTML = '<div class="err"><b>Delete failed.</b><br>' + esc(e.message||'') + '</div>'
+      + '<button class="btn g" style="margin-top:12px" onclick="this.closest(\'.sheet\').remove();load()">Close</button>';
+    return;
+  }
+  const out = res.results || [];
+  const done = out.filter(r => r.ok), failed = out.filter(r => !r.ok);
+  done.forEach(r => PICKED.delete(r.shopId));
+  box.innerHTML = `
+    <h2 style="margin:0 0 4px">${done.length} deleted</h2>
+    ${done.length?`<div class="card">${done.map(r=>`<div class="line">
+      <span class="grow">${esc(r.name||r.shopId)}</span>
+      <span class="muted">${(r.deleted&&r.deleted.rentals)||0} rentals removed</span></div>`).join('')}</div>`:''}
+    ${failed.length?`<div class="card" style="background:var(--y-t);border-color:var(--y-bd)">
+      <h3>${failed.length} not deleted</h3>
+      ${failed.map(r=>`<div class="line"><span class="grow">${esc(r.name||r.shopId)}</span>
+        <span class="muted">${esc((r.blockers||[]).join(' · ') || r.error || r.reason)}</span></div>`).join('')}
+    </div>`:''}
+    <button class="btn" style="margin-top:12px"
+      onclick="this.closest('.sheet').remove();load()">Done</button>`;
+};
 
 /* ── one shop, for when they ring ──────────────────────────────────────── */
 window.openShop = async function(shopId){
@@ -577,7 +753,20 @@ window.openShop = async function(shopId){
       ${held.map(b=>`<div class="line"><span class="grow">A ${esc(b.model||'')}
         <span class="muted">· ${esc(b.customerName||'')}</span></span>
         <b>${day(typeof b.fromAt==='number'?b.fromAt:0)}</b></div>`).join('')}
-    </div>`:''}`;
+    </div>`:''}
+
+    <!-- Last on the page, and the only red thing on it. Everything above
+         answers "what is going on with this shop"; this is the one control
+         that destroys it, so it does not sit next to the ones that do not. -->
+    <div class="dz">
+      <h3>Delete this shop</h3>
+      <div class="h">Removes the business and everything in it — bikes, rentals,
+        bills, rate cards, team. There is no undo and no backup to restore from.
+        Use it for test shops, duplicates and signups that never started.</div>
+      <button class="btn d" style="margin-top:10px"
+        onclick="this.closest('.sheet').remove();askDelete(['${esc(shopId)}'])">
+        Delete ${esc(s.name||'this shop')}…</button>
+    </div>`;
 };
 </script>
 </body>
