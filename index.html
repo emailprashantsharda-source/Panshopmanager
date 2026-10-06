@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261002_2000';
+    window.HISAABNOW_BUILD = 'v34_auto_20261006_1230';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -46207,6 +46207,8 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     });
   }
 
+  const _inflight = new Map();
+  const _batchPending = new Map();   /* class ('bills' | 'other') -> commit in flight */
   const FS = {
     _collRef(name) {
       if (!CFG.shopId) throw new Error('shopId missing — call init first');
@@ -46228,11 +46230,24 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       /* (v32.3) Race against UPLOAD_TIMEOUT_MS — if Firestore hangs,
          throw deadline-exceeded so drain releases _lock and schedules
          backoff via the normal failure path. */
-      await _withTimeout(
-        sdk.setDoc(ref, payload, { merge: true }),
-        UPLOAD_TIMEOUT_MS,
-        'upload ' + collectionName + ':' + record.id
-      );
+      /* (v35 stall fix) The Firestore SDK acknowledges writes strictly in order. When
+         one hangs, every retry used to ADD another copy of the same write behind it —
+         thousands of duplicates on a bad connection, so every new write timed out too.
+         Now there is at most one write in flight per document; a retry waits for it. */
+      const _k = collectionName + ':' + record.id;
+      const _h = hashRecord(record);
+      const _cur = _inflight.get(_k);
+      if (_cur && _cur.h === _h) {
+        await _withTimeout(_cur.p, UPLOAD_TIMEOUT_MS, 'upload ' + _k);
+        return;
+      }
+      if (_cur) await _withTimeout(_cur.p, UPLOAD_TIMEOUT_MS, 'upload (behind earlier write) ' + _k);
+      const _p = Promise.resolve(sdk.setDoc(ref, payload, { merge: true }));
+      const _entry = { p: _p, h: _h };
+      _inflight.set(_k, _entry);
+      const _clr = function(){ if (_inflight.get(_k) === _entry) _inflight.delete(_k); };
+      _p.then(_clr, _clr);
+      await _withTimeout(_p, UPLOAD_TIMEOUT_MS, 'upload ' + _k);
     },
 
     /* (v32.4) Batched upload — commits up to 500 writes in a single
@@ -46246,6 +46261,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
       if (typeof sdk.writeBatch !== 'function') {
         throw new Error('writeBatch missing from HisaabSyncDeps.sdk');
       }
+      const _bcls = items.some(function(it){ return _neverDrop(it.collection); }) ? 'bills' : 'other';
+      if (_batchPending.get(_bcls)) {
+        const _be = new Error('hisaab-sync timeout: earlier batch still pending');
+        _be.code = 'deadline-exceeded'; _be.name = 'TimeoutError';
+        throw _be;
+      }
       const batch = sdk.writeBatch(db);
       for (const it of items) {
         const ref = this._docRef(it.collection, it.record.id);
@@ -46254,8 +46275,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         }), { merge: true });
       }
       /* Batches need more time than single writes — give them 2x */
+      const _cp = Promise.resolve(batch.commit());
+      _batchPending.set(_bcls, _cp);
+      const _cc = function(){ if (_batchPending.get(_bcls) === _cp) _batchPending.delete(_bcls); };
+      _cp.then(_cc, _cc);
       await _withTimeout(
-        batch.commit(),
+        _cp,
         UPLOAD_TIMEOUT_MS * 2,
         'batch commit (' + items.length + ' items)'
       );
@@ -46414,8 +46439,11 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     log('checkpoint gate reset — tombstone generation paused until next pull');
   }
 
-  function _checkpointNow() {
+  let _lastFullPass = 0;
+  function _checkpointNow(forceFull) {
     if (!CFG.shopId) return;
+    const _fullPass = !_scaleOn() || !!forceFull || (now() - _lastFullPass > 300000);
+    if (_fullPass) _lastFullPass = now();
 
     try {
       if (window.MShop && typeof window.MShop.getActive === 'function') {
@@ -46442,8 +46470,12 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
         if (!rec || rec.id === undefined || rec.id === null) continue;
         const id = String(rec.id);
         seenIds.add(id);
-        const h = hashRecord(rec);
         const prev = snap[id];
+        /* (scale) With 100k bills, hashing every bill after every sale janks slow phones.
+           Between full passes, a bill whose updatedAt hasn't moved is trusted unchanged;
+           the full pass (every 5 min, and on hide) still catches edits that forgot it. */
+        if (_scale && !_fullPass && coll === 'sales' && prev && prev.t === rec.updatedAt) continue;
+        const h = hashRecord(rec);
 
         if (!prev || prev.h !== h) {
 
@@ -46553,6 +46585,7 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     drainOutbox().catch(e => err('post-checkpoint drain', e));
   }
 
+  try { document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden' && _scaleOn()) { try { _checkpointNow(true); } catch(e){} } }); } catch(e){}
   function checkpoint() {
 
     if (_checkpointPending) clearTimeout(_checkpointPending);
@@ -46663,7 +46696,20 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
           log('drain: hit session failure budget — pausing', sessionFailures);
           break;
         }
-        const batch = Outbox.peek(CFG.OUTBOX_DRAIN_CHUNK);
+        /* (v35 stall fix) Bills first, and never mixed with other records in one batch, so a
+           stuck product can neither hold bills back nor sink a batch of bills. Entries still
+           cooling down from earlier failures are skipped so they cannot block the line. */
+        const batch = (function(){
+          const hi = [], lo = [];
+          for (const e of Outbox.all()) {
+            const k = e.collection + ':' + e.record.id;
+            if (_sessionFailedKeys.has(k)) continue;
+            if (e.lastAttemptAt && (now() - e.lastAttemptAt) < _sessionRecentFailMs && (e.attempts || 0) >= 3) continue;
+            (_neverDrop(e.collection) ? hi : lo).push(e);
+            if (hi.length >= CFG.OUTBOX_DRAIN_CHUNK) break;
+          }
+          return (hi.length ? hi : lo).slice(0, CFG.OUTBOX_DRAIN_CHUNK);
+        })();
         if (!batch.length) break;
 
         const ok = [], bad = [];
@@ -46704,8 +46750,22 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
             }
           } catch (batchErr) {
             log('batch upload failed (' + ((batchErr && batchErr.code) || '?') + ') — falling back to per-item');
+            const _bc = batchErr && batchErr.code;
+            const _netFail = (_bc === 'deadline-exceeded' || _bc === 'unavailable');
+            if (_netFail) {
+              /* A timeout means the connection is slow or stalled, not that one record is
+                 bad. Re-sending each record singly would only pile more writes behind the
+                 stuck one. Count it as one failure and back off. */
+              for (const entry of _candidates) {
+                const key = entry.collection + ':' + entry.record.id;
+                bad.push(key); failed++;
+                _sessionFailedKeys.add(key);
+                errorsByKey[key] = { code: _bc, message: batchErr && batchErr.message, name: batchErr && batchErr.name };
+              }
+              sessionFailures = SESSION_FAIL_BUDGET;
+            }
             /* Per-item fallback to isolate the bad record(s) */
-            for (const entry of _candidates) {
+            for (const entry of (_netFail ? [] : _candidates)) {
               const key = entry.collection + ':' + entry.record.id;
               try {
                 await FS.upload(entry.collection, entry.record);
@@ -47192,7 +47252,9 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   }
 
   function _evictOld(days) {
-    if (!_scaleOn() || !days || days < 7) return 0;
+    /* Reports across the app still read bills from this device, so never drop anything
+       younger than a year: a yearly/GST report must stay complete. */
+    if (!_scaleOn() || !days || days < 365) return 0;
     const arr = getStateArray('sales');
     if (!arr || !_initialPullDone || Outbox.size() > 0) return 0;
     const cutoff = now() - days * 86400000;
