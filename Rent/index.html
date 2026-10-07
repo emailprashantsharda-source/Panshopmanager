@@ -1283,7 +1283,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_42_0_allrange';
+const BUILD = 'rn_v3_47_0_hardcap';
 
 /* ── auto-renew: off until PayU says the mandate works ────────────────
    PayU enables Standing Instruction per merchant account, and it is not on
@@ -1981,8 +1981,9 @@ const R = {
         <div class="line" style="border-top:1.5px solid var(--bd);margin-top:6px;padding-top:11px">
           <span>Days remaining</span><b style="font-size:16px">${
             t.lastDay ? 'Last day' : t.subDaysLeft}</b></div>
-        ${over ? `<div class="muted" style="margin-top:8px;color:var(--danger)">You have more bikes
-          than this plan covers (${p.bikes}). Upgrade to stay inside it.</div>` : ''}
+        ${over ? `<div class="muted" style="margin-top:8px;color:var(--danger)">You have ${fleet}
+          ${esc(noun(1))} and ${esc(p.name)} covers ${p.bikes}.</div>
+          <button class="btn sm" style="margin-top:9px" onclick="R.upgradeAsk()">See the right plan</button>` : ''}
         ${!p ? `<div class="muted" style="margin-top:8px">Your payment is recorded but the plan name
           did not come through. Message us and we will label it.</div>` : ''}
       </div>
@@ -2195,10 +2196,12 @@ const R = {
   /* Suggest the plan that actually fits their yard, rather than making a
      shopkeeper work out which bracket he is in. */
   fleetCount(){ return (DB.d.vehicles||[]).filter(v=>!v.deletedAt).length; },
-  suggestedPlan(){
-    const n = this.fleetCount();
-    return this.PLANS.find(p => p.bikes === null || n <= p.bikes) || this.PLANS[this.PLANS.length-1];
+  /* The smallest plan that holds n vehicles. */
+  planFor(n){
+    return this.PLANS.find(p => p.bikes === null || n <= p.bikes)
+        || this.PLANS[this.PLANS.length-1];
   },
+  suggestedPlan(){ return this.planFor(this.fleetCount()); },
   planById(id){
     const k = String(id||'').toLowerCase();
     return this.PLANS.find(p => p.id === k) || null;
@@ -2225,6 +2228,14 @@ const R = {
     const fleet = this.fleetCount();
     const sug = this.suggestedPlan();
     const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    /* Open on the cycle he is actually paying on. The sheet defaulted to
+       yearly for everyone, so a monthly shop being told it must move up met
+       ₹12,990 before it ever saw ₹1,299 — a very different conversation,
+       and the wrong one to have with someone who is already struggling to
+       renew. renewNow() had this right and the list did not. Once he taps
+       the toggle himself his choice stands for the rest of the session. */
+    if (t && t.cycle && !this._billingTouched)
+      this._billing = /ann|year/.test(t.cycle) ? 'y' : 'm';
     /* -1 when unpaid OR when the webhook recorded no tier. Both mean "we do
        not know what he is on", and in both cases every plan stays buyable —
        guessing would either hide the plan he needs or offer him his own. */
@@ -2241,6 +2252,26 @@ const R = {
         <div class="muted" style="margin-top:3px">Changing plan is done by hand so the days you
           have already paid for are not lost. Tap any plan and we will set it up.</div>
       </div>` : ''}
+
+      ${(() => {
+        /* Over the allowance, and therefore not renewable on this plan. Says
+           what is true now that there is no last-chance window: the current
+           plan cannot be bought again at this fleet size, and names the one
+           that can. The banner this replaced read "You can renew it today"
+           beside a button that was already disabled. */
+        const t2 = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+        const cur2 = t2 && t2.tier ? this.planById(t2.tier) : null;
+        const f2 = this.fleetCount();
+        if (!cur2 || cur2.bikes === null || f2 <= cur2.bikes) return '';
+        const fits2 = this.planFor(f2);
+        return `<div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+          <b style="font-size:13.5px">${esc(cur2.name)} no longer fits your fleet</b>
+          <div class="muted" style="margin-top:3px">You have ${f2} ${esc(noun(1))} and
+            ${esc(cur2.name)} covers ${cur2.bikes}, so it cannot be renewed at this size.
+            ${esc((fits2||{}).name || 'A larger plan')} at ${money((fits2||{}).m || 0)} a month
+            is the one that fits.</div>
+        </div>`;
+      })()}
 
       ${(() => {
         /* Shown wherever the plan is shown, not buried in a settings page.
@@ -2314,11 +2345,30 @@ const R = {
         const tooSmall = p.bikes !== null && fleet > p.bikes;
         const isSug = !isCur && !tooSmall && p.id === sug.id;
         let cls = 'ghost', label = 'Choose ' + p.name, dis = '';
-        if (isCur){
-          label = t.subEnds ? 'Active until ' + fmtDay(t.subEnds) : 'Your current plan';
-          dis = 'disabled';
-        } else if (tooSmall){
+        /* tooSmall is tested BEFORE isCur now, which is the whole of
+           "enforce at renewal": a shop over its allowance cannot re-buy the
+           plan it has outgrown, it has to take the one that fits. Tested
+           after isCur, his own plan simply read "Active until 7 Oct" and the
+           limit never came up at the one moment it should. */
+        /* No grace, no last-chance window. A plan that cannot hold the
+           fleet is not buyable by that shop — not as a new purchase, not as
+           a renewal, not while the old term is still running. The fleet
+           cannot reach this state any more anyway: the block below stops
+           the bike that would cross the line before it is ever saved. This
+           is here for shops that crossed it before that rule existed. */
+        if (tooSmall){
           label = 'Too small for ' + fleet + ' ' + noun(fleet!==1);
+          dis = 'disabled';
+        } else if (isCur && t.renewSoon){
+          /* Renew EARLY. His own plan used to be disabled while it was still
+             running, so the only way to renew was to let it lapse first —
+             which is a strange thing to require of someone trying to pay,
+             and on the last day it means going dark before going again.
+             Safe because activation stacks: paying today adds to the days
+             still left rather than replacing them. */
+          cls = ''; label = 'Renew ' + p.name;
+        } else if (isCur){
+          label = t.subEnds ? 'Active until ' + fmtDay(t.subEnds) : 'Your current plan';
           dis = 'disabled';
         } else if (curRank >= 0 && rank > curRank){
           cls = ''; label = 'Upgrade to ' + p.name;
@@ -2357,7 +2407,7 @@ const R = {
     `);
   },
   setBilling(b){
-    this._billing = b; Haptic.tap();
+    this._billing = b; this._billingTouched = true; Haptic.tap();
     /* A code can be valid yearly and not monthly. Dropping it on a cycle
        switch is the honest move — silently carrying a yearly-only discount
        onto monthly prices would show a number PayU refuses to honour. */
@@ -2377,20 +2427,39 @@ const R = {
        purchase of the same tier, mid-term, is real money for zero extra
        days. The disabled button is UX; this is the actual guard. */
     const ti = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
-    if (ti && ti.paid && ti.tier === p.id && !ti.renewSoon)  /* lapsed shops fall through: paid is false */
+    const curRank = (ti && ti.paid && ti.tier) ? this.planRank(ti.tier) : -1;
+    const newRank = this.planRank(p.id);
+    const renewing = curRank >= 0 && ti.tier === p.id;
+    if (renewing && !ti.renewSoon)  /* lapsed shops fall through: paid is false */
       return toast('You are already on ' + p.name + ' until ' +
         (ti.subEnds ? fmtDay(ti.subEnds) : 'later'));
-    /* A tier change mid-term is not something to hand to a payment gateway
-       yet. PayU would take the new plan's full price and the webhook would
-       overwrite the expiry, silently burning whatever the shop had already
-       paid for. Until that is settled server-side, an upgrade goes to a
-       person who can do it properly. Renewing the SAME tier still goes
-       straight through, because it is only offered near the end of the term
-       when there is nothing left to lose. */
-    if (ti && ti.paid && ti.tier && ti.tier !== p.id) return this.planChangeHelp(p.id);
+    /* UPGRADES now go straight to checkout. The old note here feared that
+       paying for a bigger plan mid-term would overwrite the expiry and burn
+       days already paid for — it does not. processRentalPayment() stacks:
+       it takes the later of today and the existing expiry as its base and
+       adds the new plan's days. So a shop on Starter until 7 Nov that buys
+       Growth today keeps every remaining day AND gets Growth for them. The
+       shop gains; nobody loses. A DOWNGRADE is the genuinely awkward case
+       — it would hand back less than was paid for — so that still goes to
+       a person. */
+    if (curRank >= 0 && newRank >= 0 && newRank < curRank) return this.planChangeHelp(p.id);
+
+    /* The cap applies to a renewal as well as a first purchase — renewal is
+       where it is meant to bite, because that is the moment money changes
+       hands anyway and nothing about the shop's day is interrupted.
+
+       What makes that fair rather than the lockout it was before: there is
+       now somewhere to go. Refusing the small plan opens the sheet for the
+       one that fits, with its price, one tap from checkout. The old version
+       refused Starter with a toast and sent Growth to a human, which is a
+       limit with no exit — and a customer who cannot pay you is not a
+       customer you are enforcing anything against. */
     const fleet = this.fleetCount();
-    if (p.bikes !== null && fleet > p.bikes)
+    if (p.bikes !== null && fleet > p.bikes){
+      const fits = this.suggestedPlan();
+      if (fits && fits.id !== p.id) return this.upgradeAsk(p, fits, fleet);
       return toast(p.name + ' covers ' + p.bikes + ' bikes — you have ' + fleet);
+    }
     Haptic.primary();
     const yearly = this._billing === 'y';
     /* Straight to PayU. The code, if one is applied and valid for THIS tier,
@@ -4643,6 +4712,17 @@ const R = {
     if (!name) return toast(Noun()+' name is required');
     if (!rateId) return toast('Choose a rate card');
 
+    /* THE RULE: a shop cannot exceed its plan's allowance. Full stop.
+       Checked here, before anything is written — and before the "+ New
+       rate" branch below, which creates a rate card as a side effect and
+       would otherwise leave one behind for a bike that was never allowed.
+       Editing an existing bike is never blocked: correcting a number plate
+       grows nothing. */
+    if (!id){
+      const blk = this.capBlocked();
+      if (blk) return this.upgradeAsk(blk.cur, blk.fits, blk.fleet, true);
+    }
+
     /* Same expression saveVehicle() uses below for the vehicle record itself —
        computed once here because the "+ New rate" branch needs to know the
        kind BEFORE the vehicle record exists, to read and tag the right km
@@ -4748,6 +4828,71 @@ const R = {
     else { DB.d.vehicles.push(Object.assign({ id: DB.id('v') }, rec)); }
     DB.save(); closeSheet(); this.render();
     toast(Noun() + (id ? ' updated' : ' added'));
+  },
+
+  /* ── the fleet allowance, enforced where the fleet grows ────────────
+     Returns null when another vehicle is fine, or the plan facts when it is
+     not. Enforced at the point of ADDING rather than at renewal, because a
+     shop that discovers the limit a month later has already built its
+     working day around bikes it was never entitled to — and taking them
+     away then is worse than never allowing them.
+
+     A trial has no plan and therefore no allowance; it is unrestricted, and
+     the right plan is chosen at the first purchase. */
+  capBlocked(){
+    const t = (window.Cloud && Cloud.ready) ? Cloud.trialInfo() : null;
+    /* A tier is enough — paid or lapsed. Keyed on t.paid, the allowance
+       evaporated the moment a plan expired, so a lapsed Starter shop could
+       sit at 46 bikes and keep adding more. It cannot rent them out, so the
+       damage is small, but "no one adds the 16th bike until they upgrade"
+       has to mean exactly that or it is not a rule. A shop with no tier at
+       all is on trial and stays unrestricted. */
+    if (!t || !t.tier) return null;
+    const cur = this.planById(t.tier);
+    if (!cur || cur.bikes === null) return null;        /* unlimited plan */
+    const fleet = this.fleetCount();
+    if (fleet < cur.bikes) return null;                 /* one more still fits */
+    /* Sized for the fleet he is ABOUT to have, not the one he has. At exactly
+       15 bikes suggestedPlan() still answers "Starter" — true of 15, useless
+       when the whole point is that the 16th does not fit — and upgradeAsk
+       then found the suggestion equal to the current plan and bailed out to
+       the plans list, so the block refused the bike with no explanation. */
+    return { cur, fits: this.planFor(fleet + 1), fleet };
+  },
+
+  /* Shown from the cap crossing and from the Subscription card. Names the
+     number, the plan that fits and the price, and goes straight to checkout
+     — the old notice said "Upgrade" as a sentence with nothing behind it. */
+  upgradeAsk(cur, fits, fleet, blocking){
+    cur = cur || this.planById(((window.Cloud && Cloud.ready) ? Cloud.trialInfo() : {}).tier);
+    fits = fits || this.suggestedPlan();
+    fleet = fleet || this.fleetCount();
+    if (!cur || !fits || fits.id === cur.id) return this.plans();
+    openSheet(`<div class="sheet-hd"><h2>${blocking
+        ? 'Upgrade to add this ' + esc(noun(0)) : 'Time to move up a plan'}</h2>
+        <button class="btn ghost sm" onclick="closeSheet()">Close</button></div>
+      <div class="card" style="background:var(--y-tint);border-color:var(--y-bd)">
+        <div class="line"><span>${esc(noun(1))} in your fleet</span><b>${fleet}</b></div>
+        <div class="line"><span>${esc(cur.name)} covers</span><b>${cur.bikes}</b></div>
+        ${blocking ? `<div class="muted" style="margin-top:8px">You are at your
+          ${esc(cur.name)} limit. Move to ${esc(fits.name)} and you can add this
+          ${esc(noun(0))} straight away.</div>` : ''}
+      </div>
+      <div class="card">
+        <div class="row"><div class="grow">
+          <b style="font-size:15px">${esc(fits.name)}</b>
+          <div class="muted" style="margin-top:2px">${fits.bikes===null
+            ? 'Unlimited \u00b7 multiple branches' : 'Up to ' + fits.bikes + ' ' + esc(noun(1))}</div>
+        </div><b style="font-size:15px">${money(fits.m)}<span class="muted" style="font-weight:600">/mo</span></b></div>
+        <div class="muted" style="margin-top:8px">${money(fits.y)} a year works out at
+          ${money(Math.round(fits.y/12))} a month.</div>
+      </div>
+      <button class="btn" onclick="closeSheet();R.choosePlan('${esc(fits.id)}')">
+        Move to ${esc(fits.name)}</button>
+      <div class="muted" style="margin:7px 2px 12px;font-size:12.5px">
+        Whatever is left on your ${esc(cur.name)} plan stays yours \u2014 the new plan
+        is added on top of it, not instead of it.</div>
+      <button class="btn ghost" onclick="closeSheet()">${blocking?'Cancel':'Not now'}</button>`);
   },
 
   /* ── clean up the old seeder's leftovers ─────────────────────────
