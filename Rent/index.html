@@ -1283,7 +1283,7 @@ select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
    never touches revenue until it is explicitly forfeited. Every other
    design choice here is downstream of that one.
    ═══════════════════════════════════════════════════════════════════ */
-const BUILD = 'rn_v3_41_0_autorenew';
+const BUILD = 'rn_v3_42_0_allrange';
 
 /* ── auto-renew: off until PayU says the mandate works ────────────────
    PayU enables Standing Instruction per merchant account, and it is not on
@@ -6788,7 +6788,7 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
      chips back and forth does not refetch. */
   _loadWindow(rng, covers){
     const key = rng.start + '|' + rng.end;
-    if (this._period === 'all' || covers) return { need:false, have:true, busy:false };
+    if (covers) return { need:false, have:true, busy:false };
     if (this._winKey === key) return { need:true, have:true, busy:false, trunc:this._winTrunc };
     if (this._winBusy === key) return { need:true, have:false, busy:true };
     this._winBusy = key;
@@ -6915,13 +6915,33 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
        counted in /daily; whatever the cause, an empty live total beside a
        non-empty rollup means the rentals are the incomplete source. It can
        only ever replace a zero, so it cannot damage a figure already right. */
-    const coversRange = this._period === 'all' || this._closedCovers(rng.start);
+    /* 'All' is no longer special-cased out of the window fetch, and that is
+       the whole of this change.
+
+       It used to take the hero from the rollups and leave the bike-wise list
+       on the rolling 400-rental cache. For a shop with 862 lifetime rentals
+       that put "862 rentals rented out · ₹2,86,901" directly above a list
+       covering fewer than half of them, and a banner underneath explaining
+       the discrepancy. An explanation is not a fix: the shop still sees two
+       totals on one screen and reasonably calls it a bug.
+
+       'All' has a stable range — epoch to the end of today — so it keys the
+       window cache exactly like any other period and cannot refetch in a
+       loop. A shop whose whole history fits inside one page now gets a list
+       that matches its own hero. One that does not is TRUNCATED, and then
+       the rollups must keep the hero: a live total computed from the most
+       recent 1,500 rentals of 70,000 would quietly replace a correct figure
+       with a smaller wrong one. That is the only case the banner survives
+       for, and there it is telling the truth about a real limit rather than
+       about an arrangement we chose. */
+    const coversRange = this._closedCovers(rng.start);
     const win = this._loadWindow(rng, coversRange);
+    const complete = coversRange || (win.have && !win.trunc);
     const liveBlank = !live.revenue && !live.collected && !live.depositsIn;
     const rollupHas = !!(sum('revenue') || sum('collected') || sum('depositsIn'));
-    const useLive = this._period === 'all'
-      ? !sum('revenue')
-      : ((coversRange || win.have) && !(liveBlank && rollupHas));
+    const useLive = complete
+      ? !(liveBlank && rollupHas)
+      : !sum('revenue');
     const pick = f => useLive ? live[f] : sum(f);
 
     const earned = pick('revenue'), got = pick('collected');
@@ -7018,15 +7038,13 @@ Returning on time keeps your full ${money(r.depositHeld)} deposit.`;
         + 'did not load (' + esc(this._winErr) + ') — check your connection and tap '
         + 'the period again.</div></div></div>'
       : win.trunc
+      /* The only note left, and it now means a real limit rather than a
+         choice we made: this range genuinely holds more rentals than one
+         page can carry, so the hero stays on the rollups and says so. */
       ? '<div class="mn-ghost"><div class="mn-ghost-i">\u2139\uFE0F</div><div class="grow">'
-        + '<b>Very large range</b><div class="s">The totals below cover every rental. '
-        + 'The bike-wise list shows the most recent 1,200 of them — pick a shorter '
-        + 'range to see all of it.</div></div></div>'
-      : (this._period === 'all' && !this._closedCovers(0))
-      ? '<div class="mn-ghost"><div class="mn-ghost-i">\u2139\uFE0F</div><div class="grow">'
-        + '<b>All-time totals are complete</b><div class="s">The bike-wise list below '
-        + 'covers your most recent 400 rentals. Pick a month or a date range to see the '
-        + 'full breakdown for that period.</div></div></div>'
+        + '<b>More rentals than the list can show</b><div class="s">The totals below '
+        + 'cover every rental in this period. The bike-wise list shows the most recent '
+        + '1,500 of them — pick a month or a shorter range to see all of it.</div></div></div>'
       : '';
     moneyWarn = moneyWarn + rangeNote;
 
@@ -9302,7 +9320,10 @@ const Cloud = {
      being shown a short list as though it were whole. */
   async closedInWindow(start, end, cap){
     const base = collection(db,'rn_shops',this.shopId,'rentals');
-    const lim = cap || 1200;
+    /* 1500, not 1200. A shop two years in sits around a thousand rentals,
+       and the point of this query is that its "All" list comes back whole
+       rather than one page short of it. */
+    const lim = cap || 1500;
     const run = async (field) => {
       try {
         const snap = await getDocs(query(base,
