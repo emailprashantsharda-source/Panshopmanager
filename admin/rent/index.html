@@ -676,7 +676,18 @@ window.openShop = async function(shopId){
   const held  = (d.bookings||[]).filter(b=>b.status==='held');
   const unpriced = (d.rates||[]).filter(r => {
     const t=r.tiers||{}; return !((+t.h3||0)+(+t.h6||0)+(+t.h12||0)+(+t.h24||0)+(+t.d7||0)); });
-  const idle = (d.vehicles||[]).filter(v => !(d.rentals||[]).some(r=>r.vehicleId===v.id));
+  /* Live bikes only. The app deletes a bike by stamping deletedAt and
+     leaving the document, so an unfiltered list counts bikes the shop
+     removed months ago — which is how this panel showed 46 against the
+     shop's own 16. */
+  const bikes = (d.vehicles||[]).filter(v => !v.deletedAt);
+  /* "Never rented" from LIFETIME trips, not from the 25 rentals this call
+     happens to fetch. The old test called a bike never-rented whenever it
+     was missing from that handful. */
+  const statOf = id => (d.vehicleStats||[]).find(s => s.id === id) || null;
+  const idle = bikes.filter(v => { const st = statOf(v.id);
+    return st ? !(Number(st.closedTrips) || 0)
+              : !(d.rentals||[]).some(r => r.vehicleId === v.id); });
 
   w.querySelector('.box').innerHTML = `
     <div class="row" style="margin-bottom:12px">
@@ -716,7 +727,7 @@ window.openShop = async function(shopId){
     </div>
 
     <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi"><div class="l">Bikes</div><div class="v">${(d.vehicles||[]).length}</div>
+      <div class="kpi"><div class="l">Bikes</div><div class="v">${bikes.length}</div>
         <div class="s">${idle.length} never rented</div></div>
       <div class="kpi ok"><div class="l">Out now</div><div class="v">${openR.length}</div></div>
       <div class="kpi vi"><div class="l">Bookings</div><div class="v">${held.length}</div></div>
