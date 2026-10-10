@@ -743,7 +743,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261011_0130';
+    window.HISAABNOW_BUILD = 'v34_auto_20261011_0730';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3952,8 +3952,53 @@ html[data-current-role="manager"] body{
   </svg>
   <div class="ls-splash-text" id="ls-msg">Loading your shop…</div>
   <div class="ls-splash-spin" id="ls-spin"></div>
-  <div id="ls-state"></div>
+  <div id="ls-state" style="margin-top:14px;font-size:12px;color:#8a7a5c;text-align:center;max-width:320px;line-height:1.5"></div>
 </div>
+<script>
+/* (Oct 2026) BOOT SAFETY NET. "Loading your shop…" (html[data-route=undecided]) was only ever
+   cleared by the Firebase login callback. If Firebase is slow, blocked, or stuck behind another
+   open HisaabNow tab, the shop never opened — even though all its data is already on this device.
+   After 8s we open the shop from local data and let the cloud connect in the background. The
+   splash also says which step it is waiting on, so a stall can be diagnosed from a screenshot. */
+(function(){
+  var t0 = Date.now(), done = false;
+  function stage(){
+    var w = [];
+    if (document.readyState === 'loading') w.push('page still downloading');
+    if (!window.App) w.push('app code');
+    if (!window.kfAuth) w.push('Firebase');
+    else if (!window.currentUserId) w.push('login check');
+    if (window.kfAuth && !window._mshopReady) w.push('shop data');
+    return w;
+  }
+  function openFromLocal(reason){
+    if (done) return; done = true;
+    try { console.warn('[boot] safety net opened the shop from local data:', reason); window.__hnBootNet = { reason: reason, at: Date.now() - t0 }; } catch(e){}
+    try {
+      var first = false;
+      try { first = !!(window.Store && Store.isFirstRun && Store.isFirstRun()); } catch(e){}
+      if (window.App && App.nav) App.nav(first ? 'onboarding' : 'home');
+    } catch(e){ console.warn('[boot] safety-net nav failed', e); }
+    try { document.documentElement.removeAttribute('data-route'); } catch(e){}
+    try { if (window.App && App.toast) App.toast('Opened from this device · connecting to cloud…'); } catch(e){}
+  }
+  var iv = setInterval(function(){
+    var undecided = document.documentElement.getAttribute('data-route') === 'undecided';
+    if (!undecided){ clearInterval(iv); done = true; return; }
+    var secs = Math.round((Date.now() - t0) / 1000);
+    var el = document.getElementById('ls-state');
+    var w = stage();
+    if (el && secs >= 4) {
+      el.innerHTML = 'Waiting for: ' + (w.join(', ') || 'routing') + ' · ' + secs + 's'
+        + (secs >= 12 ? '<br><a href="#" onclick="location.reload();return false" style="color:#B45309;font-weight:700">Tap to reload</a>' : '');
+    }
+    /* Open from local data once the app code is there; never before (nothing to show yet). */
+    if (secs >= 8 && window.App && App.nav && document.readyState !== 'loading') {
+      clearInterval(iv); openFromLocal(w.join(', '));
+    }
+  }, 1000);
+})();
+</script>
 
 <div id="login-screen" class="ls-root mk1" style="display:none">
   <div class="ls-shell">
@@ -7986,7 +8031,7 @@ html[data-current-role="manager"] body{
        live in the separate `ingredients` collection, so "Inventory value" was
        silently under-reporting a restaurant's real inventory. */
     'cat.kpiInventoryValue': { en: 'Stock value',             hi: 'स्टॉक की कीमत'    },
-    'cat.kpiAtCostPrice':    { en: 'bar · cigarettes · retail · at cost', hi: 'बार · सिगरेट · रिटेल · लागत पर' },
+    'cat.kpiAtCostPrice':    { en: 'at cost price', hi: 'लागत मूल्य पर' },
     /* Desktop catalog stock tags + row action */
     'cat.tagOut':     { en: 'OUT',      hi: 'खत्म'     },
     'cat.tagLow':     { en: 'LOW',      hi: 'कम'       },
@@ -11752,6 +11797,39 @@ const SEED_CATALOGS = {
   other: []
 };
 window.SEED_CATALOGS = SEED_CATALOGS;
+/* (Oct 2026) ONE ITEM PER SWEET. Sweets/bakery seeds were one product per pack ("Kaju Katli · 250g",
+   "· 500g", "· 1kg"), which tripled the billing grid and split stock across packs. Group them into one
+   product with sizes. Weight-only sweets become by-weight items (stock in kg, sizes = packs); sweets that
+   are also sold by the piece ("Rasgulla · 1 piece" + "· 500g (12 pcs)") stay counted per pack/piece. */
+(function(){
+  function wOf(sfx){ var m=String(sfx||'').match(/(\d+(?:\.\d+)?)\s*(kg|g|gm)\b/i); if(!m) return 0; var n=parseFloat(m[1]); return /kg/i.test(m[2])?n*1000:n; }
+  function group(list){
+    var order=[], by={};
+    (list||[]).forEach(function(seed){
+      var nm=String(seed.name||''), i=nm.indexOf(' \u00b7 ');
+      if(i<0 || seed.sizes){ var k0='__'+order.length; order.push(k0); by[k0]={single:seed}; return; }
+      var base=nm.slice(0,i).trim(), sfx=nm.slice(i+3).trim(), key=(seed.cat||'')+'|'+base.toLowerCase();
+      if(!by[key]){ by[key]={base:base, emoji:seed.emoji, cat:seed.cat, sizes:[], first:seed}; order.push(key); }
+      by[key].sizes.push(sfx);
+    });
+    return order.map(function(k){
+      var g=by[k]; if(g.single) return g.single;
+      if(g.sizes.length<2) return g.first;
+      var allW=g.sizes.every(function(z){ return wOf(z)>0; });
+      return { name:g.base, emoji:g.emoji, cat:g.cat, sizes:g.sizes, unit: allW?'kg':'pcs', byWeight: allW };
+    });
+  }
+  ['sweets','bakery'].forEach(function(v){ try{ if(Array.isArray(SEED_CATALOGS[v])) SEED_CATALOGS[v]=group(SEED_CATALOGS[v]); }catch(e){} });
+  window.hnWeightOf = wOf;
+})();
+/* per-kg price of a by-weight item, from its sizes (the 1kg size if present, else scaled from the largest) */
+window.hnPerKg = function(p){
+  try {
+    if (!p || !Array.isArray(p.sizes)) return 0;
+    var best=null; p.sizes.forEach(function(z){ var w=window.hnWeightOf(z.name), pr=+z.price||0; if(w>0&&pr>0){ if(w===1000) best={w:w,pr:pr,exact:1}; else if(!best||(!best.exact&&w>best.w)) best={w:w,pr:pr}; } });
+    return best ? Math.round(best.pr/best.w*1000) : 0;
+  } catch(e){ return 0; }
+};
 
 /* ── (v34_018) One noun table, read by everything vertical-aware ──────────────
    Rolling the bulk-price / profit-first / margin-lesson flow past sweets means
@@ -13208,6 +13286,7 @@ const App = {
       }
       /* Any other destination: take the Bulk Orders overlay down, or it sits on top of the new page. */
       if (window.HNBulk && HNBulk.hide) HNBulk.hide();
+      if (window.HNProd && HNProd.hide) HNProd.hide();
       if ((page === 'addsale' || page === 'checkout') && this.setBillDate) { var _me = this; setTimeout(function(){ try { _me.setBillDate(_me._billDateISO); } catch(_){} }, 0); }
     } catch(e){ console.warn('[nav] bulk orders route failed', e); }
 
@@ -18992,7 +19071,7 @@ const App = {
       const inactiveSeeded = inactive.filter(p => p.seeded === true);
       if (inactiveSeeded.length >= 5) {
         const _cfgBulk = VERTICAL_CONFIG[this.vertical] || {};
-        const noun = (_cfgBulk.txnUnitPlural || 'items').toLowerCase();
+        const noun = 'items'; /* (Oct 2026) was txnUnitPlural — sweets read "144 boxes" for catalogue items */
         cta.style.display = '';
         cta.innerHTML = `
           <button onclick="App.openBulkPriceSheet()" style="
@@ -21524,7 +21603,7 @@ const App = {
           const marginRound = Math.round(c.margin);
           const amtStr = c.revenue >= 100000
             ? '₹' + (c.revenue / 100000).toFixed(1) + 'L'
-            : '₹' + Math.round(c.revenue / 1000) + 'K';
+            : (c.revenue >= 1000 ? '₹' + Math.round(c.revenue / 1000) + 'K' : '₹' + Math.round(c.revenue).toLocaleString('en-IN')); /* (Oct 2026) was "₹0K" under ₹1,000 */
           const borderBottom = i < cats.length - 1 ? 'border-bottom:1px solid var(--border-soft, rgba(0,0,0,.05))' : '';
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;${borderBottom};gap:12px">
             <div style="flex:1;min-width:0">
@@ -21555,7 +21634,7 @@ const App = {
           const sharePct = totalCost > 0 ? Math.round((b.amt / totalCost) * 100) : 0;
           const amtStr = b.amt >= 100000
             ? '−₹' + (b.amt / 100000).toFixed(1) + 'L'
-            : '−₹' + Math.round(b.amt / 1000) + 'K';
+            : (b.amt >= 1000 ? '−₹' + Math.round(b.amt / 1000) + 'K' : '−₹' + Math.round(b.amt).toLocaleString('en-IN'));
           const borderBottom = i < sorted.length - 1 ? 'border-bottom:1px solid var(--border-soft, rgba(0,0,0,.05))' : '';
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;${borderBottom};gap:12px">
             <div style="flex:1;min-width:0">
@@ -22564,9 +22643,11 @@ const App = {
       } catch(e){}
       if (!emoji) emoji = '🛒';
 
-      const priceLabel = (s.hasSizes && Array.isArray(s.sizes) && s.sizes.length >= 2)
+      const priceLabel = (s.byWeight && window.hnPerKg && hnPerKg(s) > 0)
+        ? '₹' + hnPerKg(s) + '/kg'
+        : ((s.hasSizes && Array.isArray(s.sizes) && s.sizes.length >= 2)
         ? 'from ₹' + price
-        : '₹' + price;
+        : '₹' + price);
       return `
         <button class="svc-tile ${qty ? 'in-cart' : ''}" onclick="App.addToCart('${id}')">
           ${qty ? `<span class="svc-tile-minus" onclick="event.stopPropagation();App.decFromCart('${id}')">−</span><span class="svc-tile-qty">${this._qtyBadge(s, qty)}</span>` : ''}
@@ -22868,8 +22949,38 @@ const App = {
         '<button class="tap-target-expand" onclick="document.getElementById(\'size-picker-sheet\').style.display=\'none\'" style="width:32px;height:32px;border-radius:8px;background:#fff;border:1px solid #EFE8D7;color:#0A0A0A;font-size:18px;cursor:pointer">×</button>'+
       '</div>'+
       '<div style="font-size:12px;color:#6B6B6B;font-weight:500;margin-bottom:14px">Pick a size to add to cart</div>'+
-      rows;
+      rows + this._szOtherWeightHTML(prod);
     sheet.style.display = 'flex';
+    try { var _w = document.getElementById('szp-w'); if (_w && document.documentElement.getAttribute('data-shell') === 'desktop') _w.focus(); } catch(e){}
+  },
+
+  /* (Oct 2026) by-weight sweets: "Other weight" row in the size picker, priced at the item's ₹/kg */
+  _szOtherWeightHTML(prod){
+    var perKg = (prod && prod.byWeight) ? window.hnPerKg(prod) : 0;
+    if (!(perKg > 0)) return '';
+    var pid = String(prod.id || prod.name).replace(/\\/g,'').replace(/'/g, "\\'");
+    return '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;padding:12px;border:1.5px dashed #E7C98F;border-radius:14px;background:#FFF7E6">'
+      + '<span style="font-weight:800;font-size:13.5px">\u2696 Other</span>'
+      + '<input id="szp-w" type="number" inputmode="numeric" min="1" placeholder="350" data-perkg="' + perKg + '" style="width:84px;padding:9px;border:1px solid #ddd;border-radius:9px;font-size:16px;font-weight:800" '
+      +   'oninput="App._szWPrev(this)" onkeydown="if(event.key===\'Enter\')App._pickWeight(\'' + pid + '\')">'
+      + '<span style="font-weight:700;color:#6B6B6B">g</span><span id="szp-wp" style="font-weight:800;margin-left:auto"></span>'
+      + '<button type="button" onclick="App._pickWeight(\'' + pid + '\')" style="border:0;background:#1c1c1c;color:#fff;border-radius:9px;padding:9px 14px;font-weight:800;cursor:pointer">Add</button>'
+      + '</div><div style="font-size:11.5px;color:#8a7a5c;margin-top:6px">\u20b9' + perKg + ' per kg</div>';
+  },
+  _szWPrev(inp){ var g = +inp.value || 0, pk = +inp.getAttribute('data-perkg') || 0, el = document.getElementById('szp-wp'); if (el) el.textContent = g > 0 ? ('\u20b9' + Math.round(pk * g / 1000)) : ''; },
+  _pickWeight(pid) {
+    var prod = (SERVICES || []).find(function(x){ return (x.id || x.name) === pid; });
+    var inp = document.getElementById('szp-w'); var g = inp ? (+inp.value || 0) : 0;
+    if (!prod || !(g > 0)) { this.toast('Enter grams'); return; }
+    var perKg = window.hnPerKg(prod); if (!(perKg > 0)) { this.toast('Set a price for ' + prod.name + ' first'); return; }
+    if (!Array.isArray(this.customLines)) this.customLines = [];
+    this.customLines.push({ id: '__cw_' + Date.now() + '_' + Math.floor(Math.random()*1000), prodId: prod.id || prod.name, name: prod.name,
+      weightG: g, displayLabel: this._formatWeight(g), qty: 1, rate: perKg, stdWeight: 1000, total: Math.round(perKg * g / 1000) });
+    var sheet = document.getElementById('size-picker-sheet'); if (sheet) sheet.style.display = 'none';
+    this.updateCartSummary();
+    try { if (window.HND && HND.renderCart) HND.renderCart(); } catch(e){}
+    try { this.renderServiceGrid(); } catch(e){}
+    this.toast(this._T('toast.addedPrefix','Added') + ' ' + prod.name + ' (' + this._formatWeight(g) + ')');
   },
 
   /* Called when user taps a size tile — adds key "id::Size" to cart */
@@ -23006,7 +23117,9 @@ const App = {
     prod.sizes.forEach(sz => {
       const w = this._parseProductWeightG(sz.name);
       if (w && w > 0 && +sz.price > 0){
-        if (!best || w > best.weight){
+        /* (Oct 2026) the 1kg size, when there is one, is the shop's "₹ per kg" — prefer it */
+        if (best && best.weight === 1000) return;
+        if (!best || w === 1000 || w > best.weight){
           best = { weight: w, price: +sz.price, sizeName: sz.name };
         }
       }
@@ -23061,7 +23174,11 @@ const App = {
       const base = this._stripWeightFromName(s.name);
       const w = this._parseProductWeightG(s.name);
       if (!w || w <= 0) return;
-      if (!groups[base] || w < groups[base].weight){
+      /* (Oct 2026) Sweets/bakery quote "₹ per kg": take the rate from the pack nearest 1kg (usually
+         cheaper per gram than the 250g box). Others keep the smallest pack, as before. */
+      const _perKgShop = (this.vertical === 'sweets' || this.vertical === 'bakery');
+      const _better = !groups[base] || (_perKgShop ? (Math.abs(w - 1000) < Math.abs(groups[base].weight - 1000)) : (w < groups[base].weight));
+      if (_better){
         groups[base] = { id: s.id || s.name, name: base, weight: w, price: Number(s.price || 0), fullName: s.name, emoji: s.emoji || '⚖️' };
       }
     });
@@ -23121,6 +23238,13 @@ const App = {
             </div>
           </div>
 
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;font-size:12.5px;color:var(--t2);font-weight:700">
+            <span>📦 Less box</span>
+            <input id="cw-tare" type="number" inputmode="numeric" min="0" value="${(function(){ try{ return localStorage.getItem('hn_box_tare_'+((window.MShop&&MShop.getActive&&MShop.getActive()||{}).shopId||'')) || ''; }catch(e){ return ''; } })()}" placeholder="0" oninput="App._cwBoxChanged()" style="width:64px;padding:7px 8px;border:1px solid var(--b);border-radius:8px;font-weight:800;font-size:14px"> <span>g</span>
+            <span style="margin-left:10px">+ Box charge ₹</span>
+            <input id="cw-boxchg" type="number" inputmode="numeric" min="0" value="${(function(){ try{ return localStorage.getItem('hn_box_chg_'+((window.MShop&&MShop.getActive&&MShop.getActive()||{}).shopId||'')) || ''; }catch(e){ return ''; } })()}" placeholder="0" oninput="App._cwBoxChanged()" style="width:64px;padding:7px 8px;border:1px solid var(--b);border-radius:8px;font-weight:800;font-size:14px">
+            <span id="cw-net" style="margin-left:auto;font-weight:600;color:var(--t3)"></span>
+          </div>
           <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
             <span style="font-size:13px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Qty</span>
             <button type="button" class="tap-target-expand" onclick="App._cwAdjQty(-1)" style="width:34px;height:34px;border:1px solid var(--b);background:var(--bg2);border-radius:8px;font-weight:800;font-size:18px;cursor:pointer;color:var(--t1)">−</button>
@@ -23226,6 +23350,22 @@ const App = {
     this._cwUpdateTotal();
   },
 
+  /* (Oct 2026) Box: weigh the sweets in their box, subtract the box weight (tare), optionally add a
+     box charge. Both remembered per shop so the counter sets them once. */
+  _cwBoxChanged(){
+    try {
+      const sid = ((window.MShop&&MShop.getActive&&MShop.getActive())||{}).shopId || '';
+      const t = document.getElementById('cw-tare'), c = document.getElementById('cw-boxchg');
+      if (t) localStorage.setItem('hn_box_tare_'+sid, t.value || '');
+      if (c) localStorage.setItem('hn_box_chg_'+sid, c.value || '');
+    } catch(e){}
+    this._cwUpdateTotal();
+  },
+  _cwBox(){
+    const t = Number((document.getElementById('cw-tare')||{}).value || 0) || 0;
+    const c = Number((document.getElementById('cw-boxchg')||{}).value || 0) || 0;
+    return { tare: Math.max(0, t), charge: Math.max(0, Math.round(c)) };
+  },
   _cwUpdateTotal(){
     const sel = this._customWeightSelected;
     const winp = document.getElementById('cw-weight');
@@ -23241,7 +23381,11 @@ const App = {
       return;
     }
     const ratePerG = sel.price / sel.weight;
-    const total = Math.round(ratePerG * weightG * (this._customWeightQty || 1));
+    const _bx = this._cwBox();
+    const netG = Math.max(0, weightG - _bx.tare);
+    const netEl = document.getElementById('cw-net');
+    if (netEl) netEl.textContent = _bx.tare > 0 ? ('Net ' + this._formatWeight(netG)) : '';
+    const total = Math.round(ratePerG * netG * (this._customWeightQty || 1)) + (_bx.charge * (this._customWeightQty || 1));
     totEl.textContent = `₹${total.toLocaleString('en-IN')}`;
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
   },
@@ -23253,11 +23397,18 @@ const App = {
     const val = parseFloat(winp.value || '0');
     if (!val || val <= 0) { this.toast(this._T('toast.enterWeight', 'Enter weight')); return; }
     const unit = this._customWeightUnit || 'g';
-    const weightG = unit === 'kg' ? val * 1000 : val;
+    const _bx = this._cwBox();
+    const grossG = unit === 'kg' ? val * 1000 : val;
+    const weightG = Math.max(0, grossG - _bx.tare);
+    if (!(weightG > 0)) { this.toast('Weight is less than the box'); return; }
     const qty = this._customWeightQty || 1;
     const ratePerG = sel.price / sel.weight;
     const total = Math.round(ratePerG * weightG * qty);
     const lineId = '__cw_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    if (_bx.charge > 0) {
+      if (!Array.isArray(this.customLines)) this.customLines = [];
+      this.customLines.push({ id: lineId + '_box', prodId: '', name: 'Box', weightG: 0, displayLabel: 'packing', qty: qty, rate: _bx.charge, stdWeight: 0, total: _bx.charge * qty });
+    }
     if (!Array.isArray(this.customLines)) this.customLines = [];
     this.customLines.push({
       id: lineId,
@@ -23272,6 +23423,7 @@ const App = {
     });
     this.closeProductSheet && this.closeProductSheet();
     this.updateCartSummary();
+    try { if (window.HND && HND.renderCart) HND.renderCart(); } catch(e){}
     this.toast(this._T('toast.addedPrefix','Added') + ' ' + sel.name + ' (' + this._formatWeight(weightG) + ')');
     haptic.nav();
   },
@@ -26160,8 +26312,13 @@ const App = {
         staffId: cwStaffId,
         staffComm: cwStaffComm,
         recipeSnapshot: recipeSnapshot,
-        customWeight: line.displayLabel
+        customWeight: line.displayLabel,
+        /* (Oct 2026) carry the weight so stock goes down by 300/250 = 1.2 packs, not 1 */
+        weightG: (Number(line.weightG) > 0 ? Number(line.weightG) : undefined),
+        stdWeight: (Number(line.stdWeight) > 0 ? Number(line.stdWeight) : undefined)
       });
+      if (items[items.length-1].weightG === undefined) delete items[items.length-1].weightG;
+      if (items[items.length-1].stdWeight === undefined) delete items[items.length-1].stdWeight;
       if (lineCost != null) {
         knownCostBase += lineCost;
         knownSellBase += Number(line.total) || 0;
@@ -26365,7 +26522,12 @@ const App = {
            E.g. selling 500g of a 1kg-pack-priced product decrements stock
            by 0.5, not by 1. Falls back to item.qty for regular items. */
         let consumed;
-        if (typeof item.weightG === 'number' && typeof item.stdWeight === 'number' && item.stdWeight > 0) {
+        if (prod.byWeight) {
+          /* (Oct 2026) one item per sweet: stock is in kg — a 250g pack takes 0.25, 300g weighed takes 0.3 */
+          const g = (typeof item.weightG === 'number' && item.weightG > 0) ? item.weightG
+                  : (window.hnWeightOf ? window.hnWeightOf(item.size || '') : 0);
+          consumed = g > 0 ? (g / 1000) * (item.qty || 1) : (item.qty || 1);
+        } else if (typeof item.weightG === 'number' && typeof item.stdWeight === 'number' && item.stdWeight > 0) {
           consumed = (item.weightG / item.stdWeight) * (item.qty || 1);
         } else {
           consumed = item.qty || 1;
@@ -26482,7 +26644,17 @@ const App = {
       ? `${_billSavedPrefix}${total.toLocaleString('en-IN')}${_waOpenedSuffix}`
       : `${_billSavedPrefix}${total.toLocaleString('en-IN')}`;
     this.toast(toastMsg);
-    setTimeout(() => this.nav('home'), 900);
+    /* (Oct 2026) Counter billing: stay ready for the next customer. On the desktop POS we simply
+       stay put (the POS clears and re-renders its own cart). On phones, counter shops (sweets,
+       bakery) go back to the item grid; everyone else keeps the old "back to Home". */
+    (() => {
+      let onDeskPos = false;
+      try { onDeskPos = document.documentElement.getAttribute('data-shell') === 'desktop' && document.body.classList.contains('hnd-on-pos'); } catch(e){}
+      if (onDeskPos) return;
+      const _v = (window.hnVert ? hnVert() : '') || this.vertical || '';
+      const counter = (_v === 'sweets' || _v === 'bakery');
+      setTimeout(() => this.nav(counter ? 'addsale' : 'home'), 900);
+    })();
 
     // ═══════════════════════════════════════════════════════════════════════
     // BILL SYNC TO FIRESTORE (May 2026)
@@ -27009,6 +27181,7 @@ const App = {
     const filter = (this._igFilter || '').trim().toLowerCase();
 
     const _L = this._supplyLabels();
+    try { const _ctl = document.getElementById('ig-add-cta-top-label'); if (_ctl && this._supplyVerticalKey() !== 'salon' && _ctl.textContent !== _L.addBtn) _ctl.textContent = _L.addBtn; } catch(e){}
 
     const _vKey = this._supplyVerticalKey();
     const isSalon = _vKey === 'salon';
@@ -27023,6 +27196,8 @@ const App = {
 
     const _titleEl = document.getElementById('ig-page-title');
     if (_titleEl) {
+      /* (Oct 2026) stop the translator putting the generic "Ingredients" back over our per-shop title */
+      if (_L.section !== 'Ingredients') _titleEl.removeAttribute('data-i18n');
       if (isRecipeShop) {
         _titleEl.innerHTML = _L.section + ' <span class="sup-title-master">master</span>';
       } else {
@@ -37710,7 +37885,8 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
     try { this.renderMoreMenu && this.renderMoreMenu(); } catch(e){}
   },
 
-  _supplyLabels(){
+  _supplyLabels(){ return this._supplyLabelsSweets(this._supplyLabelsBase()); },
+  _supplyLabelsBase(){
     const isSalon = this._supplyVerticalKey() === 'salon';
     return isSalon ? {
       section:    'Supplies',
@@ -37755,6 +37931,18 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       backToRecipe: 'Back to recipe',
       moreSub:     'Auto-track raw material costs'
     };
+  },
+  /* (Oct 2026) Sweet shops call these "Raw Materials" (sidebar already does) — keep the page in step */
+  _supplyLabelsSweets(L){
+    if (this._supplyVerticalKey() !== 'sweets') return L;
+    return Object.assign({}, L, {
+      section: 'Raw Materials', sectionSub: 'Khoya, ghee, sugar, dry fruits — cost per kg of mithai',
+      singular: 'raw material', plural: 'raw materials', addBtn: 'Add raw material',
+      newTitle: 'New raw material', editTitle: 'Edit raw material', pickTitle: 'Pick raw material',
+      searchPh: 'Search khoya, ghee, kaju…', emptyTitle: 'No raw materials yet',
+      noMatchTitle: 'No raw materials match', addFirstToast: 'Add raw materials first (Raw Materials)',
+      allInRecipe: 'All raw materials already in this recipe'
+    });
   },
 
   _supplyEmojiSet(){
@@ -44103,6 +44291,8 @@ window.MunimRules = {
     ];
     var nowD=new Date();
     var nearest=null, nearDays=99;
+    /* (Oct 2026) real lunar dates when we have them (was fixed md, e.g. "Diwali 20 Oct" every year) */
+    try { if (window.HNFestivals) { var _u = HNFestivals.upcoming(14); if (_u.length) { nearest = {name:_u[0].name}; nearDays = _u[0].days; festivals = []; } else { festivals = festivals.filter(function(f){ return ['Eid','Christmas','New Year'].indexOf(f.name) >= 0; }); } } } catch(e){}
     festivals.forEach(function(f){
       var parts=f.md.split('-');
       var fd=new Date(nowD.getFullYear(), parseInt(parts[0])-1, parseInt(parts[1]));
@@ -46182,7 +46372,10 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
   function showApp(){
     try { document.documentElement.setAttribute('data-auth', 'yes'); } catch (e) {}
 
-    try { document.documentElement.setAttribute('data-route', 'undecided'); } catch (e) {}
+    /* (Oct 2026) If the boot safety net already opened the shop from local data, don't bring the
+       loading screen back or yank the user to Home when the cloud finally answers. */
+    var _netOpened = !!window.__hnBootNet;
+    if (!_netOpened) { try { document.documentElement.setAttribute('data-route', 'undecided'); } catch (e) {} }
 
     setTimeout(function(){
       try { if (window.Munim && typeof Munim.refresh === 'function') Munim.refresh(); } catch (e) {}
@@ -46193,7 +46386,10 @@ if(window.App && typeof App.applyVertical==='function' && !App._munimWired){
     var checkRouting = function(){
       try {
         try { if (window.App && typeof App._ensureShopNamed === 'function') App._ensureShopNamed(); } catch(e){}
-        if (window.Store && Store.isFirstRun() && window.App && typeof App.nav === 'function') {
+        if (_netOpened) {
+          /* already showing the shop; only correct the route if the cloud says it's a brand-new shop */
+          if (window.Store && Store.isFirstRun() && window.App && App.current !== 'onboarding') App.nav('onboarding');
+        } else if (window.Store && Store.isFirstRun() && window.App && typeof App.nav === 'function') {
           App.nav('onboarding');
         } else if (window.App && typeof App.nav === 'function') {
 
@@ -51078,6 +51274,7 @@ window.Store = {
       /* Same sizes pass-through as seedCatalog (v34_027) — without it the sized
          dairy SKUs would arrive flat and the top-up would reintroduce exactly
          the shape v34_028 removed. */
+      if (seed.byWeight) rec.byWeight = true;
       if (Array.isArray(seed.sizes) && seed.sizes.length) {
         rec.hasSizes = true;
         rec.sizes = seed.sizes.map(function(nm){ return { name: String(nm), price: 0, cp: null }; });
@@ -51135,6 +51332,7 @@ window.Store = {
          (prod.hasSizes + sizes[{name,price,cp}], with _cartKeyPrice and
          _cartKeyCp resolving per size — the cigarette Loose/Pack module has used
          it for months), so the seed just has to be allowed to say so. */
+      if (seed.byWeight) rec.byWeight = true;
       if (Array.isArray(seed.sizes) && seed.sizes.length) {
         rec.hasSizes = true;
         rec.sizes = seed.sizes.map(function(nm){
@@ -57225,6 +57423,9 @@ html[data-shell="desktop"] .hnd-tb {
   function syncActive(){
     try {
       var key = currentPageKey();
+      /* (Oct 2026) Bulk / Cake Orders is an overlay (doesn't change the page) — highlight it while open */
+      try { var _hnb = document.getElementById('hnb-root'); if (_hnb && _hnb.classList.contains('open')) key = 'appointments'; } catch(_e){}
+      try { var _hnp = document.getElementById('hnp-root'); if (_hnp && _hnp.classList.contains('open')) { document.querySelectorAll('.hnd-nav-item').forEach(function(n){ n.classList.remove('active'); }); var _pn=document.getElementById('hnd-nav-production'); if(_pn) _pn.classList.add('active'); return; } } catch(_e){}
       document.querySelectorAll('.hnd-nav-item[data-hnd-nav]').forEach(function(n){
         n.classList.toggle('active', n.getAttribute('data-hnd-nav') === key);
       });
@@ -57576,6 +57777,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
       <input id="hnd-pos-search-input" placeholder="Search or scan barcode…" data-i18n-ph="d.searchScan" autocomplete="off">
       <span class="hnd-pos-search-status" data-i18n="d.scannerReady">Scanner ready</span>
     </div>
+    <button type="button" id="hnd-pos-weigh" onclick="App.openCustomWeight && App.openCustomWeight()" style="display:none;margin:0 0 10px;border:1px solid #E7C98F;background:#FFF7E6;color:#7C4A03;border-radius:10px;padding:9px 14px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer">⚖ Sell by weight <span style="font-weight:600;opacity:.75">· any gms / kg</span></button>
     <div class="hnd-pos-tabs" id="hnd-pos-tabs"></div>
     <div class="hnd-pos-grid" id="hnd-pos-grid"></div>
   </div>
@@ -57588,7 +57790,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
       </div>
     </div>
     <div class="hnd-pos-bill-meta">
-      <span>New bill · <b data-i18n="staff.cashierRole">Cashier</b></span>
+      <span>New bill · <b id="hnd-pos-who">Cashier</b></span>
       <span><span id="hnd-pos-count">0</span> items</span>
     </div>
     <div class="hn-bd-row" data-role-min="manager"><span class="hn-bd-lbl">📅 Bill date</span><input type="date" id="hnd-pos-bill-date" class="hn-bd-input" onfocus="this.max=window.td()" onchange="App.setBillDate(this.value)"><span class="hn-bd-note"></span></div>
@@ -57781,8 +57983,8 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
         + '<div class="hnd-pos-tile-cat">' + escHtml(svcCat(s)) + '</div>'
         + '<div class="hnd-pos-tile-name">' + escHtml(s.name || '—') + '</div>'
         + '<div class="hnd-pos-tile-foot">'
-          + '<div class="hnd-pos-tile-price">' + (sized ? 'from ₹' + price : '₹' + price) + '</div>'
-          + (sized ? '<div class="hnd-pos-tile-sizes">' + s.sizes.length + ' SIZES</div>' : '<div class="hnd-pos-tile-add">＋</div>')
+          + '<div class="hnd-pos-tile-price">' + (s.byWeight && window.hnPerKg && hnPerKg(s) > 0 ? '₹' + hnPerKg(s) + '/kg' : (sized ? 'from ₹' + price : '₹' + price)) + '</div>'
+          + (sized ? '<div class="hnd-pos-tile-sizes">' + (s.byWeight ? 'BY WEIGHT' : s.sizes.length + ' SIZES') + '</div>' : '<div class="hnd-pos-tile-add">＋</div>')
         + '</div>'
       + '</button>';
     }
@@ -57813,7 +58015,25 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
     var keys = Object.keys(cart);
     var itemsEl = $('hnd-pos-items');
     var count = 0, sub = 0;
-    if (!keys.length){
+    /* (Oct 2026) weighed lines (App.customLines — "Kaju Katli 350g") were billed but never shown here */
+    var cls = (window.App && Array.isArray(App.customLines)) ? App.customLines : [];
+    var clHtml = '';
+    cls.forEach(function(l){
+      if (!l) return;
+      var amt = Math.round(+l.total || 0); count += (+l.qty || 1); sub += amt;
+      clHtml += '<div class="hnd-pos-i">'
+        + '<div class="hnd-pos-i-info"><div class="hnd-pos-i-name">⚖ ' + escHtml(l.name || '') + '</div>'
+        + '<div class="hnd-pos-i-meta">' + escHtml(l.displayLabel || '') + ((+l.qty || 1) > 1 ? ' × ' + l.qty : '') + ((+l.stdWeight||0) > 0 ? ' · ₹' + (+l.rate || 0) + ' per ' + escHtml((window.App && App._formatWeight) ? App._formatWeight(+l.stdWeight || 0) : '') : '') + '</div></div>'
+        + '<div class="hnd-pos-qty"><button class="hnd-pos-qbtn" type="button" title="Remove" onclick="App.removeCustomLine(\'' + escAttr(l.id) + '\'); try{HND.renderCart()}catch(e){}">✕</button></div>'
+        + '<div class="hnd-pos-amt">₹' + amt + '</div>'
+      + '</div>';
+    });
+    /* (Oct 2026) "New bill · Cashier" was hard-coded — show who is actually billing */
+    try { var who = $('hnd-pos-who'); if (who) { var r = (window.AppRole && AppRole.getCurrentRole && AppRole.getCurrentRole()) || 'owner';
+      var lbl = r === 'owner' ? ((window.S && S.ownerName) ? S.ownerName : 'Owner') : (r === 'manager' ? 'Manager' : (r === 'waiter' ? 'Waiter' : 'Cashier'));
+      if (who.textContent !== lbl) who.textContent = lbl; } } catch(e){}
+    try { var wb = $('hnd-pos-weigh'); if (wb) { var has = !!(window.App && App._getWeighedProducts && App._getWeighedProducts().length); wb.style.display = has ? '' : 'none'; } } catch(e){}
+    if (!keys.length && !cls.length){
       itemsEl.innerHTML = '<div class="hnd-pos-cart-empty"><b data-i18n="d.emptyCartT">Cart is empty</b><span data-i18n="d.emptyCartS">Tap a product on the left to start the bill.</span></div>';
     } else {
       var html = '';
@@ -57837,7 +58057,7 @@ html[data-shell="desktop"] body.hnd-on-pos .hnd-pos-r::-webkit-scrollbar-thumb:h
           + '<div class="hnd-pos-amt">₹' + (price * q) + '</div>'
         + '</div>';
       }
-      itemsEl.innerHTML = html;
+      itemsEl.innerHTML = clHtml + html;
     }
     // Totals
     var discount = +(window.App && App._discount) || 0;
@@ -59617,14 +59837,21 @@ html[data-shell="desktop"] .bottom-sheet {
     'pg-multi-store':     'My Outlets'
   };
 
+  /* (Oct 2026) Use the sidebar's own (per-shop-type) wording where there is one — sweets say
+     "Raw Materials" / "Karigars" / "Items", salons "Supplies", cafés "Menu" — so the page title
+     matches the item you clicked. Only writes when the value actually differs. */
+  var NAVKEY = { 'pg-ingredients':'ingredients', 'pg-staff':'staff', 'pg-catalog':'catalog', 'pg-inventory':'inventory', 'pg-appointments':'appointments' };
   function applyTitles(){
     Object.keys(TITLES).forEach(function(id){
       var el = document.getElementById(id);
-      if (el && !el.getAttribute('data-desktop-title')){
-        el.setAttribute('data-desktop-title', TITLES[id]);
-      }
+      if (!el) return;
+      var want = TITLES[id];
+      var k = NAVKEY[id];
+      if (k){ var l = document.querySelector('.hnd-sb .hnd-nav-item[data-hnd-nav="' + k + '"] .lbl'); var t = l && l.textContent.trim(); if (t) want = t; }
+      if (el.getAttribute('data-desktop-title') !== want) el.setAttribute('data-desktop-title', want);
     });
   }
+  setInterval(applyTitles, 1500);
 
   function boot(retry){
     applyTitles();
@@ -92191,8 +92418,14 @@ html[data-shell="desktop"] .hnd-page-actions-cta svg {
   var PAGES = [
     {
       pageId: 'pg-staff',
-      title: 'Team',
-      sub: 'Stylists, helpers, and salon staff',
+      /* (Oct 2026) per shop type — was salon wording everywhere */
+      get title(){ var v=''; try{ v=window.hnVert?hnVert():''; }catch(e){} return v==='sweets' ? 'Karigars' : 'Team'; },
+      get sub(){ var v=''; try{ v=window.hnVert?hnVert():''; }catch(e){}
+        return v==='salon' ? 'Stylists, helpers, and salon staff'
+             : v==='sweets' ? 'Halwais, counter staff and delivery'
+             : v==='bakery' ? 'Bakers, counter staff and delivery'
+             : (v==='cafe'||v==='restaurant') ? 'Kitchen, waiters and counter staff'
+             : 'Your staff and helpers'; },
       ctaLabel: '+ Add staff',
       ctaTarget: 'add-staff'
     },
@@ -102380,6 +102613,7 @@ var KB=[
     active: isOn,
     open: function(openForm){
       ensure(); renderList(); $('hnb-root').classList.add('open');
+      try { document.querySelectorAll('.hnd-sb .hnd-nav-item').forEach(function(n){ n.classList.toggle('active', n.getAttribute('data-hnd-nav') === 'appointments'); }); } catch(e){}
       try{ document.body.classList.remove('hnd-on-appts'); }catch(e){}
       if(openForm===true) this.edit();
     },
@@ -102448,7 +102682,8 @@ var KB=[
         App.cart = {}; App.customLines = [];
         var missing=[];
         (o.items||[]).forEach(function(i){
-          var ex=((typeof SERVICES!=='undefined'&&SERVICES)||[]).filter(function(s){ return (s.id||s.name)===i.pid; })[0];
+          var _bid=String(i.pid||'').split('::')[0];  /* sized pick = "id::250g" — the cart takes that key as-is */
+          var ex=((typeof SERVICES!=='undefined'&&SERVICES)||[]).filter(function(s){ return (s.id||s.name)===_bid; })[0];
           if(ex) App.cart[i.pid]=Number(i.qty)||0; else missing.push(i.name);
         });
         Store.update('appts', id, { status:'delivered', deliveredAt:Date.now() });
@@ -102477,9 +102712,533 @@ var KB=[
 </script>
 
 <script>
+/* ═══ HNProd — Daily production for sweets & bakery (Oct 2026) ═══════════════════════════════
+   "Aaj kya banaya": record a batch (sweet + kg made + raw materials used). Saving deducts raw-material
+   stock, works out the real cost per kg, can push that cost onto the sweet's pack sizes (250g/500g/1kg)
+   so margins become real, and remembers the materials for next time (scaled to the new quantity).
+   Records live in the synced 'appts' collection with kind:'production' (same as Bulk Orders), so no
+   new rules/collections. Deleting an entry puts the raw materials back. */
 (function(){
   'use strict';
-  var EMOJIS = ['🍔','🍟','☕','🥤','🥪','🍕','🌯','🧇','🍰','🍱','🍗','🎉'];
+  var ST = { form:null, range:'today' };
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function rs(n){ n=Math.round(Number(n)||0); return '₹'+n.toLocaleString('en-IN'); }
+  function vert(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); var v=(a&&(a.cardType||a.profession))||''; if(v) return v; }catch(e){} return (window.App&&App.vertical)||''; }
+  function isOn(){ var v=vert(); return v==='sweets'||v==='bakery'; }
+  function today(){ return window.td(); }
+  function toast(m){ try{ App.toast(m); }catch(e){} }
+  function ings(){ try{ return (Store.list('ingredients')||[]).filter(function(g){ return g && !g._deleted && !g.deletedAt; }); }catch(e){ return []; } }
+  function ingById(id){ return ings().filter(function(g){ return g.id===id; })[0]||null; }
+  function costPerBase(g){ var q=Number(g&&g.packQtyInBase)||0, p=Number(g&&g.packPrice)||0; return q>0 ? p/q : 0; }
+  /* user-facing unit for a base unit: g→kg, ml→L, else as-is */
+  function bigUnit(b){ return b==='g'?'kg':(b==='ml'?'L':(b||'pcs')); }
+  function toBase(qtyBig, b){ return (b==='g'||b==='ml') ? qtyBig*1000 : qtyBig; }
+  function fromBase(qb, b){ return (b==='g'||b==='ml') ? qb/1000 : qb; }
+  function stripW(n){ try{ return (window.App&&App._stripWeightFromName) ? App._stripWeightFromName(n) : String(n||'').replace(/\s*[·\-]\s*\d.*$/,''); }catch(e){ return n; } }
+  function baseNames(){
+    var set={}; try{ (Store.list('prods')||[]).forEach(function(p){ if(!p||p._deleted||p.isCombo||p.bar) return; set[stripW(p.name).trim()]=1; }); }catch(e){}
+    return Object.keys(set).filter(Boolean).sort();
+  }
+  function all(){ try{ return (Store.list('appts')||[]).filter(function(a){ return a&&a.kind==='production'&&!a._deleted&&!a.deletedAt; }); }catch(e){ return []; } }
+  function lastFor(item){ var l=all().filter(function(a){ return (a.item||'').toLowerCase()===String(item||'').toLowerCase() && Array.isArray(a.materials) && a.materials.length; }); l.sort(function(a,b){ return (b.t||0)-(a.t||0); }); return l[0]||null; }
+
+  var CSS='#hnp-root{position:fixed;inset:0;z-index:190;background:#FAF8F3;display:none;flex-direction:column;font-family:Inter,system-ui,sans-serif;color:#1c1c1c}'
+   +'#hnp-root.open{display:flex}html[data-shell="desktop"] #hnp-root{left:var(--hnd-sb-w,240px);top:var(--hnd-tb-h,56px)}'
+   +'.hnp-hd{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#fff;border-bottom:1px solid #eee}.hnp-hd h1{font-size:20px;margin:0;flex:1;font-weight:800}'
+   +'.hnp-btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;cursor:pointer;background:#f0ece2;color:#333}.hnp-btn.pri{background:#06C167;color:#fff}.hnp-btn.sm{padding:7px 10px;font-size:12.5px}.hnp-btn.warn{background:#fff0ef;color:#c0392b}'
+   +'.hnp-sum{display:flex;gap:10px;padding:12px 16px;overflow-x:auto}.hnp-stat{flex:1;min-width:130px;background:#fff;border:1px solid #eee;border-radius:12px;padding:10px 12px}.hnp-stat b{display:block;font-size:20px}.hnp-stat span{font-size:11.5px;color:#777}'
+   +'.hnp-chips{display:flex;gap:8px;padding:0 16px 10px}.hnp-chip{border:1px solid #e2dccd;background:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer}.hnp-chip.on{background:#1c1c1c;color:#fff;border-color:#1c1c1c}'
+   +'.hnp-list{flex:1;overflow:auto;padding:4px 16px 90px;display:grid;gap:12px;align-content:start;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}'
+   +'.hnp-card{background:#fff;border:1px solid #eee;border-radius:14px;padding:14px}.hnp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.hnp-nm{font-weight:800;font-size:15.5px}.hnp-q{font-weight:800;color:#0a7a45}'
+   +'.hnp-meta{font-size:12.5px;color:#777;margin:4px 0 8px}.hnp-mat{font-size:12.5px;color:#555;line-height:1.5}.hnp-cost{display:flex;gap:14px;font-size:13px;margin:8px 0}'
+   +'.hnp-empty{grid-column:1/-1;text-align:center;color:#888;padding:50px 20px;font-size:14px;line-height:1.6}'
+   +'#hnp-form{position:fixed;inset:0;z-index:195;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}#hnp-form.open{display:flex}'
+   +'.hnp-sheet{background:#fff;width:min(640px,100%);height:min(820px,100%);display:flex;flex-direction:column;border-radius:16px}@media(max-width:700px){.hnp-sheet{border-radius:0;height:100%}}'
+   +'.hnp-bd{flex:1;overflow:auto;padding:14px 16px}.hnp-ft{padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px}.hnp-ft .hnp-btn{flex:1}'
+   +'.hnp-f{margin-bottom:12px}.hnp-f label{display:block;font-size:12px;font-weight:700;color:#666;margin-bottom:4px}.hnp-f input,.hnp-f select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font-size:15px;font-family:inherit;background:#fff}'
+   +'.hnp-row2{display:grid;grid-template-columns:2fr 1fr;gap:10px}.hnp-mrow{display:grid;grid-template-columns:1fr 110px 70px 32px;gap:8px;align-items:center;margin-bottom:8px}'
+   +'.hnp-mrow select,.hnp-mrow input{border:1px solid #ddd;border-radius:9px;padding:8px;font:inherit;font-size:14px;width:100%;box-sizing:border-box}.hnp-x{border:0;background:#fff0ef;color:#c0392b;border-radius:8px;height:34px;cursor:pointer;font-weight:800}'
+   +'.hnp-tot{background:#FAF8F3;border-radius:12px;padding:12px;display:grid;gap:6px;font-size:14px}.hnp-tot div{display:flex;justify-content:space-between}.hnp-tot b{font-size:17px}'
+   +'.hnp-note{font-size:12px;color:#8a6d3b;background:#FFF7E6;border-radius:10px;padding:8px 10px;margin-bottom:10px}';
+
+  function ensure(){
+    if($('hnp-root')) return;
+    var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
+    var r=document.createElement('div'); r.id='hnp-root';
+    r.innerHTML='<div class="hnp-hd"><button class="hnp-btn sm" onclick="HNProd.close()" aria-label="Back">←</button><h1>🏭 Production <span style="font-weight:600;font-size:14px;color:#888">· aaj kya banaya</span></h1><button class="hnp-btn pri" onclick="HNProd.edit()">+ Record batch</button></div>'
+      +'<div class="hnp-sum" id="hnp-sum"></div><div class="hnp-chips" id="hnp-chips"></div><div class="hnp-list" id="hnp-list"></div>';
+    document.body.appendChild(r);
+    var f=document.createElement('div'); f.id='hnp-form'; f.addEventListener('click',function(e){ if(e.target===f) HNProd.closeForm(); }); document.body.appendChild(f);
+  }
+  function inRange(a){
+    var t=today();
+    if(ST.range==='today') return a.date===t;
+    if(ST.range==='week'){ var d=new Date(); d.setDate(d.getDate()-6); return a.date>=window.tdAt(d); }
+    return true;
+  }
+  function renderList(){
+    ensure();
+    var rows=all().filter(inRange).sort(function(a,b){ return (b.t||0)-(a.t||0); });
+    var kg=0, cost=0; rows.forEach(function(a){ if(a.unit==='kg') kg+=Number(a.qty)||0; cost+=Number(a.cost)||0; });
+    var low=ings().filter(function(g){ var s=Number(g.stock)||0, m=Number(g.min)||0; return s<=0 || (m>0 && s<=m); }).length;
+    $('hnp-sum').innerHTML='<div class="hnp-stat"><b>'+rows.length+'</b><span>Batches</span></div>'
+      +'<div class="hnp-stat"><b>'+(Math.round(kg*100)/100)+' kg</b><span>Made</span></div>'
+      +'<div class="hnp-stat"><b>'+rs(cost)+'</b><span>Raw material used</span></div>'
+      +'<div class="hnp-stat" style="cursor:pointer" onclick="HNProd.close(); App.nav(\'ingredients\')"><b style="color:'+(low?'#c0392b':'#0a7a45')+'">'+low+'</b><span>Raw materials low / out ›</span></div>';
+    $('hnp-chips').innerHTML=[['today','Today'],['week','Last 7 days'],['all','All']].map(function(c){ return '<button class="hnp-chip '+(ST.range===c[0]?'on':'')+'" onclick="HNProd.setRange(\''+c[0]+'\')">'+c[1]+'</button>'; }).join('');
+    if(!rows.length){ $('hnp-list').innerHTML='<div class="hnp-empty">No batches recorded '+(ST.range==='today'?'today':'here')+'.<br>Record what you made — raw material stock goes down automatically<br>and you see the real cost per kg of every sweet.<br><br><button class="hnp-btn pri" onclick="HNProd.edit()">+ Record batch</button></div>'; return; }
+    $('hnp-list').innerHTML=rows.map(function(a){
+      var mats=(a.materials||[]).map(function(m){ return esc(m.name)+' '+(Math.round(fromBase(m.qtyBase,m.baseUnit)*1000)/1000)+' '+esc(bigUnit(m.baseUnit)); }).join(' · ');
+      return '<div class="hnp-card"><div class="hnp-top"><span class="hnp-nm">'+esc(a.item)+'</span><span class="hnp-q">'+esc(a.qty)+' '+esc(a.unit)+'</span></div>'
+        +'<div class="hnp-meta">'+esc(a.date)+(a.time?' · '+esc(a.time):'')+(a.by?' · '+esc(a.by):'')+'</div>'
+        +'<div class="hnp-mat">'+(mats||'<i>No raw materials recorded</i>')+'</div>'
+        +'<div class="hnp-cost"><span>Batch cost <b>'+rs(a.cost)+'</b></span>'+(a.costPerUnit?'<span>Cost / '+esc(a.unit)+' <b>'+rs(a.costPerUnit)+'</b></span>':'')+'</div>'
+        +'<button class="hnp-btn sm warn" onclick="HNProd.remove(\''+esc(a.id)+'\')">Delete & put materials back</button></div>';
+    }).join('');
+  }
+
+  /* ── form ── */
+  function matOptions(sel){
+    var L=ings(); if(!L.length) return '';
+    return '<option value="">Pick raw material…</option>'+L.map(function(g){ return '<option value="'+esc(g.id)+'"'+(g.id===sel?' selected':'')+'>'+esc((g.emoji?g.emoji+' ':'')+g.name)+' ('+esc(bigUnit(g.baseUnit))+')</option>'; }).join('');
+  }
+  function calc(){
+    var f=ST.form, cost=0;
+    f.mats.forEach(function(m){ var g=ingById(m.id); if(!g) return; m.qtyBase=toBase(Number(m.qty)||0, g.baseUnit); cost+=m.qtyBase*costPerBase(g); });
+    f.cost=Math.round(cost*100)/100; f.costPerUnit=(Number(f.qty)>0)?Math.round(cost/Number(f.qty)):0; return f;
+  }
+  function paintTot(){
+    var f=calc(), el=$('hnp-tot'); if(!el) return;
+    var warn=f.mats.filter(function(m){ var g=ingById(m.id); return g && m.qtyBase>(Number(g.stock)||0); }).map(function(m){ return ingById(m.id).name; });
+    el.innerHTML='<div><span>Raw material cost</span><b>'+rs(f.cost)+'</b></div>'
+      +'<div><span>Cost per '+esc(f.unit)+'</span><b>'+(f.costPerUnit?rs(f.costPerUnit):'—')+'</b></div>'
+      +(warn.length?'<div style="color:#c0392b;font-size:12.5px">Not enough in stock: '+esc(warn.join(', '))+' — stock will go below zero.</div>':'');
+  }
+  function paintMats(){
+    var box=$('hnp-mats'); if(!box) return;
+    var L=ings();
+    if(!L.length){ box.innerHTML='<div class="hnp-note">No raw materials added yet. You can still record the batch — or <a href="#" onclick="HNProd.closeForm();HNProd.close();App.nav(\'ingredients\');return false">add khoya, ghee, sugar…</a> first to track cost and stock.</div>'; return; }
+    box.innerHTML=ST.form.mats.map(function(m,i){ var g=ingById(m.id);
+      return '<div class="hnp-mrow"><select onchange="HNProd._mid('+i+',this.value)">'+matOptions(m.id)+'</select>'
+        +'<input type="number" step="any" min="0" value="'+esc(m.qty)+'" placeholder="Qty" oninput="HNProd._mq('+i+',this.value)">'
+        +'<span style="font-size:13px;color:#777">'+esc(g?bigUnit(g.baseUnit):'')+'</span><button class="hnp-x" onclick="HNProd._mrm('+i+')">✕</button></div>'; }).join('')
+      +'<button class="hnp-btn sm" onclick="HNProd._madd()">+ Add raw material</button>';
+    paintTot();
+  }
+  function drawForm(){
+    var f=ST.form;
+    var names=baseNames().map(function(n){ return '<option value="'+esc(n)+'">'; }).join('');
+    $('hnp-form').innerHTML='<div class="hnp-sheet"><div class="hnp-hd"><h1>Record batch</h1><button class="hnp-btn sm" onclick="HNProd.closeForm()">✕</button></div><div class="hnp-bd">'
+      +'<div class="hnp-row2"><div class="hnp-f"><label>What did you make?</label><input id="hnp-item" list="hnp-names" value="'+esc(f.item)+'" placeholder="e.g. Kaju Katli" oninput="HNProd._item(this.value)" onchange="HNProd._itemDone()"><datalist id="hnp-names">'+names+'</datalist></div>'
+      +'<div class="hnp-f"><label>Quantity made</label><div style="display:flex;gap:6px"><input type="number" step="any" min="0" value="'+esc(f.qty)+'" oninput="HNProd._qty(this.value)" style="flex:1"><select onchange="HNProd._unit(this.value)" style="width:76px"><option'+(f.unit==='kg'?' selected':'')+'>kg</option><option'+(f.unit==='pcs'?' selected':'')+'>pcs</option></select></div></div></div>'
+      +(f.prefilled?'<div class="hnp-note">Raw materials filled in from your last '+esc(f.item)+' batch, scaled to this quantity. Change anything that was different.</div>':'')
+      +'<div class="hnp-f"><label>Raw materials used</label><div id="hnp-mats"></div></div>'
+      +'<div class="hnp-tot" id="hnp-tot"></div>'
+      +'<label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="hnp-setcp" '+(f.setCp?'checked':'')+' onchange="HNProd._setcp(this.checked)"> Update cost price of '+esc(f.item||'this sweet')+' (250g / 500g / 1kg packs) from this batch</label>'
+      +'</div><div class="hnp-ft"><button class="hnp-btn" onclick="HNProd.closeForm()">Cancel</button><button class="hnp-btn pri" onclick="HNProd.save()">Save batch</button></div></div>';
+    paintMats();
+  }
+  function prefill(){
+    var f=ST.form, last=lastFor(f.item); if(!last || f.mats.some(function(m){ return m.id; })) return false;
+    var k=(Number(f.qty)>0 && Number(last.qty)>0) ? Number(f.qty)/Number(last.qty) : 1;
+    f.mats=last.materials.filter(function(m){ return ingById(m.id); }).map(function(m){ return { id:m.id, qty: Math.round(fromBase(m.qtyBase*k, m.baseUnit)*1000)/1000 }; });
+    if(!f.mats.length) f.mats=[{id:'',qty:''}];
+    f.prefilled=true; f.prefillFrom=last; return true;
+  }
+
+  var HNProd={
+    active:isOn,
+    open:function(){ try{ if(window.App&&App._blockedBelow&&App._blockedBelow('manager')) return; }catch(e){} ensure(); renderList(); $('hnp-root').classList.add('open');
+      try{ document.querySelectorAll('.hnd-sb .hnd-nav-item').forEach(function(n){ n.classList.toggle('active', n.id==='hnd-nav-production'); }); }catch(e){} },
+    hide:function(){ var r=$('hnp-root'); if(r) r.classList.remove('open'); var f=$('hnp-form'); if(f) f.classList.remove('open'); ST.form=null; },
+    close:function(){ this.hide(); try{ App.nav('home'); }catch(e){} },
+    setRange:function(r){ ST.range=r; renderList(); },
+    edit:function(){ ensure(); ST.form={ item:'', qty:'', unit:'kg', mats:[{id:'',qty:''}], setCp:true, prefilled:false }; drawForm(); $('hnp-form').classList.add('open'); setTimeout(function(){ var i=$('hnp-item'); if(i) i.focus(); },50); },
+    closeForm:function(){ var f=$('hnp-form'); if(f) f.classList.remove('open'); ST.form=null; },
+    _item:function(v){ ST.form.item=v; },
+    _itemDone:function(){ if(prefill()) drawForm(); else { var l=document.querySelector('#hnp-form label input[type=checkbox]'); } },
+    _qty:function(v){ var f=ST.form, old=Number(f.qty)||0; f.qty=v;
+      /* keep a prefilled recipe in proportion while the quantity is being typed */
+      if(f.prefilled && f.prefillFrom && Number(v)>0){ var k=Number(v)/Number(f.prefillFrom.qty); f.mats=f.prefillFrom.materials.filter(function(m){ return ingById(m.id); }).map(function(m){ return { id:m.id, qty: Math.round(fromBase(m.qtyBase*k, m.baseUnit)*1000)/1000 }; }); paintMats(); }
+      else paintTot(); },
+    _unit:function(v){ ST.form.unit=v; paintTot(); },
+    _setcp:function(v){ ST.form.setCp=!!v; },
+    _mid:function(i,v){ ST.form.mats[i].id=v; ST.form.prefilled=false; paintMats(); },
+    _mq:function(i,v){ ST.form.mats[i].qty=v; ST.form.prefilled=false; paintTot(); },
+    _madd:function(){ ST.form.mats.push({id:'',qty:''}); paintMats(); },
+    _mrm:function(i){ ST.form.mats.splice(i,1); if(!ST.form.mats.length) ST.form.mats.push({id:'',qty:''}); ST.form.prefilled=false; paintMats(); },
+    save:function(){
+      var f=calc(); var item=String(f.item||'').trim();
+      if(!item){ toast('Which sweet did you make?'); return; }
+      if(!(Number(f.qty)>0)){ toast('Enter how much you made'); return; }
+      var mats=f.mats.filter(function(m){ return m.id && Number(m.qty)>0; }).map(function(m){ var g=ingById(m.id); return { id:m.id, name:g.name, baseUnit:g.baseUnit, qtyBase:m.qtyBase, cost:Math.round(m.qtyBase*costPerBase(g)*100)/100 }; });
+      /* 1) raw materials down */
+      mats.forEach(function(m){ try{ var g=ingById(m.id); Store.update('ingredients', m.id, { stock: Math.round(((Number(g.stock)||0) - m.qtyBase)*1000)/1000 }); }catch(e){} });
+      /* 2) record */
+      var now=new Date(); var by=''; try{ by=(window.S&&S.ownerName)||''; }catch(e){}
+      var rec={ kind:'production', item:item, qty:Number(f.qty), unit:f.unit, materials:mats, cost:f.cost, costPerUnit:f.costPerUnit,
+        date:today(), time:now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}), t:Date.now(), by:by,
+        name:item, svc:'Production', svcEmoji:'🏭', staff:'—', type:'production', status:'done' };
+      try{ Store.add('appts', rec); }catch(e){ console.error('[HNProd] save',e); toast('Could not save batch'); return; }
+      /* 3) real cost per kg onto the sweet's pack sizes */
+      var updated=0;
+      if(f.setCp && f.unit==='kg' && f.costPerUnit>0){
+        try{ (Store.list('prods')||[]).forEach(function(p){
+          if(!p||p._deleted||p.isCombo) return;
+          if(stripW(p.name).trim().toLowerCase()!==item.toLowerCase()) return;
+          if(p.byWeight || (p.hasSizes && String(p.name).trim().toLowerCase()===item.toLowerCase())){ if(p.byWeight){ Store.update('prods', p.id, { cp: Math.round(f.costPerUnit) }); updated++; } return; }
+          var g=(window.App&&App._parseProductWeightG)?App._parseProductWeightG(p.name):null; if(!g) return;
+          Store.update('prods', p.id, { cp: Math.round(f.costPerUnit*g/1000) }); updated++;
+        }); }catch(e){}
+      }
+      toast('✓ '+item+' '+f.qty+' '+f.unit+' recorded'+(mats.length?' · raw materials updated':'')+(updated?' · cost price set on '+updated+' pack'+(updated>1?'s':''):''));
+      this.closeForm(); renderList();
+    },
+    remove:function(id){
+      var a=all().filter(function(x){ return x.id===id; })[0]; if(!a) return;
+      if(!confirm('Delete this batch? Its raw materials will be added back to stock.')) return;
+      (a.materials||[]).forEach(function(m){ try{ var g=ingById(m.id); if(g) Store.update('ingredients', m.id, { stock: Math.round(((Number(g.stock)||0) + (Number(m.qtyBase)||0))*1000)/1000 }); }catch(e){} });
+      try{ Store.update('appts', id, { _deleted:true, deletedAt:Date.now(), status:'cancelled' }); }catch(e){}
+      toast('Batch deleted · raw materials put back'); renderList();
+    }
+  };
+  window.HNProd=HNProd;
+
+  /* Sidebar entry (sweets / bakery), right after Raw Materials */
+  function ensureNav(){
+    var sb=document.querySelector('.hnd-sb'); if(!sb) return;
+    var ex=$('hnd-nav-production');
+    if(!isOn()){ if(ex) ex.style.display='none'; return; }
+    if(ex){ ex.style.display=''; return; }
+    var after=sb.querySelector('.hnd-nav-item[data-hnd-nav="ingredients"]'); if(!after) return;
+    var b=document.createElement('button'); b.className='hnd-nav-item'; b.type='button'; b.id='hnd-nav-production'; b.setAttribute('data-role-min','manager');
+    b.innerHTML='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 20h20M4 20V10l5 3V10l5 3V6l6 4v10"/></svg><span class="lbl">Production</span>';
+    b.addEventListener('click',function(){ HNProd.open(); });
+    after.parentNode.insertBefore(b, after.nextSibling);
+  }
+  /* Phone: a row in More, right after Bulk / Cake Orders */
+  function ensureMore(){
+    var ex=$('more-production-entry');
+    if(!isOn()){ if(ex) ex.style.display='none'; return; }
+    if(ex){ ex.style.display=''; return; }
+    var after=$('more-appts-entry'); if(!after||!after.parentNode) return;
+    var b=document.createElement('button'); b.className='menu-item'; b.id='more-production-entry'; b.type='button'; b.setAttribute('data-role-min','manager');
+    b.innerHTML='<div class="menu-icon" style="background:linear-gradient(160deg,#E8F7EE,#CDEFD9);color:#0a7a45;font-size:18px">🏭</div>'
+      +'<div class="menu-text"><div class="menu-label menu-name">Production</div><div class="menu-sub">Record what you made · raw material stock & cost per kg</div></div>';
+    b.addEventListener('click',function(){ HNProd.open(); });
+    after.parentNode.insertBefore(b, after.nextSibling);
+  }
+  setInterval(function(){ try{ ensureNav(); ensureMore(); }catch(e){} }, 1500);
+  /* any other sidebar / topbar tap closes the overlay */
+  document.addEventListener('click', function(e){
+    try{ var r=$('hnp-root'); if(!r||!r.classList.contains('open')) return;
+      var t=e.target&&e.target.closest&&e.target.closest('.hnd-sb .hnd-nav-item, .hnd-sb a, .hnd-sb button, .hnd-tb button, .hnd-tb a, .nav .nav-tab, .menu-item');
+      if(!t || t.id==='hnd-nav-production') return; HNProd.hide(); }catch(_){}
+  }, true);
+})();
+</script>
+
+<script>
+/* ═══ HNSweetX — sweet-shop extras (Oct 2026) ════════════════════════════════════════════════
+   • Festival mode  — real (lunar) dates; banner on billing / Production / Bulk Orders 3 weeks out.
+   • Wastage        — log stale/damaged sweets (kg) from the Production screen.
+   • Made vs Sold   — per sweet: kg made (Production) · kg sold (bills) · kg wasted · left.
+   • Attendance     — karigars P / ½ / A per day + daily wage → month's pay.
+   • Rate card      — printable price-per-kg list for the counter.
+   Data: synced 'appts' collection (kind:'wastage' | 'attendance'), staff.dailyWage on staff records. */
+(function(){
+  'use strict';
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function rs(n){ n=Math.round(Number(n)||0); return '₹'+n.toLocaleString('en-IN'); }
+  function kg(n){ n=Math.round((Number(n)||0)*100)/100; return n+' kg'; }
+  function vert(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); var v=(a&&(a.cardType||a.profession))||''; if(v) return v; }catch(e){} return (window.App&&App.vertical)||''; }
+  function isOn(){ var v=vert(); return v==='sweets'||v==='bakery'; }
+  function toast(m){ try{ App.toast(m); }catch(e){} }
+  function today(){ return window.td(); }
+  function daysAgo(n){ var d=new Date(); d.setDate(d.getDate()-n); return window.tdAt(d); }
+  function shopName(){ try{ return (window.S&&S.store)||((MShop.getActive()||{}).name)||''; }catch(e){ return ''; } }
+  function stripW(n){ var s=String(n||'').replace(/\s*\([^)]*\d[^)]*\)\s*/g,' '); try{ if(window.App&&App._stripWeightFromName) s=App._stripWeightFromName(s); }catch(e){} return s.replace(/\s*[·\-]\s*$/,'').trim(); }
+  function wG(n){ try{ return (window.App&&App._parseProductWeightG)?App._parseProductWeightG(n):null; }catch(e){ return null; } }
+  function appts(kind){ try{ return (Store.list('appts')||[]).filter(function(a){ return a&&a.kind===kind&&!a._deleted&&!a.deletedAt; }); }catch(e){ return []; } }
+
+  /* ───────── FESTIVALS (real dates; extend yearly) ───────── */
+  var FEST=[
+    ['2026-10-20','Dussehra'],['2026-10-29','Karwa Chauth'],['2026-11-06','Dhanteras'],['2026-11-08','Diwali'],['2026-11-11','Bhai Dooj'],['2026-12-25','Christmas'],
+    ['2027-01-13','Lohri'],['2027-01-15','Makar Sankranti'],['2027-03-22','Holi'],['2027-08-17','Raksha Bandhan'],['2027-08-25','Janmashtami'],['2027-09-04','Ganesh Chaturthi'],
+    ['2027-10-09','Dussehra'],['2027-10-18','Karwa Chauth'],['2027-10-27','Dhanteras'],['2027-10-29','Diwali'],['2027-10-31','Bhai Dooj'],['2027-12-25','Christmas']
+  ];
+  function upcoming(maxDays){
+    var t=new Date(today()+'T00:00:00'); var out=[];
+    FEST.forEach(function(f){ var d=new Date(f[0]+'T00:00:00'); var n=Math.round((d-t)/864e5); if(n>=0&&n<=maxDays) out.push({date:f[0],name:f[1],days:n}); });
+    return out;
+  }
+  window.HNFestivals={ upcoming:upcoming, list:FEST };
+  function festHTML(){
+    var u=upcoming(21); if(!u.length) return '';
+    /* Diwali week counts as one season — show the biggest one ahead */
+    var big=u.filter(function(x){ return x.name==='Diwali'; })[0]||u[0];
+    var when=big.days===0?'today':(big.days===1?'tomorrow':'in '+big.days+' days');
+    var dstr=new Date(big.date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    var others=u.filter(function(x){ return x!==big; }).slice(0,2).map(function(x){ return x.name+' '+new Date(x.date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }).join(' · ');
+    return '<div class="hnx-fest">🪔 <b>'+esc(big.name)+' '+when+'</b> <span>('+esc(dstr)+(others?' · also '+esc(others):'')+')</span>'
+      +'<span class="hnx-fest-acts"><button onclick="try{HNCombo.openBuilder()}catch(e){}">🎁 Gift-box combo</button><button onclick="try{App.nav(\'appointments\')}catch(e){}">🧺 Bulk orders</button><button onclick="try{HNProd.open()}catch(e){}">🏭 Plan production</button></span></div>';
+  }
+  function placeFest(){
+    if(!isOn()) { document.querySelectorAll('.hnx-fest-slot').forEach(function(e){ e.innerHTML=''; }); return; }
+    var html=festHTML();
+    [['hnd-pos-tabs','before'],['hnp-sum','before'],['hnb-sum','before']].forEach(function(p){
+      var anchor=$(p[0]); if(!anchor||!anchor.parentNode) return;
+      var slot=anchor.previousElementSibling; if(!slot||!slot.classList.contains('hnx-fest-slot')){ slot=document.createElement('div'); slot.className='hnx-fest-slot'; anchor.parentNode.insertBefore(slot,anchor); }
+      if(slot.__h!==html){ slot.innerHTML=html; slot.__h=html; }
+    });
+  }
+
+  /* ───────── SOLD / MADE / WASTED per sweet ───────── */
+  function sales(from){ try{ return (Store.list('sales')||[]).filter(function(s){ return s&&!s._deleted&&!s.deletedAt&&s.date&&s.date>=from; }); }catch(e){ return []; } }
+  function tally(from){
+    var M={};
+    function row(n){ var k=stripW(n); var key=k.toLowerCase(); if(!M[key]) M[key]={name:k,made:0,sold:0,soldPcs:0,waste:0,rev:0}; return M[key]; }
+    appts('production').filter(function(a){ return a.date>=from; }).forEach(function(a){ if(a.unit==='kg') row(a.item).made+=Number(a.qty)||0; });
+    appts('wastage').filter(function(a){ return a.date>=from; }).forEach(function(a){ row(a.item).waste+=Number(a.qty)||0; });
+    sales(from).forEach(function(s){ (s.items||[]).forEach(function(it){ if(!it||!it.name||/^Box\b/.test(it.name)) return; var r=row(it.name); var q=Number(it.qty)||1; var g=wG(it.name); if(g) r.sold+=g*q/1000; else r.soldPcs+=q; r.rev+=Number(it.total||((Number(it.price||it.sp)||0)*q))||0; }); });
+    return Object.keys(M).map(function(k){ return M[k]; }).filter(function(r){ return r.made||r.sold||r.soldPcs||r.waste; }).sort(function(a,b){ return (b.sold+b.made)-(a.sold+a.made); });
+  }
+  var MV={ range:'today' };
+  function mvFrom(){ return MV.range==='today'?today():(MV.range==='week'?daysAgo(6):daysAgo(29)); }
+  function openMadeSold(){
+    ensureSheet('hnx-mv','📊 Made vs Sold');
+    var rows=tally(mvFrom());
+    var tot={made:0,sold:0,waste:0}; rows.forEach(function(r){ tot.made+=r.made; tot.sold+=r.sold; tot.waste+=r.waste; });
+    var wpct=tot.made>0?Math.round(tot.waste/tot.made*100):0;
+    $('hnx-mv-bd').innerHTML='<div class="hnx-chips">'+[['today','Today'],['week','7 days'],['month','30 days']].map(function(c){ return '<button class="'+(MV.range===c[0]?'on':'')+'" onclick="HNSweetX._mv(\''+c[0]+'\')">'+c[1]+'</button>'; }).join('')+'</div>'
+      +'<div class="hnx-stats"><div><b>'+kg(tot.made)+'</b><span>Made</span></div><div><b>'+kg(tot.sold)+'</b><span>Sold (by weight)</span></div><div><b style="color:'+(wpct>8?'#c0392b':'#1c1c1c')+'">'+kg(tot.waste)+(tot.made?' · '+wpct+'%':'')+'</b><span>Wasted</span></div></div>'
+      +(rows.length?'<table class="hnx-tbl"><thead><tr><th>Sweet</th><th>Made</th><th>Sold</th><th>Wasted</th><th>Left*</th><th>Sales</th></tr></thead><tbody>'
+        +rows.map(function(r){ var left=r.made?Math.max(0,r.made-r.sold-r.waste):null; return '<tr><td>'+esc(r.name)+'</td><td>'+(r.made?kg(r.made):'—')+'</td><td>'+(r.sold?kg(r.sold):'')+(r.soldPcs?(r.sold?' + ':'')+r.soldPcs+' pcs':'')+(!r.sold&&!r.soldPcs?'—':'')+'</td><td>'+(r.waste?kg(r.waste):'—')+'</td><td>'+(left==null?'—':kg(left))+'</td><td>'+rs(r.rev)+'</td></tr>'; }).join('')
+        +'</tbody></table><div class="hnx-foot">*Left = made − sold − wasted, only where production was recorded. Pack sizes (250g, 500g, 1kg) and weighed sales are converted to kg.</div>'
+      :'<div class="hnx-empty">Nothing yet for this period. Record production and make some bills — this fills in by itself.</div>');
+  }
+
+  /* ───────── WASTAGE ───────── */
+  var WF=null;
+  function lastCostPerKg(item){ var l=appts('production').filter(function(a){ return (a.item||'').toLowerCase()===String(item).toLowerCase()&&a.costPerUnit&&a.unit==='kg'; }).sort(function(a,b){ return (b.t||0)-(a.t||0); })[0]; if(l) return l.costPerUnit;
+    try{ var p=(Store.list('prods')||[]).filter(function(p){ return p&&stripW(p.name).toLowerCase()===String(item).toLowerCase()&&wG(p.name)&&Number(p.cp)>0; })[0]; if(p) return Math.round(Number(p.cp)/wG(p.name)*1000); }catch(e){} return 0; }
+  function openWaste(){
+    WF={ item:'', qty:'', reason:'Stale' };
+    var names={}; try{ (Store.list('prods')||[]).forEach(function(p){ if(p&&!p._deleted&&!p.isCombo) names[stripW(p.name)]=1; }); }catch(e){}
+    ensureSheet('hnx-ws','🗑 Record wastage');
+    $('hnx-ws-bd').innerHTML='<div class="hnx-f"><label>Which sweet?</label><input id="hnx-ws-item" list="hnx-ws-names" placeholder="e.g. Rasmalai" oninput="HNSweetX._wf(\'item\',this.value)"><datalist id="hnx-ws-names">'+Object.keys(names).sort().map(function(n){ return '<option value="'+esc(n)+'">'; }).join('')+'</datalist></div>'
+      +'<div class="hnx-f"><label>How much (kg)</label><input type="number" step="any" min="0" placeholder="0.5" oninput="HNSweetX._wf(\'qty\',this.value)"></div>'
+      +'<div class="hnx-f"><label>Reason</label><div class="hnx-chips" id="hnx-ws-r">'+['Stale','Damaged','Returned','Tasting / sample','Other'].map(function(r){ return '<button class="'+(r==='Stale'?'on':'')+'" onclick="HNSweetX._wr(this,\''+r+'\')">'+r+'</button>'; }).join('')+'</div></div>'
+      +'<div id="hnx-ws-cost" class="hnx-foot"></div>'
+      +'<button class="hnx-pri" onclick="HNSweetX._wsave()">Save wastage</button>'
+      +'<h3 style="margin:22px 0 8px;font-size:14px">Recent</h3>'+(appts('wastage').sort(function(a,b){ return (b.t||0)-(a.t||0); }).slice(0,12).map(function(a){ return '<div class="hnx-li"><span>'+esc(a.date)+' · <b>'+esc(a.item)+'</b> '+kg(a.qty)+' · '+esc(a.reason||'')+'</span><span>'+(a.cost?rs(a.cost):'')+' <button onclick="HNSweetX._wdel(\''+esc(a.id)+'\')">✕</button></span></div>'; }).join('')||'<div class="hnx-foot">No wastage recorded yet.</div>');
+  }
+
+  /* ───────── ATTENDANCE & WAGES ───────── */
+  var AT={ date:null };
+  function staffList(){ try{ return (Store.list('staff')||[]).filter(function(s){ return s&&!s._deleted&&!s.deletedAt&&s.active!==false; }); }catch(e){ return []; } }
+  function wageOf(s){ var w=Number(s.dailyWage)||0; if(!w&&Number(s.salary)>0) w=Math.round(Number(s.salary)/30); return w; }
+  function dayRec(date){ return appts('attendance').filter(function(a){ return a.date===date; })[0]||null; }
+  function openAtt(){
+    AT.date=AT.date||today();
+    ensureSheet('hnx-at','🗓 Attendance & wages'); renderAtt();
+  }
+  function renderAtt(){
+    var L=staffList(), rec=dayRec(AT.date), marks=(rec&&rec.marks)||{};
+    var month=AT.date.slice(0,7);
+    var monthRecs=appts('attendance').filter(function(a){ return (a.date||'').slice(0,7)===month; });
+    var sum={}; monthRecs.forEach(function(r){ Object.keys(r.marks||{}).forEach(function(id){ var m=r.marks[id]; sum[id]=sum[id]||{P:0,H:0,A:0}; if(sum[id][m]!=null) sum[id][m]++; }); });
+    var totalPay=0;
+    $('hnx-at-bd').innerHTML='<div class="hnx-f" style="display:flex;gap:10px;align-items:end"><div style="flex:1"><label>Day</label><input type="date" value="'+esc(AT.date)+'" max="'+today()+'" onchange="HNSweetX._ad(this.value)"></div></div>'
+      +(L.length?L.map(function(s){ var m=marks[s.id]||''; return '<div class="hnx-at-row"><span class="nm">'+esc((s.roleEmoji||'👤')+' '+s.name)+'<small>'+esc(s.role||'')+'</small></span>'
+        +['P','H','A'].map(function(k){ return '<button class="'+(m===k?'on '+k:'')+'" onclick="HNSweetX._am(\''+esc(s.id)+'\',\''+k+'\')">'+(k==='P'?'Present':k==='H'?'½ day':'Absent')+'</button>'; }).join('')
+        +'<span class="wg">₹<input type="number" min="0" value="'+(wageOf(s)||'')+'" placeholder="wage/day" onchange="HNSweetX._aw(\''+esc(s.id)+'\',this.value)"></span></div>'; }).join('')
+       :'<div class="hnx-empty">No karigars added yet. Add them in Karigars → Add staff, then mark attendance here.</div>')
+      +(L.length?'<h3 style="margin:22px 0 8px;font-size:14px">'+new Date(month+'-01T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'})+' — pay so far</h3><table class="hnx-tbl"><thead><tr><th>Name</th><th>Present</th><th>½ day</th><th>Absent</th><th>Wage/day</th><th>Payable</th></tr></thead><tbody>'
+        +L.map(function(s){ var x=sum[s.id]||{P:0,H:0,A:0}; var pay=Math.round((x.P+x.H*0.5)*wageOf(s)); totalPay+=pay; return '<tr><td>'+esc(s.name)+'</td><td>'+x.P+'</td><td>'+x.H+'</td><td>'+x.A+'</td><td>'+(wageOf(s)?rs(wageOf(s)):'—')+'</td><td><b>'+rs(pay)+'</b></td></tr>'; }).join('')
+        +'<tr><td colspan="5"><b>Total</b></td><td><b>'+rs(totalPay)+'</b></td></tr></tbody></table><div class="hnx-foot">Wage/day defaults to monthly salary ÷ 30 when not set. Pay it out as an Expense when you settle.</div>':'');
+  }
+
+  /* ───────── RATE CARD ───────── */
+  function rateCard(){
+    var G={};
+    try{ (Store.list('prods')||[]).forEach(function(p){
+      if(!p||p._deleted||p.isCombo||p.bar||p.active===false) return; var price=Number(p.sp||p.price)||0; if(!(price>0) && !(p.hasSizes&&(p.sizes||[]).some(function(z){ return +z.price>0; }))) return;
+      var base=stripW(p.name), g=wG(p.name), cat=p.cat||'Other';
+      G[cat]=G[cat]||{}; var r=G[cat][base]=G[cat][base]||{name:base,emoji:p.emoji||'',perKg:0,packs:[],pcs:null};
+      if(p.hasSizes && Array.isArray(p.sizes)){ (p.sizes||[]).forEach(function(z){ var zw=window.hnWeightOf?hnWeightOf(z.name):0, zp=+z.price||0; if(!(zp>0)) return; if(zw) r.packs.push([zw,zp]); else r.pcs=zp; }); var pk=window.hnPerKg?hnPerKg(p):0; if(pk) r.perKg=pk; return; }
+      if(g){ var pk=Math.round(price/g*1000); if(!r.perKg||g===1000) r.perKg=(g===1000?price:pk); r.packs.push([g,price]); } else r.pcs=price;
+    }); }catch(e){}
+    var cats=Object.keys(G).sort(); if(!cats.length){ toast('Set prices on your items first'); return; }
+    var fw=function(g){ return g>=1000?(g/1000)+' kg':g+' g'; };
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>Rate card · '+esc(shopName())+'</title><style>body{font-family:Inter,Arial,sans-serif;margin:28px;color:#111}h1{margin:0 0 2px;font-size:28px}.sub{color:#666;margin-bottom:18px}h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:#8a5a00;border-bottom:2px solid #f0d9a8;padding-bottom:4px;margin:22px 0 6px}table{width:100%;border-collapse:collapse}td{padding:6px 4px;border-bottom:1px dotted #ddd;font-size:15px}td.k{font-weight:800;text-align:right;white-space:nowrap}td.p{color:#666;font-size:12.5px;text-align:right}@media print{.np{display:none}body{margin:12mm}}</style></head><body>'
+      +'<button class="np" onclick="print()" style="float:right;padding:10px 18px;font-weight:800">🖨 Print</button><h1>'+esc(shopName()||'Rate card')+'</h1><div class="sub">Rate list · '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+'</div>'
+      +cats.map(function(c){ var items=Object.keys(G[c]).sort().map(function(k){ return G[c][k]; });
+        return '<h2>'+esc(c)+'</h2><table>'+items.map(function(r){ r.packs.sort(function(a,b){ return a[0]-b[0]; });
+          return '<tr><td>'+esc(r.emoji+' '+r.name)+'</td><td class="p">'+r.packs.map(function(x){ return fw(x[0])+' ₹'+x[1]; }).join(' · ')+'</td><td class="k">'+(r.perKg?'₹'+r.perKg+' /kg':(r.pcs!=null?'₹'+r.pcs+' /pc':''))+'</td></tr>'; }).join('')+'</table>'; }).join('')
+      +'</body></html>';
+    var w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print the rate card'); return; } w.document.open(); w.document.write(html); w.document.close();
+  }
+
+  /* ───────── shared sheet + styles ───────── */
+  var CSS='.hnx-fest{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;background:linear-gradient(90deg,#FFF3D6,#FFE7C2);border:1px solid #F3C978;color:#5b3a00;border-radius:12px;padding:9px 12px;margin:0 0 10px;font-size:13.5px}'
+   +'#hnp-root .hnx-fest,#hnb-root .hnx-fest{margin:10px 16px 0}.hnx-fest span{font-weight:600;opacity:.85}.hnx-fest-acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}.hnx-fest-acts button{border:0;background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;color:#5b3a00}'
+   +'.hnx-ov{position:fixed;inset:0;z-index:196;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif}.hnx-ov.open{display:flex}'
+   +'.hnx-sh{background:#fff;width:min(760px,100%);height:min(840px,100%);display:flex;flex-direction:column;border-radius:16px}@media(max-width:700px){.hnx-sh{border-radius:0;height:100%}}'
+   +'.hnx-hd{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #eee}.hnx-hd h1{margin:0;font-size:19px;flex:1}.hnx-hd button{border:0;background:#f0ece2;border-radius:10px;padding:7px 11px;font-weight:800;cursor:pointer}'
+   +'.hnx-bd{flex:1;overflow:auto;padding:14px 16px 30px}.hnx-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.hnx-chips button{border:1px solid #e2dccd;background:#fff;border-radius:99px;padding:7px 13px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}.hnx-chips button.on{background:#1c1c1c;color:#fff;border-color:#1c1c1c}'
+   +'.hnx-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.hnx-stats div{background:#FAF8F3;border-radius:12px;padding:10px 12px}.hnx-stats b{display:block;font-size:18px}.hnx-stats span{font-size:11.5px;color:#777}'
+   +'.hnx-tbl{width:100%;border-collapse:collapse;font-size:13.5px}.hnx-tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:6px 6px;border-bottom:1px solid #eee}.hnx-tbl td{padding:8px 6px;border-bottom:1px solid #f3f3f3}'
+   +'.hnx-foot{font-size:12px;color:#888;margin-top:10px;line-height:1.5}.hnx-empty{text-align:center;color:#888;padding:40px 10px;line-height:1.6}'
+   +'.hnx-f{margin-bottom:12px}.hnx-f label{display:block;font-size:12px;font-weight:700;color:#666;margin-bottom:4px}.hnx-f input{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font:inherit;font-size:15px}'
+   +'.hnx-pri{width:100%;border:0;border-radius:12px;background:#06C167;color:#fff;font:inherit;font-weight:800;font-size:15px;padding:12px;cursor:pointer;margin-top:6px}'
+   +'.hnx-li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f3f3f3;font-size:13.5px}.hnx-li button{border:0;background:#fff0ef;color:#c0392b;border-radius:7px;cursor:pointer;margin-left:6px}'
+   +'.hnx-at-row{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid #f3f3f3;flex-wrap:wrap}.hnx-at-row .nm{flex:1;min-width:140px;font-weight:700;font-size:14px}.hnx-at-row .nm small{display:block;font-weight:500;color:#888;font-size:11.5px}'
+   +'.hnx-at-row button{border:1px solid #e2dccd;background:#fff;border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}.hnx-at-row button.on.P{background:#06C167;color:#fff;border-color:#06C167}.hnx-at-row button.on.H{background:#F5A524;color:#fff;border-color:#F5A524}.hnx-at-row button.on.A{background:#c0392b;color:#fff;border-color:#c0392b}'
+   +'.hnx-at-row .wg{display:flex;align-items:center;gap:3px;font-weight:700;color:#666}.hnx-at-row .wg input{width:84px;border:1px solid #ddd;border-radius:8px;padding:7px;font:inherit;font-size:13px}'
+   +'.hnx-tools{display:flex;gap:8px;padding:0 16px 10px;flex-wrap:wrap}.hnx-tools button{border:1px solid #e2dccd;background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}';
+  function ensureCss(){ if($('hnx-css')) return; var st=document.createElement('style'); st.id='hnx-css'; st.textContent=CSS; document.head.appendChild(st); }
+  function ensureSheet(id,title){
+    ensureCss(); var ov=$(id);
+    if(!ov){ ov=document.createElement('div'); ov.id=id; ov.className='hnx-ov'; ov.innerHTML='<div class="hnx-sh"><div class="hnx-hd"><h1></h1><button onclick="HNSweetX.close(\''+id+'\')">✕</button></div><div class="hnx-bd" id="'+id+'-bd"></div></div>'; ov.addEventListener('click',function(e){ if(e.target===ov) HNSweetX.close(id); }); document.body.appendChild(ov); }
+    ov.querySelector('h1').textContent=title; ov.classList.add('open');
+  }
+
+  var X={
+    madeVsSold:openMadeSold, wastage:openWaste, attendance:openAtt, rateCard:rateCard, festivals:upcoming,
+    close:function(id){ var o=$(id); if(o) o.classList.remove('open'); try{ if($('hnp-root')&&$('hnp-root').classList.contains('open')&&window.HNProd) HNProd.open(); }catch(e){} },
+    _mv:function(r){ MV.range=r; openMadeSold(); },
+    _wf:function(k,v){ WF[k]=v; var c=$('hnx-ws-cost'); if(c){ var per=lastCostPerKg(WF.item); c.textContent=(per&&Number(WF.qty)>0)?('Loss ≈ '+rs(per*Number(WF.qty))+' at '+rs(per)+'/kg'):''; } },
+    _wr:function(btn,r){ WF.reason=r; document.querySelectorAll('#hnx-ws-r button').forEach(function(b){ b.classList.toggle('on',b===btn); }); },
+    _wsave:function(){ var item=String(WF.item||'').trim(), q=Number(WF.qty)||0; if(!item){ toast('Which sweet?'); return; } if(!(q>0)){ toast('Enter kg wasted'); return; }
+      var per=lastCostPerKg(item);
+      try{ Store.add('appts',{ kind:'wastage', item:item, qty:q, unit:'kg', reason:WF.reason, cost:Math.round(per*q), date:today(), t:Date.now(), name:item, svc:'Wastage', staff:'—', type:'wastage', status:'done' }); }catch(e){ toast('Could not save'); return; }
+      toast('✓ Wastage saved · '+item+' '+q+' kg'); openWaste(); },
+    _wdel:function(id){ if(!confirm('Delete this wastage entry?')) return; try{ Store.update('appts',id,{_deleted:true,deletedAt:Date.now()}); }catch(e){} openWaste(); },
+    _ad:function(v){ AT.date=(v&&v<=today())?v:today(); renderAtt(); },
+    _am:function(id,m){ var rec=dayRec(AT.date); var marks=Object.assign({}, (rec&&rec.marks)||{}); marks[id]=(marks[id]===m)?'':m; if(!marks[id]) delete marks[id];
+      try{ if(rec) Store.update('appts',rec.id,{marks:marks,t:Date.now()}); else Store.add('appts',{ kind:'attendance', date:AT.date, marks:marks, t:Date.now(), name:'Attendance', svc:'Attendance', staff:'—', type:'attendance', status:'done' }); }catch(e){ toast('Could not save'); }
+      renderAtt(); },
+    _aw:function(id,v){ try{ Store.update('staff',id,{ dailyWage: Math.max(0,Math.round(Number(v)||0)) }); }catch(e){} renderAtt(); }
+  };
+  window.HNSweetX=X;
+
+  /* ───────── entry points ───────── */
+  function inject(){
+    if(!isOn()) return;
+    ensureCss(); placeFest();
+    /* Production screen: tool row */
+    var ps=$('hnp-sum'); if(ps && !$('hnx-ptools')){ var t=document.createElement('div'); t.className='hnx-tools'; t.id='hnx-ptools';
+      t.innerHTML='<button onclick="HNSweetX.madeVsSold()">📊 Made vs Sold</button><button onclick="HNSweetX.wastage()">🗑 Wastage</button><button onclick="HNSweetX.rateCard()">🖨 Rate card</button><button onclick="HNSweetX.attendance()">🗓 Karigar attendance</button>';
+      ps.parentNode.insertBefore(t, ps.nextSibling); }
+    /* Karigars page (desktop action bar + phone page) */
+    var stg=$('pg-staff'); if(stg && !$('hnx-att-btn')){ var b=document.createElement('button'); b.id='hnx-att-btn'; b.type='button'; b.textContent='🗓 Attendance & wages'; b.setAttribute('data-role-min','manager');
+      b.style.cssText='margin:8px 16px;border:1px solid #e2dccd;background:#fff;border-radius:10px;padding:9px 14px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer';
+      b.onclick=function(){ HNSweetX.attendance(); };
+      var bar=stg.querySelector('.hnd-page-actions-r')||stg.querySelector('.hnd-page-actions'); if(bar){ b.style.margin='0 8px 0 0'; bar.insertBefore(b, bar.firstChild); } else { var h=stg.querySelector('.hdr'); stg.insertBefore(b, h?h.nextSibling:stg.firstChild); } }
+    /* Items page: rate card */
+    var cat=document.querySelector('#hnd-cat .hnd-pgh-r'); if(cat && !$('hnx-rate-btn')){ var r=document.createElement('button'); r.id='hnx-rate-btn'; r.className='hnd-btn'; r.type='button'; r.innerHTML='🖨 Rate card'; r.onclick=function(){ HNSweetX.rateCard(); }; cat.insertBefore(r, cat.firstChild); }
+  }
+  setInterval(function(){ try{ inject(); }catch(e){} }, 1500);
+})();
+</script>
+
+<script>
+/* ═══ (Oct 2026) Combine pack sizes into one item — existing sweets/bakery shops ═══════════════
+   "Kaju Katli · 250g / · 500g / · 1kg" (3 products) → "Kaju Katli" with sizes 250g/500g/1kg.
+   Weight-only groups become by-weight (stock in kg, cost per kg). Old pack products are switched
+   off and marked mergedInto (never deleted if they were ever priced/sold) so past bills, reports and
+   combos keep working. Never-priced starter rows are removed outright. */
+(function(){
+  'use strict';
+  function vert(){ try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); var v=(a&&(a.cardType||a.profession))||''; if(v) return v; }catch(e){} return (window.App&&App.vertical)||''; }
+  function on(){ var v=vert(); return v==='sweets'||v==='bakery'; }
+  function W(s){ return window.hnWeightOf ? window.hnWeightOf(s) : 0; }
+  function plan(){
+    var by={}, order=[];
+    (Store.list('prods')||[]).forEach(function(p){
+      if(!p||p._deleted||p.deletedAt||p.isCombo||p.hasSizes||p.bar||p.cig||p.mergedInto) return;
+      var nm=String(p.name||''), i=nm.indexOf(' · '); if(i<0) return;
+      var base=nm.slice(0,i).trim(), sfx=nm.slice(i+3).trim(); if(!base||!sfx) return;
+      var k=(p.cat||'')+'|'+base.toLowerCase();
+      if(!by[k]){ by[k]={base:base,cat:p.cat||'',members:[]}; order.push(k); }
+      by[k].members.push({p:p,sfx:sfx,w:W(sfx)});
+    });
+    return order.map(function(k){ return by[k]; }).filter(function(g){
+      if(g.members.length<2) return false;
+      /* don't merge into a name that already exists as its own item */
+      return !(Store.list('prods')||[]).some(function(p){ return p&&!p._deleted&&!p.mergedInto&&String(p.name).trim().toLowerCase()===g.base.toLowerCase(); });
+    });
+  }
+  function run(){
+    var groups=plan(), made=0, removed=0, parked=0;
+    groups.forEach(function(g){
+      g.members.sort(function(a,b){ return (a.w||0)-(b.w||0); });
+      var byW=g.members.every(function(m){ return m.w>0; });
+      var first=g.members[0].p;
+      var sizes=g.members.map(function(m){ return { name:m.sfx, price:+(m.p.sp||m.p.price)||0, cp: byW?null:((m.p.cp!=null&&m.p.cp!=='')?+m.p.cp:null) }; });
+      var rec={ name:g.base, emoji:first.emoji||'🍬', cat:g.cat, hasSizes:true, sizes:sizes, unit: byW?'kg':'pcs', min:0,
+        active: g.members.some(function(m){ return m.p.active!==false; }), seeded: g.members.every(function(m){ return !!m.p.seeded; }) };
+      rec.status = rec.active?'active':'inactive';
+      if(byW){
+        rec.byWeight=true;
+        var pk=window.hnPerKg(rec); rec.sp=pk; rec.price=pk;
+        var withCp=g.members.filter(function(m){ return m.p.cp!=null&&m.p.cp!==''&&+m.p.cp>0; }).sort(function(a,b){ return Math.abs(a.w-1000)-Math.abs(b.w-1000); })[0];
+        rec.cp = withCp ? Math.round(+withCp.p.cp/withCp.w*1000) : null;
+        rec.stock = Math.round(g.members.reduce(function(t,m){ return t+(+m.p.stock||0)*m.w/1000; },0)*1000)/1000;
+      } else {
+        rec.sp=sizes[0].price; rec.price=sizes[0].price; rec.cp=null; rec.stock=0;
+      }
+      var nw=Store.add('prods', rec); made++;
+      g.members.forEach(function(m){
+        var never = m.p.seeded && !(+(m.p.sp||m.p.price)>0) && m.p.active===false;
+        try{ if(never){ Store.delete('prods', m.p.id); removed++; } else { Store.update('prods', m.p.id, { active:false, status:'inactive', mergedInto: nw&&nw.id }); parked++; } }catch(e){}
+      });
+    });
+    try{ if(App._syncFromStore) App._syncFromStore(); }catch(e){}
+    return { made:made, removed:removed, parked:parked };
+  }
+  window.hnMergePacks = { plan:plan, run:run };
+  window.hnMergePacksUI = function(){
+    var g=plan(); if(!g.length){ try{ App.toast('Nothing to combine'); }catch(e){} return; }
+    var n=g.reduce(function(t,x){ return t+x.members.length; },0);
+    if(!confirm('Combine pack sizes into one item?\n\n'+n+' pack items → '+g.length+' sweets (e.g. "'+g[0].base+'" with '+g[0].members.map(function(m){ return m.sfx; }).join(' / ')+').\n\nPrices carry over. Stock is added up in kg. Old pack items are switched off, not deleted — past bills stay as they are.')) return;
+    var r=run();
+    try{ App.toast('✓ '+r.made+' sweets now have sizes'+(r.parked?' · '+r.parked+' old pack items switched off':'')); }catch(e){}
+    try{ if(App.renderCatalog) App.renderCatalog(); if(window.HND&&HND.cat&&HND.cat.render) HND.cat.render(); }catch(e){}
+    try{ App.nav(App.current||'catalog'); }catch(e){}
+  };
+  /* banner on the Items page while there is something to combine */
+  function banner(){
+    var el=document.getElementById('hnmp-banner');
+    if(!on()){ if(el) el.remove(); return; }
+    var pg=document.querySelector('.page.active'); var cur=window.App&&App.current;
+    if(cur!=='catalog'){ return; }
+    var g=plan();
+    if(!g.length){ if(el) el.remove(); return; }
+    var n=g.reduce(function(t,x){ return t+x.members.length; },0);
+    var html='🧩 <b>'+n+' pack items can become '+g.length+' sweet'+(g.length===1?'':'s')+'</b> <span>— one item per sweet with 250g / 500g / 1kg sizes and stock in kg.</span> <button type="button" onclick="hnMergePacksUI()">Combine pack sizes</button>';
+    if(!el){ el=document.createElement('div'); el.id='hnmp-banner'; el.setAttribute('data-role-min','manager');
+      el.style.cssText='display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;background:#EEF6FF;border:1px solid #BcD8F8;color:#0B3B6F;border-radius:12px;padding:10px 12px;margin:10px 16px;font-size:13.5px;font-family:Inter,system-ui,sans-serif';
+      var host=document.getElementById('hnd-cat')||document.getElementById('pg-catalog'); if(!host) return;
+      var hd=host.querySelector('.hnd-pgh')||host.querySelector('.hdr'); host.insertBefore(el, hd?hd.nextSibling:host.firstChild); }
+    if(el.__h!==html){ el.innerHTML=html; el.__h=html; var b=el.querySelector('button'); if(b) b.style.cssText='margin-left:auto;border:0;background:#0B3B6F;color:#fff;border-radius:9px;padding:8px 13px;font:inherit;font-weight:800;cursor:pointer'; }
+  }
+  setInterval(function(){ try{ banner(); }catch(e){} }, 1500);
+})();
+</script>
+
+<script>
+(function(){
+  'use strict';
+  var EMOJIS_FOOD = ['🍔','🍟','☕','🥤','🥪','🍕','🌯','🧇','🍰','🍱','🍗','🎉'];
+  /* (Oct 2026) sweets / bakery get gift-box & mithai icons instead of burgers */
+  var EMOJIS_SWEET = ['🎁','🍬','🍮','🥮','🪔','🍰','🧁','🍩','🍪','🎂','🥛','🎉'];
+  function _hncVert(){ try { var a=window.MShop&&MShop.getActive&&MShop.getActive(); return (a&&(a.cardType||a.profession))||(window.App&&App.vertical)||''; } catch(e){ return ''; } }
+  function _hncSweet(){ var v=_hncVert(); return v==='sweets'||v==='bakery'; }
+  var EMOJIS = { map: function(fn){ return (_hncSweet() ? EMOJIS_SWEET : EMOJIS_FOOD).map(fn); } };
 
   var HNCombo = {
     CAT: 'Combos',
@@ -102502,13 +103261,31 @@ var KB=[
         return false;
       }catch(e){ return false; }
     },
-    _prod: function(pid){ try{ return Store.get('prods', pid); }catch(e){ return null; } },
+    _prod: function(pid){
+      try{
+        /* (Oct 2026) "id::250g" = one size of a sized item (one-item-per-sweet) */
+        var s = String(pid||''), k = s.indexOf('::');
+        if (k > 0) {
+          var base = Store.get('prods', s.slice(0,k)), sz = s.slice(k+2);
+          if (!base || !Array.isArray(base.sizes)) return null;
+          var z = base.sizes.filter(function(x){ return x.name === sz; })[0]; if (!z) return null;
+          var w = window.hnWeightOf ? hnWeightOf(sz) : 0;
+          var cp = (z.cp != null && z.cp !== '') ? +z.cp : ((base.cp != null && base.cp !== '' && w) ? Math.round(+base.cp * w / 1000) : null);
+          return { id: s, name: base.name + ' \u00b7 ' + sz, emoji: base.emoji, sp: +z.price || 0, price: +z.price || 0, cp: cp, cat: base.cat, active: base.active };
+        }
+        return Store.get('prods', pid);
+      }catch(e){ return null; }
+    },
     pickable: function(){
       var out = [];
       try{
         (Store.list('prods') || []).forEach(function(p){
           if (!p || p.isCombo || p._deleted) return;
           if (p.active === false) return;
+          if (p.hasSizes && Array.isArray(p.sizes) && p.sizes.length) {
+            p.sizes.forEach(function(z){ if (+z.price > 0) { var v = HNCombo._prod((p.id || p.name) + '::' + z.name); if (v) out.push(v); } });
+            return;
+          }
           if (Number(p.sp || p.price || 0) <= 0) return;
           out.push(p);
         });
@@ -102587,7 +103364,7 @@ var KB=[
       if (!this.isVert()) { try{ if(window.App&&App.toast) App.toast('Combos are available for food shops only'); }catch(e){} return; }
       try { this.refreshAll(); } catch(e){ try{console.warn('combo refresh',e);}catch(_){} }
       this._ensureSheet();
-      var st = { editId: editId || null, name: '', emoji: '🍔', sel: {}, price: 0, userTyped: false, disc: 15 };
+      var st = { editId: editId || null, name: '', emoji: _hncSweet() ? '🎁' : '🍔', sel: {}, price: 0, userTyped: false, disc: 15 };
       if (editId) {
         var c = this._prod(editId);
         if (c) {
@@ -102625,13 +103402,23 @@ var KB=[
           '<div class="stp" onclick="event.stopPropagation()">' +
             '<button onclick="HNCombo._bump(\''+pid+'\',-1)">−</button><span class="q">'+(q||1)+'</span><button onclick="HNCombo._bump(\''+pid+'\',1)">+</button>' +
           '</div></div>';
-      }).join('') : '<div class="hnc-empty">No items to bundle yet.<br>Add a few menu items first, then build a combo from them.</div>';
+      }).join('') : (function(){
+        /* (Oct 2026) Sweets/bakery catalogues arrive as unpriced suggestions (inactive until a price is
+           set), so "add items first" was wrong — the items exist, they just have no price yet. */
+        var unpriced = 0;
+        try { unpriced = (Store.list('prods') || []).filter(function(p){ return p && !p._deleted && !p.isCombo && (p.active === false || !(Number(p.sp || p.price || 0) > 0)); }).length; } catch(e){}
+        if (unpriced > 0) {
+          return '<div class="hnc-empty"><b>Your items need a selling price first.</b><br>' + unpriced + ' item' + (unpriced === 1 ? '' : 's') + ' in your catalogue have no price yet, so they can\'t go in a combo.'
+            + '<br><button type="button" onclick="HNCombo.close(); try{ App.openBulkPrice ? App.openBulkPrice() : App.nav(\'catalog\'); }catch(e){}" style="margin-top:12px;border:0;border-radius:10px;padding:10px 16px;font-weight:800;background:#1c1c1c;color:#fff;cursor:pointer">Set prices now</button></div>';
+        }
+        return '<div class="hnc-empty">No items to bundle yet.<br>Add a few items with a price first, then build a combo from them.</div>';
+      })();
 
       var selCount = Object.keys(b.sel).length;
       document.getElementById('hnc-bd').innerHTML =
         '<div class="hnc-step"><span class="n">1</span>Name &amp; icon</div>' +
         '<div class="hnc-namerow"><div class="hnc-emoji" id="hnc-emojibtn">'+b.emoji+'</div>' +
-          '<div class="hnc-name"><input id="hnc-nameinp" type="text" value="'+this._esc(b.name)+'" placeholder="e.g. Lunch combo" oninput="HNCombo._setName(this.value)"></div></div>' +
+          '<div class="hnc-name"><input id="hnc-nameinp" type="text" value="'+this._esc(b.name)+'" placeholder="'+(_hncSweet()?'e.g. Diwali gift box':'e.g. Lunch combo')+'" oninput="HNCombo._setName(this.value)"></div></div>' +
         '<div class="hnc-emojirow">'+emojiRow+'</div>' +
         '<div class="hnc-step"><span class="n">2</span>Add items <span class="r">'+selCount+' selected</span></div>' +
         '<input class="hnc-search" id="hnc-search" type="text" placeholder="\ud83d\udd0d Search items\u2026" autocomplete="off" oninput="HNCombo._filterPicks(this.value)">' +
@@ -105340,7 +106127,10 @@ var KB=[
   function ensureBackdrop(){ if (document.querySelector('.hnd-pos-backdrop')) return; var b=document.createElement('div'); b.className='hnd-pos-backdrop'; b.addEventListener('click',closePanel); document.body.appendChild(b); }
   function injectTablesOrders(){
     var tb = document.querySelector('.hnd-tb');
-    if (!tb || !tblEnabled() || document.getElementById('hnd-tb-ord')) return;
+    /* (Oct 2026) these were added once (often during boot, before the shop type was known — the app
+       briefly assumes café) and never taken away, so sweet shops / groceries showed Tables & Orders */
+    if (!tblEnabled()) { ['hnd-tb-tbl','hnd-tb-ord'].forEach(function(id){ var e=document.getElementById(id); if (e && e.parentNode) e.parentNode.removeChild(e); }); return; }
+    if (!tb || document.getElementById('hnd-tb-ord')) return;
     var tbl = document.createElement('button');
     tbl.id='hnd-tb-tbl'; tbl.className='hnd-tb-tbl'; tbl.type='button'; tbl.title='Tables';
     tbl.setAttribute('onclick',"try{window.__hndPanel&&window.__hndPanel('tables');}catch(e){}");
@@ -105413,7 +106203,10 @@ var KB=[
   /* Source-of-truth ON state: active liquor products exist. Immune to
      localStorage/shopId drift (flag can be stale after multi-device use). */
   function hasActiveBar(){ try { return (Store.list('prods')||[]).some(function(p){ return p&&p.bar===true&&p.active!==false; }); } catch(e){ return false; } }
-  function barCurrentlyOn(){ return isBarOn() || hasActiveBar(); }
+  /* (Oct 2026) Only restaurants/bars infer "on" from existing liquor items. Every other shop type
+     (sweets, bakery, cafe…) keeps the Bar OFF until the owner switches it on in Settings. */
+  function barNative(){ var v=vertical(); return v==='restaurant'||v==='bar'; }
+  function barCurrentlyOn(){ return isBarOn() || (barNative() && hasActiveBar()); }
   /* (v34_167) Exposed so the resell sheet can decide whether to offer a Liquor
      chip. It was module-private, which is why Retail's Add button had no way
      to reach the bar and the door stayed one-way. */
@@ -106096,7 +106889,7 @@ var KB=[
   }
   function syncRow(){
     var on=barCurrentlyOn();
-    if(on && !isBarOn()){ setBarOn(true); }   /* self-heal a stale/missing flag */
+    if(on && !isBarOn() && barNative()){ setBarOn(true); }   /* self-heal a stale/missing flag (restaurant/bar only) */
     var sw=document.getElementById('hn-bar-switch'), knob=document.getElementById('hn-bar-knob'), stock=document.getElementById('hn-bar-stock-row');
     /* (v34_178) #10B981 and a translated knob — the same switch the GST,
        ingredients and auto-print rows use. Two switch designs on one page
@@ -110857,6 +111650,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
     onInput: function(inp){
       var row = inp.closest('.hnbp-row');
       var v = parseFloat(inp.value);
+      try { inp.removeAttribute('data-auto'); this._packFill(inp); } catch(e){}
       if (this._dual){
         /* Row is "done" on MRP alone — DP is what makes it profitable, not what
            makes it sellable. He can price the shelf now and cost it later. */
@@ -110869,6 +111663,30 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
       }
       this._tally();
       this._armAdvance(inp);
+    },
+
+    /* (Oct 2026) Sweets/bakery: one price fills the other pack sizes of the same sweet in proportion
+       (Kaju Katli 1kg ₹1000 → 250g ₹250, 500g ₹500). Only empty or still-auto-filled boxes are touched;
+       anything typed by hand wins. */
+    _packFill: function(inp){
+      var v=''; try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); v=(a&&(a.cardType||a.profession))||(window.App&&App.vertical)||''; }catch(e){}
+      if (v!=='sweets' && v!=='bakery') return;
+      var k = inp.getAttribute('data-k') || 'mrp'; if (k !== 'mrp') return;
+      var nm = String(inp.getAttribute('aria-label')||'').replace(/\s+(price|MRP)$/i,'');
+      var A = window.App; if (!A || !A._parseProductWeightG || !A._stripWeightFromName) return;
+      var g = A._parseProductWeightG(nm), val = parseFloat(inp.value);
+      if (!g || !(val > 0)) return;
+      var base = A._stripWeightFromName(nm).trim().toLowerCase(), perG = val / g, self = this, n = 0;
+      document.querySelectorAll('.hnbp-in[data-k="mrp"]').forEach(function(o){
+        if (o === inp) return;
+        var on = String(o.getAttribute('aria-label')||'').replace(/\s+(price|MRP)$/i,'');
+        if (A._stripWeightFromName(on).trim().toLowerCase() !== base) return;
+        var og = A._parseProductWeightG(on); if (!og) return;
+        if (o.value && o.getAttribute('data-auto') !== '1') return;
+        o.value = String(Math.round(perG * og)); o.setAttribute('data-auto','1'); n++;
+        var r = o.closest('.hnbp-row'); if (r) r.classList.add('set');
+      });
+      if (n) { try { self._tally(); } catch(e){} }
     },
 
     _val: function(key, k){
@@ -111105,6 +111923,7 @@ html[data-shell="desktop"] #hn-billview-ov.open{ display:flex; }
             _patch.sizes = _arr2;
             _patch.hasSizes = true;
           }
+          try { var _bw = Store.get('prods', x.pid); if (_bw && _bw.byWeight && _patch.sizes) { var _pk = window.hnPerKg({ sizes: _patch.sizes }); if (_pk > 0) { _patch.sp = _pk; _patch.price = _pk; } } } catch(_e){}
           var r = Store.update('prods', x.pid, _patch);
           /* seeded rows can predate ensureIds(); fall back to name match */
           if (!r && Store.patchByIdOrName){
