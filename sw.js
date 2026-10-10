@@ -24,7 +24,7 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20261010_2130';
+const SW_VERSION  = 'v34_auto_20261010_2200';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 1200; /* ms before falling back to cached HTML (the download keeps going and refreshes the cache for next time) */
 
@@ -74,25 +74,7 @@ function fetchWithTimeout(req, ms) {
   });
 }
 
-self.addEventListener('fetch', function (event) {
-  var req = event.request;
-  if (req.method !== 'GET') return;
-
-  var url;
-  try { url = new URL(req.url); } catch (e) { return; }
-  if (url.origin !== self.location.origin) return;                 /* Firebase, PayU, CDNs pass through */
-  if (url.pathname.indexOf('firebase-messaging-sw') !== -1) return; /* FCM worker manages itself */
-
-  var accept = req.headers.get('accept') || '';
-  var isNavigation =
-    req.mode === 'navigate' ||
-    accept.indexOf('text/html') !== -1 ||
-    url.pathname === '/' ||
-    url.pathname.endsWith('/') ||
-    url.pathname.endsWith('/index.html');
-
-  /* HTML document -> NETWORK-FIRST with timeout, cache only as offline fallback. */
-  if (isNavigation) {
+function hnNavNetworkFirst(event, req) {
     /* (Oct 2026) On a slow network the page used to give up after NAV_TIMEOUT, show
        the cached copy, and THROW AWAY the download it had already started — so the
        cache never caught up and the next open was slow again. Now the same download
@@ -113,7 +95,7 @@ self.addEventListener('fetch', function (event) {
       var t = setTimeout(function () { reject(new Error('timeout')); }, NAV_TIMEOUT);
       _full.then(function (res) { clearTimeout(t); resolve(res); }, function (e) { clearTimeout(t); reject(e); });
     });
-    event.respondWith(
+    return (
       _timed.catch(function () {
         /* offline or network stalled past NAV_TIMEOUT -> last good copy */
         return caches.match('./index.html').then(function (m) {
@@ -121,6 +103,41 @@ self.addEventListener('fetch', function (event) {
         });
       })
     );
+}
+
+self.addEventListener('fetch', function (event) {
+  var req = event.request;
+  if (req.method !== 'GET') return;
+
+  var url;
+  try { url = new URL(req.url); } catch (e) { return; }
+  if (url.origin !== self.location.origin) return;                 /* Firebase, PayU, CDNs pass through */
+  if (url.pathname.indexOf('firebase-messaging-sw') !== -1) return; /* FCM worker manages itself */
+
+  var accept = req.headers.get('accept') || '';
+  var isNavigation =
+    req.mode === 'navigate' ||
+    accept.indexOf('text/html') !== -1 ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('/index.html');
+
+  /* HTML document -> NETWORK-FIRST with timeout, cache only as offline fallback. */
+  if (isNavigation) {
+    /* (Oct 2026) STALE-WHILE-REVALIDATE. The page is ~6 MB; waiting on the network for it on every
+       refresh is what kept the tab spinner going. If we already hold a copy, show it immediately and
+       refresh the stored copy in the background (conditional request, so usually a tiny 304). A new
+       build therefore applies on the next open — same "open twice" rhythm as before, but instant. */
+    event.respondWith(caches.match('./index.html').then(function (cached) {
+      if (!cached) return null;
+      var upd = fetch(new Request(req.url, { cache: 'no-cache' })).then(function (res) {
+        if (res && res.status === 200) {
+          return caches.open(CACHE).then(function (c) { return c.put('./index.html', res.clone()); });
+        }
+      }).catch(function () {});
+      event.waitUntil(upd);
+      return cached;
+    }).then(function (hit) { return hit || hnNavNetworkFirst(event, req); }));
     return;
   }
 
