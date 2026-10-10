@@ -713,7 +713,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261010_1600';
+    window.HISAABNOW_BUILD = 'v34_auto_20261010_1900';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -56879,7 +56879,7 @@ html[data-shell="desktop"] .hnd-tb {
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
       <span class="lbl" data-i18n="nav.retail">Retail</span>
     </button>
-    <button class="hnd-nav-item" type="button" data-hnd-nav="combo" onclick="try{ if(window.HNCombo&&HNCombo.openBuilder) HNCombo.openBuilder(); }catch(e){}">
+    <button class="hnd-nav-item" type="button" data-hnd-nav="combo" onclick="try{ if(window.HNCombo&&HNCombo.openBuilder) HNCombo.openBuilder(); else if(window.App&&App.toast) App.toast('Combo builder is loading, try again'); }catch(e){ try{console.error(e);App.toast('Could not open combo builder');}catch(_){} }">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
       <span class="lbl" data-i18n="nav.makeCombo">Make a Combo</span>
     </button>
@@ -63614,7 +63614,33 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
       wrap.innerHTML = html;
     },
 
+    /* (Oct 2026) The sidebar already renames this screen per business type (Bulk Orders for
+       a sweet shop, Cake Orders for a bakery, Reservations for a cafe...) but the page itself
+       always said "Appointments". Use the same per-vertical wording here. English only: when
+       the app is in Hindi the existing translated text is left alone. */
+    applyVocab: function(){
+      try {
+        try { if (window.I18n && I18n.getLang && I18n.getLang() === 'hi') return; } catch(e){}
+        var v = '';
+        try { var a = window.MShop && MShop.getActive && MShop.getActive(); v = (a && (a.cardType || a.profession)) || ''; } catch(e){}
+        if (!v) v = (window.App && App.vertical) || '';
+        var cfg = window.VERTICAL_CONFIG && VERTICAL_CONFIG[v];
+        var ts = cfg && cfg.timeSlots;
+        if (!ts || !ts.enabled || !ts.title) return;
+        var h = $('hnd-ap-title');
+        if (h && h.textContent !== ts.title) { h.textContent = ts.title; h.removeAttribute('data-i18n'); }
+        var sub = $('hnd-ap-sub');
+        if (sub) {
+          var st = ts.sectionLabel ? ('Manage your ' + ts.title.toLowerCase() + ' · ' + String(ts.sectionLabel).toLowerCase()) : ('Manage your ' + ts.title.toLowerCase());
+          if (sub.textContent !== st) { sub.textContent = st; sub.removeAttribute('data-i18n'); }
+        }
+        var btn = document.querySelector('#hnd-appts .hnd-pgh-r .hnd-btn span');
+        if (btn && ts.addTitle && btn.textContent !== ts.addTitle) btn.textContent = ts.addTitle;
+      } catch(e){}
+    },
+
     render: function(){
+      this.applyVocab();
       this.renderCalStrip();
       this.renderSummary();
       this.renderList();
@@ -101991,7 +102017,11 @@ var KB=[
         /* Distribution verticals (cement) are B2B challan shops, not retail menus — no combos. */
         var _hv = ''; try { _hv = window.hnVert ? hnVert() : ''; } catch(e){}
         if (window.isDistributionVert && (isDistributionVert(v) || isDistributionVert(ct) || isDistributionVert(_hv))) return false;
-        return ct === 'cafe' || ct === 'restaurant' || ct === 'sweets' || ct === 'bakery';
+        var FOOD = { cafe:1, restaurant:1, sweets:1, bakery:1 };
+        if (FOOD[ct] || FOOD[v] || FOOD[_hv]) return true;
+        try { if (window.S && FOOD[S.prof]) return true; } catch(e){}
+        try { if (FOOD[localStorage.getItem('kprof')]) return true; } catch(e){}
+        return false;
       }catch(e){ return false; }
     },
     _prod: function(pid){ try{ return Store.get('prods', pid); }catch(e){ return null; } },
@@ -102068,8 +102098,8 @@ var KB=[
          stale cached sidebar / More-menu render, a deep link, or a future
          caller can't open the food-combo builder on a vertical it doesn't
          apply to (e.g. Salon) — regardless of what's rendering the button. */
-      if (!this.isVert()) return;
-      this.refreshAll(); // make sure member costs are current before editing
+      if (!this.isVert()) { try{ if(window.App&&App.toast) App.toast('Combos are available for food shops only'); }catch(e){} return; }
+      try { this.refreshAll(); } catch(e){ try{console.warn('combo refresh',e);}catch(_){} }
       this._ensureSheet();
       var st = { editId: editId || null, name: '', emoji: '🍔', sel: {}, price: 0, userTyped: false, disc: 15 };
       if (editId) {
