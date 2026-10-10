@@ -24,9 +24,9 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20261006_1230';
+const SW_VERSION  = 'v34_auto_20261010_1600';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
-const NAV_TIMEOUT = 4000; /* ms before falling back to cached HTML */
+const NAV_TIMEOUT = 2500; /* ms before falling back to cached HTML (the download keeps going and refreshes the cache for next time) */
 
 self.addEventListener('install', function (event) {
   self.skipWaiting();
@@ -93,14 +93,28 @@ self.addEventListener('fetch', function (event) {
 
   /* HTML document -> NETWORK-FIRST with timeout, cache only as offline fallback. */
   if (isNavigation) {
+    /* (Oct 2026) On a slow network the page used to give up after NAV_TIMEOUT, show
+       the cached copy, and THROW AWAY the download it had already started — so the
+       cache never caught up and the next open was slow again. Now the same download
+       is kept and stored for next time even when we fall back to the cached copy. */
+    var _bgDone;
+    var _bg = new Promise(function (r) { _bgDone = r; });
+    event.waitUntil(_bg);
+    var _net = new Request(req.url, { cache: 'no-store' });
+    var _full = fetch(_net).then(function (res) {
+      if (res && res.status === 200) {
+        /* hand the response on immediately (so the page streams in), and store a copy in the background */
+        var keep = res.clone();
+        caches.open(CACHE).then(function (c) { return c.put('./index.html', keep); }).catch(function () {}).then(function () { _bgDone(); });
+      } else { _bgDone(); }
+      return res;
+    }, function (e) { _bgDone(); throw e; });
+    var _timed = new Promise(function (resolve, reject) {
+      var t = setTimeout(function () { reject(new Error('timeout')); }, NAV_TIMEOUT);
+      _full.then(function (res) { clearTimeout(t); resolve(res); }, function (e) { clearTimeout(t); reject(e); });
+    });
     event.respondWith(
-      fetchWithTimeout(req, NAV_TIMEOUT).then(function (res) {
-        if (res && res.status === 200) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put('./index.html', copy); }).catch(function () {});
-        }
-        return res;
-      }).catch(function () {
+      _timed.catch(function () {
         /* offline or network stalled past NAV_TIMEOUT -> last good copy */
         return caches.match('./index.html').then(function (m) {
           return m || caches.match(req) || fetch(req);
