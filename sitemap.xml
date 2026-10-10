@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- app.hisaabnow.com sitemap: RentalNow public pages only. hisaabnow.com has its own sitemap in its own repo. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://app.hisaabnow.com/Rent/install.html</loc><lastmod>2026-10-05</lastmod><priority>1.0</priority></url>
-  <url><loc>https://app.hisaabnow.com/Rent/car-rental-software</loc><lastmod>2026-10-07</lastmod><priority>0.9</priority></url>
-  <url><loc>https://app.hisaabnow.com/Rent/vehicle-rental-software</loc><lastmod>2026-10-05</lastmod><priority>0.9</priority></url>
-  <url><loc>https://app.hisaabnow.com/Rent/bike-rental-software</loc><lastmod>2026-10-05</lastmod><priority>0.9</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/install.html</loc><lastmod>2026-10-08</lastmod><priority>1.0</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/car-rental-software</loc><lastmod>2026-10-08</lastmod><priority>0.9</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/vehicle-rental-software</loc><lastmod>2026-10-08</lastmod><priority>0.9</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/bike-rental-software</loc><lastmod>2026-10-08</lastmod><priority>0.9</priority></url>
   <url><loc>https://app.hisaabnow.com/Rent/car-rental-business-india</loc><lastmod>2026-10-05</lastmod><priority>0.8</priority></url>
   <url><loc>https://app.hisaabnow.com/Rent/rental-agreement-generator</loc><lastmod>2026-10-05</lastmod><priority>0.8</priority></url>
-  <url><loc>https://app.hisaabnow.com/Rent/guides</loc><lastmod>2026-10-07</lastmod><priority>0.8</priority></url>
-  <url><loc>https://app.hisaabnow.com/Rent/bike-rental-business</loc><lastmod>2026-10-05</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/guides</loc><lastmod>2026-10-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/bike-rental-business</loc><lastmod>2026-10-08</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/hi/car-rental-software</loc><lastmod>2026-10-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://app.hisaabnow.com/Rent/hi/bike-rental-software</loc><lastmod>2026-10-08</lastmod><priority>0.8</priority></url>
 </urlset>
