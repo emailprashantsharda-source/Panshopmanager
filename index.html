@@ -743,7 +743,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261010_2200';
+    window.HISAABNOW_BUILD = 'v34_auto_20261010_2345';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -3780,6 +3780,9 @@ html[data-auth="yes"] #loading-splash{display:none !important}
 
 html[data-route="undecided"] #loading-splash{display:flex !important}
 html[data-route="undecided"] .app{visibility:hidden !important}
+/* (Oct 2026) While the first screen is undecided (home vs onboarding), hide EVERYTHING but the splash —
+   the desktop sidebar/topbar sit outside .app and used to ghost through for a moment. */
+html[data-route="undecided"] body > *:not(#loading-splash), html[data-route="undecided"][data-route][data-route][data-route] body > *:not(#loading-splash) *{visibility:hidden !important}
 
 .empty{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -13195,6 +13198,8 @@ const App = {
         HNBulk.open(page === 'add-appointment');
         return;
       }
+      /* Any other destination: take the Bulk Orders overlay down, or it sits on top of the new page. */
+      if (window.HNBulk && HNBulk.hide) HNBulk.hide();
     } catch(e){ console.warn('[nav] bulk orders route failed', e); }
 
     /* (v34_077) Cement is a challan-first distribution business — a sale IS a
@@ -13369,6 +13374,13 @@ const App = {
     /* Desktop: hide the console shell (sidebar/topbar) during first-run
        onboarding so a brand-new client gets a clean full-screen setup. */
     try { document.body.classList.toggle('on-onboarding', page === 'onboarding'); } catch(e){}
+    /* (Oct 2026) Desktop onboarding (#hnd-onb) used to switch on 80ms later via a nav hook, so the
+       phone-style card and the Home dashboard flashed first. Turn it on in the same frame; the hook
+       still runs and resets it to step 1. */
+    try {
+      if (page === 'onboarding' && document.documentElement.getAttribute('data-shell') === 'desktop') document.body.classList.add('hnd-on-onb');
+      else if (page !== 'onboarding') document.body.classList.remove('hnd-on-onb');
+    } catch(e){}
 
     /* Reset onboarding: always show Step 0 (language picker) first */
     if (page === 'onboarding') {
@@ -71678,6 +71690,8 @@ html[data-shell="desktop"] body.hnd-on-onb .hnd-tb { display: none !important; }
 html[data-shell="desktop"] body.hnd-on-onb { padding: 0 !important; }
 
 #hnd-onb { display: none; }
+/* (Oct 2026) No fade-in: starting from opacity 0 let whatever was behind show for a frame on refresh. */
+html[data-shell="desktop"] body.hnd-on-onb #hnd-onb { animation: none !important; opacity: 1 !important; background: #0A0A0A; }
 html[data-shell="desktop"] body.hnd-on-onb #hnd-onb {
   display: flex;
   position: fixed;
@@ -72136,7 +72150,9 @@ html[data-shell="desktop"] body.hnd-on-onb #hnd-onb {
     isOnboardingActive: function(){
       var p = $('pg-onboarding');
       if (!p) return false;
-      return getComputedStyle(p).display !== 'none' && p.getBoundingClientRect().width > 0;
+      /* (Oct 2026) Ask which page is active, not whether it is painted: on desktop body.hnd-on-onb
+         hides #pg-onboarding itself, so the old display check switched the desktop screen back off. */
+      return p.classList.contains('active');
     }
   };
 
@@ -102241,6 +102257,7 @@ var KB=[
       try{ document.body.classList.remove('hnd-on-appts'); }catch(e){}
       if(openForm===true) this.edit();
     },
+    hide: function(){ var r=$('hnb-root'); if(r) r.classList.remove('open'); var f=$('hnb-form'); if(f) f.classList.remove('open'); ST.form=null; },
     close: function(){ var r=$('hnb-root'); if(r) r.classList.remove('open'); this.closeForm(); try{ App.nav('home'); }catch(e){} },
     refresh: function(){ if($('hnb-root') && $('hnb-root').classList.contains('open')) renderList(); },
     setFilter: function(f){ ST.filter=f; renderList(); },
@@ -102318,6 +102335,17 @@ var KB=[
     }
   };
   window.HNBulk = HNBulk;
+  /* Any sidebar / topbar / bottom-nav tap other than Bulk Orders itself closes the overlay —
+     several items (Purchases, Suppliers, Business Manager…) open their own screens without App.nav. */
+  document.addEventListener('click', function(e){
+    try{
+      var r=$('hnb-root'); if(!r || !r.classList.contains('open')) return;
+      var t=e.target && e.target.closest && e.target.closest('.hnd-sb .hnd-nav-item, .hnd-sb a, .hnd-sb button, .hnd-tb button, .hnd-tb a, .nav .nav-tab, .menu-item');
+      if(!t) return;
+      if(t.getAttribute('data-hnd-nav')==='appointments' || t.id==='more-appts-entry') return;
+      HNBulk.hide();
+    }catch(_){}
+  }, true);
   try{ if(window.Store&&Store.subscribe) Store.subscribe(function(){ HNBulk.refresh(); }); }catch(e){}
 })();
 </script>

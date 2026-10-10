@@ -24,7 +24,7 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20261010_2200';
+const SW_VERSION  = 'v34_auto_20261010_2345';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 1200; /* ms before falling back to cached HTML (the download keeps going and refreshes the cache for next time) */
 
