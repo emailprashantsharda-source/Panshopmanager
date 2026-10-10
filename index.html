@@ -719,7 +719,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261010_2000';
+    window.HISAABNOW_BUILD = 'v34_auto_20261010_2100';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -9888,7 +9888,7 @@ sweets: {
   greetingSub: "Here's your sweet shop overview for today.",
   txnUnit: 'box', txnUnitPlural: 'boxes',
   topPanelTitle: 'Top Mithai',
-  catalogTitle: 'Catalog', catalogSearch: 'Search mithai & namkeen…',
+  catalogTitle: 'Items', catalogSearch: 'Search mithai & namkeen…',
   catalogChips: ['All','Milk Sweets','Bengali Sweets','Dry Fruit Sweets','Laddu','Ghee Sweets','Halwa','Bhujia & Sev','Namkeen & Mixture','Snacks','Chaat','Beverages','Gift Boxes'],
   addSaleChips: ['All','Wet Sweets','Dry Sweets','Laddu','Barfi','Halwa','Namkeen','Ingredients','Packaging'],
   salesUnitLabel: 'Bills',
@@ -10034,7 +10034,7 @@ bakery: {
   greetingSub: "Here's your bakery overview for today.",
   txnUnit: 'order', txnUnitPlural: 'orders',
   topPanelTitle: 'Top Bakes',
-  catalogTitle: 'Menu', catalogSearch: 'Search menu items…',
+  catalogTitle: 'Items', catalogSearch: 'Search menu items…',
   catalogChips: ['All','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Pastries','Patties','Savory Snacks','Cookies','Confectionery','Brownies & Desserts','Croissants & Rolls','Donuts & Muffins'],
   addSaleChips: ['All','Bread','Cakes 500g','Cakes 1kg','Cakes 1.5kg+','Pastries','Patties','Savory Snacks','Cookies','Confectionery','Brownies & Desserts','Croissants & Rolls','Donuts & Muffins'],
   salesUnitLabel: 'Bills',
@@ -36637,7 +36637,13 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
         HisaabSync.checkpoint();
       }
       if (window.HisaabSync && typeof HisaabSync.drainOutbox === 'function') {
-        await HisaabSync.drainOutbox().catch(() => {});
+        /* (Oct 2026) Bounded: an unreachable/slow Firestore used to hold the sign-out
+           (and the next login screen) hostage for as long as the drain took. Anything
+           not uploaded stays in the on-device outbox and syncs at next sign-in. */
+        await Promise.race([
+          HisaabSync.drainOutbox().catch(() => {}),
+          new Promise(function(r){ setTimeout(r, 2500); })
+        ]);
       }
     } catch (e) {  }
 
@@ -36679,6 +36685,7 @@ Rica Wax Aloe, Rica, skin, 650, 800g, 440g, 200g</pre>
       console.warn('[App] signOut failed:', e);
     }
 
+    try { localStorage.setItem('hn_auth_known', 'no'); localStorage.removeItem('hn_role_cached'); } catch (e) {}
     this.toast(this._T('toast.signedOut', 'Signed out'));
 
     /* (v33_29e) Reload to fresh login screen.
@@ -73591,10 +73598,11 @@ html[data-shell="desktop"] #pg-home {
         } else if (action === 'help'){
           window.open('https://wa.me/917838361200?text=' + encodeURIComponent('Hi! I need help with HisaabNow.'), '_blank');
         } else if (action === 'logout'){
-          if (!await App.confirm({title: 'Log out of HisaabNow?', message: 'Your data syncs automatically — you can log back in anytime.', confirmText: 'Log out'})) return;
-          if (window.App && typeof App.logout === 'function') App.logout();
-          else if (window.firebase && firebase.auth) firebase.auth().signOut().then(function(){ location.reload(); });
-          else { localStorage.clear(); location.reload(); }
+          /* (Oct 2026) App.logout never existed and window.firebase isn't loaded (modular SDK),
+             so this fell through to localStorage.clear() — wiping unsynced data and the
+             cached auth hint (slow, "unknown" auth state on the next load) without ever
+             signing out. Use the one real sign-out path. App.signOut asks to confirm itself. */
+          if (window.App && typeof App.signOut === 'function') App.signOut();
         }
       } catch(e){ console.warn('[M] acct action failed', e); }
     }, 120);
@@ -84608,7 +84616,7 @@ html[data-shell="desktop"] #pg-ingredients > header.hdr > button.icon-btn:last-c
       if (catItem){
         var catLbl = catItem.querySelector('.lbl');
         if (catLbl){
-          var catCorrect = 'Catalog';
+          var catCorrect = ((window.VERTICAL_CONFIG||{})[key]||{}).catalogTitle || 'Catalog';
           if (key === 'salon') catCorrect = 'Retail';
           else if (key === 'cafe' || key === 'restaurant') catCorrect = 'Menu';
           else if (key === 'bakery' || key === 'sweets') catCorrect = 'Items';
@@ -85840,7 +85848,7 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
     try {
       var catItem = sb.querySelector('.hnd-nav-item[data-hnd-nav="catalog"] .lbl');
       if (catItem){
-        var catCorrect = 'Catalog';
+        var catCorrect = ((window.VERTICAL_CONFIG||{})[v]||{}).catalogTitle || 'Catalog';
         if (v === 'salon') catCorrect = 'Retail';
         else if (v === 'cafe' || v === 'restaurant') catCorrect = 'Menu';
         else if (v === 'bakery' || v === 'sweets') catCorrect = 'Items';
