@@ -1,0 +1,27 @@
+# RentalNow
+
+> RentalNow is a phone web app (PWA) for bike, scooty and car rental shops in India. It handles bookings, a single fleet list, deposits, WhatsApp bills and the owner's daily earnings. It installs from the browser and works offline. 14-day free trial, no card needed. Made by the HisaabNow team in Noida, India.
+
+Pricing changes, so it is not listed here. See https://app.hisaabnow.com/Rent/ for current plans.
+
+## Software pages
+- [Car rental software](https://app.hisaabnow.com/Rent/car-rental-software): for self-drive car rental. Km-based rates with odometer at pickup and return, driving licence number required at booking, deposits tracked separately.
+- [Bike and scooty rental software](https://app.hisaabnow.com/Rent/bike-rental-software): overtime charges, deposits, vehicles with expired PUC or insurance can be blocked, WhatsApp bill at return.
+- [Vehicle rental software](https://app.hisaabnow.com/Rent/vehicle-rental-software): for shops that rent both bikes and cars.
+- [Install RentalNow](https://app.hisaabnow.com/Rent/install.html)
+
+## Free tool
+- [Rental agreement generator](https://app.hisaabnow.com/Rent/rental-agreement-generator): fill in the details and download a ready-to-sign car or bike rental agreement as a PDF.
+
+## Guides
+- [All rental business guides](https://app.hisaabnow.com/Rent/guides)
+- [How to start a bike rental business in India](https://app.hisaabnow.com/Rent/bike-rental-business)
+- [How to start a car rental business in India](https://app.hisaabnow.com/Rent/car-rental-business-india)
+
+## Hindi
+- [कार रेंटल सॉफ़्टवेयर](https://app.hisaabnow.com/Rent/hi/car-rental-software)
+- [बाइक रेंटल सॉफ़्टवेयर](https://app.hisaabnow.com/Rent/hi/bike-rental-software)
+- [वाहन रेंटल सॉफ़्टवेयर](https://app.hisaabnow.com/Rent/hi/vehicle-rental-software)
+
+## Related product
+- [HisaabNow](https://hisaabnow.com/): billing and POS app for shops and food businesses, by the same team.
