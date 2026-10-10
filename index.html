@@ -743,7 +743,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261010_2345';
+    window.HISAABNOW_BUILD = 'v34_auto_20261011_0015';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -61478,6 +61478,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     var orig = window.App.nav;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 80);
       return r;
     };
@@ -61960,6 +61961,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     var orig = window.App.nav;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 80);
       return r;
     };
@@ -62328,6 +62330,7 @@ html[data-shell="desktop"] .hnd-tbl-split:not(.has-selection) .hnd-detail { disp
     var orig = window.App.nav;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 80);
       return r;
     };
@@ -62952,6 +62955,7 @@ html[data-shell="desktop"] body.hnd-on-supplies #hnd-supplies {
     if (typeof orig !== 'function') return false;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 60);
       return r;
     };
@@ -63906,6 +63910,7 @@ html[data-shell="desktop"] body.hnd-ap-modal-open #pg-add-appointment .form-scre
     if (typeof orig !== 'function') return false;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 60);
       return r;
     };
@@ -65069,6 +65074,7 @@ html[data-shell="desktop"] body.hnd-on-cashflow #hnd-cashflow {
     if (typeof orig !== 'function') return false;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 60);
       return r;
     };
@@ -66476,6 +66482,7 @@ html[data-shell="desktop"] body.hnd-on-campaigns #hnd-campaigns {
     if (typeof orig !== 'function') return false;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 60);
       return r;
     };
@@ -68425,6 +68432,7 @@ html[data-shell="desktop"] body.hnd-on-subs #hnd-subs {
     if (typeof orig !== 'function') return false;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 60);
       return r;
     };
@@ -70148,6 +70156,7 @@ html[data-shell="desktop"] body.hnd-on-exp #hnd-exp-add-cta:hover {
     var orig = window.App.nav;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 80);
       return r;
     };
@@ -70820,6 +70829,7 @@ html[data-shell="desktop"] body.hnd-on-udh #hnd-udh {
     var orig = window.App.nav;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 80);
       return r;
     };
@@ -71632,6 +71642,7 @@ html[data-shell="desktop"] body.hnd-on-rep #hnd-rep {
     var orig = window.App.nav;
     window.App.nav = function(){
       var r = orig.apply(this, arguments);
+      try { syncShellClass(); } catch(_e){} /* (Oct 2026) mount the desktop screen in the same frame — the delayed-only call showed the phone page first */
       setTimeout(syncShellClass, 80);
       return r;
     };
@@ -74236,8 +74247,8 @@ html[data-shell="desktop"] #pg-home {
     if (cfg.staffTitle)              labels.staff = cfg.staffTitle;
     if (cfg.timeSlots && cfg.timeSlots.menuLabel) labels.appointments = cfg.timeSlots.menuLabel;
     if (v === 'salon')               labels.ingredients = 'Supplies';
-    else if (foodPrep)               labels.ingredients = 'Ingredients';
     else if (v === 'sweets')         labels.ingredients = 'Raw Materials';
+    else if (foodPrep)               labels.ingredients = 'Ingredients';
 
     /* (v34_042) Every overridable label gets visited every run — the ones with
        an override take it, the ones without get their data-i18n restored. A
@@ -78259,7 +78270,7 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
     var i = $('hnd-shop-init');
     var b = $('hnd-bc-shop');
     if (n) n.textContent = name;
-    if (m) m.textContent = getShopMeta();
+    if (m && !m.querySelector('.hnd-sb-vert-tag')) { var _gm = getShopMeta(); if (m.textContent !== _gm) m.textContent = _gm; }
     if (i) i.textContent = initials(name);
     if (b) b.textContent = name;
   }
@@ -78483,7 +78494,8 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
     if (!existing){
       var strip = document.createElement('div');
       strip.className = 'hnd-sb-sub ' + cls;
-      strip.innerHTML = html;
+      strip.innerHTML = html; strip.__hnHtml = html;
+      strip.setAttribute('data-hn-sub-owner', 'main');
       strip.addEventListener('click', openPlans);
       /* Insert before the user pill */
       if (userPill && userPill.parentElement){
@@ -78492,8 +78504,10 @@ html[data-shell="mobile"] .hnd-sb-sub { display: none; }
         sb.appendChild(strip);
       }
     } else {
-      existing.className = 'hnd-sb-sub ' + cls;
-      existing.innerHTML = html;
+      /* (Oct 2026) only touch the DOM when something changed — it is re-run on a timer */
+      if (existing.className !== 'hnd-sb-sub ' + cls) existing.className = 'hnd-sb-sub ' + cls;
+      if (existing.__hnHtml !== html){ existing.innerHTML = html; existing.__hnHtml = html; }
+      existing.setAttribute('data-hn-sub-owner', 'main');
     }
   }
 
@@ -79577,6 +79591,9 @@ html[data-shell="desktop"] #pg-settings .toggle {
       'other': 'Tap to switch'
     };
     var text = v ? (pretty[v] || (v.charAt(0).toUpperCase() + v.slice(1) + ' · Tap to switch')) : 'Tap to switch';
+    /* (Oct 2026) The vertical-pill module owns this line once it has drawn its pill; writing plain
+       text here made it flip between two wordings every few hundred ms. */
+    if (m.querySelector && m.querySelector('.hnd-sb-vert-tag')) return;
     if (m.textContent !== text){
       m.textContent = text;
     }
@@ -84105,7 +84122,7 @@ html[data-shell="desktop"] .hnd-sb-shop .hnd-sb-shop-sync {
 
     /* Update #hnd-shop-meta to just say "Tap to switch" (vertical is now in name) */
     var metaEl = $('hnd-shop-meta');
-    if (metaEl && metaEl.textContent !== 'Tap to switch · ⇄'){
+    if (metaEl && !metaEl.querySelector('.hnd-sb-vert-tag') && metaEl.textContent !== 'Tap to switch · ⇄'){
       metaEl.textContent = 'Tap to switch · ⇄';
     }
 
@@ -84175,6 +84192,7 @@ html[data-shell="desktop"] .hnd-sb-shop .hnd-sb-shop-sync {
         var correctLabel = 'Ingredients';
         if (v === 'salon') correctLabel = 'Supplies';
         else if (v === 'sweets') correctLabel = 'Raw Materials';
+        if (window.hnIngLabel) correctLabel = window.hnIngLabel(v);
         if (lbl.textContent !== correctLabel) lbl.textContent = correctLabel;
       }
     }
@@ -84572,11 +84590,12 @@ html[data-shell="desktop"] #pg-ingredients > header.hdr > button.icon-btn:last-c
     var metaEl = $('hnd-shop-meta');
     if (metaEl){
       /* Make the meta line show the change-type pill + tap-to-switch hint */
-      metaEl.innerHTML = ''
+      var _mh = ''
         + '<span class="hnd-sb-vert-tag" data-vert-change="1" title="Change shop type">'
           + vEmoji + ' ' + escHtml(vLabel) + ' ▾'
         + '</span>'
         + '<span style="margin-left:8px;opacity:0.6">⇄ Tap to switch</span>';
+      if (metaEl.__hnHtml !== _mh || !metaEl.querySelector('.hnd-sb-vert-tag')){ metaEl.innerHTML = _mh; metaEl.__hnHtml = _mh; }
     }
   }
 
@@ -85375,6 +85394,8 @@ html[data-shell="desktop"] .hnd-sb-sub.trial-urgent .hnd-sb-sub-title {
   function getCorrectIngLabel(){
     return getIngLabelFor(getEffectiveVertical());
   }
+  /* (Oct 2026) one shared answer, so the other sidebar label writers stop disagreeing with this lock */
+  window.hnIngLabel = getIngLabelFor;
 
   var lockBusy = false;
   function lockLabel(){
@@ -85437,6 +85458,10 @@ html[data-shell="desktop"] .hnd-sb-sub.trial-urgent .hnd-sb-sub-title {
       : 'Unlock unlimited bills, AI Insights, voice billing & more';
     var ctaText = isUrgent ? 'Upgrade now ⚡' : 'See plans · from ₹499/mo';
 
+    /* (Oct 2026) The main subscription card (bills-based trial) owns this box; this older
+       days-based writer used to overwrite it every tick, so the card flipped between
+       "FREE TRIAL · 20 bills left" and "ENDS SOON · 0 days left". */
+    if (strip.getAttribute('data-hn-sub-owner') === 'main') return;
     /* Re-render strip content while keeping the wrapper */
     strip.innerHTML = ''
       + '<div class="hnd-sb-sub-h">'
@@ -85917,6 +85942,7 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
         var igCorrect = 'Ingredients';
         if (v === 'salon') igCorrect = 'Supplies';
         else if (v === 'sweets') igCorrect = 'Raw Materials';
+        if (window.hnIngLabel) igCorrect = window.hnIngLabel(v);
         if (igItem.textContent !== igCorrect){
           igItem.textContent = igCorrect;
           igItem.removeAttribute('data-i18n');
@@ -87530,8 +87556,9 @@ html[data-shell="desktop"] body.hnd-on-dash .hnd-d-greet-strip-dot {
       strip.innerHTML = html;
       dash.insertBefore(strip, dash.firstChild);
     } else {
-      /* ALWAYS update — don't check for old layout, just overwrite */
-      strip.innerHTML = html;
+      /* (Oct 2026) Only when changed — this runs on a timer, and rewriting it twice a second
+         restarted its layout/animations (visible jitter on the dashboard). */
+      if (strip.__hnHtml !== html){ strip.innerHTML = html; strip.__hnHtml = html; }
     }
     /* Mark this as ours so observers know */
     strip.setAttribute('data-pp-rendered', '1');
@@ -90904,24 +90931,15 @@ html[data-shell="desktop"] .hnd-d-kpi-delta.margin-none {
       if (!delta) return;
       var deltaText = (delta.textContent || '').trim();
 
-      /* Remove existing margin classes */
-      delta.classList.remove('margin-high', 'margin-mid', 'margin-low', 'margin-none');
-
-      /* Parse percentage */
+      /* (Oct 2026) Work out the tier first and only touch classes that differ — removing all four
+         and re-adding one on every KPI refresh made the tile colour blink. */
       var match = deltaText.match(/(-?\d+(?:\.\d+)?)\s*%/);
-      if (!match){
-        delta.classList.add('margin-none');
-        return;
-      }
-      var pct = parseFloat(match[1]);
-      if (isNaN(pct)){
-        delta.classList.add('margin-none');
-        return;
-      }
-
-      if (pct >= 15) delta.classList.add('margin-high');
-      else if (pct >= 5) delta.classList.add('margin-mid');
-      else delta.classList.add('margin-low');
+      var pct = match ? parseFloat(match[1]) : NaN;
+      var tier = isNaN(pct) ? 'margin-none' : (pct >= 15 ? 'margin-high' : (pct >= 5 ? 'margin-mid' : 'margin-low'));
+      ['margin-high','margin-mid','margin-low','margin-none'].forEach(function(c){
+        if (c !== tier && delta.classList.contains(c)) delta.classList.remove(c);
+      });
+      if (!delta.classList.contains(tier)) delta.classList.add(tier);
     });
   }
 
@@ -91903,7 +91921,7 @@ html[data-shell="desktop"] .ps-drawer div[style*="border-radius:99px"] {
     /* Already in the right place? */
     if (section.parentElement === totals.parentElement &&
         section.nextElementSibling === totals){
-      section.classList.add('fff-desktop');
+      if (!section.classList.contains('fff-desktop')) section.classList.add('fff-desktop');
       return true;
     }
 
@@ -101983,7 +102001,7 @@ var KB=[
      Paste-once, reversible, no core functions rewritten.
      ════════════════════════════════════════════════════════════════ -->
 <style>
-.hnc-sheet-bg{position:fixed;inset:0;z-index:150;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.34);backdrop-filter:blur(2px);overscroll-behavior:contain}
+.hnc-sheet-bg{position:fixed;inset:0;z-index:9000;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.34);backdrop-filter:blur(2px);overscroll-behavior:contain}
 .hnc-sheet-bg.open{display:flex}
 .hnc-sheet{background:#fff;width:100%;max-width:460px;border-radius:26px 26px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;max-height:92vh;overflow:hidden;animation:hncUp .26s cubic-bezier(.2,.8,.2,1);overscroll-behavior:contain}
 @keyframes hncUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -102444,6 +102462,14 @@ var KB=[
     },
 
     openBuilder: function(editId){
+      /* (Oct 2026) Never fail silently: any error shows on screen with its message. */
+      try { return this._openBuilder(editId); }
+      catch(e){
+        try { console.error('[HNCombo] open failed', e); } catch(_){}
+        try { if (window.App && App.toast) App.toast('Combo builder error: ' + ((e && e.message) || e)); } catch(_){}
+      }
+    },
+    _openBuilder: function(editId){
       try { if (window.App && App._blockedBelow && App._blockedBelow('manager')) return; } catch(e){}
       /* (Aug 2026 fix) Belt-and-suspenders: the nav rows that call this are
          now gated by isVert(), but guard the entry point itself too, so a
