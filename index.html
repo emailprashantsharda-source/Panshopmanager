@@ -94,6 +94,30 @@
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js">
+<script>
+/* (Oct 2026) Login buttons used to call window.sendOTP() etc. that only exist once the big
+   Firebase module script has run (after the whole 6 MB page is parsed). Tapping Continue
+   before then did nothing. These stubs remember the tap, show a message, and replay it as
+   soon as the real handler is installed. */
+(function(){
+  var names=['sendOTP','verifyOTP','resendOTP','resetLogin'], pend={}, stubs={};
+  function msg(t){ try{ var m=document.getElementById('login-msg'); if(m){ m.textContent=t; m.style.display=''; } }catch(e){} }
+  names.forEach(function(n){
+    stubs[n]=function(){ pend[n]=true; msg('Getting ready… we will continue in a moment'); };
+    if(typeof window[n]!=='function') window[n]=stubs[n];
+  });
+  var iv=setInterval(function(){
+    var left=0;
+    names.forEach(function(n){
+      if(!pend[n]) return;
+      if(window[n]===stubs[n]){ left++; return; }
+      pend[n]=false; try{ var m=document.getElementById('login-msg'); if(m) m.textContent=''; }catch(e){} try{ window[n](); }catch(e){ console.error(e); }
+    });
+    var anyReal=names.every(function(n){ return window[n]!==stubs[n]; });
+    if(anyReal && !left) clearInterval(iv);
+  },120);
+})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
@@ -719,7 +743,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261010_2100';
+    window.HISAABNOW_BUILD = 'v34_auto_20261010_2130';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1028,6 +1052,12 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 
   /* Wait for DOM content (all stylesheets in head parsed) */
   if (document.readyState === 'loading'){
+    /* (Oct 2026) DOMContentLoaded waits for the deferred Firebase module script, i.e. for
+       gstatic.com round-trips. 'interactive' fires as soon as the HTML is parsed (all head
+       CSS already applied), so reveal then and the login screen no longer waits on Firebase. */
+    document.addEventListener('readystatechange', function(){
+      if (document.readyState !== 'loading'){ domReady = true; checkAndReveal(); }
+    });
     document.addEventListener('DOMContentLoaded', function(){
       domReady = true;
       checkAndReveal();
