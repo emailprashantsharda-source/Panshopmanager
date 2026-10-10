@@ -84,10 +84,16 @@
 <script type="text/javascript">
   (function(c,l,a,r,i,t,y){
     c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    var _go=function(){t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);};
+    (function(f){function g(){setTimeout(f,3500)}if(document.readyState==='complete')g();else addEventListener('load',g)})(_go);
   })(window, document, "clarity", "script", "xa3vcwxzzv");
 </script>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
@@ -128,7 +134,7 @@ n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
 n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
+(function(f){function g(){setTimeout(f,3500)}if(document.readyState==='complete')g();else addEventListener('load',g)})(function(){s.parentNode.insertBefore(t,s)})}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '1670925877471743');
 fbq('track', 'PageView');
@@ -498,7 +504,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 <!-- End Meta Pixel Code -->
 
 <!-- Google Analytics 4 (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ3LYFSXX1"></script>
+<script>(function(f){function g(){setTimeout(f,3500)}if(document.readyState==='complete')g();else addEventListener('load',g)})(function(){var t=document.createElement('script');t.async=1;t.src='https://www.googletagmanager.com/gtag/js?id=G-QZ3LYFSXX1';document.head.appendChild(t);});</script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -713,7 +719,7 @@ src="https://www.facebook.com/tr?id=1670925877471743&ev=PageView&noscript=1"
 (function(){
 
   try {
-    window.HISAABNOW_BUILD = 'v34_auto_20261010_1900';
+    window.HISAABNOW_BUILD = 'v34_auto_20261010_2000';
 
     /* ══════════════════════════════════════════════════════════════════
        TEMPORARY DEMO OVERRIDE — set to false to restore normal locking.
@@ -1659,7 +1665,7 @@ html[data-auth="no"] #login-screen.ls-root.mk1 {
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{
 
@@ -13149,6 +13155,17 @@ const App = {
 
   nav(page){
     this._syncFromStore();
+
+    /* (Oct 2026) Sweets & bakery: "Bulk Orders" / "Cake Orders" is a real
+       advance-order module (items, advance, balance, delivery), not the table/
+       appointment calendar. Route the old appointment entry points to it. */
+    try {
+      if ((page === 'appointments' || page === 'add-appointment') && window.HNBulk && HNBulk.active()) {
+        if (this._blockedBelow && this._blockedBelow('cashier')) return;
+        HNBulk.open(page === 'add-appointment');
+        return;
+      }
+    } catch(e){ console.warn('[nav] bulk orders route failed', e); }
 
     /* (v34_077) Cement is a challan-first distribution business — a sale IS a
        delivery challan; there is no counter POS or checkout. Route every
@@ -85858,6 +85875,8 @@ html[data-shell="desktop"] .hnd-sb[data-vertical="other"] .hnd-nav-item[data-hnd
       if (apItem){
         var apCorrect = 'Reservations';
         if (v === 'salon') apCorrect = 'Appointments';
+        else if (v === 'sweets') apCorrect = 'Bulk Orders';
+        else if (v === 'bakery') apCorrect = 'Cake Orders';
         if (apItem.textContent !== apCorrect){
           apItem.textContent = apCorrect;
           apItem.removeAttribute('data-i18n');
@@ -88715,7 +88734,7 @@ html[data-shell="desktop"] body.hnd-on-dash .hnd-d-chart {
 ============================================================ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* ── Reset old login styles ── */
 /* Only style/show login when data-auth allows it ('no' = needs login).
@@ -101998,6 +102017,273 @@ var KB=[
 .hnc-member .md::before{content:"";position:absolute;left:-12px;top:50%;width:8px;height:1.5px;background:#E2DCD0}
 .hnc-member .mi{margin-left:auto;font-size:11px;color:#06C167;font-weight:700}
 </style>
+<script>
+/* ═══ HNBulk — Bulk / Cake orders for sweets & bakery ═══════════════════════
+   Advance orders for weddings, festivals, parties: who, when, what, how much,
+   advance taken, balance due. Stored in the existing 'appts' collection with
+   kind:'bulk' so sync, rules and backups already cover it. "Deliver & bill"
+   loads the order into the normal billing cart. */
+(function(){
+  'use strict';
+  var ST = { filter:'upcoming', form:null };
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function rs(n){ n=Math.round(Number(n)||0); return '₹'+n.toLocaleString('en-IN'); }
+  function vert(){
+    try{ var a=window.MShop&&MShop.getActive&&MShop.getActive(); var v=(a&&(a.cardType||a.profession))||''; if(v) return v; }catch(e){}
+    return (window.App&&App.vertical)||'';
+  }
+  function isOn(){ var v=vert(); return v==='sweets'||v==='bakery'; }
+  function words(){
+    var v=vert();
+    return v==='bakery' ? { title:'Cake Orders', one:'Cake Order', add:'New Cake Order', emoji:'🎂' }
+                        : { title:'Bulk Orders', one:'Bulk Order', add:'New Bulk Order', emoji:'🧺' };
+  }
+  function iso(d){ var y=d.getFullYear(),m=('0'+(d.getMonth()+1)).slice(-2),dd=('0'+d.getDate()).slice(-2); return y+'-'+m+'-'+dd; }
+  function today(){ return iso(new Date()); }
+  function fmtDate(s){
+    try{ var t=today(), tm=iso(new Date(Date.now()+864e5)); if(s===t) return 'Today'; if(s===tm) return 'Tomorrow';
+      return new Date(s+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return s; }
+  }
+  function fmtTime(t){
+    if(!t) return ''; var m=String(t).match(/(\d{1,2}):(\d{2})/); if(!m) return t;
+    var h=+m[1], ap=h>=12?'PM':'AM'; h=h%12||12; return h+':'+m[2]+' '+ap;
+  }
+  function all(){
+    try{ return (Store.list('appts')||[]).filter(function(a){ return a && a.kind==='bulk' && !a._deleted && !a.deletedAt; }); }catch(e){ return []; }
+  }
+  function bal(o){ return Math.max(0, (Number(o.total)||0) - (Number(o.advance)||0)); }
+  function toast(m){ try{ App.toast(m); }catch(e){} }
+
+  var CSS = '#hnb-root{position:fixed;inset:0;z-index:190;background:#FAF8F3;display:none;flex-direction:column;font-family:Inter,system-ui,sans-serif;color:#1c1c1c}'
+   +'#hnb-root.open{display:flex}'
+   +'html[data-shell="desktop"] #hnb-root{left:var(--hnd-sb-w,240px);top:var(--hnd-tb-h,56px)}'
+   +'.hnb-hd{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#fff;border-bottom:1px solid #eee}'
+   +'.hnb-hd h1{font-size:20px;margin:0;flex:1;font-weight:800}'
+   +'.hnb-btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;cursor:pointer;background:#f0ece2;color:#333}'
+   +'.hnb-btn.pri{background:#06C167;color:#fff}.hnb-btn.sm{padding:7px 10px;font-size:12.5px}.hnb-btn.warn{background:#fff0ef;color:#c0392b}'
+   +'.hnb-sum{display:flex;gap:10px;padding:12px 16px;overflow-x:auto}'
+   +'.hnb-stat{flex:1;min-width:120px;background:#fff;border:1px solid #eee;border-radius:12px;padding:10px 12px}'
+   +'.hnb-stat b{display:block;font-size:20px}.hnb-stat span{font-size:11.5px;color:#777}'
+   +'.hnb-chips{display:flex;gap:8px;padding:0 16px 10px;overflow-x:auto}'
+   +'.hnb-chip{border:1px solid #e2dccd;background:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}'
+   +'.hnb-chip.on{background:#1c1c1c;color:#fff;border-color:#1c1c1c}'
+   +'.hnb-list{flex:1;overflow:auto;padding:4px 16px 90px;display:grid;gap:12px;align-content:start;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}'
+   +'.hnb-card{background:#fff;border:1px solid #eee;border-radius:14px;padding:14px}'
+   +'.hnb-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}'
+   +'.hnb-nm{font-weight:800;font-size:15.5px}.hnb-ph{font-size:12.5px;color:#777}'
+   +'.hnb-when{font-size:13px;font-weight:700;margin-top:6px}.hnb-when.late{color:#c0392b}'
+   +'.hnb-items{font-size:13px;color:#555;margin:8px 0;line-height:1.45}'
+   +'.hnb-money{display:flex;gap:14px;font-size:13px;margin:6px 0 10px}.hnb-money b{font-size:15px}'
+   +'.hnb-pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap}'
+   +'.hnb-pill.confirmed{background:#FFF4D6;color:#9a6a00}.hnb-pill.ready{background:#DDF6E8;color:#0a7a45}.hnb-pill.delivered{background:#e8e8e8;color:#555}.hnb-pill.cancelled{background:#fde3e1;color:#b03a2e}'
+   +'.hnb-acts{display:flex;flex-wrap:wrap;gap:6px}'
+   +'.hnb-empty{grid-column:1/-1;text-align:center;color:#888;padding:50px 20px;font-size:14px}'
+   +'.hnb-fab{position:absolute;right:18px;bottom:18px;box-shadow:0 6px 18px rgba(0,0,0,.2);padding:14px 20px;border-radius:99px}'
+   +'#hnb-form{position:fixed;inset:0;z-index:195;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}'
+   +'#hnb-form.open{display:flex}'
+   +'.hnb-sheet{background:#fff;width:min(620px,100%);max-height:100%;height:min(820px,100%);display:flex;flex-direction:column;border-radius:16px}'
+   +'@media(max-width:700px){.hnb-sheet{border-radius:0;height:100%}}'
+   +'.hnb-bd{flex:1;overflow:auto;padding:14px 16px}'
+   +'.hnb-ft{padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px}.hnb-ft .hnb-btn{flex:1}'
+   +'.hnb-f{margin-bottom:12px}.hnb-f label{display:block;font-size:12px;font-weight:700;color:#666;margin-bottom:4px}'
+   +'.hnb-f input,.hnb-f textarea{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font-size:15px;font-family:inherit}'
+   +'.hnb-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}'
+   +'.hnb-pk{max-height:230px;overflow:auto;border:1px solid #eee;border-radius:10px;margin-top:6px}'
+   +'.hnb-pi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #f3f3f3;font-size:14px}'
+   +'.hnb-pi .n{flex:1}.hnb-pi input{width:68px;padding:6px;font-size:14px}.hnb-pi.sel{background:#F1FBF5}'
+   +'.hnb-pi .add{border:1px solid #06C167;color:#06C167;background:#fff;border-radius:8px;padding:5px 10px;font-weight:700;cursor:pointer}'
+   +'.hnb-tot{background:#FAF8F3;border-radius:12px;padding:12px;display:grid;gap:6px;font-size:14px}'
+   +'.hnb-tot div{display:flex;justify-content:space-between}.hnb-tot b{font-size:17px}';
+
+  function ensure(){
+    if($('hnb-root')) return;
+    var st=document.createElement('style'); st.id='hnb-css'; st.textContent=CSS; document.head.appendChild(st);
+    var r=document.createElement('div'); r.id='hnb-root';
+    r.innerHTML='<div class="hnb-hd"><button class="hnb-btn sm" onclick="HNBulk.close()" aria-label="Back">←</button><h1 id="hnb-title"></h1><button class="hnb-btn pri" onclick="HNBulk.edit()" id="hnb-add"></button></div>'
+      +'<div class="hnb-sum" id="hnb-sum"></div><div class="hnb-chips" id="hnb-chips"></div><div class="hnb-list" id="hnb-list"></div>';
+    document.body.appendChild(r);
+    var f=document.createElement('div'); f.id='hnb-form';
+    f.addEventListener('click',function(e){ if(e.target===f) HNBulk.closeForm(); });
+    document.body.appendChild(f);
+  }
+
+  function inFilter(o,f){
+    var t=today();
+    if(f==='all') return true;
+    if(f==='today') return o.date===t && o.status!=='cancelled';
+    if(f==='ready') return o.status==='ready';
+    if(f==='delivered') return o.status==='delivered';
+    if(f==='cancelled') return o.status==='cancelled';
+    return o.status==='confirmed' || o.status==='ready'; /* upcoming = still open */
+  }
+
+  function renderList(){
+    ensure(); var w=words();
+    $('hnb-title').textContent=w.emoji+' '+w.title; $('hnb-add').textContent='+ '+w.add;
+    var list=all();
+    var open=list.filter(function(o){ return o.status==='confirmed'||o.status==='ready'; });
+    var due=open.reduce(function(s,o){ return s+bal(o); },0);
+    var tdy=open.filter(function(o){ return o.date===today(); }).length;
+    $('hnb-sum').innerHTML='<div class="hnb-stat"><b>'+open.length+'</b><span>Open orders</span></div>'
+      +'<div class="hnb-stat"><b>'+tdy+'</b><span>Due today</span></div>'
+      +'<div class="hnb-stat"><b>'+rs(due)+'</b><span>Balance to collect</span></div>';
+    var chips=[['upcoming','Open'],['today','Today'],['ready','Ready'],['delivered','Delivered'],['cancelled','Cancelled'],['all','All']];
+    $('hnb-chips').innerHTML=chips.map(function(c){ return '<button class="hnb-chip '+(ST.filter===c[0]?'on':'')+'" onclick="HNBulk.setFilter(\''+c[0]+'\')">'+c[1]+'</button>'; }).join('');
+    var rows=list.filter(function(o){ return inFilter(o,ST.filter); })
+      .sort(function(a,b){ return ((a.date||'')+(a.time||'')) < ((b.date||'')+(b.time||'')) ? -1 : 1; });
+    if(ST.filter==='delivered'||ST.filter==='cancelled') rows.reverse();
+    if(!rows.length){ $('hnb-list').innerHTML='<div class="hnb-empty">No orders here yet.<br><br><button class="hnb-btn pri" onclick="HNBulk.edit()">+ '+w.add+'</button></div>'; return; }
+    $('hnb-list').innerHTML=rows.map(function(o){
+      var late=(o.status==='confirmed'||o.status==='ready') && o.date<today();
+      var items=(o.items||[]).map(function(i){ return esc(i.name)+' × '+esc(i.qty)+(i.unit?' '+esc(i.unit):''); }).join(', ');
+      var b=bal(o), id=esc(o.id);
+      var acts='';
+      if(o.status==='confirmed') acts+='<button class="hnb-btn sm pri" onclick="HNBulk.setStatus(\''+id+'\',\'ready\')">Mark ready</button>';
+      if(o.status==='confirmed'||o.status==='ready') acts+='<button class="hnb-btn sm pri" onclick="HNBulk.deliver(\''+id+'\')">Deliver &amp; bill</button>'
+        +'<button class="hnb-btn sm" onclick="HNBulk.edit(\''+id+'\')">Edit</button>'
+        +'<button class="hnb-btn sm warn" onclick="HNBulk.cancel(\''+id+'\')">Cancel</button>';
+      if(o.cph) acts+='<button class="hnb-btn sm" onclick="HNBulk.wa(\''+id+'\')">WhatsApp</button>';
+      return '<div class="hnb-card"><div class="hnb-top"><div><div class="hnb-nm">'+esc(o.name)+'</div><div class="hnb-ph">'+esc(o.cph||'')+'</div></div>'
+        +'<span class="hnb-pill '+esc(o.status)+'">'+esc(({confirmed:'Booked',ready:'Ready',delivered:'Delivered',cancelled:'Cancelled'})[o.status]||o.status)+'</span></div>'
+        +'<div class="hnb-when '+(late?'late':'')+'">'+(late?'Overdue · ':'')+esc(fmtDate(o.date))+(o.time?' · '+esc(fmtTime(o.time)):'')+'</div>'
+        +'<div class="hnb-items">'+(items||'No items listed')+(o.note?'<br><i>'+esc(o.note)+'</i>':'')+'</div>'
+        +'<div class="hnb-money"><span>Total <b>'+rs(o.total)+'</b></span><span>Advance <b>'+rs(o.advance)+'</b></span><span>Balance <b>'+rs(b)+'</b></span></div>'
+        +'<div class="hnb-acts">'+acts+'</div></div>';
+    }).join('');
+  }
+
+  /* ── form ── */
+  function pickable(){
+    try{ if(window.HNCombo&&HNCombo.pickable) return HNCombo.pickable(); }catch(e){}
+    try{ return (Store.list('prods')||[]).filter(function(p){ return p&&!p._deleted&&!p.isCombo&&p.active!==false&&Number(p.sp||p.price||0)>0; }); }catch(e){ return []; }
+  }
+  function calc(){
+    var f=ST.form; var t=0;
+    Object.keys(f.items).forEach(function(k){ var i=f.items[k]; t+=(Number(i.qty)||0)*(Number(i.rate)||0); });
+    f.total=Math.round(t*100)/100; return f.total;
+  }
+  function paintTotals(){
+    var f=ST.form, el=$('hnb-tots'); if(!el) return; calc();
+    var adv=Number(f.advance)||0;
+    el.innerHTML='<div><span>Order total</span><b>'+rs(f.total)+'</b></div><div><span>Advance received</span><span>'+rs(adv)+'</span></div><div><span>Balance on delivery</span><b>'+rs(Math.max(0,f.total-adv))+'</b></div>';
+  }
+  function paintPicks(q){
+    var f=ST.form; q=(q||'').toLowerCase(); var box=$('hnb-picks'); if(!box) return;
+    var ps=pickable().filter(function(p){ return !q || String(p.name||'').toLowerCase().indexOf(q)>=0; }).slice(0,80);
+    box.innerHTML=ps.length?ps.map(function(p){
+      var id=String(p.id||p.name), it=f.items[id], on=!!it;
+      return '<div class="hnb-pi '+(on?'sel':'')+'"><span>'+esc(p.emoji||'🍬')+'</span><span class="n">'+esc(p.name)+' <small style="color:#888">'+rs(p.sp||p.price)+(p.unit?'/'+esc(p.unit):'')+'</small></span>'
+        +(on?'<input type="number" step="any" min="0" value="'+esc(it.qty)+'" oninput="HNBulk._q(\''+esc(id).replace(/'/g,"\\'")+'\',this.value)" aria-label="Quantity"><button class="add" onclick="HNBulk._rm(\''+esc(id).replace(/'/g,"\\'")+'\')">✕</button>'
+           :'<button class="add" onclick="HNBulk._add(\''+esc(id).replace(/'/g,"\\'")+'\')">+ Add</button>')+'</div>';
+    }).join(''):'<div class="hnb-pi">No items match. Add items in your menu first.</div>';
+  }
+  function drawForm(){
+    var f=ST.form, w=words(); var el=$('hnb-form');
+    var custs=''; try{ custs=(Store.list('custs')||[]).filter(function(c){return c&&c.name&&!c._deleted;}).slice(0,300).map(function(c){ return '<option value="'+esc(c.name)+'" data-ph="'+esc(c.phone||'')+'">'; }).join(''); }catch(e){}
+    el.innerHTML='<div class="hnb-sheet"><div class="hnb-hd"><h1>'+(f.id?'Edit ':'')+esc(w.one)+'</h1><button class="hnb-btn sm" onclick="HNBulk.closeForm()">✕</button></div><div class="hnb-bd">'
+      +'<div class="hnb-f"><label>Customer name</label><input id="hnb-nm" list="hnb-cl" value="'+esc(f.name)+'" oninput="HNBulk._nm(this.value)" placeholder="e.g. Sharma ji"><datalist id="hnb-cl">'+custs+'</datalist></div>'
+      +'<div class="hnb-f"><label>Phone (for WhatsApp)</label><input id="hnb-ph" inputmode="tel" value="'+esc(f.cph)+'" oninput="HNBulk._f(\'cph\',this.value)" placeholder="10-digit mobile"></div>'
+      +'<div class="hnb-row2"><div class="hnb-f"><label>Delivery date</label><input type="date" value="'+esc(f.date)+'" min="'+today()+'" oninput="HNBulk._f(\'date\',this.value)"></div>'
+      +'<div class="hnb-f"><label>Time</label><input type="time" value="'+esc(f.time)+'" oninput="HNBulk._f(\'time\',this.value)"></div></div>'
+      +'<div class="hnb-f"><label>Items &amp; quantity (kg / pieces / boxes)</label><input id="hnb-q" placeholder="🔍 Search items" oninput="HNBulk._s(this.value)"><div class="hnb-pk" id="hnb-picks"></div></div>'
+      +'<div class="hnb-f"><label>Special instructions</label><textarea rows="2" oninput="HNBulk._f(\'note\',this.value)" placeholder="e.g. less sugar, gift boxes, name on cake">'+esc(f.note)+'</textarea></div>'
+      +'<div class="hnb-f"><label>Total price (auto, edit to give a discount)</label><input id="hnb-tt" type="number" step="any" min="0" value="" oninput="HNBulk._tt(this.value)"></div>'
+      +'<div class="hnb-f"><label>Advance received (₹)</label><input type="number" step="any" min="0" value="'+esc(f.advance||'')+'" oninput="HNBulk._adv(this.value)"></div>'
+      +'<div class="hnb-tot" id="hnb-tots"></div></div>'
+      +'<div class="hnb-ft"><button class="hnb-btn" onclick="HNBulk.closeForm()">Cancel</button><button class="hnb-btn pri" onclick="HNBulk.save()">Save order</button></div></div>';
+    paintPicks(''); paintTotals(); syncTt();
+  }
+  function syncTt(){ var f=ST.form,t=$('hnb-tt'); if(t && !f.totalEdited) t.value=calc()||''; }
+
+  var HNBulk = {
+    active: isOn,
+    open: function(openForm){
+      ensure(); renderList(); $('hnb-root').classList.add('open');
+      try{ document.body.classList.remove('hnd-on-appts'); }catch(e){}
+      if(openForm===true) this.edit();
+    },
+    close: function(){ var r=$('hnb-root'); if(r) r.classList.remove('open'); this.closeForm(); try{ App.nav('home'); }catch(e){} },
+    refresh: function(){ if($('hnb-root') && $('hnb-root').classList.contains('open')) renderList(); },
+    setFilter: function(f){ ST.filter=f; renderList(); },
+    edit: function(id){
+      ensure(); var o=null;
+      if(id){ o=all().filter(function(x){ return x.id===id; })[0]; }
+      var items={}; if(o) (o.items||[]).forEach(function(i){ items[i.pid]={pid:i.pid,name:i.name,qty:i.qty,rate:i.rate,unit:i.unit||''}; });
+      var d=new Date(Date.now()+864e5);
+      ST.form = o ? { id:o.id, name:o.name, cph:o.cph||'', cid:o.cid||null, date:o.date, time:o.time||'', note:o.note||'', items:items, total:o.total||0, advance:o.advance||0, totalEdited:true }
+                  : { id:null, name:'', cph:'', cid:null, date:iso(d), time:'10:00', note:'', items:{}, total:0, advance:0, totalEdited:false };
+      drawForm(); var t=$('hnb-tt'); if(t && o) t.value=o.total||''; $('hnb-form').classList.add('open');
+    },
+    closeForm: function(){ var f=$('hnb-form'); if(f) f.classList.remove('open'); ST.form=null; },
+    _f: function(k,v){ ST.form[k]=v; },
+    _nm: function(v){
+      var f=ST.form; f.name=v; f.cid=null;
+      try{ var c=(Store.list('custs')||[]).filter(function(c){ return c&&c.name===v&&!c._deleted; })[0];
+        if(c){ f.cid=c.id; if(!f.cph){ f.cph=String(c.phone||'').replace(/^\+91\s*/,''); var p=$('hnb-ph'); if(p) p.value=f.cph; } } }catch(e){}
+    },
+    _s: function(q){ paintPicks(q); },
+    _add: function(id){
+      var p=pickable().filter(function(x){ return String(x.id||x.name)===id; })[0]; if(!p) return;
+      ST.form.items[id]={ pid:id, name:p.name, qty:1, rate:Number(p.sp||p.price||0), unit:p.unit||'' };
+      paintPicks(($('hnb-q')||{}).value); paintTotals(); syncTt();
+    },
+    _rm: function(id){ delete ST.form.items[id]; paintPicks(($('hnb-q')||{}).value); paintTotals(); syncTt(); },
+    _q: function(id,v){ if(ST.form.items[id]){ ST.form.items[id].qty=Number(v)||0; paintTotals(); syncTt(); } },
+    _tt: function(v){ var f=ST.form; f.totalEdited=true; f.total=Number(v)||0; paintTotals(); var el=$('hnb-tots'); if(el){ var adv=Number(f.advance)||0; el.innerHTML='<div><span>Order total</span><b>'+rs(f.total)+'</b></div><div><span>Advance received</span><span>'+rs(adv)+'</span></div><div><span>Balance on delivery</span><b>'+rs(Math.max(0,f.total-adv))+'</b></div>'; } },
+    _adv: function(v){ ST.form.advance=Number(v)||0; if(ST.form.totalEdited){ var f=ST.form,el=$('hnb-tots'),adv=f.advance; el.innerHTML='<div><span>Order total</span><b>'+rs(f.total)+'</b></div><div><span>Advance received</span><span>'+rs(adv)+'</span></div><div><span>Balance on delivery</span><b>'+rs(Math.max(0,f.total-adv))+'</b></div>'; } else paintTotals(); },
+    save: function(){
+      var f=ST.form; if(!f) return;
+      if(!String(f.name||'').trim()){ toast('Add a customer name'); return; }
+      var its=Object.keys(f.items).map(function(k){ return f.items[k]; }).filter(function(i){ return Number(i.qty)>0; });
+      if(!its.length){ toast('Add at least one item'); return; }
+      if(!f.date){ toast('Pick a delivery date'); return; }
+      var total = f.totalEdited ? (Number(f.total)||0) : calc();
+      if(Number(f.advance)>total){ toast('Advance cannot be more than the total'); return; }
+      var phone=String(f.cph||'').replace(/\D/g,'').slice(-10);
+      var rec={ kind:'bulk', name:String(f.name).trim(), cid:f.cid||null, cph:phone, date:f.date, time:f.time||'',
+        items:its.map(function(i){ return { pid:i.pid, name:i.name, qty:Number(i.qty), rate:Number(i.rate)||0, unit:i.unit||'' }; }),
+        svc:its.length+' item'+(its.length>1?'s':''), svcEmoji:words().emoji, staff:'—', type:'booked',
+        total:Math.round(total), advance:Math.round(Number(f.advance)||0), note:String(f.note||'').trim() };
+      try{
+        if(f.id){ Store.update('appts', f.id, rec); toast('✓ Order updated'); }
+        else { rec.t=Date.now(); rec.status='confirmed'; Store.add('appts', rec); toast('✓ Order booked for '+rec.name); }
+      }catch(e){ console.error('[HNBulk] save failed',e); toast('Could not save order'); return; }
+      this.closeForm(); renderList();
+    },
+    setStatus: function(id,s){ try{ Store.update('appts', id, { status:s }); }catch(e){ toast('Could not update'); } renderList(); },
+    cancel: function(id){ if(!confirm('Cancel this order? Any advance taken must be refunded manually.')) return; this.setStatus(id,'cancelled'); },
+    wa: function(id){
+      var o=all().filter(function(x){return x.id===id;})[0]; if(!o||!o.cph) return;
+      var shop=''; try{ shop=(MShop.getActive()||{}).name||''; }catch(e){}
+      var lines=(o.items||[]).map(function(i){ return '• '+i.name+' × '+i.qty+(i.unit?' '+i.unit:''); }).join('\n');
+      var msg='Hi '+(o.name||'').split(' ')[0]+', your '+words().one.toLowerCase()+(shop?' at '+shop:'')+' is '+(o.status==='ready'?'READY for pickup/delivery.':'confirmed for '+fmtDate(o.date)+(o.time?' at '+fmtTime(o.time):'')+'.')
+        +'\n'+lines+'\nTotal: '+rs(o.total)+(o.advance?' | Advance paid: '+rs(o.advance):'')+' | Balance: '+rs(bal(o))+'\nThank you!';
+      window.open('https://wa.me/91'+o.cph+'?text='+encodeURIComponent(msg),'_blank');
+    },
+    deliver: function(id){
+      var o=all().filter(function(x){return x.id===id;})[0]; if(!o) return;
+      try{
+        App.cart = {}; App.customLines = [];
+        var missing=[];
+        (o.items||[]).forEach(function(i){
+          var ex=((typeof SERVICES!=='undefined'&&SERVICES)||[]).filter(function(s){ return (s.id||s.name)===i.pid; })[0];
+          if(ex) App.cart[i.pid]=Number(i.qty)||0; else missing.push(i.name);
+        });
+        Store.update('appts', id, { status:'delivered', deliveredAt:Date.now() });
+        this.close();
+        setTimeout(function(){
+          try{ App.nav('addsale'); }catch(e){}
+          toast((o.advance?'Advance '+rs(o.advance)+' already received — balance '+rs(bal(o))+'. ':'')+(missing.length?'Not in menu, add manually: '+missing.join(', '):'Order loaded into bill'));
+        },60);
+      }catch(e){ console.error('[HNBulk] deliver',e); toast('Could not load the bill'); }
+    }
+  };
+  window.HNBulk = HNBulk;
+  try{ if(window.Store&&Store.subscribe) Store.subscribe(function(){ HNBulk.refresh(); }); }catch(e){}
+})();
+</script>
+
 <script>
 (function(){
   'use strict';
