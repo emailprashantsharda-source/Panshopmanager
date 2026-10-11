@@ -24,17 +24,50 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20261011_0730';
+const SW_VERSION  = 'v34_auto_20261011_1400';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 1200; /* ms before falling back to cached HTML (the download keeps going and refreshes the cache for next time) */
 
+/* (Oct 2026) Each new build used to start with an EMPTY cache: activate deleted the old
+   cache, so the next open had nothing to fall back on and sat on "page still
+   downloading" while the whole 6 MB page came down again. Now the new worker
+   (1) copies the last good page across from the old cache straight away, and
+   (2) downloads the new page into its own cache while the old worker is still
+   serving — so by the time it takes over, the new page is already on the phone. */
+function hnCarryOver() {
+  return caches.open(CACHE).then(function (mine) {
+    return mine.match('./index.html').then(function (have) {
+      if (have) return;
+      return caches.keys().then(function (keys) {
+        var olds = keys.filter(function (k) { return k !== CACHE && k.indexOf('hisaabnow-') === 0; });
+        var i = 0;
+        function next() {
+          if (i >= olds.length) return;
+          return caches.open(olds[i++]).then(function (c) { return c.match('./index.html'); })
+            .then(function (m) { return m ? mine.put('./index.html', m) : next(); });
+        }
+        return next();
+      });
+    });
+  }).catch(function () {});
+}
+
+function hnPrefetchShell() {
+  return new Promise(function (resolve) {
+    var t = setTimeout(resolve, 90000); /* never hold the update back forever */
+    fetch(new Request('./index.html', { cache: 'no-store' })).then(function (res) {
+      if (res && res.status === 200) return caches.open(CACHE).then(function (c) { return c.put('./index.html', res); });
+    }).catch(function () {}).then(function () { clearTimeout(t); resolve(); });
+  });
+}
+
 self.addEventListener('install', function (event) {
-  self.skipWaiting();
+  event.waitUntil(hnCarryOver().then(hnPrefetchShell).then(function () { return self.skipWaiting(); }));
 });
 
 self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys().then(function (keys) {
+    hnCarryOver().then(function () { return caches.keys(); }).then(function (keys) {
       return Promise.all(keys.filter(function (k) { return k !== CACHE; })
                             .map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
@@ -74,6 +107,16 @@ function fetchWithTimeout(req, ms) {
   });
 }
 
+function hnOfflinePage() {
+  var html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>HisaabNow</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFFBF5;font-family:system-ui,sans-serif;color:#1c1c1c;text-align:center;padding:24px;box-sizing:border-box}'
+    + 'h1{font-size:19px;margin:0 0 8px}p{font-size:14px;color:#666;margin:0 0 18px;line-height:1.5}button{background:#0A0A0A;color:#F5A623;border:0;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700}</style></head>'
+    + '<body><div><h1>No internet right now</h1><p>HisaabNow will open as soon as your connection is back.<br>We will keep trying automatically.</p>'
+    + '<button onclick="location.reload()">Try again</button></div>'
+    + '<script>addEventListener("online",function(){location.reload()});setTimeout(function(){location.reload()},8000);<\/script></body></html>';
+  return new Response(html, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
+
 function hnNavNetworkFirst(event, req) {
     /* (Oct 2026) On a slow network the page used to give up after NAV_TIMEOUT, show
        the cached copy, and THROW AWAY the download it had already started — so the
@@ -98,8 +141,17 @@ function hnNavNetworkFirst(event, req) {
     return (
       _timed.catch(function () {
         /* offline or network stalled past NAV_TIMEOUT -> last good copy */
+        /* (Oct 2026) BUG FIX: this used to be `m || caches.match(req) || fetch(req)`. caches.match()
+           returns a Promise, which is always truthy, so with an empty cache (right after an update)
+           and a network slower than NAV_TIMEOUT the page got `undefined` back and the phone showed
+           "This site can't be reached · ERR_FAILED". Now: no saved copy -> keep waiting for the real
+           download; download truly failed -> a small page that retries by itself. */
         return caches.match('./index.html').then(function (m) {
-          return m || caches.match(req) || fetch(req);
+          if (m) return m;
+          return caches.match(req).then(function (m2) {
+            if (m2) return m2;
+            return _full.then(function (res) { return res; }, function () { return hnOfflinePage(); });
+          });
         });
       })
     );
@@ -150,7 +202,7 @@ self.addEventListener('fetch', function (event) {
           caches.open(CACHE).then(function (c) { c.put(req, copy); }).catch(function () {});
         }
         return res;
-      }).catch(function () { return cached; });
+      }).catch(function () { return cached || new Response('', { status: 504 }); });
       return cached || net;
     })
   );
