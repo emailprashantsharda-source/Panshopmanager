@@ -12,6 +12,7 @@ Pricing changes, so it is not listed here. See https://app.hisaabnow.com/Rent/ f
 
 ## Free tool
 - [Rental agreement generator](https://app.hisaabnow.com/Rent/rental-agreement-generator): fill in the details and download a ready-to-sign car or bike rental agreement as a PDF.
+- [Car rental invoice format](https://app.hisaabnow.com/Rent/car-rental-invoice-format): free Excel invoice template for car and bike rentals with extra km, late fee, GST fields and deposit balance.
 
 ## Guides
 - [All rental business guides](https://app.hisaabnow.com/Rent/guides)
