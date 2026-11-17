@@ -7226,6 +7226,25 @@ hook();
   window.HNSupSeed={missing:missing};
 })();
 </script>
+<!-- Step NAVSETTLE (Nov 2026): the desktop sidebar is first drawn with default (cafe) labels,
+     then several modules rename/reorder/hide items once the shop type is known — a visible
+     1–1.5s shuffle on every open. Keep the sidebar menu groups invisible until the shop type is
+     known, labels are drawn, AND the menu has stopped changing for 600ms, then fade in once. Safety caps: 3s after
+     the shop type is known, 7s after load. Desktop only. Kill switch: localStorage HN_NAVSETTLE=off -->
+<style>html[data-shell="desktop"]:not(.hnd-nav-ready) .hnd-sb-group{opacity:0;transition:none}html[data-shell="desktop"].hnd-nav-ready .hnd-sb-group{transition:opacity .18s ease}</style>
+<script>(function(){var R=document.documentElement;try{if(localStorage.getItem("HN_NAVSETTLE")==="off"){R.classList.add("hnd-nav-ready");return}}catch(e){}
+var t0=Date.now(),last=null,lastChange=t0,known=0,key=null;
+function show(){R.classList.add("hnd-nav-ready")}
+function sig(){var g=document.querySelectorAll(".hnd-sb-group"),out=[];for(var i=0;i<g.length;i++){var el=g[i].querySelectorAll(".hnd-sb-group-title,[data-hnd-nav]");for(var j=0;j<el.length;j++){var e=el[j];out.push((e.getAttribute("data-hnd-nav")||"t")+(e.style.display==="none"||getComputedStyle(e).display==="none"?"~":"")+(e.textContent||"").replace(/\s+/g," ").trim().slice(0,24))}}return out.join("|")}
+function shopKey(){try{var a=window.MShop&&MShop.getActive&&MShop.getActive();if(a&&(a.cardType||a.profession))return String(a.shopId||a.id||"")+"|"+String(a.cardType||"")+"|"+String(a.profession||"")}catch(e){}return null}
+function labelled(){var h=document.querySelector('[data-hnd-nav="sales"]');return!!(h&&String(h.innerText||"").trim())}
+setInterval(function(){try{var now=Date.now();var k=shopKey();
+  if(k&&k!==key){var _prev=key;key=k;known=now;lastChange=now;if(_prev!==null)R.classList.remove("hnd-nav-ready")}
+  var s=sig();if(s!==last){last=s;lastChange=now}
+  if(R.classList.contains("hnd-nav-ready"))return;
+  if(!known){if(now-t0>7000)show();return}
+  if(labelled()&&now-lastChange>=600||now-known>3000)show()}catch(e){show()}},50)})();</script>
+
 <script>
 /* Step TIPS (Nov 2026) — staff tip tracking (salon).
    • Checkout: optional "Tip" row under "Served by". Tip is credited to the chosen
