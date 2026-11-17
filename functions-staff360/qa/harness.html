@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Staff360 QA harness (DEMO data)</title>
+<style>body{margin:0;font-family:Inter,system-ui,sans-serif;background:#F9FAFB}.hdr{padding:14px 16px;font-weight:800}#qa-banner{background:#FFF3D6;padding:6px 12px;font-size:12px}</style>
+</head><body>
+<div id="qa-banner">QA harness · sample data · real Step ATT code + real Staff360 handlers (in-memory DB)</div>
+<div class="page active" id="pg-home"><header class="hdr">Home</header><p style="padding:0 16px">Home content</p></div>
+<div id="pg-staff"><div class="hdr">Staff</div>
+  <div id="hnat-entry" style="display:none;padding:0 16px;margin:6px 0 4px"><button type="button" onclick="window.HNAttend && HNAttend.open()">🗓 Attendance <span id="hnat-entry-sub"></span></button></div>
+</div>
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  var ROLE = q.get('role') || 'owner';
+  var USER = ROLE === 'employee' ? 'employee' : ROLE === 'manager' ? 'manager' : 'owner';
+  document.documentElement.setAttribute('data-current-role', ROLE === 'employee' ? 'cashier' : ROLE);
+  window.HISAABNOW_BUILD = 'qa';
+  window.STAFF360_BASE = '/staff360/';
+  function pad(n){return (n<10?'0':'')+n}
+  var d = new Date(), today = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()), ym = today.slice(0,7);
+  var DB = {
+    staff: [
+      {id:'amit',name:'Amit Kumar',role:'Cashier',phoneE164:'+919111111111',hasLogin:true,salary:18000},
+      {id:'riya',name:'Riya Sharma',role:'Stylist',phoneE164:'+919444444444',salary:15000},
+      {id:'meena',name:'Meena Joshi',role:'Manager',phoneE164:'+919222222222',hasLogin:true,salary:25000},
+      {id:'vikas',name:'Vikas Singh',role:'Helper',phoneE164:'+919555555555',salary:12000}
+    ],
+    agents: [ {id:'att_riya_'+ym, kind:'hn_att', staffId:'riya', ym:ym, days:{}} ], exps: []
+  };
+  DB.agents[0].days[today] = {m:'A'};
+  var subs = {};
+  window.Store = {
+    __v: 1,
+    list: function(c){ return (DB[c]||[]).slice(); },
+    get: function(c,id){ return (DB[c]||[]).filter(function(x){return x.id===id})[0]||null; },
+    add: function(c,r){ r=Object.assign({},r); if(!r.id) r.id=c+'_'+Math.random().toString(36).slice(2); (DB[c]=DB[c]||[]).push(r); (subs[c]||[]).forEach(function(f){f()}); return r; },
+    update: function(c,id,p){ var r=this.get(c,id); if(r) Object.assign(r,p); (subs[c]||[]).forEach(function(f){f()}); return r; },
+    delete: function(c,id){ DB[c]=(DB[c]||[]).filter(function(x){return x.id!==id}); },
+    on: function(c,f){ (subs[c]=subs[c]||[]).push(f); }
+  };
+  window.MShop = { getActive: function(){ return {shopId:'A', name:'Glow Salon', cardType:'salon'}; } };
+  window.App = { toast: function(m){ console.log('[toast]', m); window.__lastToast = m; }, confirm: function(){ return Promise.resolve(true); }, nav: function(p){ window.__nav = p; } };
+  window.kfFunctions = {};
+  window.kfCallable = function(_f, name){ return function(data){
+    return fetch('/__call/'+name, {method:'POST', headers:{'content-type':'application/json','x-user':USER}, body: JSON.stringify(data)})
+      .then(function(r){return r.json()}).then(function(j){ if(j.error){ var e = new Error(j.error.message); e.code = 'functions/'+j.error.code; throw e; } return {data:j.data}; });
+  }; };
+  window.hnEvent = function(n,p){ (window.__events=window.__events||[]).push([n,p]); };
+})();
+</script>
+<!--STEP_ATT-->
+<script src="/staff360/staff360.js"></script>
+</body></html>

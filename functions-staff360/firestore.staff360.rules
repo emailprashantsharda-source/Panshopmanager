@@ -1,0 +1,37 @@
+// ─────────────────────────────────────────────────────────────────────
+// Staff360 — Firestore rules SNIPPET (do NOT deploy this file on its own:
+// it would replace every existing HisaabNow rule).
+//
+// Paste these match blocks INSIDE your existing
+//   service cloud.firestore { match /databases/{database}/documents { … } }
+// in C:\dev\hisaabnow\firestore.rules, then deploy to STAGING first:
+//   firebase deploy --only firestore:rules --project hisaabnow-staging
+//
+// Design: every Staff360 collection is server-owned. All reads and writes go
+// through the staff360* callable functions, which check sign-in, shop
+// membership, role and plan with the Admin SDK. Clients get NO direct access,
+// so editing localStorage / URL / client state cannot grant a plan, read
+// another shop, or forge a punch.
+//
+// These paths are deliberately top-level (not under /shops/{shopId}) so an
+// existing recursive rule like  match /shops/{shopId}/{doc=**}  cannot
+// accidentally open them up (Firestore ORs every matching allow).
+// ─────────────────────────────────────────────────────────────────────
+
+    match /staff360/{shopId}/{document=**} {
+      allow read, write: if false;
+    }
+    match /staff360Entitlements/{shopId} {
+      allow read, write: if false;
+    }
+    match /staff360Config/{docId} {
+      allow read, write: if false;
+    }
+    match /staff360WaSchedule/{shopId} {
+      allow read, write: if false;
+    }
+
+// CHECK BEFORE DEPLOYING: if your existing rules contain a catch-all such as
+//   match /{document=**} { allow read, write: if request.auth != null; }
+// the denies above are overridden (rules are OR'd). Remove or narrow that
+// catch-all first — otherwise plan entitlements are client-writable.
