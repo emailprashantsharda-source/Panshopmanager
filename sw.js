@@ -11,7 +11,7 @@
  * DEPLOY RULE: bump SW_VERSION every deploy (set it to window.HISAABNOW_BUILD).
  *
  * (Aug 2026) Both this file's SW_VERSION and index.html's HISAABNOW_BUILD are
- * now auto-stamped with a timestamp (format v34_auto_YYYYMMDD_HHMM, IST) at
+ * now auto-stamped with a timestamp (format v34_auto_20261118_1245YYYYMMDD_HHMM, IST) at
  * the moment a build is generated, instead of a manually-chosen name someone
  * has to remember to change. This guarantees the two files are always in
  * sync AND always differ from whatever was previously deployed, so the
@@ -24,7 +24,7 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20261118_0015';
+const SW_VERSION  = 'v34_auto_20261118_124520261118_0015';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 1200; /* ms before falling back to cached HTML (the download keeps going and refreshes the cache for next time) */
 
