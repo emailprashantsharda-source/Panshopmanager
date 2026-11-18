@@ -17,6 +17,10 @@
 (function () {
   'use strict';
   if (window.Staff360) return;
+  /* STANDALONE = running on hisaabnow.com/staff360/app (own login, no
+     HisaabNow app around it). Staff, marks and reports then come from the
+     server instead of the app's local store. Same screens, same server. */
+  var SA = !!window.STAFF360_STANDALONE;
 
   /* ───────── tiny helpers ───────── */
   var $ = function (id) { return document.getElementById(id); };
@@ -50,11 +54,20 @@
   function isManager() { var r = role(); return r === 'owner' || r === 'manager'; }
   function activeShop() { try { return window.MShop && MShop.getActive ? MShop.getActive() : null; } catch (e) { return null; } }
   function shopId() { var a = activeShop(); return a && a.shopId || null; }
-  function eligible() { if (off()) return false; try { return !!(window.HNAttend && HNAttend.eligible && HNAttend.eligible()); } catch (e) { return false; } }
+  function eligible() { if (off()) return false; if (SA) return true; try { return !!(window.HNAttend && HNAttend.eligible && HNAttend.eligible()); } catch (e) { return false; } }
   function staffLocal() {
+    if (SA) {
+      var rr = want('roster', function () { return call('staff360StaffRoster', {}); });
+      return rr && rr.v ? rr.v.staff : [];
+    }
     try { return (window.Store && Store.list && Store.list('staff') || []).filter(function (s) { return s && s.id && !s._deleted && !s.deletedAt; }); } catch (e) { return []; }
   }
   function markLocal(sid, date) {
+    if (SA) {
+      var rg = want('reg:' + date, function () { return call('staff360Register', { date: date }); });
+      var row = rg && rg.v ? rg.v.rows.filter(function (x) { return x.staffId === sid; })[0] : null;
+      return row ? { m: row.status || '', i: row.inHm || '', o: row.outHm || '' } : {};
+    }
     try {
       var d = Store.get('agents', 'att_' + sid + '_' + date.slice(0, 7));
       var r = d && !d._deleted && d.days ? d.days[date] : null;
@@ -113,6 +126,7 @@
     { id: 'activity', label: 'Activity', ic: '🧾' },
     { id: 'plans', label: 'Plans', ic: '⭐' },
     { id: 'settings', label: 'Settings', ic: '⚙️', need: 'settings', owner: true },
+    { id: 'mark', label: 'Mark attendance', ic: '✓', hidden: true },
   ];
   var FEATURE_NEED = { shifts: 'premium', leave_requests: 'premium', settings: 'premium', ai_dashboard: 'kingpro', whatsapp_reports: 'kingpro' };
 
@@ -124,7 +138,7 @@
     var el = $('s360');
     if (!el) {
       el = document.createElement('div'); el.id = 's360'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Staff360');
-      el.innerHTML = '<div class="s360-wrap"><div class="s360-hd"><button class="s360-x" data-a="close" aria-label="Close Staff360">←</button>' +
+      el.innerHTML = '<div class="s360-wrap"><div class="s360-hd">' + (SA ? '<button class="s360-x" data-a="menu" aria-label="Account menu">☰</button>' : '<button class="s360-x" data-a="close" aria-label="Close Staff360">←</button>') + '' +
         '<div class="s360-tt"><b>Staff360</b><small id="s360-sub">Smart staff &amp; workforce management</small></div><span id="s360-badge"></span></div>' +
         '<div class="s360-body"><nav class="s360-nav" id="s360-nav" aria-label="Staff360 sections"></nav><main class="s360-main" id="s360-main" tabindex="-1"></main></div></div>';
       el.addEventListener('click', onClick); el.addEventListener('change', onChange); el.addEventListener('input', onInput); el.addEventListener('submit', onSubmit);
@@ -155,7 +169,7 @@
     var a = activeShop();
     $('s360-sub').textContent = (a && a.name ? a.name + ' · ' : '') + (role() === 'manager' ? 'Manager' : 'Owner');
     var isOwner = role() === 'owner';
-    $('s360-nav').innerHTML = VIEWS.filter(function (v) { return !v.owner || isOwner; }).map(function (v) {
+    $('s360-nav').innerHTML = VIEWS.filter(function (v) { return (!v.owner || isOwner) && !v.hidden; }).map(function (v) {
       var locked = v.need && !has(v.need);
       var lk = locked ? '<span class="lk" aria-label="locked">' + (FEATURE_NEED[v.need] === 'kingpro' ? '👑🔒' : '🔒') + '</span>' : '';
       return '<button class="' + (S.view === v.id ? 'on' : '') + '" data-a="go" data-v="' + v.id + '"' + (S.view === v.id ? ' aria-current="page"' : '') + '><span aria-hidden="true">' + v.ic + '</span>' + esc(v.label) + lk + '</button>';
@@ -226,7 +240,7 @@
     L.forEach(function (s) { var m = markLocal(s.id, t).m; if (c[m] != null) c[m]++; else c.un++; });
     var late = null;
     if (has('late_tracking')) {
-      var reg = want('reg:' + t, function () { return call('staff360Register', { date: null }); });
+      var reg = want('reg:' + t, function () { return call('staff360Register', { date: t }); });
       if (reg && reg.v) late = reg.v.rows.filter(function (r) { return r.lateMin > 0; }).length;
     }
     var h = '<div class="s360-h2">Today · ' + esc(fmtDate(t)) + '</div><div class="s360-stats">' +
@@ -255,7 +269,8 @@
     return '<div class="s360-card soft"><b>Put attendance in your team’s hands</b><div class="s360-note">Premium lets staff check in from their own phone with GPS, adds shifts, late tracking, leave requests and detailed reports.</div><button class="s360-btn sm" data-a="go" data-v="plans">Compare plans</button></div>';
   }
 
-  R.team = function () {
+  R.team = function () { return SA ? teamSA() : teamEmbedded(); };
+  function teamEmbedded() {
     var q = (S.sub.q || '').toLowerCase(), f = S.sub.f || 'active', t = todayLocal();
     var L = staffLocal().filter(function (s) {
       var act = s.active !== false;
@@ -278,7 +293,91 @@
     h += '</div><div class="s360-note">Adding, editing and removing staff uses HisaabNow’s existing Staff screen, so logins and salaries stay in one place.' +
       (has('self_checkin') ? ' To let someone check in from their own phone, give them a role with login (e.g. Cashier or Manager) and their mobile number.' : '') + '</div>';
     return h;
+  }
+
+  function rosterInfo() { var r = S.data.roster; return r && r.v ? r.v : null; }
+  function teamSA() {
+    var res = want('roster', function () { return call('staff360StaffRoster', {}); });
+    var h = '<div class="s360-h2">Staff ' + (res && res.v && res.v.editable ? '<button class="s360-btn sm" data-a="addstaff">+ Add staff</button>' : '') + '</div>';
+    if (!res) return h + loading();
+    if (res.e) return h + errBox(res.e, 'roster');
+    var v = res.v, q = (S.sub.q || '').toLowerCase(), f = S.sub.f || 'active', t = todayLocal();
+    if (S.sub.pendingAdd && v.editable) { S.sub.pendingAdd = false; setTimeout(function () { staffSheet(null); }, 0); }
+    var L = v.staff.filter(function (s) {
+      if (f === 'active' && !s.active) return false; if (f === 'inactive' && s.active) return false;
+      return !q || s.name.toLowerCase().indexOf(q) >= 0 || String(s.phone || '').indexOf(q) >= 0;
+    });
+    var act = v.staff.filter(function (s) { return s.active; }).length;
+    h += '<div class="s360-grid2" style="margin-bottom:8px"><label><span class="s360-sr">Search staff</span><input class="s360-in" id="s360-q" placeholder="Search name or mobile" value="' + esc(S.sub.q || '') + '" data-a-input="q"></label>' +
+      '<label><span class="s360-sr">Filter</span><select class="s360-sel" data-a-sel="f"><option value="active"' + (f === 'active' ? ' selected' : '') + '>Active</option><option value="inactive"' + (f === 'inactive' ? ' selected' : '') + '>Inactive</option><option value="all"' + (f === 'all' ? ' selected' : '') + '>All</option></select></label></div>' +
+      '<div class="s360-note">' + act + (v.maxStaff ? ' of ' + v.maxStaff : '') + ' active staff' + (v.maxStaff ? ' on your plan' : '') + '</div><div class="s360-card">';
+    if (!L.length) h += '<div class="s360-empty">' + (q ? 'No staff match “' + esc(S.sub.q) + '”.' : (v.editable ? 'No staff yet. Tap “+ Add staff” to add your team.' : 'No staff yet.')) + '</div>';
+    h += L.map(function (s) {
+      var r = markLocal(s.id, t);
+      return '<div class="s360-row"><div class="s360-av" aria-hidden="true">' + esc(initials(s.name)) + '</div><div class="s360-grow"><b>' + esc(s.name) + '</b><small>' + esc(s.role || 'Staff') + (s.phone ? ' · ' + esc(s.phone) : '') + ' · Today: ' + (r.m ? MARK_LABEL[r.m] : 'Not marked') + (s.active ? '' : ' · Inactive') + '</small></div>' +
+        (s.canLogin || s.hisaabnowLogin ? '<span class="s360-chip P" title="Can log in with own phone">Login</span>' : '') +
+        (s.hisaabnowLogin ? '' : '<button class="s360-btn sec sm" data-a="editstaff" data-id="' + esc(s.id) + '" aria-label="Edit ' + esc(s.name) + '">Edit</button>') + '</div>';
+    }).join('');
+    h += '</div><div class="s360-note">' + (v.editable ? '' : 'This is a HisaabNow shop: add or rename staff in the HisaabNow app. Here you can give staff a Staff360 login. ') +
+      'Staff with a login sign in at <b>hisaabnow.com/staff360/login</b> with their mobile number and OTP' + (has('self_checkin') ? ' to check in and out.' : '. Self check-in needs Premium.') + ' They only ever see their own attendance.</div>';
+    return h;
+  }
+
+  function staffSheet(id) {
+    var v = rosterInfo(); if (!v) return;
+    var s = id ? v.staff.filter(function (x) { return x.id === id; })[0] : null;
+    if (id && !s) return;
+    s = s || { name: '', role: '', phone: '', salary: '', dailyWage: '', active: true, canLogin: false };
+    var ro = !v.editable;
+    var dis = ro ? ' disabled' : '';
+    sheet('<h3>' + (id ? (ro ? 'Staff360 login · ' + esc(s.name) : 'Edit staff') : 'Add staff') + '</h3><form data-f="staff" data-id="' + esc(id || '') + '">' +
+      '<label class="s360-fld"><span>Name</span><input class="s360-in" name="name" required maxlength="80" value="' + esc(s.name) + '"' + dis + ' placeholder="Ravi Kumar"></label>' +
+      '<div class="s360-grid2"><label class="s360-fld"><span>Role</span><input class="s360-in" name="role" maxlength="40" list="s360-roles" value="' + esc(s.role) + '"' + dis + ' placeholder="Staff"></label>' +
+      '<label class="s360-fld"><span>Mobile number</span><input class="s360-in" name="phone" inputmode="tel" maxlength="14" value="' + esc(s.phone ? String(s.phone).replace(/^\+91/, '') : '') + '" placeholder="10-digit mobile"></label></div>' +
+      '<datalist id="s360-roles"><option>Staff</option><option>Manager</option><option>Cashier</option><option>Sales</option><option>Helper</option><option>Stylist</option><option>Cook</option><option>Receptionist</option></datalist>' +
+      (ro ? '' : '<div class="s360-grid2"><label class="s360-fld"><span>Monthly salary ₹ (optional)</span><input class="s360-in" type="number" min="0" name="salary" value="' + esc(s.salary || '') + '"></label>' +
+      '<label class="s360-fld"><span>Daily wage ₹ (optional)</span><input class="s360-in" type="number" min="0" name="dailyWage" value="' + esc(s.dailyWage || '') + '"></label></div>') +
+      '<label class="s360-fld" style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" name="canLogin"' + (s.canLogin ? ' checked' : '') + ' style="margin-top:4px;width:18px;height:18px"><span style="margin:0;color:#0A0A0A"><b>Allow Staff360 login</b><br><small style="color:#5E5A50;font-weight:500">They sign in with this mobile number and OTP and see only their own attendance' + (has('self_checkin') ? ', and can check in / out with GPS.' : '. Self check-in needs Premium.') + '</small></span></label>' +
+      (ro || !id ? '' : '<label class="s360-fld" style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="inactive"' + (s.active ? '' : ' checked') + ' style="width:18px;height:18px"><span style="margin:0">Inactive (left the job)</span></label>') +
+      '<div id="s360-sherr"></div><div class="s360-acts">' + (id && !ro && role() === 'owner' ? '<button type="button" class="s360-btn danger" data-a="staffdel" data-id="' + esc(id) + '">Remove</button>' : '') +
+      '<span style="flex:1"></span><button type="button" class="s360-btn sec" data-a="sheetclose">Cancel</button><button class="s360-btn" type="submit">Save</button></div></form>');
+  }
+
+  /* Standalone marking screen (the HisaabNow app uses its own Step ATT). */
+  R.mark = function () {
+    var d = S.sub.date || todayLocal();
+    var res = want('reg:' + d, function () { return call('staff360Register', { date: d }); });
+    var h = '<div class="s360-h2">Mark attendance <button class="s360-lnk" data-a="go" data-v="register">Register ›</button></div>' +
+      '<div class="s360-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><button class="s360-btn sec sm" data-a="day" data-n="-1" aria-label="Previous day">‹</button>' +
+      '<label style="flex:1;text-align:center"><span class="s360-sr">Date</span><input type="date" class="s360-in" style="max-width:190px" max="' + todayLocal() + '" value="' + d + '" data-a-sel="date"></label>' +
+      '<button class="s360-btn sec sm" data-a="day" data-n="1" aria-label="Next day"' + (d >= todayLocal() ? ' disabled' : '') + '>›</button></div>';
+    if (!res) return h + loading();
+    if (res.e) return h + errBox(res.e, 'reg:' + d);
+    var rows = res.v.rows;
+    if (!rows.length) return h + '<div class="s360-card s360-empty">No staff yet. <button class="s360-lnk" data-a="addstaff">Add staff</button></div>';
+    var un = rows.filter(function (r) { return !r.status; }).length;
+    h += '<div class="s360-acts" style="margin-bottom:10px"><button class="s360-btn sm" data-a="mkall" data-d="' + d + '"' + (un ? '' : ' disabled') + '>✓ Mark ' + un + ' unmarked as Present</button></div>' +
+      '<label class="s360-fld"><span>Reason for changes (optional, saved in the activity log)</span><input class="s360-in" id="s360-mkreason" maxlength="200" value="' + esc(S.sub.mkreason || '') + '" data-a-input="mkreason"></label><div class="s360-card">';
+    h += rows.map(function (r) {
+      return '<div class="s360-row" style="flex-wrap:wrap"><div class="s360-grow" style="min-width:140px"><b>' + esc(r.name) + '</b><small>' + esc(r.role || '') + (r.inHm ? ' · In ' + esc(r.inHm) + (r.outHm ? ' → ' + esc(r.outHm) : '') : '') + '</small></div><div class="s360-acts" role="group" aria-label="Status for ' + esc(r.name) + '">' +
+        ['P', 'H', 'A', 'L', 'W'].map(function (k) {
+          var on = r.status === k;
+          return '<button class="s360-btn sm ' + (on ? '' : 'sec') + '" style="min-width:42px' + (on ? '' : '') + '" data-a="mk" data-sid="' + esc(r.staffId) + '" data-d="' + d + '" data-m="' + (on ? '' : k) + '" aria-pressed="' + on + '" title="' + MARK_LABEL[k] + '">' + k + '</button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    return h + '</div><div class="s360-note">P = Present · H = Half-day · A = Absent · L = Leave · W = Week off. Tap a selected status again to clear it.</div>';
   };
+  function markOne(sid, d, m) {
+    call('staff360Mark', { entries: [{ staffId: sid, date: d, status: m }], reason: S.sub.mkreason || '' }).then(function () {
+      track('attendance_marked_manual', {}); invalidate('reg:'); invalidate('rep:'); invalidate('audit'); render();
+    }, function (e) { toast(e.message); });
+  }
+  function markAllPresent(d) {
+    var v = S.data['reg:' + d] && S.data['reg:' + d].v; if (!v) return;
+    var entries = v.rows.filter(function (r) { return !r.status; }).map(function (r) { return { staffId: r.staffId, date: d, status: 'P' }; });
+    if (!entries.length) return;
+    call('staff360Mark', { entries: entries, reason: S.sub.mkreason || '' }).then(function () { invalidate('reg:'); invalidate('rep:'); invalidate('audit'); toast('✓ ' + entries.length + ' marked present'); render(); }, function (e) { toast(e.message); });
+  }
 
   R.register = function () {
     var d = S.sub.date || todayLocal();
@@ -306,7 +405,7 @@
       };
       return '<tr><td><b>' + esc(r.name) + '</b>' + (r.shift ? '<br><small>' + esc(r.shift) + (r.weeklyOff ? ' · weekly off' : '') + '</small>' : '') + '</td>' +
         '<td>' + (r.status ? '<span class="s360-chip ' + r.status + '">' + MARK_LABEL[r.status] + '</span>' : '<span class="s360-chip">Not marked</span>') + (r.lateMin ? '<br><span class="s360-chip late">' + r.lateMin + ' min late</span>' : '') + '</td>' +
-        '<td>' + esc(r.inHm || '—') + '</td><td>' + (r.incomplete ? '<span class="s360-chip H">No check-out</span>' : esc(r.outHm || '—')) + (r.earlyMin ? '<br><small>' + r.earlyMin + ' min early</small>' : '') + '</td>' +
+        '<td>' + esc(r.inHm || '—') + '</td><td>' + (r.incomplete ? (v.today && v.date === v.today ? '<span class="s360-chip P">Working</span>' : '<span class="s360-chip H">No check-out</span>') : esc(r.outHm || '—')) + (r.earlyMin ? '<br><small>' + r.earlyMin + ' min early</small>' : '') + '</td>' +
         '<td>' + (r.workedMin ? hm(r.workedMin) : '—') + '</td><td>' + gpsCell(r.checkInGps, r.checkInGpsStatus) + (r.checkOutAt ? '<br>' + gpsCell(r.checkOutGps, r.checkOutGpsStatus) : '') + '</td></tr>';
     }).join('');
     return h + '</tbody></table></div>';
@@ -374,7 +473,7 @@
       '<label class="s360-fld"><span>Employee</span><select class="s360-sel" data-a-sel="rs"><option value="">All staff</option>' + staffLocal().map(function (s) { return '<option value="' + esc(s.id) + '"' + (sf === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '</select></label></div>' +
       (per === 'custom' ? '<div class="s360-grid2"><label class="s360-fld"><span>From</span><input type="date" class="s360-in" data-a-sel="from" value="' + from + '" max="' + t + '"></label><label class="s360-fld"><span>To</span><input type="date" class="s360-in" data-a-sel="to" value="' + to + '" max="' + t + '"></label></div>' : '') + '</div>';
     track('attendance_report_viewed', { plan: plan(), period: per });
-    if (!has('report_detailed')) {
+    if (!has('report_detailed') && !SA) {
       // Basic: totals from Step ATT locally (works even before the server is deployed).
       var sum = null; try { sum = window.HNAttend && HNAttend.summary ? HNAttend.summary(ym) : null; } catch (e) {}
       if (per === 'custom') h += '<div class="s360-warn">Custom ranges are a Premium report. Showing the month view.</div>';
@@ -390,6 +489,11 @@
     if (!res) return h + loading();
     if (res.e) return h + errBox(res.e, key);
     var v = res.v, T = v.total;
+    if (!v.detailed) {
+      return h + '<div class="s360-card s360-scroll"><table class="s360-tbl"><thead><tr><th>Staff</th><th>Present</th><th>Half</th><th>Absent</th><th>Leave</th><th>Week off</th><th>Not marked</th></tr></thead><tbody>' +
+        v.rows.map(function (r) { return '<tr><td><b>' + esc(r.name) + '</b></td><td>' + r.P + '</td><td>' + r.H + '</td><td>' + r.A + '</td><td>' + r.L + '</td><td>' + r.W + '</td><td>' + r.unmarked + '</td></tr>'; }).join('') +
+        '</tbody></table></div>' + lockHTML('report_detailed');
+    }
     h += '<div class="s360-stats"><div class="s360-stat p"><span>Present days</span><b>' + (T.P + T.H * 0.5) + '</b></div><div class="s360-stat a"><span>Absent days</span><b>' + T.A + '</b></div><div class="s360-stat l"><span>Late arrivals</span><b>' + T.late + '</b></div><div class="s360-stat"><span>Hours</span><b style="font-size:18px">' + hm(T.workedMin) + '</b></div></div>';
     h += '<div class="s360-card s360-scroll"><table class="s360-tbl"><thead><tr><th>Staff</th><th>Present</th><th>Half</th><th>Absent</th><th>Leave</th><th>Late</th><th>Early</th><th>No check-out</th><th>Hours</th></tr></thead><tbody>' +
       v.rows.map(function (r) { return '<tr><td><b>' + esc(r.name) + '</b></td><td>' + r.P + '</td><td>' + r.H + '</td><td>' + r.A + '</td><td>' + r.L + '</td><td>' + r.late + '</td><td>' + r.earlyLeaves + '</td><td>' + r.incomplete + '</td><td>' + hm(r.workedMin) + '</td></tr>'; }).join('') + '</tbody></table></div>';
@@ -611,8 +715,17 @@
     if (a === 'go') return go(b.getAttribute('data-v'));
     if (a === 'retry') { S.stErr = null; loadState(true).then(render); return render(); }
     if (a === 'reload') { delete S.data[b.getAttribute('data-k')]; return render(); }
-    if (a === 'mark') { close(); if (window.HNAttend) HNAttend.open(); return; }
-    if (a === 'addstaff') { close(); try { App.nav('add-staff'); } catch (x) {} return; }
+    if (a === 'menu') { if (window.STAFF360_SHELL) STAFF360_SHELL.menu(); return; }
+    if (a === 'mark') { if (SA) return go('mark'); close(); if (window.HNAttend) HNAttend.open(); return; }
+    if (a === 'addstaff') { if (SA) { if (S.view !== 'team') go('team'); if (rosterInfo()) return staffSheet(null); S.sub.pendingAdd = true; return; } close(); try { App.nav('add-staff'); } catch (x) {} return; }
+    if (a === 'editstaff' && SA) return staffSheet(id);
+    if (a === 'mk') return markOne(b.getAttribute('data-sid'), b.getAttribute('data-d'), b.getAttribute('data-m'));
+    if (a === 'mkall') return markAllPresent(b.getAttribute('data-d'));
+    if (a === 'staffdel') {
+      return confirmBox({ title: 'Remove this staff member?', message: 'Their attendance history is kept. They can no longer log in.', confirmText: 'Remove', dangerous: true }).then(function (ok) {
+        if (!ok) return; call('staff360StaffRemove', { id: id }).then(function () { sheetClose(); invalidate('roster'); invalidate('reg:'); toast('Removed'); render(); }, function (er) { sheetErr('s360-sherr', er); });
+      });
+    }
     if (a === 'editstaff') { close(); try { if (App.editStaffFromDetail) App.editStaffFromDetail(id); else App.nav('staff'); } catch (x) { try { App.nav('staff'); } catch (y) {} } return; }
     if (a === 'myself') { close(); openEmployee(); return; }
     if (a === 'day') { S.sub.date = addDays(S.sub.date || todayLocal(), +b.getAttribute('data-n')); if (S.sub.date > todayLocal()) S.sub.date = todayLocal(); return render(); }
@@ -666,6 +779,7 @@
   }
   function onInput(e) {
     var t = e.target;
+    if (t && t.getAttribute && t.getAttribute('data-a-input') === 'mkreason') { S.sub.mkreason = t.value; return; }
     if (t && t.getAttribute && t.getAttribute('data-a-input') === 'q') { S.sub.q = t.value; render(); var q = $('s360-q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
   }
   function onSubmit(e) {
@@ -675,6 +789,15 @@
     var fd = new FormData(f), btn = f.querySelector('[type=submit]');
     var busy = function (on) { if (btn) { btn.disabled = on; } };
     if (kind === 'ask') { var q = String(fd.get('q') || '').trim(); if (q) ask(q); return; }
+    if (kind === 'staff') {
+      busy(true);
+      var sid = f.getAttribute('data-id') || null;
+      call('staff360StaffSave', { id: sid, name: fd.get('name'), role: fd.get('role'), phone: fd.get('phone'), salary: Number(fd.get('salary')) || 0,
+        dailyWage: Number(fd.get('dailyWage')) || 0, active: !fd.get('inactive'), canLogin: !!fd.get('canLogin') }).then(function () {
+        sheetClose(); invalidate('roster'); invalidate('reg:'); if (!sid) track('staff_created', {}); toast('✓ Saved'); render();
+      }, function (er) { busy(false); sheetErr('s360-sherr', er); });
+      return;
+    }
     if (kind === 'shift') {
       busy(true);
       call('staff360SaveShift', { id: f.getAttribute('data-id') || null, name: fd.get('name'), start: fd.get('start'), end: fd.get('end'), graceMin: Number(fd.get('graceMin')) || 0,
@@ -742,7 +865,7 @@
     var el = $('s360e');
     if (!el) {
       el = document.createElement('div'); el.id = 's360e'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'My attendance');
-      el.innerHTML = '<div class="s360-wrap" style="max-width:640px"><div class="s360-hd"><button class="s360-x" data-e="close" aria-label="Close">←</button><div class="s360-tt"><b>My attendance</b><small id="s360e-sub">Staff360</small></div></div><main id="s360e-main" style="padding:0 16px 40px"></main></div>';
+      el.innerHTML = '<div class="s360-wrap" style="max-width:640px"><div class="s360-hd">' + (SA ? '<button class="s360-x" data-e="menu" aria-label="Account menu">☰</button>' : '<button class="s360-x" data-e="close" aria-label="Close">←</button>') + '<div class="s360-tt"><b>My attendance</b><small id="s360e-sub">Staff360</small></div></div><main id="s360e-main" style="padding:0 16px 40px"></main></div>';
       el.addEventListener('click', onEClick); el.addEventListener('submit', onESubmit);
       document.body.appendChild(el);
     }
@@ -876,6 +999,7 @@
     var b = e.target.closest ? e.target.closest('[data-e]') : null; if (!b) return;
     var a = b.getAttribute('data-e');
     if (a === 'close') return closeEmployee();
+    if (a === 'menu') { if (window.STAFF360_SHELL) STAFF360_SHELL.menu(); return; }
     if (a === 'punch') return doPunch(b.getAttribute('data-act'), false);
     if (a === 'nogps') return doPunch(b.getAttribute('data-act'), true);
     if (a === 'tab') { E.tab = b.getAttribute('data-t'); E.msg = ''; eRender(); }
@@ -939,7 +1063,7 @@
      changes, so reports, AI and salary drafts include everyone. */
   var rosterBusy = false;
   function pushRoster(force) {
-    if (rosterBusy || !isManager() || !S.st || S.serverMissing) return;
+    if (SA || rosterBusy || !isManager() || !S.st || S.serverMissing) return;
     var list = staffLocal().map(function (x) {
       return { id: x.id, name: x.name || '', role: x.role || '', phone: x.phoneE164 || x.phone || '', salary: Number(x.salary) || 0, active: x.active !== false };
     });
@@ -1037,7 +1161,7 @@
 
   var lastShop = null, lastRole = null;
   function tick() {
-    if (off()) return;
+    if (off() || SA) return;
     var sid = shopId(), r = role();
     if (!sid) return;
     if (eligible() && (sid !== lastShop || r !== lastRole || (Date.now() - S.stAt > 10 * 60e3 && !S.busy._st))) {

@@ -17,6 +17,8 @@ const USERS = {
   owner: { uid: 'ownerA', token: { phone_number: '+919000000001' } },
   manager: { uid: 'mgrA', token: { phone_number: '+919222222222' } },
   employee: { uid: 'empA', token: { phone_number: '+919111111111' } },
+  newowner: { uid: 'newOwner', token: { phone_number: '+919800000001' } },
+  orgemp: { uid: 'orgEmp', token: { phone_number: '+919800000002' } },
   admin: { uid: 'platformAdmin', token: {} },
 };
 let db, h;
@@ -51,7 +53,9 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/__reset') { reset(); res.end('ok'); return; }
   if (url.pathname === '/__plan') {
     const p = url.searchParams.get('p');
-    await h.adminSetPlan({ shopId: 'A', planId: p, months: 12 }, USERS.admin);
+    const shop = url.searchParams.get('shop') || 'A';
+    await h.adminSetPlan({ shopId: shop, planId: p, months: 12 }, USERS.admin);
+    if (shop !== 'A') { res.end('ok'); return; }
     if (p === 'premium' || p === 'kingpro') await h.saveShift({ shopId: 'A', name: 'Morning', start: '09:00', end: '18:00', graceMin: 10, weeklyOff: [0], staffIds: ['amit', 'riya'] }, USERS.owner).catch(() => {});
     res.end('ok'); return;
   }
@@ -60,7 +64,7 @@ http.createServer(async (req, res) => {
     req.on('data', (c) => { body += c; });
     req.on('end', async () => {
       const fn = url.pathname.slice(8);
-      const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
+      const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster', staff360MyTenants: 'myTenants', staff360CreateOrg: 'createOrg', staff360StaffRoster: 'staffRoster', staff360StaffSave: 'staffSave', staff360StaffRemove: 'staffRemove', staff360Mark: 'mark', staff360AdminSetPlan: 'adminSetPlan', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
         staff360Register: 'register', staff360Report: 'report', staff360ListShifts: 'listShifts', staff360SaveShift: 'saveShift', staff360DeleteShift: 'deleteShift',
         staff360SaveSettings: 'saveSettings', staff360SubmitRequest: 'submitRequest', staff360ListRequests: 'listRequests', staff360DecideRequest: 'decideRequest',
         staff360AIDashboard: 'aiDashboard', staff360AIAsk: 'aiAsk', staff360AlertAction: 'alertAction', staff360SalaryList: 'salaryList', staff360SalarySave: 'salarySave',
@@ -82,8 +86,12 @@ http.createServer(async (req, res) => {
     res.setHeader('content-type', 'text/html'); res.end(html); return;
   }
   const p = url.pathname;
-  const file = path.join(ROOT, decodeURIComponent(p));
-  if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.statusCode = 404; res.end('nf'); return; }
+  const SITE = process.env.SITE_ROOT;
+  const useSite = SITE && (/^\/staff360\/(app|login)\//.test(p) || p === '/hn-analytics.js' || p.startsWith('/legal/'));
+  let file = path.join(useSite ? SITE : ROOT, decodeURIComponent(p));
+  if (useSite && p.endsWith('/')) file = path.join(file, 'index.html');
+  if (url.pathname.startsWith('/__fb/')) { file = path.join(__dirname, 'mock-firebase', path.basename(url.pathname)); }
+  if (!(file.startsWith(ROOT) || (SITE && file.startsWith(SITE))) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.statusCode = 404; res.end('nf'); return; }
   res.setHeader('content-type', MIME[path.extname(file)] || 'application/octet-stream');
   fs.createReadStream(file).pipe(res);
 }).listen(PORT, '127.0.0.1', () => console.log('QA server on http://127.0.0.1:' + PORT + '/qa'));
