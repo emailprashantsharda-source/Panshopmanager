@@ -43,6 +43,14 @@ function createHandlers(deps) {
   const env = deps.env || {};
 
   const fail = (code, msg) => { throw new HttpsError(code, msg); };
+
+  /* Two kinds of tenant share every Staff360 feature:
+   *   HisaabNow shop  — shops/{shopId}            (attendance marks in shops/{id}/agents/att_*)
+   *   Staff360 org    — staff360Orgs/{s360_...}   (standalone product; marks in staff360/{id}/marks/att_*)
+   * Org ids always start with "s360_" so they can never collide with a shop id. */
+  const isOrgId = (id) => /^s360_[A-Za-z0-9]{8,40}$/.test(String(id || ''));
+  const tenantDocPath = (id) => (isOrgId(id) ? `staff360Orgs/${id}` : `shops/${id}`);
+  const markDocPath = (id, sid, ym) => (isOrgId(id) ? `staff360/${id}/marks/att_${sid}_${ym}` : `shops/${id}/agents/att_${sid}_${ym}`);
   const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 200);
 
   /* ───────────── identity & tenancy ───────────── */
@@ -51,14 +59,15 @@ function createHandlers(deps) {
     if (!auth || !auth.uid) fail('unauthenticated', 'Please sign in.');
     const shopId = str(data && data.shopId, 128);
     if (!shopId || shopId.includes('/')) fail('invalid-argument', 'shopId required');
-    const shopSnap = await db.doc(`shops/${shopId}`).get();
-    if (!shopSnap.exists) fail('not-found', 'Shop not found');
+    const shopSnap = await db.doc(tenantDocPath(shopId)).get();
+    if (!shopSnap.exists) fail('not-found', 'Business not found');
     const shop = shopSnap.data() || {};
+    const kind = isOrgId(shopId) ? 'org' : 'shop';
     let role = null;
     let membership = null;
     if (shop.ownerId && shop.ownerId === auth.uid) role = 'owner';
     const phone = auth.token && auth.token.phone_number;
-    if (!role && phone) {
+    if (!role && phone && kind === 'shop') {
       // Same source the Firestore rules trust (isStaffOf): the CF-written
       // login record shops/{shopId}/staff/{phoneE164}.
       const sd = await db.doc(`shops/${shopId}/staff/${phone}`).get();
@@ -67,9 +76,16 @@ function createHandlers(deps) {
         membership = m; role = String(m.role || '').toLowerCase() === 'manager' ? 'manager' : 'employee';
       }
     }
-    if (!role) fail('permission-denied', 'You do not have access to this shop.');
+    if (!role && phone) {
+      // Staff360 login granted by the owner on the roster (works for orgs and
+      // for HisaabNow shops, e.g. stylists who have no HisaabNow login).
+      const r = await db.collection(`staff360/${shopId}/roster`).where('phoneE164', '==', phone).limit(5).get();
+      const m = r.docs.map((d) => Object.assign({ id: d.id }, d.data())).find((x) => x.canLogin === true && !x.removed && x.active !== false);
+      if (m) { membership = m; role = String(m.role || '').toLowerCase() === 'manager' ? 'manager' : 'employee'; }
+    }
+    if (!role) fail('permission-denied', 'You do not have access to this business.');
     const ent = C.resolveEntitlement((await db.doc(`staff360Entitlements/${shopId}`).get()).data(), now());
-    const ctx = { shopId, shop, role, uid: auth.uid, phone: phone || null, membership, ent, plan: ent.planId };
+    const ctx = { shopId, shop, kind, role, uid: auth.uid, phone: phone || null, membership, ent, plan: ent.planId };
     if (opts && opts.roles && !opts.roles.includes(role)) fail('permission-denied', 'Your role cannot do this.');
     if (opts && opts.feature && !C.can(ctx.plan, opts.feature)) {
       fail('failed-precondition', `upgrade_required:${C.FEATURES[opts.feature] >= 3 ? 'kingpro' : 'premium'}`);
@@ -95,7 +111,7 @@ function createHandlers(deps) {
    * already on the roster. Roster ids are the ids Step ATT uses. */
   async function staffList(shopId) {
     const [logins, roster] = await Promise.all([
-      db.collection(`shops/${shopId}/staff`).get(),
+      isOrgId(shopId) ? Promise.resolve({ docs: [] }) : db.collection(`shops/${shopId}/staff`).get(),
       db.collection(`staff360/${shopId}/roster`).get(),
     ]);
     const out = roster.docs.map((d) => Object.assign({ id: d.id }, d.data()))
@@ -118,7 +134,7 @@ function createHandlers(deps) {
     const r = await db.collection(`staff360/${ctx.shopId}/roster`).where('phoneE164', '==', ctx.phone).limit(5).get();
     const fromRoster = r.docs.map((d) => Object.assign({ id: d.id }, d.data())).find((x) => !x.removed && x.active !== false);
     if (fromRoster) return Object.assign({}, ctx.membership || {}, fromRoster);
-    const sd = await db.doc(`shops/${ctx.shopId}/staff/${ctx.phone}`).get();
+    const sd = ctx.kind === 'shop' ? await db.doc(`shops/${ctx.shopId}/staff/${ctx.phone}`).get() : { exists: false };
     const s = sd.exists ? Object.assign({ id: sd.id }, sd.data()) : null;
     if (!s || s._deleted || s.deletedAt || s.active === false) fail('not-found', 'No staff profile matches your phone number. Ask the owner to add you.');
     return s;
@@ -175,7 +191,7 @@ function createHandlers(deps) {
     await Promise.all(staff.map(async (s) => {
       marks[s.id] = {};
       for (const ym of months) {
-        const snap = await db.doc(`shops/${shopId}/agents/att_${s.id}_${ym}`).get();
+        const snap = await db.doc(markDocPath(shopId, s.id, ym)).get();
         const d = snap.exists ? snap.data() : null;
         if (d && !d._deleted && d.days && typeof d.days === 'object') {
           for (const k of Object.keys(d.days)) if (k >= from && k <= to) marks[s.id][k] = d.days[k];
@@ -194,7 +210,7 @@ function createHandlers(deps) {
   }
 
   async function mirrorMark(shopId, staffId, date, patch) {
-    const ref = db.doc(`shops/${shopId}/agents/att_${staffId}_${date.slice(0, 7)}`);
+    const ref = db.doc(markDocPath(shopId, staffId, date.slice(0, 7)));
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const cur = snap.exists ? (snap.data().days || {})[date] || {} : {};
@@ -213,6 +229,7 @@ function createHandlers(deps) {
     const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
     const out = {
       serverTime: now(), // client uses this to correct device-clock skew on GPS timestamps
+      tenant: { id: ctx.shopId, kind: ctx.kind, name: ctx.shop.name || '' },
       role: ctx.role, plan: ctx.plan, entitlement: ctx.ent,
       features: C.entitlementMap(ctx.plan), plans: cfg,
       ai: { configured: !!ai.configured() }, whatsapp: { providerConfigured: !!wa.configured() },
@@ -382,13 +399,14 @@ function createHandlers(deps) {
 
   /* Premium: register with punch evidence for one day. */
   async function register(data, auth) {
-    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'history_detailed' });
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'daily_register' });
+    const detailed = C.can(ctx.plan, 'history_detailed');
     const st = await settings(ctx.shopId);
     const date = C.isDate(data.date) ? data.date : C.zoned(now(), st.timezone).date;
     const { staff, marks, punches } = await loadRange(ctx.shopId, date, date);
     const sh = await shifts(ctx.shopId);
-    return {
-      date, timezone: st.timezone,
+    const out = {
+      date, timezone: st.timezone, detailed, today: C.zoned(now(), st.timezone).date,
       rows: staff.map((s) => {
         const p = (punches[s.id] || {})[date];
         const rec = C.dayRecord((marks[s.id] || {})[date], p);
@@ -400,6 +418,10 @@ function createHandlers(deps) {
         });
       }),
     };
+    if (!detailed) {
+      out.rows = out.rows.map((r) => ({ staffId: r.staffId, name: r.name, role: r.role, status: r.status, inHm: r.inHm, outHm: r.outHm, canLogin: false }));
+    }
+    return out;
   }
 
   /* Reports: Basic gets totals; Premium+ gets hours/late and rows to export. */
@@ -727,10 +749,10 @@ function createHandlers(deps) {
     const sh = await shifts(ctx.shopId);
     const drafts = {};
     (await db.collection(`staff360/${ctx.shopId}/salary`).where('ym', '==', ym).get()).docs.forEach((d) => { drafts[d.data().staffId] = d.data(); });
-    const advSnap = await db.collection(`shops/${ctx.shopId}/expenses`).where('subcat', '==', 'staff_advance').get();
+    const advSnap = ctx.kind === 'shop' ? await db.collection(`shops/${ctx.shopId}/expenses`).where('subcat', '==', 'staff_advance').get() : { docs: [] };
     const adv = {};
     advSnap.docs.forEach((d) => { const x = d.data(); if (!x._deleted && String(x.dateISO || '').slice(0, 7) === ym) adv[x.staffId] = (adv[x.staffId] || 0) + (Number(x.amt) || 0); });
-    const cfgSnap = await Promise.all(staff.map((s) => db.doc(`shops/${ctx.shopId}/agents/attcfg_${s.id}`).get()));
+    const cfgSnap = await Promise.all(staff.map((s) => (ctx.kind === 'shop' ? db.doc(`shops/${ctx.shopId}/agents/attcfg_${s.id}`).get() : Promise.resolve({ exists: false }))));
     const rows = agg.rows.map((r, i) => {
       const s = staff[i];
       const wage = cfgSnap[i].exists ? Number(cfgSnap[i].data().wage) || 0 : Number(s.dailyWage) || 0;
@@ -854,7 +876,7 @@ function createHandlers(deps) {
       if (s.lastSentKey === key) continue;
       const settingsDoc = (await db.doc(`staff360/${shopId}/whatsapp/settings`).get()).data() || {};
       if (!settingsDoc.optIn || !settingsDoc.enabled) continue;
-      const shop = (await db.doc(`shops/${shopId}`).get()).data() || {};
+      const shop = (await db.doc(tenantDocPath(shopId)).get()).data() || {};
       const from = s.cadence === 'weekly' ? C.addDays(z.date, -6) : z.date;
       const { staff, marks, punches } = await loadRange(shopId, from, z.date);
       const agg = C.aggregate(staff, marks, punches, C.dateRange(from, z.date), { today: z.date });
@@ -902,7 +924,7 @@ function createHandlers(deps) {
     const admins = String(env.STAFF360_ADMIN_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!(auth.token && auth.token.admin === true) && !admins.includes(auth.uid)) fail('permission-denied', 'Admins only');
     const shopId = str(data.shopId, 128);
-    if (!(await db.doc(`shops/${shopId}`).get()).exists) fail('not-found', 'shop');
+    if (!(await db.doc(tenantDocPath(shopId)).get()).exists) fail('not-found', 'business');
     if (data.planId === 'basic' || data.revoke) {
       await db.doc(`staff360Entitlements/${shopId}`).set({ status: 'cancelled', updatedAt: now(), updatedBy: auth.uid }, { merge: true });
       return { ok: true, plan: 'basic' };
@@ -927,8 +949,188 @@ function createHandlers(deps) {
     return { ok: true };
   }
 
+  /* ═════════════ Standalone Staff360 (hisaabnow.com/staff360) ═════════════ */
+
+  const normPhone = (v) => {
+    const ph = str(v, 20).replace(/[^\d+]/g, '');
+    if (/^\+\d{10,15}$/.test(ph)) return ph;
+    if (/^\d{10}$/.test(ph)) return '+91' + ph;
+    if (/^0\d{10}$/.test(ph)) return '+91' + ph.slice(1);
+    return null;
+  };
+
+  async function indexPhone(phone, tenantId, entry) {
+    if (!phone) return;
+    const ref = db.doc(`staff360PhoneIndex/${phone}`);
+    await db.runTransaction(async (tx) => {
+      const s = await tx.get(ref);
+      const t = (s.exists && s.data().tenants) || {};
+      if (entry) t[tenantId] = entry; else delete t[tenantId];
+      tx.set(ref, { tenants: t, updatedAt: now() });
+    });
+  }
+
+  /* Every business this login can open: Staff360 orgs and HisaabNow shops it
+   * owns, HisaabNow staff logins, and Staff360 roster logins. */
+  async function myTenants(data, auth) {
+    if (!auth || !auth.uid) fail('unauthenticated', 'Please sign in.');
+    const phone = (auth.token && auth.token.phone_number) || null;
+    const out = new Map();
+    const add = (id, name, kind, role) => { if (!out.has(id)) out.set(id, { id, name: name || 'My business', kind, role }); };
+    const [orgs, shops] = await Promise.all([
+      db.collection('staff360Orgs').where('ownerId', '==', auth.uid).limit(10).get(),
+      db.collection('shops').where('ownerId', '==', auth.uid).limit(10).get(),
+    ]);
+    orgs.docs.forEach((d) => add(d.id, d.data().name, 'org', 'owner'));
+    shops.docs.forEach((d) => add(d.id, d.data().name, 'shop', 'owner'));
+    if (phone) {
+      const idx = (await db.doc(`staff360PhoneIndex/${phone}`).get()).data();
+      const cand = Object.keys((idx && idx.tenants) || {});
+      const hn = await db.collection(`staffPhoneIndex/${phone}/shops`).limit(10).get();
+      hn.docs.forEach((d) => { const x = d.data() || {}; if (x.shopId && x.active !== false) cand.push(x.shopId); });
+      for (const id of Array.from(new Set(cand)).slice(0, 15)) {
+        if (out.has(id)) continue;
+        try {
+          const ctx = await caller({ shopId: id }, auth);
+          add(id, ctx.shop.name, ctx.kind, ctx.role);
+        } catch (e) { /* no longer a member — skip */ }
+      }
+    }
+    return { tenants: Array.from(out.values()) };
+  }
+
+  async function createOrg(data, auth) {
+    if (!auth || !auth.uid) fail('unauthenticated', 'Please sign in.');
+    const name = str(data.name, 60);
+    if (name.length < 2) fail('invalid-argument', 'Enter your business name');
+    const existing = await db.collection('staff360Orgs').where('ownerId', '==', auth.uid).limit(5).get();
+    if (existing.size >= 3) fail('resource-exhausted', 'You can create up to 3 businesses. Contact us for more.');
+    const tz = C.validTz(data.timezone) ? data.timezone : C.DEFAULT_TZ;
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let id = 's360_';
+    for (let i = 0; i < 16; i++) id += alphabet[Math.floor(Math.random() * alphabet.length)];
+    const t = now();
+    await db.doc(`staff360Orgs/${id}`).set({ ownerId: auth.uid, ownerPhone: (auth.token && auth.token.phone_number) || null,
+      name, businessType: str(data.businessType, 30) || 'other', createdAt: t, updatedAt: t });
+    await db.doc(`staff360/${id}`).set({ timezone: tz, gpsPolicy: 'require', mirrorToRegister: true, createdAt: t }, { merge: true });
+    return { ok: true, id };
+  }
+
+  /* Staff list for the Staff360 screens (with login flag). */
+  async function staffRoster(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'staff_manage' });
+    const list = await staffList(ctx.shopId);
+    const all = await db.collection(`staff360/${ctx.shopId}/roster`).get();
+    const inactive = all.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => !x.removed && x.active === false);
+    const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
+    return {
+      kind: ctx.kind, editable: ctx.kind === 'org', maxStaff: cfg[ctx.plan].maxStaff,
+      staff: list.concat(inactive).map((x) => ({ id: x.id, name: x.name || 'Staff', role: x.role || '', phone: x.phoneE164 || null,
+        salary: Number(x.salary) || 0, dailyWage: Number(x.dailyWage) || 0, active: x.active !== false, canLogin: x.canLogin === true,
+        hisaabnowLogin: !!(ctx.kind === 'shop' && String(x.id).startsWith('+')) })),
+    };
+  }
+
+  /* Add / edit staff (orgs), or grant a Staff360 login (orgs and shops).
+   * For HisaabNow shops the name/role/salary come from the app, so only the
+   * phone and the login switch can be changed here. */
+  async function staffSave(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'staff_manage' });
+    const coll = db.collection(`staff360/${ctx.shopId}/roster`);
+    let id = data.id ? str(data.id, 128) : null;
+    if (id && (id.includes('/') || id.startsWith('+'))) fail('invalid-argument', 'This staff member is managed in the HisaabNow app.');
+    const prev = id ? (await coll.doc(id).get()).data() || null : null;
+    if (id && (!prev || prev.removed)) fail('not-found', 'staff');
+    const phone = data.phone ? normPhone(data.phone) : (prev ? prev.phoneE164 || null : null);
+    if (data.phone && !phone) fail('invalid-argument', 'Enter a 10-digit mobile number');
+    const canLogin = data.canLogin === true;
+    if (canLogin && !phone) fail('invalid-argument', 'A mobile number is needed for login');
+    const patch = { phoneE164: phone, canLogin, updatedAt: now(), updatedBy: ctx.uid };
+    if (ctx.kind === 'org') {
+      const name = str(data.name, 80);
+      if (name.length < 2) fail('invalid-argument', 'Enter the staff name');
+      const role = str(data.role, 40) || 'Staff';
+      if (/^manager$/i.test(role) && ctx.role !== 'owner') fail('permission-denied', 'Only the owner can add a manager');
+      Object.assign(patch, { name, role, salary: Math.max(0, Math.min(1e7, Number(data.salary) || 0)),
+        dailyWage: Math.max(0, Math.min(1e6, Number(data.dailyWage) || 0)), active: data.active !== false,
+        joinedDate: C.isDate(data.joinedDate) ? data.joinedDate : (prev && prev.joinedDate) || null });
+      if (!prev) {
+        const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
+        const max = cfg[ctx.plan].maxStaff;
+        if (max && (await staffList(ctx.shopId)).length >= max) fail('resource-exhausted', `Your plan allows ${max} staff. Upgrade to add more.`);
+        Object.assign(patch, { removed: false, createdAt: now(), createdBy: ctx.uid });
+      }
+    } else {
+      if (!prev) fail('failed-precondition', 'Add staff in the HisaabNow app first.');
+      if (/^manager$/i.test(prev.role || '') && canLogin && ctx.role !== 'owner') fail('permission-denied', 'Only the owner can give a manager login');
+    }
+    if (phone) {
+      const clash = await coll.where('phoneE164', '==', phone).limit(3).get();
+      if (clash.docs.some((d) => d.id !== id && !d.data().removed)) fail('already-exists', 'Another staff member already uses this number');
+    }
+    const ref = id ? coll.doc(id) : coll.doc();
+    await ref.set(patch, { merge: true });
+    id = ref.id;
+    if (prev && prev.phoneE164 && prev.phoneE164 !== phone) await indexPhone(prev.phoneE164, ctx.shopId, null);
+    await indexPhone(phone, ctx.shopId, canLogin && patch.active !== false ? { name: ctx.shop.name || '', staffId: id } : null);
+    await audit(ctx, { type: prev ? 'staff_updated' : 'staff_created', staffId: id, staffName: patch.name || (prev && prev.name) || '',
+      to: `${canLogin ? 'login on' : 'login off'}${patch.active === false ? ', inactive' : ''}` });
+    return { ok: true, id };
+  }
+
+  async function staffRemove(data, auth) {
+    const ctx = await caller(data, auth, { roles: ['owner'], feature: 'staff_manage' });
+    if (ctx.kind !== 'org') fail('failed-precondition', 'Remove staff in the HisaabNow app.');
+    const ref = db.doc(`staff360/${ctx.shopId}/roster/${str(data.id, 128)}`);
+    const prev = (await ref.get()).data();
+    if (!prev || prev.removed) fail('not-found', 'staff');
+    await ref.set({ removed: true, canLogin: false, updatedAt: now(), updatedBy: ctx.uid }, { merge: true });
+    await indexPhone(prev.phoneE164, ctx.shopId, null);
+    await audit(ctx, { type: 'staff_removed', staffId: ref.id, staffName: prev.name || '' });
+    return { ok: true };
+  }
+
+  /* Manual attendance marking done on the server: the previous value is read
+   * here, so the audit trail cannot be faked by the device. */
+  async function mark(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'manual_attendance' });
+    const list = Array.isArray(data.entries) ? data.entries.slice(0, 60) : [];
+    if (!list.length) fail('invalid-argument', 'Nothing to mark');
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const oldest = C.addDays(today, -62);
+    const staff = await staffList(ctx.shopId);
+    const reason = str(data.reason, 200);
+    const done = [];
+    for (const e of list) {
+      const date = str(e && e.date, 10), sid = str(e && e.staffId, 128), m = str(e && e.status, 2);
+      if (!C.isDate(date) || date > today || date < oldest) fail('invalid-argument', 'Date must be within the last 62 days');
+      if (!(m === '' || ['P', 'H', 'A', 'L', 'W'].includes(m))) fail('invalid-argument', 'status');
+      const who = staff.find((x) => x.id === sid);
+      if (!who) continue;
+      const ref = db.doc(markDocPath(ctx.shopId, sid, date.slice(0, 7)));
+      const prevMark = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const cur = snap.exists ? (snap.data().days || {})[date] || {} : {};
+        const next = Object.assign({}, cur);
+        if (m) next.m = m; else delete next.m;
+        if (e.in !== undefined) { if (e.in && C.hmToMin(e.in) == null) fail('invalid-argument', 'in'); if (e.in) next.i = e.in; else delete next.i; }
+        if (e.out !== undefined) { if (e.out && C.hmToMin(e.out) == null) fail('invalid-argument', 'out'); if (e.out) next.o = e.out; else delete next.o; }
+        next.src = 's360';
+        const empty = !next.m && !next.i && !next.o;
+        if (snap.exists) tx.update(ref, { [`days.${date}`]: empty ? null : next, _lastUpdated: now() });
+        else if (!empty) tx.set(ref, { id: ref.id, kind: 'hn_att', staffId: sid, ym: date.slice(0, 7), days: { [date]: next }, _lastUpdated: now() });
+        return cur.m || '';
+      });
+      if (prevMark !== m) await audit(ctx, { type: 'manual_mark', staffId: sid, staffName: who.name || '', date, from: prevMark, to: m, reason, server: true });
+      done.push(sid);
+    }
+    return { ok: true, marked: done.length };
+  }
+
   return {
-    getState, punch, myHistory, syncRoster, logManualEdit, listAudit, register, report,
+    getState, punch, myHistory, syncRoster, logManualEdit,
+    myTenants, createOrg, staffRoster, staffSave, staffRemove, mark, listAudit, register, report,
     listShifts, saveShift, deleteShift, saveSettings,
     submitRequest, listRequests, decideRequest,
     aiDashboard, aiAsk, alertAction, salaryList, salarySave,
