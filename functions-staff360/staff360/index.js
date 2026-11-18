@@ -37,6 +37,7 @@ module.exports = {
   staff360GetState: call('getState'),
   staff360Punch: call('punch'),
   staff360MyHistory: call('myHistory'),
+  staff360SyncRoster: call('syncRoster'),
   staff360LogManualEdit: call('logManualEdit'),
   staff360ListAudit: call('listAudit'),
   staff360Register: call('register'),

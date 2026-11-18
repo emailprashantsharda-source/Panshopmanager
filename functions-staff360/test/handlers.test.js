@@ -24,13 +24,15 @@ function setup(opts) {
   let now = T0;
   db._seed('shops/A', { ownerId: 'ownerA', name: 'Glow Salon' });
   db._seed('shops/B', { ownerId: 'ownerB', name: 'Other Shop' });
-  db._seed('shops/A/staff/amit', { name: 'Amit Kumar', role: 'Cashier', phoneE164: '+919111111111', salary: 18000 });
-  db._seed('shops/A/staff/riya', { name: 'Riya Sharma', role: 'Stylist', phoneE164: '+919444444444', salary: 15000 });
-  db._seed('shops/A/staff/meena', { name: 'Meena Joshi', role: 'Manager', phoneE164: '+919222222222', salary: 25000 });
-  db._seed('shops/B/staff/x', { name: 'Vikas Singh', phoneE164: '+919333333333' });
-  db._seed('staffPhoneIndex/+919111111111/shops/A', { shopId: 'A', ownerUid: 'ownerA', role: 'cashier', active: true });
-  db._seed('staffPhoneIndex/+919222222222/shops/A', { shopId: 'A', ownerUid: 'ownerA', role: 'manager', active: true });
-  db._seed('staffPhoneIndex/+919333333333/shops/B', { shopId: 'B', ownerUid: 'ownerB', role: 'cashier', active: true });
+  // Owner's roster (what the app sends via syncRoster) — ids are Step ATT ids.
+  db._seed('staff360/A/roster/amit', { name: 'Amit Kumar', role: 'Cashier', phoneE164: '+919111111111', salary: 18000 });
+  db._seed('staff360/A/roster/riya', { name: 'Riya Sharma', role: 'Stylist', phoneE164: '+919444444444', salary: 15000 });
+  db._seed('staff360/A/roster/meena', { name: 'Meena Joshi', role: 'Manager', phoneE164: '+919222222222', salary: 25000 });
+  db._seed('staff360/B/roster/x', { name: 'Vikas Singh', phoneE164: '+919333333333' });
+  // Login records written by addStaffMember CF, keyed by phone (same as rules' isStaffOf).
+  db._seed('shops/A/staff/+919111111111', { name: 'Amit Kumar', role: 'cashier', active: true });
+  db._seed('shops/A/staff/+919222222222', { name: 'Meena Joshi', role: 'manager', active: true });
+  db._seed('shops/B/staff/+919333333333', { name: 'Vikas Singh', role: 'cashier', active: true });
   const sentWa = [];
   const h = createHandlers({
     db, HttpsError, now: () => now,
@@ -65,7 +67,7 @@ test('unauthenticated and cross-shop access are denied', async () => {
 
 test('inactive staff membership is denied', async () => {
   const { h, db } = setup();
-  db._seed('staffPhoneIndex/+919111111111/shops/A', { shopId: 'A', ownerUid: 'ownerA', role: 'cashier', active: false });
+  db._seed('shops/A/staff/+919111111111', { name: 'Amit Kumar', role: 'cashier', active: false });
   await rejects(h.getState({ shopId: 'A' }, EMP_A), 'permission-denied');
 });
 
@@ -353,4 +355,26 @@ test('expiry downgrades access but keeps data', async () => {
   assert.equal(s.entitlement.lapsedFrom, 'premium');
   await rejects(h.punch({ shopId: 'A', action: 'in', gps: gps(T0 + 400 * 24 * 3600e3) }, EMP_A), 'failed-precondition');
   assert.ok(db._store.get('staff360/A/punches/amit_2026-11-17'), 'punch data kept');
+});
+
+test('roster sync: local-only staff appear; removed staff kept but hidden; login-only staff use phone id', async () => {
+  const { h, db } = setup();
+  await grant(h, 'A', 'premium');
+  await rejects(h.syncRoster({ shopId: 'A', staff: [] }, EMP_A), 'permission-denied');
+  await h.syncRoster({ shopId: 'A', staff: [
+    { id: 'amit', name: 'Amit Kumar', role: 'Cashier', phone: '9111111111', salary: 18000 },
+    { id: 'riya', name: 'Riya Sharma', role: 'Stylist' },
+    { id: 'local_77', name: 'Sunil (no login)', role: 'Helper', salary: 9000 },
+  ] }, OWNER_A);
+  assert.equal(db._store.get('staff360/A/roster/amit').phoneE164, '+919111111111');
+  assert.equal(db._store.get('staff360/A/roster/meena').removed, true, 'missing from list = removed, not deleted');
+  const reg = await h.register({ shopId: 'A', date: '2026-11-17' }, OWNER_A);
+  const names = reg.rows.map((r) => r.name).sort();
+  assert.deepEqual(names, ['Amit Kumar', 'Meena Joshi', 'Riya Sharma', 'Sunil (no login)'],
+    'Meena still shows via her login record (phone id) once off the roster');
+  assert.ok(reg.rows.find((r) => r.name === 'Meena Joshi').staffId === '+919222222222');
+  // Manager whose roster entry is gone still punches under her login id.
+  const r = await h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, MGR_A);
+  assert.equal(r.ok, true);
+  assert.ok(db._store.get('staff360/A/punches/+919222222222_2026-11-17'));
 });

@@ -59,9 +59,13 @@ function createHandlers(deps) {
     if (shop.ownerId && shop.ownerId === auth.uid) role = 'owner';
     const phone = auth.token && auth.token.phone_number;
     if (!role && phone) {
-      const q = await db.collection(`staffPhoneIndex/${phone}/shops`).where('shopId', '==', shopId).limit(3).get();
-      const m = q.docs.map((d) => d.data()).find((x) => x && x.active === true && x.ownerUid === shop.ownerId);
-      if (m) { membership = m; role = String(m.role || '').toLowerCase() === 'manager' ? 'manager' : 'employee'; }
+      // Same source the Firestore rules trust (isStaffOf): the CF-written
+      // login record shops/{shopId}/staff/{phoneE164}.
+      const sd = await db.doc(`shops/${shopId}/staff/${phone}`).get();
+      const m = sd.exists ? sd.data() : null;
+      if (m && m.active !== false && m._deleted !== true) {
+        membership = m; role = String(m.role || '').toLowerCase() === 'manager' ? 'manager' : 'employee';
+      }
     }
     if (!role) fail('permission-denied', 'You do not have access to this shop.');
     const ent = C.resolveEntitlement((await db.doc(`staff360Entitlements/${shopId}`).get()).data(), now());
@@ -85,18 +89,64 @@ function createHandlers(deps) {
     };
   }
 
+  /* Staff = the owner's roster (sent by the app via syncRoster, because the
+   * app's staff list is NOT pushed to Firestore — HisaabSync NO_PUSH) plus
+   * any login record (shops/{shopId}/staff/{phone}) whose phone is not
+   * already on the roster. Roster ids are the ids Step ATT uses. */
   async function staffList(shopId) {
-    const q = await db.collection(`shops/${shopId}/staff`).get();
-    return q.docs.map((d) => Object.assign({ id: d.id }, d.data()))
-      .filter((s) => s && !s._deleted && !s.deletedAt && s.active !== false);
+    const [logins, roster] = await Promise.all([
+      db.collection(`shops/${shopId}/staff`).get(),
+      db.collection(`staff360/${shopId}/roster`).get(),
+    ]);
+    const out = roster.docs.map((d) => Object.assign({ id: d.id }, d.data()))
+      .filter((s) => s && !s.removed && s.active !== false);
+    const phones = new Set(out.map((s) => s.phoneE164).filter(Boolean));
+    for (const d of logins.docs) {
+      const s = Object.assign({ id: d.id }, d.data());
+      if (!s || s._deleted || s.deletedAt || s.active === false) continue;
+      const ph = s.phoneE164 || (String(d.id).startsWith('+') ? d.id : null);
+      if (ph && phones.has(ph)) continue;
+      if (!s.phoneE164 && ph) s.phoneE164 = ph;
+      out.push(s);
+    }
+    return out;
   }
 
   async function selfStaff(ctx) {
     if (!ctx.phone) fail('failed-precondition', 'Your login has no phone number.');
-    const q = await db.collection(`shops/${ctx.shopId}/staff`).where('phoneE164', '==', ctx.phone).limit(5).get();
-    const s = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).find((x) => !x._deleted && !x.deletedAt && x.active !== false);
-    if (!s) fail('not-found', 'No staff profile matches your phone number. Ask the owner to add you.');
+    // Prefer the roster id (what Step ATT and the owner's reports use).
+    const r = await db.collection(`staff360/${ctx.shopId}/roster`).where('phoneE164', '==', ctx.phone).limit(5).get();
+    const fromRoster = r.docs.map((d) => Object.assign({ id: d.id }, d.data())).find((x) => !x.removed && x.active !== false);
+    if (fromRoster) return Object.assign({}, ctx.membership || {}, fromRoster);
+    const sd = await db.doc(`shops/${ctx.shopId}/staff/${ctx.phone}`).get();
+    const s = sd.exists ? Object.assign({ id: sd.id }, sd.data()) : null;
+    if (!s || s._deleted || s.deletedAt || s.active === false) fail('not-found', 'No staff profile matches your phone number. Ask the owner to add you.');
     return s;
+  }
+
+  /* Owner/manager app sends its full staff list so server reports, AI and
+   * salary drafts include staff who have no login. Full replace: anyone
+   * missing from the list is marked removed (never deleted — history stays). */
+  async function syncRoster(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'staff_manage' });
+    const list = Array.isArray(data.staff) ? data.staff.slice(0, 500) : null;
+    if (!list) fail('invalid-argument', 'staff list required');
+    const coll = db.collection(`staff360/${ctx.shopId}/roster`);
+    const seen = new Set();
+    for (const x of list) {
+      const id = str(x && x.id, 128);
+      if (!id || id.includes('/') || seen.has(id)) continue;
+      seen.add(id);
+      const ph = str(x.phoneE164 || x.phone, 20).replace(/[^\d+]/g, '');
+      await coll.doc(id).set({
+        name: str(x.name, 80) || 'Staff', role: str(x.role, 40), phoneE164: /^\+\d{10,15}$/.test(ph) ? ph : (/^\d{10}$/.test(ph) ? '+91' + ph : null),
+        salary: Math.max(0, Math.min(1e7, Number(x.salary) || 0)), active: x.active !== false, removed: false,
+        updatedAt: now(), updatedBy: ctx.uid,
+      }, { merge: true });
+    }
+    const existing = await coll.get();
+    for (const d of existing.docs) if (!seen.has(d.id) && !d.data().removed) await coll.doc(d.id).set({ removed: true, updatedAt: now() }, { merge: true });
+    return { ok: true, count: seen.size };
   }
 
   async function shifts(shopId) {
@@ -308,14 +358,16 @@ function createHandlers(deps) {
     const list = Array.isArray(data.entries) ? data.entries.slice(0, 50) : [data];
     const ok = (m) => m === '' || ['P', 'H', 'A', 'L', 'W'].includes(m);
     let n = 0;
+    let all = null;
     for (const e of list) {
       const date = str(e && e.date, 10);
       if (!C.isDate(date)) fail('invalid-argument', 'date');
       const from = str(e.from, 2), to = str(e.to, 2);
       if (!ok(from) || !ok(to)) fail('invalid-argument', 'status');
-      const staffSnap = await db.doc(`shops/${ctx.shopId}/staff/${str(e.staffId, 128)}`).get();
-      if (!staffSnap.exists) continue;
-      await audit(ctx, { type: 'manual_mark', staffId: staffSnap.id, staffName: staffSnap.data().name || '', date, from, to,
+      const sid = str(e.staffId, 128);
+      const who = (all || (all = await staffList(ctx.shopId))).find((s) => s.id === sid);
+      if (!who) continue;
+      await audit(ctx, { type: 'manual_mark', staffId: sid, staffName: who.name || '', date, from, to,
         reason: str(e.reason, 200), clientAt: Number(e.at) || null });
       n++;
     }
@@ -705,7 +757,7 @@ function createHandlers(deps) {
     const ym = str(data.ym, 7);
     if (!/^\d{4}-\d{2}$/.test(ym)) fail('invalid-argument', 'ym');
     const sid = str(data.staffId, 128);
-    if (!(await db.doc(`shops/${ctx.shopId}/staff/${sid}`).get()).exists) fail('not-found', 'staff');
+    if (!(await staffList(ctx.shopId)).some((s) => s.id === sid)) fail('not-found', 'staff');
     const ref = db.doc(`staff360/${ctx.shopId}/salary/${ym}_${sid}`);
     const prev = (await ref.get()).data() || {};
     if (data.approve) {
@@ -876,7 +928,7 @@ function createHandlers(deps) {
   }
 
   return {
-    getState, punch, myHistory, logManualEdit, listAudit, register, report,
+    getState, punch, myHistory, syncRoster, logManualEdit, listAudit, register, report,
     listShifts, saveShift, deleteShift, saveSettings,
     submitRequest, listRequests, decideRequest,
     aiDashboard, aiAsk, alertAction, salaryList, salarySave,

@@ -27,9 +27,9 @@ function reset() {
   db._seed('shops/A', { ownerId: 'ownerA', name: 'Glow Salon' });
   const staff = [['amit', 'Amit Kumar', 'Cashier', '+919111111111', 18000], ['riya', 'Riya Sharma', 'Stylist', '+919444444444', 15000],
     ['meena', 'Meena Joshi', 'Manager', '+919222222222', 25000], ['vikas', 'Vikas Singh', 'Helper', '+919555555555', 12000]];
-  for (const [id, name, role, ph, sal] of staff) db._seed(`shops/A/staff/${id}`, { id, name, role, phoneE164: ph, salary: sal, hasLogin: role !== 'Stylist' && role !== 'Helper' });
-  db._seed('staffPhoneIndex/+919111111111/shops/A', { shopId: 'A', ownerUid: 'ownerA', role: 'cashier', active: true });
-  db._seed('staffPhoneIndex/+919222222222/shops/A', { shopId: 'A', ownerUid: 'ownerA', role: 'manager', active: true });
+  for (const [id, name, role, ph, sal] of staff) db._seed(`staff360/A/roster/${id}`, { name, role, phoneE164: ph, salary: sal });
+  db._seed('shops/A/staff/+919111111111', { name: 'Amit Kumar', role: 'cashier', active: true });
+  db._seed('shops/A/staff/+919222222222', { name: 'Meena Joshi', role: 'manager', active: true });
   // 20 days of sample (DEMO) history: Amit often late, Riya absent on Mondays.
   for (let i = 1; i <= 20; i++) {
     const d = today(-i);
@@ -60,7 +60,7 @@ http.createServer(async (req, res) => {
     req.on('data', (c) => { body += c; });
     req.on('end', async () => {
       const fn = url.pathname.slice(8);
-      const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
+      const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
         staff360Register: 'register', staff360Report: 'report', staff360ListShifts: 'listShifts', staff360SaveShift: 'saveShift', staff360DeleteShift: 'deleteShift',
         staff360SaveSettings: 'saveSettings', staff360SubmitRequest: 'submitRequest', staff360ListRequests: 'listRequests', staff360DecideRequest: 'decideRequest',
         staff360AIDashboard: 'aiDashboard', staff360AIAsk: 'aiAsk', staff360AlertAction: 'alertAction', staff360SalaryList: 'salaryList', staff360SalarySave: 'salarySave',

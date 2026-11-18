@@ -134,7 +134,7 @@
     }
     track('staff360_opened', { plan: plan() });
     render();
-    loadState(false).then(render);
+    loadState(false).then(function () { pushRoster(false); render(); });
   }
   function close() {
     var el = $('s360'); if (el) el.remove();
@@ -932,6 +932,28 @@
     clearTimeout(flushT); flushT = setTimeout(function () { if (document.body.contains(s)) s.remove(); flushAudit(); }, 12000);
   }
 
+  /* ═══════════════ roster sync ═══════════════
+     The app's staff list is local-only (HisaabSync never pushes "staff"), so
+     the server would only see staff who have a login. Owners/managers send
+     the list (name, role, phone, salary — no other personal data) whenever it
+     changes, so reports, AI and salary drafts include everyone. */
+  var rosterBusy = false;
+  function pushRoster(force) {
+    if (rosterBusy || !isManager() || !S.st || S.serverMissing) return;
+    var list = staffLocal().map(function (x) {
+      return { id: x.id, name: x.name || '', role: x.role || '', phone: x.phoneE164 || x.phone || '', salary: Number(x.salary) || 0, active: x.active !== false };
+    });
+    var key = 's360_roster_' + shopId();
+    var sig = JSON.stringify(list);
+    var prev = null; try { prev = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+    if (!force && prev && prev.sig === sig && Date.now() - prev.at < 12 * 3600e3) return;
+    rosterBusy = true;
+    call('staff360SyncRoster', { staff: list }).then(function () {
+      try { localStorage.setItem(key, JSON.stringify({ sig: sig, at: Date.now() })); } catch (e) {}
+      if (prev && prev.sig !== sig) S.data = {};
+    }, function () {}).then(function () { rosterBusy = false; });
+  }
+
   /* ═══════════════ entry points ═══════════════ */
   function css() {
     if ($('s360-css')) return;
@@ -1020,7 +1042,7 @@
     if (!sid) return;
     if (eligible() && (sid !== lastShop || r !== lastRole || (Date.now() - S.stAt > 10 * 60e3 && !S.busy._st))) {
       lastShop = sid; lastRole = r; S.busy._st = true; S.data = {};
-      loadState(true).then(function () { S.busy._st = false; syncEntries(); consumeIntent(); if (auditQueue().length) flushAudit(); });
+      loadState(true).then(function () { S.busy._st = false; syncEntries(); pushRoster(false); consumeIntent(); if (auditQueue().length) flushAudit(); });
     }
     syncEntries();
     if (!S.busy._st) consumeIntent();
