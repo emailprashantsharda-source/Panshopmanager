@@ -378,3 +378,89 @@ test('roster sync: local-only staff appear; removed staff kept but hidden; login
   assert.equal(r.ok, true);
   assert.ok(db._store.get('staff360/A/punches/+919222222222_2026-11-17'));
 });
+
+/* ───────────── Standalone Staff360 (orgs) ───────────── */
+const NEW_OWNER = { uid: 'newOwner', token: { phone_number: '+919800000001' } };
+const ORG_EMP = { uid: 'orgEmp', token: { phone_number: '+919800000002' } };
+
+test('standalone: sign up, add staff, mark attendance on Basic (server-side audit)', async () => {
+  const { h, db } = setup();
+  assert.deepEqual((await h.myTenants({}, NEW_OWNER)).tenants, []);
+  const { id } = await h.createOrg({ name: 'Sharma Clinic', businessType: 'clinic' }, NEW_OWNER);
+  assert.match(id, /^s360_/);
+  const st = await h.getState({ shopId: id }, NEW_OWNER);
+  assert.equal(st.role, 'owner'); assert.equal(st.plan, 'basic'); assert.equal(st.tenant.kind, 'org'); assert.equal(st.tenant.name, 'Sharma Clinic');
+  const a = await h.staffSave({ shopId: id, name: 'Ravi Kumar', role: 'Receptionist', phone: '98000 00002', salary: 14000, canLogin: true }, NEW_OWNER);
+  const b = await h.staffSave({ shopId: id, name: 'Neha Gupta', role: 'Nurse', salary: 16000 }, NEW_OWNER);
+  await rejects(h.staffSave({ shopId: id, name: 'Dup', phone: '9800000002' }, NEW_OWNER), 'already-exists');
+  await rejects(h.staffSave({ shopId: id, name: 'X', canLogin: true }, NEW_OWNER), 'invalid-argument', /mobile/);
+  const roster = await h.staffRoster({ shopId: id }, NEW_OWNER);
+  assert.equal(roster.editable, true);
+  assert.deepEqual(roster.staff.map((x) => [x.name, x.phone, x.canLogin]).sort(), [['Neha Gupta', null, false], ['Ravi Kumar', '+919800000002', true]]);
+  await h.mark({ shopId: id, entries: [{ staffId: a.id, date: '2026-11-17', status: 'P' }, { staffId: b.id, date: '2026-11-17', status: 'A' }] }, NEW_OWNER);
+  await h.mark({ shopId: id, entries: [{ staffId: b.id, date: '2026-11-17', status: 'H' }], reason: 'Came after lunch' }, NEW_OWNER);
+  await rejects(h.mark({ shopId: id, entries: [{ staffId: b.id, date: '2026-12-30', status: 'P' }] }, NEW_OWNER), 'invalid-argument');
+  assert.equal(db._store.get(`staff360/${id}/marks/att_${b.id}_2026-11`).days['2026-11-17'].m, 'H');
+  const reg = await h.register({ shopId: id, date: '2026-11-17' }, NEW_OWNER);
+  assert.equal(reg.detailed, false);
+  assert.deepEqual(reg.rows.map((r) => [r.name, r.status]).sort(), [['Neha Gupta', 'H'], ['Ravi Kumar', 'P']]);
+  assert.equal(reg.rows[0].checkInGps, undefined, 'Basic register has no GPS detail');
+  const audit = (await h.listAudit({ shopId: id }, NEW_OWNER)).items.filter((x) => x.type === 'manual_mark');
+  const change = audit.find((x) => x.from === 'A' && x.to === 'H');
+  assert.ok(change && change.server === true && change.reason === 'Came after lunch' && change.actorUid === 'newOwner');
+  const rep = await h.report({ shopId: id, from: '2026-11-01', to: '2026-11-17' }, NEW_OWNER);
+  assert.equal(rep.total.P, 1); assert.equal(rep.total.H, 1);
+});
+
+test('standalone: employee logs in by phone, sees only own business, punches on Premium', async () => {
+  const { h, db } = setup();
+  const { id } = await h.createOrg({ name: 'Sharma Clinic' }, NEW_OWNER);
+  const a = await h.staffSave({ shopId: id, name: 'Ravi Kumar', role: 'Receptionist', phone: '9800000002', canLogin: true }, NEW_OWNER);
+  const t = await h.myTenants({}, ORG_EMP);
+  assert.deepEqual(t.tenants, [{ id, name: 'Sharma Clinic', kind: 'org', role: 'employee' }]);
+  await rejects(h.punch({ shopId: id, action: 'in', gps: gps(T0) }, ORG_EMP), 'failed-precondition', /premium/);
+  await grant(h, id, 'premium');
+  const p = await h.punch({ shopId: id, action: 'in', gps: gps(T0) }, ORG_EMP);
+  assert.equal(p.punch.inHm, '09:15');
+  assert.equal(db._store.get(`staff360/${id}/marks/att_${a.id}_2026-11`).days['2026-11-17'].m, 'P', 'mirrored into the org register');
+  for (const fn of ['staffRoster', 'register', 'mark', 'listAudit']) await rejects(h[fn]({ shopId: id, entries: [{}] }, ORG_EMP), 'permission-denied');
+  await rejects(h.getState({ shopId: id }, OWNER_A), 'permission-denied');
+  await rejects(h.staffSave({ shopId: id, name: 'Hack' }, OWNER_A), 'permission-denied');
+  // Turning the login off locks them out immediately.
+  await h.staffSave({ shopId: id, id: a.id, name: 'Ravi Kumar', role: 'Receptionist', canLogin: false }, NEW_OWNER);
+  await rejects(h.getState({ shopId: id }, ORG_EMP), 'permission-denied');
+  assert.deepEqual((await h.myTenants({}, ORG_EMP)).tenants, []);
+});
+
+test('standalone: limits and guards', async () => {
+  const { h } = setup();
+  for (let i = 0; i < 3; i++) await h.createOrg({ name: 'Biz ' + i }, NEW_OWNER);
+  await rejects(h.createOrg({ name: 'Biz 4' }, NEW_OWNER), 'resource-exhausted');
+  await rejects(h.createOrg({ name: 'x' }, OWNER_A), 'invalid-argument');
+  await rejects(h.getState({ shopId: 's360_doesnotexist0' }, NEW_OWNER), 'not-found');
+  const { id } = await h.createOrg({ name: 'Other Biz' }, OWNER_A);
+  const m = await h.staffSave({ shopId: id, name: 'Asha', role: 'Staff', phone: '9800000002', canLogin: true }, OWNER_A);
+  assert.ok(m.id);
+  await h.adminSetPlanConfig({ basic: { maxStaff: 1 } }, ADMIN);
+  await rejects(h.staffSave({ shopId: id, name: 'Second' }, OWNER_A), 'resource-exhausted', /allows 1/);
+});
+
+test('HisaabNow shop on the website: same data, stylist without app login gets a Staff360 login', async () => {
+  const { h, db } = setup();
+  await grant(h, 'A', 'premium');
+  const t = await h.myTenants({}, OWNER_A);
+  assert.ok(t.tenants.find((x) => x.id === 'A' && x.kind === 'shop' && x.role === 'owner'));
+  await rejects(h.staffSave({ shopId: 'A', name: 'New person' }, OWNER_A), 'failed-precondition', /HisaabNow app/);
+  await rejects(h.staffSave({ shopId: 'A', id: '+919111111111', canLogin: true }, OWNER_A), 'invalid-argument');
+  await h.staffSave({ shopId: 'A', id: 'riya', canLogin: true }, OWNER_A);
+  const RIYA = { uid: 'riyaUid', token: { phone_number: '+919444444444' } };
+  assert.equal((await h.getState({ shopId: 'A' }, RIYA)).role, 'employee');
+  const p = await h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, RIYA);
+  assert.ok(p.ok);
+  assert.equal(db._store.get('shops/A/agents/att_riya_2026-11').days['2026-11-17'].m, 'P', 'shop tenant marks stay where the app reads them');
+  await h.mark({ shopId: 'A', entries: [{ staffId: 'amit', date: '2026-11-16', status: 'L' }] }, MGR_A);
+  assert.equal(db._store.get('shops/A/agents/att_amit_2026-11').days['2026-11-16'].m, 'L');
+  // App roster sync keeps the website's login flag.
+  await h.syncRoster({ shopId: 'A', staff: [{ id: 'amit', name: 'Amit Kumar', phone: '9111111111' }, { id: 'riya', name: 'Riya Sharma', phone: '9444444444' }] }, OWNER_A);
+  assert.equal(db._store.get('staff360/A/roster/riya').canLogin, true);
+});
