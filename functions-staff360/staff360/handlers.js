@@ -1,0 +1,940 @@
+/* HisaabNow Staff360 — callable handlers.
+ *
+ * Every handler: (data, auth) -> result. Firebase is injected so the whole
+ * authorisation + plan-gating path runs in unit tests against an in-memory
+ * Firestore (see test/handlers.test.js).
+ *
+ * DATA LAYOUT (server-owned; clients never write these directly):
+ *   staff360Entitlements/{shopId}            plan + subscription state
+ *   staff360Config/plans                     admin-set prices / staff limits
+ *   staff360/{shopId}                        settings (timezone, GPS policy)
+ *   staff360/{shopId}/punches/{staffId_date} one doc per staff per day
+ *   staff360/{shopId}/punchLog/{autoId}      every punch attempt (dup detection)
+ *   staff360/{shopId}/shifts/{shiftId}
+ *   staff360/{shopId}/requests/{reqId}
+ *   staff360/{shopId}/audit/{autoId}
+ *   staff360/{shopId}/insights/{insightId}   reviewed / dismissed state
+ *   staff360/{shopId}/salary/{ym_staffId}    owner-editable draft estimates
+ *   staff360/{shopId}/aiUsage/{yyyymmdd}     rate-limit counters (no chat text)
+ *   staff360/{shopId}/whatsapp/settings      opt-in settings
+ *   staff360/{shopId}/whatsappLog/{autoId}   delivery log
+ *   staff360WaSchedule/{shopId}              index for the scheduled sender
+ *
+ * Existing HisaabNow data that is READ (never restructured):
+ *   shops/{shopId}                     ownerId, name
+ *   staffPhoneIndex/{phone}/shops/*    staff memberships (role, active)
+ *   shops/{shopId}/staff/{staffId}     name, role, phoneE164, salary
+ *   shops/{shopId}/agents/att_{sid}_{ym}  Step ATT month marks (Basic)
+ * Written into existing data (mirror only, flag-guarded):
+ *   shops/{shopId}/agents/att_{sid}_{ym}.days.{date}  so Step ATT's month
+ *   report and salary keep working with employee punches.
+ */
+'use strict';
+const C = require('./core');
+
+const AI_DAILY_LIMIT_DEFAULT = 40;
+const MAX_RANGE_DAYS = 92;
+
+function createHandlers(deps) {
+  const { db, HttpsError } = deps;
+  const now = deps.now || (() => Date.now());
+  const ai = deps.ai || { configured: () => false };
+  const wa = deps.wa || { configured: () => false };
+  const env = deps.env || {};
+
+  const fail = (code, msg) => { throw new HttpsError(code, msg); };
+  const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 200);
+
+  /* ───────────── identity & tenancy ───────────── */
+
+  async function caller(data, auth, opts) {
+    if (!auth || !auth.uid) fail('unauthenticated', 'Please sign in.');
+    const shopId = str(data && data.shopId, 128);
+    if (!shopId || shopId.includes('/')) fail('invalid-argument', 'shopId required');
+    const shopSnap = await db.doc(`shops/${shopId}`).get();
+    if (!shopSnap.exists) fail('not-found', 'Shop not found');
+    const shop = shopSnap.data() || {};
+    let role = null;
+    let membership = null;
+    if (shop.ownerId && shop.ownerId === auth.uid) role = 'owner';
+    const phone = auth.token && auth.token.phone_number;
+    if (!role && phone) {
+      // Same source the Firestore rules trust (isStaffOf): the CF-written
+      // login record shops/{shopId}/staff/{phoneE164}.
+      const sd = await db.doc(`shops/${shopId}/staff/${phone}`).get();
+      const m = sd.exists ? sd.data() : null;
+      if (m && m.active !== false && m._deleted !== true) {
+        membership = m; role = String(m.role || '').toLowerCase() === 'manager' ? 'manager' : 'employee';
+      }
+    }
+    if (!role) fail('permission-denied', 'You do not have access to this shop.');
+    const ent = C.resolveEntitlement((await db.doc(`staff360Entitlements/${shopId}`).get()).data(), now());
+    const ctx = { shopId, shop, role, uid: auth.uid, phone: phone || null, membership, ent, plan: ent.planId };
+    if (opts && opts.roles && !opts.roles.includes(role)) fail('permission-denied', 'Your role cannot do this.');
+    if (opts && opts.feature && !C.can(ctx.plan, opts.feature)) {
+      fail('failed-precondition', `upgrade_required:${C.FEATURES[opts.feature] >= 3 ? 'kingpro' : 'premium'}`);
+    }
+    return ctx;
+  }
+  const MANAGERS = ['owner', 'manager'];
+
+  async function settings(shopId) {
+    const s = (await db.doc(`staff360/${shopId}`).get()).data() || {};
+    return {
+      timezone: C.validTz(s.timezone) ? s.timezone : C.DEFAULT_TZ,
+      gpsPolicy: s.gpsPolicy === 'allow_without' ? 'allow_without' : 'require',
+      minAccuracyM: Number.isFinite(s.minAccuracyM) ? Math.min(5000, Math.max(10, s.minAccuracyM)) : 150,
+      mirrorToRegister: s.mirrorToRegister !== false,
+      lateThreshold: Number.isInteger(s.lateThreshold) ? Math.max(2, Math.min(15, s.lateThreshold)) : 3,
+    };
+  }
+
+  /* Staff = the owner's roster (sent by the app via syncRoster, because the
+   * app's staff list is NOT pushed to Firestore — HisaabSync NO_PUSH) plus
+   * any login record (shops/{shopId}/staff/{phone}) whose phone is not
+   * already on the roster. Roster ids are the ids Step ATT uses. */
+  async function staffList(shopId) {
+    const [logins, roster] = await Promise.all([
+      db.collection(`shops/${shopId}/staff`).get(),
+      db.collection(`staff360/${shopId}/roster`).get(),
+    ]);
+    const out = roster.docs.map((d) => Object.assign({ id: d.id }, d.data()))
+      .filter((s) => s && !s.removed && s.active !== false);
+    const phones = new Set(out.map((s) => s.phoneE164).filter(Boolean));
+    for (const d of logins.docs) {
+      const s = Object.assign({ id: d.id }, d.data());
+      if (!s || s._deleted || s.deletedAt || s.active === false) continue;
+      const ph = s.phoneE164 || (String(d.id).startsWith('+') ? d.id : null);
+      if (ph && phones.has(ph)) continue;
+      if (!s.phoneE164 && ph) s.phoneE164 = ph;
+      out.push(s);
+    }
+    return out;
+  }
+
+  async function selfStaff(ctx) {
+    if (!ctx.phone) fail('failed-precondition', 'Your login has no phone number.');
+    // Prefer the roster id (what Step ATT and the owner's reports use).
+    const r = await db.collection(`staff360/${ctx.shopId}/roster`).where('phoneE164', '==', ctx.phone).limit(5).get();
+    const fromRoster = r.docs.map((d) => Object.assign({ id: d.id }, d.data())).find((x) => !x.removed && x.active !== false);
+    if (fromRoster) return Object.assign({}, ctx.membership || {}, fromRoster);
+    const sd = await db.doc(`shops/${ctx.shopId}/staff/${ctx.phone}`).get();
+    const s = sd.exists ? Object.assign({ id: sd.id }, sd.data()) : null;
+    if (!s || s._deleted || s.deletedAt || s.active === false) fail('not-found', 'No staff profile matches your phone number. Ask the owner to add you.');
+    return s;
+  }
+
+  /* Owner/manager app sends its full staff list so server reports, AI and
+   * salary drafts include staff who have no login. Full replace: anyone
+   * missing from the list is marked removed (never deleted — history stays). */
+  async function syncRoster(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'staff_manage' });
+    const list = Array.isArray(data.staff) ? data.staff.slice(0, 500) : null;
+    if (!list) fail('invalid-argument', 'staff list required');
+    const coll = db.collection(`staff360/${ctx.shopId}/roster`);
+    const seen = new Set();
+    for (const x of list) {
+      const id = str(x && x.id, 128);
+      if (!id || id.includes('/') || seen.has(id)) continue;
+      seen.add(id);
+      const ph = str(x.phoneE164 || x.phone, 20).replace(/[^\d+]/g, '');
+      await coll.doc(id).set({
+        name: str(x.name, 80) || 'Staff', role: str(x.role, 40), phoneE164: /^\+\d{10,15}$/.test(ph) ? ph : (/^\d{10}$/.test(ph) ? '+91' + ph : null),
+        salary: Math.max(0, Math.min(1e7, Number(x.salary) || 0)), active: x.active !== false, removed: false,
+        updatedAt: now(), updatedBy: ctx.uid,
+      }, { merge: true });
+    }
+    const existing = await coll.get();
+    for (const d of existing.docs) if (!seen.has(d.id) && !d.data().removed) await coll.doc(d.id).set({ removed: true, updatedAt: now() }, { merge: true });
+    return { ok: true, count: seen.size };
+  }
+
+  async function shifts(shopId) {
+    const q = await db.collection(`staff360/${shopId}/shifts`).get();
+    return q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((s) => !s.deleted);
+  }
+  function shiftFor(list, staffId) { return list.find((s) => Array.isArray(s.staffIds) && s.staffIds.includes(staffId)) || null; }
+
+  async function audit(ctx, entry) {
+    await db.collection(`staff360/${ctx.shopId}/audit`).add(Object.assign({
+      at: now(), actorUid: ctx.uid, actorRole: ctx.role,
+    }, entry));
+  }
+
+  /* ───────────── data loading for a range ───────────── */
+
+  function checkRange(from, to) {
+    if (!C.isDate(from) || !C.isDate(to) || from > to) fail('invalid-argument', 'Invalid date range');
+    if (C.dateRange(from, to, MAX_RANGE_DAYS + 1).length > MAX_RANGE_DAYS) fail('invalid-argument', `Range is limited to ${MAX_RANGE_DAYS} days`);
+  }
+
+  async function loadRange(shopId, from, to, staffFilter) {
+    const staff = (await staffList(shopId)).filter((s) => !staffFilter || s.id === staffFilter);
+    const months = Array.from(new Set(C.dateRange(from, to).map((d) => d.slice(0, 7))));
+    const marks = {};
+    await Promise.all(staff.map(async (s) => {
+      marks[s.id] = {};
+      for (const ym of months) {
+        const snap = await db.doc(`shops/${shopId}/agents/att_${s.id}_${ym}`).get();
+        const d = snap.exists ? snap.data() : null;
+        if (d && !d._deleted && d.days && typeof d.days === 'object') {
+          for (const k of Object.keys(d.days)) if (k >= from && k <= to) marks[s.id][k] = d.days[k];
+        }
+      }
+    }));
+    const punches = {};
+    const pq = await db.collection(`staff360/${shopId}/punches`)
+      .where('attendanceDate', '>=', from).where('attendanceDate', '<=', to).get();
+    for (const d of pq.docs) {
+      const p = Object.assign({ id: d.id }, d.data());
+      if (staffFilter && p.staffId !== staffFilter) continue;
+      (punches[p.staffId] = punches[p.staffId] || {})[p.attendanceDate] = p;
+    }
+    return { staff, marks, punches };
+  }
+
+  async function mirrorMark(shopId, staffId, date, patch) {
+    const ref = db.doc(`shops/${shopId}/agents/att_${staffId}_${date.slice(0, 7)}`);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const cur = snap.exists ? (snap.data().days || {})[date] || {} : {};
+      const next = Object.assign({}, cur, patch);
+      for (const k of Object.keys(next)) if (next[k] == null || next[k] === '') delete next[k];
+      if (snap.exists) tx.update(ref, { [`days.${date}`]: next, _lastUpdated: now() });
+      else tx.set(ref, { id: `att_${staffId}_${date.slice(0, 7)}`, kind: 'hn_att', staffId, ym: date.slice(0, 7), days: { [date]: next }, _lastUpdated: now() });
+    });
+  }
+
+  /* ═════════════════════════ handlers ═════════════════════════ */
+
+  /* Who am I here, what plan, what may I do. Safe for every role. */
+  async function getState(data, auth) {
+    const ctx = await caller(data, auth);
+    const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
+    const out = {
+      serverTime: now(), // client uses this to correct device-clock skew on GPS timestamps
+      role: ctx.role, plan: ctx.plan, entitlement: ctx.ent,
+      features: C.entitlementMap(ctx.plan), plans: cfg,
+      ai: { configured: !!ai.configured() }, whatsapp: { providerConfigured: !!wa.configured() },
+      billing: { online: !!(env.STAFF360_BILLING_ENABLED === 'true') },
+    };
+    if (MANAGERS.includes(ctx.role)) {
+      out.settings = await settings(ctx.shopId);
+      out.staffCount = (await staffList(ctx.shopId)).length;
+    }
+    if (ctx.role === 'employee' || (ctx.role === 'manager' && ctx.phone)) {
+      try {
+        const me = await selfStaff(ctx);
+        const st = await settings(ctx.shopId);
+        const z = C.zoned(now(), st.timezone);
+        const sh = shiftFor(await shifts(ctx.shopId), me.id);
+        const today = (await db.doc(`staff360/${ctx.shopId}/punches/${me.id}_${z.date}`).get()).data() || null;
+        const yest = (await db.doc(`staff360/${ctx.shopId}/punches/${me.id}_${C.addDays(z.date, -1)}`).get()).data() || null;
+        out.me = {
+          staffId: me.id, name: me.name || 'Staff', role: me.role || '', today: z.date, timezone: st.timezone,
+          gpsPolicy: st.gpsPolicy, minAccuracyM: st.minAccuracyM,
+          shift: sh ? { name: sh.name, start: sh.start, end: sh.end, graceMin: sh.graceMin || 0, weeklyOff: sh.weeklyOff || [] } : null,
+          todayPunch: publicPunch(today), openYesterday: yest && yest.checkInAt && !yest.checkOutAt ? publicPunch(yest) : null,
+        };
+      } catch (e) {
+        if (ctx.role === 'employee') out.me = { error: e.message };
+      }
+    }
+    return out;
+  }
+
+  function publicPunch(p) {
+    if (!p) return null;
+    return {
+      attendanceDate: p.attendanceDate, checkInAt: p.checkInAt || null, checkOutAt: p.checkOutAt || null,
+      inHm: p.inHm || '', outHm: p.outHm || '', lateMinutes: p.lateMinutes || 0, earlyLeaveMinutes: p.earlyLeaveMinutes || 0,
+      workedMinutes: p.workedMinutes || 0,
+      checkInGps: p.checkInGps ? { accuracy: p.checkInGps.accuracy, lowAccuracy: !!p.checkInGps.lowAccuracy } : null,
+      checkOutGps: p.checkOutGps ? { accuracy: p.checkOutGps.accuracy, lowAccuracy: !!p.checkOutGps.lowAccuracy } : null,
+      checkInGpsStatus: p.checkInGpsStatus || null, checkOutGpsStatus: p.checkOutGpsStatus || null,
+      source: p.source || 'employee',
+    };
+  }
+
+  /* Employee check-in / check-out. Server time is authoritative. */
+  async function punch(data, auth) {
+    const ctx = await caller(data, auth, { feature: 'self_checkin' });
+    const action = data && data.action;
+    if (action !== 'in' && action !== 'out') fail('invalid-argument', 'action must be in or out');
+    const me = await selfStaff(ctx);
+    const st = await settings(ctx.shopId);
+    const t = now();
+    const z = C.zoned(t, st.timezone);
+    const gps = C.cleanGps(data.gps, t);
+    const gpsErr = C.GPS_ERRORS.includes(data.gpsError) ? data.gpsError : (gps ? null : 'unavailable');
+    const logRef = db.collection(`staff360/${ctx.shopId}/punchLog`);
+    const log = (outcome, date) => logRef.add({ staffId: me.id, staffName: me.name || '', action, attendanceDate: date || z.date, at: t, hm: z.hm, outcome });
+
+    if (!gps && st.gpsPolicy === 'require') {
+      await log('rejected_no_gps');
+      fail('failed-precondition', `gps_required:${gpsErr}`);
+    }
+    const gpsDoc = gps ? Object.assign({}, gps, { lowAccuracy: gps.accuracy > st.minAccuracyM }) : null;
+    const sh = shiftFor(await shifts(ctx.shopId), me.id);
+
+    if (action === 'in') {
+      const ref = db.doc(`staff360/${ctx.shopId}/punches/${me.id}_${z.date}`);
+      const res = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (snap.exists && snap.data().checkInAt) {
+          return { dup: snap.data().checkOutAt ? 'already_completed' : 'already_checked_in', p: snap.data() };
+        }
+        const p = {
+          shopId: ctx.shopId, staffId: me.id, staffName: me.name || '', attendanceDate: z.date, timezone: st.timezone,
+          shiftId: sh ? sh.id : null, shiftSnapshot: sh ? { name: sh.name, start: sh.start, end: sh.end, graceMin: sh.graceMin || 0 } : null,
+          status: 'P', checkInAt: t, inHm: z.hm, checkOutAt: null, outHm: '',
+          lateMinutes: sh ? C.lateMinutes(sh, z.minutes) : 0, earlyLeaveMinutes: 0, workedMinutes: 0,
+          checkInGps: gpsDoc, checkInGpsStatus: gps ? 'captured' : gpsErr,
+          clientTs: Number(data.clientTs) || null, source: 'employee', createdBy: ctx.uid, updatedBy: ctx.uid,
+          createdAt: t, updatedAt: t,
+        };
+        tx.set(ref, p);
+        return { p };
+      });
+      if (res.dup) { await log(res.dup); fail('already-exists', res.dup); }
+      await log('ok');
+      await audit(ctx, { type: 'punch_in', staffId: me.id, staffName: me.name || '', date: z.date, to: z.hm, gps: gps ? 'captured' : gpsErr });
+      if (st.mirrorToRegister) await mirrorMark(ctx.shopId, me.id, z.date, { m: 'P', i: z.hm, src: 's360' }).catch(() => {});
+      return { ok: true, punch: publicPunch(res.p) };
+    }
+
+    // check-out: today's open punch, else yesterday's open punch (overnight), within 20h.
+    let target = null;
+    for (const date of [z.date, C.addDays(z.date, -1)]) {
+      const snap = await db.doc(`staff360/${ctx.shopId}/punches/${me.id}_${date}`).get();
+      if (snap.exists) {
+        const p = snap.data();
+        if (p.checkInAt && !p.checkOutAt && t - p.checkInAt < 20 * 3600 * 1000) { target = { date, p }; break; }
+        if (date === z.date && p.checkOutAt) { await log('already_completed'); fail('already-exists', 'already_completed'); }
+      }
+    }
+    if (!target) { await log('no_open_checkin'); fail('failed-precondition', 'no_open_checkin'); }
+    const ref = db.doc(`staff360/${ctx.shopId}/punches/${me.id}_${target.date}`);
+    const out = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const p = snap.data();
+      if (p.checkOutAt) return { dup: true };
+      const inMin = C.hmToMin(p.inHm);
+      const worked = C.workedMinutes(p.checkInAt, t);
+      const patch = {
+        checkOutAt: t, outHm: z.hm, workedMinutes: worked,
+        earlyLeaveMinutes: p.shiftSnapshot ? C.earlyLeaveMinutes(p.shiftSnapshot, p.checkInAt, t, inMin) : 0,
+        checkOutGps: gpsDoc, checkOutGpsStatus: gps ? 'captured' : gpsErr, updatedAt: t, updatedBy: ctx.uid,
+      };
+      tx.update(ref, patch);
+      return { p: Object.assign({}, p, patch) };
+    });
+    if (out.dup) { await log('already_completed', target.date); fail('already-exists', 'already_completed'); }
+    await log('ok', target.date);
+    await audit(ctx, { type: 'punch_out', staffId: me.id, staffName: me.name || '', date: target.date, to: z.hm, gps: gps ? 'captured' : gpsErr });
+    if (st.mirrorToRegister) await mirrorMark(ctx.shopId, me.id, target.date, { o: z.hm, src: 's360' }).catch(() => {});
+    return { ok: true, punch: publicPunch(out.p) };
+  }
+
+  /* Employee's own history (last N days). */
+  async function myHistory(data, auth) {
+    const ctx = await caller(data, auth, { feature: 'self_checkin' });
+    const me = await selfStaff(ctx);
+    const st = await settings(ctx.shopId);
+    const to = C.zoned(now(), st.timezone).date;
+    const from = C.addDays(to, -Math.min(60, Math.max(7, Number(data.days) || 30)));
+    const { marks, punches } = await loadRange(ctx.shopId, from, to, me.id);
+    const agg = C.aggregate([{ id: me.id, name: me.name }], marks, punches, C.dateRange(from, to), { today: to });
+    const reqs = await db.collection(`staff360/${ctx.shopId}/requests`).where('staffId', '==', me.id).get();
+    return {
+      from, to, row: agg.rows[0],
+      requests: reqs.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => b.createdAt - a.createdAt).slice(0, 30),
+    };
+  }
+
+  /* Basic+: trusted audit entry for a manual mark made through Step ATT. */
+  async function logManualEdit(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'manual_attendance' });
+    const list = Array.isArray(data.entries) ? data.entries.slice(0, 50) : [data];
+    const ok = (m) => m === '' || ['P', 'H', 'A', 'L', 'W'].includes(m);
+    let n = 0;
+    let all = null;
+    for (const e of list) {
+      const date = str(e && e.date, 10);
+      if (!C.isDate(date)) fail('invalid-argument', 'date');
+      const from = str(e.from, 2), to = str(e.to, 2);
+      if (!ok(from) || !ok(to)) fail('invalid-argument', 'status');
+      const sid = str(e.staffId, 128);
+      const who = (all || (all = await staffList(ctx.shopId))).find((s) => s.id === sid);
+      if (!who) continue;
+      await audit(ctx, { type: 'manual_mark', staffId: sid, staffName: who.name || '', date, from, to,
+        reason: str(e.reason, 200), clientAt: Number(e.at) || null });
+      n++;
+    }
+    return { ok: true, logged: n };
+  }
+
+  async function listAudit(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'audit_log' });
+    const q = await db.collection(`staff360/${ctx.shopId}/audit`).orderBy('at', 'desc').limit(Math.min(200, Number(data.limit) || 100)).get();
+    return { items: q.docs.map((d) => Object.assign({ id: d.id }, d.data())) };
+  }
+
+  /* Premium: register with punch evidence for one day. */
+  async function register(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'history_detailed' });
+    const st = await settings(ctx.shopId);
+    const date = C.isDate(data.date) ? data.date : C.zoned(now(), st.timezone).date;
+    const { staff, marks, punches } = await loadRange(ctx.shopId, date, date);
+    const sh = await shifts(ctx.shopId);
+    return {
+      date, timezone: st.timezone,
+      rows: staff.map((s) => {
+        const p = (punches[s.id] || {})[date];
+        const rec = C.dayRecord((marks[s.id] || {})[date], p);
+        const shift = shiftFor(sh, s.id);
+        return Object.assign({ staffId: s.id, name: s.name || 'Staff', role: s.role || '', shift: shift ? shift.name : null }, rec, {
+          checkInGps: p && p.checkInGps ? p.checkInGps : null, checkOutGps: p && p.checkOutGps ? p.checkOutGps : null,
+          checkInGpsStatus: p ? p.checkInGpsStatus || null : null, checkOutGpsStatus: p ? p.checkOutGpsStatus || null : null,
+          weeklyOff: shift && Array.isArray(shift.weeklyOff) ? shift.weeklyOff.includes(C.weekdayOf(date)) : false,
+        });
+      }),
+    };
+  }
+
+  /* Reports: Basic gets totals; Premium+ gets hours/late and rows to export. */
+  async function report(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'report_basic' });
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const from = str(data.from, 10), to = str(data.to, 10) > today ? today : str(data.to, 10);
+    checkRange(from, to);
+    const sid = data.staffId ? str(data.staffId, 128) : null;
+    const { staff, marks, punches } = await loadRange(ctx.shopId, from, to, sid);
+    const agg = C.aggregate(staff, marks, punches, C.dateRange(from, to), { today });
+    const detailed = C.can(ctx.plan, 'report_detailed');
+    const rows = agg.rows.map((r) => {
+      const base = { staffId: r.staffId, name: r.name, P: r.P, H: r.H, A: r.A, L: r.L, W: r.W, unmarked: r.unmarked };
+      return detailed ? Object.assign(base, { late: r.late, lateMin: r.lateMin, earlyLeaves: r.earlyLeaves, workedMin: r.workedMin, incomplete: r.incomplete, days: r.days }) : base;
+    });
+    const total = detailed ? agg.total : { P: agg.total.P, H: agg.total.H, A: agg.total.A, L: agg.total.L, W: agg.total.W, unmarked: agg.total.unmarked };
+    return { from, to, detailed, exportAllowed: C.can(ctx.plan, 'report_export'), rows, total };
+  }
+
+  /* ───────────── Premium: shifts ───────────── */
+
+  async function listShifts(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'shifts' });
+    return { shifts: await shifts(ctx.shopId) };
+  }
+
+  async function saveShift(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'shifts' });
+    const name = str(data.name, 40);
+    if (!name) fail('invalid-argument', 'Shift name is required');
+    if (C.hmToMin(data.start) == null || C.hmToMin(data.end) == null) fail('invalid-argument', 'Start and end must be HH:MM');
+    if (data.start === data.end) fail('invalid-argument', 'Start and end cannot be the same');
+    const graceMin = Math.max(0, Math.min(180, Math.round(Number(data.graceMin) || 0)));
+    const weeklyOff = Array.isArray(data.weeklyOff) ? Array.from(new Set(data.weeklyOff.map(Number).filter((n) => n >= 0 && n <= 6))) : [];
+    const all = await staffList(ctx.shopId);
+    const valid = new Set(all.map((s) => s.id));
+    const staffIds = Array.isArray(data.staffIds) ? data.staffIds.map((x) => str(x, 128)).filter((x) => valid.has(x)) : [];
+    const id = data.id ? str(data.id, 64) : null;
+    const coll = db.collection(`staff360/${ctx.shopId}/shifts`);
+    const ref = id ? coll.doc(id) : coll.doc();
+    const prev = id ? (await ref.get()).data() || null : null;
+    if (id && !prev) fail('not-found', 'shift');
+    const doc = { name, start: data.start, end: data.end, graceMin, weeklyOff, staffIds, overnight: C.hmToMin(data.end) <= C.hmToMin(data.start), updatedAt: now(), updatedBy: ctx.uid };
+    if (!prev) Object.assign(doc, { createdAt: now(), createdBy: ctx.uid });
+    await ref.set(doc, { merge: true });
+    // One shift per person: remove these staff from other shifts.
+    if (staffIds.length) {
+      for (const other of await shifts(ctx.shopId)) {
+        if (other.id === ref.id || !Array.isArray(other.staffIds)) continue;
+        const keep = other.staffIds.filter((s) => !staffIds.includes(s));
+        if (keep.length !== other.staffIds.length) await coll.doc(other.id).set({ staffIds: keep, updatedAt: now() }, { merge: true });
+      }
+    }
+    await audit(ctx, { type: prev ? 'shift_updated' : 'shift_created', shiftId: ref.id, to: `${name} ${data.start}-${data.end} grace ${graceMin}`, from: prev ? `${prev.name} ${prev.start}-${prev.end} grace ${prev.graceMin}` : '' });
+    return { ok: true, id: ref.id };
+  }
+
+  async function deleteShift(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'shifts' });
+    const ref = db.doc(`staff360/${ctx.shopId}/shifts/${str(data.id, 64)}`);
+    const snap = await ref.get();
+    if (!snap.exists) fail('not-found', 'shift');
+    await ref.set({ deleted: true, staffIds: [], updatedAt: now(), updatedBy: ctx.uid }, { merge: true });
+    await audit(ctx, { type: 'shift_deleted', shiftId: snap.id, from: snap.data().name });
+    return { ok: true };
+  }
+
+  async function saveSettings(data, auth) {
+    const ctx = await caller(data, auth, { roles: ['owner'], feature: 'settings' });
+    const patch = {};
+    if (data.timezone != null) { if (!C.validTz(data.timezone)) fail('invalid-argument', 'Unknown timezone'); patch.timezone = data.timezone; }
+    if (data.gpsPolicy != null) patch.gpsPolicy = data.gpsPolicy === 'allow_without' ? 'allow_without' : 'require';
+    if (data.minAccuracyM != null) patch.minAccuracyM = Math.min(5000, Math.max(10, Math.round(Number(data.minAccuracyM) || 150)));
+    if (data.lateThreshold != null) patch.lateThreshold = Math.max(2, Math.min(15, Math.round(Number(data.lateThreshold) || 3)));
+    if (data.mirrorToRegister != null) patch.mirrorToRegister = !!data.mirrorToRegister;
+    patch.updatedAt = now(); patch.updatedBy = ctx.uid;
+    await db.doc(`staff360/${ctx.shopId}`).set(patch, { merge: true });
+    await audit(ctx, { type: 'settings_updated', to: JSON.stringify(Object.assign({}, patch, { updatedAt: undefined, updatedBy: undefined })) });
+    return { ok: true, settings: await settings(ctx.shopId) };
+  }
+
+  /* ───────────── Premium: leave & correction requests ───────────── */
+
+  async function submitRequest(data, auth) {
+    const ctx = await caller(data, auth, { feature: 'leave_requests' });
+    const me = await selfStaff(ctx);
+    const type = data.type === 'correction' ? 'correction' : data.type === 'leave' ? 'leave' : null;
+    if (!type) fail('invalid-argument', 'type must be leave or correction');
+    const reason = str(data.reason, 300);
+    if (reason.length < 3) fail('invalid-argument', 'Please add a reason');
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const doc = { type, staffId: me.id, staffName: me.name || '', reason, status: 'pending', createdAt: now(), createdBy: ctx.uid };
+    if (type === 'leave') {
+      const from = str(data.fromDate, 10), to = str(data.toDate || data.fromDate, 10);
+      checkRange(from, to);
+      if (C.dateRange(from, to).length > 31) fail('invalid-argument', 'Leave is limited to 31 days per request');
+      Object.assign(doc, { fromDate: from, toDate: to });
+    } else {
+      const date = str(data.date, 10);
+      if (!C.isDate(date) || date > today) fail('invalid-argument', 'Correction date must be today or earlier');
+      const want = {};
+      if (data.status) { if (!['P', 'H', 'A', 'L', 'W'].includes(data.status)) fail('invalid-argument', 'status'); want.status = data.status; }
+      if (data.checkIn) { if (C.hmToMin(data.checkIn) == null) fail('invalid-argument', 'checkIn'); want.checkIn = data.checkIn; }
+      if (data.checkOut) { if (C.hmToMin(data.checkOut) == null) fail('invalid-argument', 'checkOut'); want.checkOut = data.checkOut; }
+      if (!Object.keys(want).length) fail('invalid-argument', 'Say what should be corrected');
+      Object.assign(doc, { date, correction: want });
+    }
+    const ref = await db.collection(`staff360/${ctx.shopId}/requests`).add(doc);
+    await audit(ctx, { type: 'request_created', requestId: ref.id, staffId: me.id, staffName: me.name || '', to: type, reason });
+    return { ok: true, id: ref.id };
+  }
+
+  async function listRequests(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'leave_requests' });
+    let q = db.collection(`staff360/${ctx.shopId}/requests`);
+    if (['pending', 'approved', 'rejected'].includes(data.status)) q = q.where('status', '==', data.status);
+    const snap = await q.get();
+    return { items: snap.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => b.createdAt - a.createdAt).slice(0, 200) };
+  }
+
+  async function decideRequest(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'leave_requests' });
+    const decision = data.decision === 'approved' ? 'approved' : data.decision === 'rejected' ? 'rejected' : null;
+    if (!decision) fail('invalid-argument', 'decision');
+    const note = str(data.note, 300);
+    if (decision === 'rejected' && note.length < 3) fail('invalid-argument', 'Add a reason for rejecting');
+    const ref = db.doc(`staff360/${ctx.shopId}/requests/${str(data.id, 64)}`);
+    const req = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) fail('not-found', 'request');
+      const r = snap.data();
+      if (r.status !== 'pending') fail('failed-precondition', 'Already decided');
+      tx.update(ref, { status: decision, decidedBy: ctx.uid, decidedRole: ctx.role, decidedAt: now(), decisionNote: note });
+      return Object.assign({ id: snap.id }, r);
+    });
+    if (decision === 'approved') {
+      if (req.type === 'leave') {
+        for (const d of C.dateRange(req.fromDate, req.toDate)) await mirrorMark(ctx.shopId, req.staffId, d, { m: 'L', src: 's360' });
+      } else {
+        const c = req.correction || {};
+        const pref = db.doc(`staff360/${ctx.shopId}/punches/${req.staffId}_${req.date}`);
+        const ps = await pref.get();
+        if (ps.exists && (c.checkIn || c.checkOut)) {
+          const p = ps.data();
+          const patch = { corrected: true, correctionRequestId: req.id, updatedAt: now(), updatedBy: ctx.uid };
+          if (c.checkIn) patch.inHm = c.checkIn;
+          if (c.checkOut) patch.outHm = c.checkOut;
+          const inM = C.hmToMin(patch.inHm || p.inHm), outM = C.hmToMin(patch.outHm || p.outHm);
+          if (inM != null && outM != null) {
+            patch.workedMinutes = outM > inM ? outM - inM : outM + 1440 - inM;
+            if (p.shiftSnapshot) patch.lateMinutes = C.lateMinutes(p.shiftSnapshot, inM);
+          }
+          await pref.set(patch, { merge: true });
+        }
+        const m = {};
+        if (c.status) m.m = c.status;
+        if (c.checkIn) m.i = c.checkIn;
+        if (c.checkOut) m.o = c.checkOut;
+        await mirrorMark(ctx.shopId, req.staffId, req.date, Object.assign(m, { src: 's360' }));
+      }
+    }
+    await audit(ctx, { type: 'request_' + decision, requestId: req.id, staffId: req.staffId, staffName: req.staffName,
+      date: req.date || req.fromDate, from: 'pending', to: decision, reason: note });
+    return { ok: true };
+  }
+
+  /* ───────────── King PRO: AI Staff Manager ───────────── */
+
+  async function insightsFor(ctx, from, to, today) {
+    const st = await settings(ctx.shopId);
+    const { staff, marks, punches } = await loadRange(ctx.shopId, from, to);
+    const agg = C.aggregate(staff, marks, punches, C.dateRange(from, to), { today });
+    const period = { from, to };
+    const log = await db.collection(`staff360/${ctx.shopId}/punchLog`)
+      .where('attendanceDate', '>=', from).where('attendanceDate', '<=', to).get();
+    const dupes = C.detectDuplicatePunches(log.docs.map((d) => d.data()).filter((e) => e.outcome !== 'ok' && /already/.test(e.outcome)), period);
+    const list = C.detectAnomalies(agg, period, { lateThreshold: st.lateThreshold, today }).concat(dupes);
+    const states = await db.collection(`staff360/${ctx.shopId}/insights`).get();
+    const byId = {};
+    states.docs.forEach((d) => { byId[d.id] = d.data(); });
+    return { agg, staff, period, anomalies: list.map((a) => Object.assign(a, { review: byId[a.id] || null })) };
+  }
+
+  async function rateLimit(ctx) {
+    const day = C.zoned(now(), C.DEFAULT_TZ).date.replace(/-/g, '');
+    const ref = db.doc(`staff360/${ctx.shopId}/aiUsage/${day}`);
+    const limit = Number(env.STAFF360_AI_DAILY_LIMIT) || AI_DAILY_LIMIT_DEFAULT;
+    return db.runTransaction(async (tx) => {
+      const s = await tx.get(ref);
+      const n = s.exists ? Number(s.data().count) || 0 : 0;
+      if (n >= limit) fail('resource-exhausted', 'Daily AI question limit reached for this shop. Try again tomorrow.');
+      tx.set(ref, { count: n + 1, updatedAt: now() }, { merge: true });
+      return n + 1;
+    });
+  }
+
+  async function aiDashboard(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'ai_dashboard' });
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const from = C.addDays(today, -29);
+    const ins = await insightsFor(ctx, from, today, today);
+    const todayRows = ins.agg.rows.map((r) => r.days[r.days.length - 1]);
+    const counts = { P: 0, H: 0, A: 0, L: 0, W: 0, late: 0, notMarked: 0 };
+    todayRows.forEach((d) => { if (counts[d.status] != null) counts[d.status]++; else counts.notMarked++; if (d.lateMin > 0) counts.late++; });
+    const open = ins.anomalies.filter((a) => !a.review || a.review.state === 'open');
+    // Availability tomorrow from the last 8 weeks.
+    const lbFrom = C.addDays(today, -56);
+    const hist = await loadRange(ctx.shopId, lbFrom, today);
+    const histAgg = C.aggregate(hist.staff, hist.marks, hist.punches, C.dateRange(lbFrom, today), { today });
+    const avail = C.availabilityForecast(histAgg, C.addDays(today, 1), 8, 4);
+    const salarySnap = await db.collection(`staff360/${ctx.shopId}/salary`).where('ym', '==', today.slice(0, 7)).get();
+    const salaryDrafts = salarySnap.docs.map((d) => d.data());
+    const facts = {
+      today, period: { from, to: today }, staff: ins.staff.length, counts,
+      patterns: open.map((a) => ({ type: a.type, staff: a.staffName, summary: a.summary })),
+      availabilityTomorrow: avail.sufficient ? `${avail.expected} of ${avail.of} likely available` : 'not enough history',
+    };
+    let narrative = null;
+    let narrativeSource = 'template';
+    if (ai.configured()) {
+      try {
+        await rateLimit(ctx);
+        const ps = C.pseudonymise(JSON.stringify(facts), ins.staff);
+        const r = await ai.summarise(ps.text);
+        if (r && r.text) { narrative = C.reidentify(r.text, ps.map); narrativeSource = 'ai'; }
+        await logUsage(ctx, 'dashboard', r);
+      } catch (e) { narrative = null; }
+    }
+    if (!narrative) {
+      narrative = `Today: ${counts.P} present, ${counts.H} half-day, ${counts.A} absent, ${counts.L} on leave, ${counts.notMarked} not marked.` +
+        (counts.late ? ` ${counts.late} late arrival(s).` : '') + (open.length ? ` ${open.length} pattern(s) to review in the last 30 days.` : ' No patterns to review in the last 30 days.');
+    }
+    return {
+      today, counts, narrative, narrativeSource, anomalies: ins.anomalies, availability: avail,
+      salary: { ym: today.slice(0, 7), drafts: salaryDrafts.length, approved: salaryDrafts.filter((d) => d.status === 'approved').length,
+        totalGross: salaryDrafts.reduce((t, d) => t + (d.result ? d.result.gross : 0), 0) },
+      ai: { configured: !!ai.configured() },
+    };
+  }
+
+  async function logUsage(ctx, kind, r) {
+    await db.collection(`staff360/${ctx.shopId}/aiUsageLog`).add({
+      at: now(), kind, uid: ctx.uid, provider: (r && r.provider) || null,
+      inputTokens: (r && r.usage && r.usage.input) || 0, outputTokens: (r && r.usage && r.usage.output) || 0,
+    });
+  }
+
+  async function aiAsk(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'ai_assistant' });
+    const q = str(data.question, 300);
+    if (q.length < 3) fail('invalid-argument', 'Ask a question');
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const staff = await staffList(ctx.shopId);
+    const runFor = async (tool, args) => {
+      if (tool === 'salary') {
+        const s = await salaryList({ shopId: ctx.shopId, ym: today.slice(0, 7) }, auth);
+        return { text: `Draft salary estimate for ${s.ym} (owner approval required): ₹${s.totalGross.toLocaleString('en-IN')} gross across ${s.rows.length} staff.`,
+          items: s.rows.map((r) => ({ staffId: r.staffId, name: r.name, value: `₹${r.result.gross.toLocaleString('en-IN')}`, evidence: r.result.formula })),
+          period: { from: today.slice(0, 7) + '-01', to: today, label: 'This month' } };
+      }
+      if (tool === 'availability') {
+        const lbFrom = C.addDays(today, -56);
+        const h = await loadRange(ctx.shopId, lbFrom, today);
+        const av = C.availabilityForecast(C.aggregate(h.staff, h.marks, h.punches, C.dateRange(lbFrom, today), { today }), C.addDays(today, 1), 8, 4);
+        return { text: av.sufficient ? `About ${av.expected} of ${av.of} staff are likely available tomorrow. ${av.limitation}` : `Not enough history to estimate tomorrow's availability. ${av.limitation}`,
+          items: av.rows.map((r) => ({ staffId: r.staffId, name: r.name, value: r.likely == null ? `only ${r.samples} past days` : (r.likely ? 'likely' : 'unlikely'), evidence: [] })),
+          period: { from: lbFrom, to: today, label: 'Last 8 weeks' } };
+      }
+      const p = C.periodRange(args.period || 'this_month', today);
+      const period = Object.assign({}, p);
+      const ins = await insightsFor(ctx, period.from, period.to, today);
+      return C.runTool(tool, args, { agg: ins.agg, period, anomalies: ins.anomalies });
+    };
+
+    if (ai.configured()) {
+      await rateLimit(ctx);
+      const ps = C.pseudonymise(q, staff);
+      const names = staff.map((s, i) => ({ id: s.id, token: `EMP${i + 1}` }));
+      const r = await ai.answer(ps.text, names.map((n) => n.token), async (tool, args) => {
+        if (args && args.employee) { const hit = names.find((n) => n.token === args.employee); args.staffId = hit ? hit.id : '__none__'; }
+        const res = await runFor(tool, args || {});
+        const p2 = C.pseudonymise(JSON.stringify({ text: res.text, items: res.items.map((i) => ({ name: i.name, value: i.value, evidence: i.evidence })) }), staff);
+        return { forModel: p2.text, raw: res };
+      });
+      await logUsage(ctx, 'ask', r);
+      if (r && r.text) {
+        return { source: 'ai', text: C.reidentify(r.text, ps.map), results: r.toolResults || [], period: r.toolResults && r.toolResults[0] ? r.toolResults[0].period : null };
+      }
+    }
+    const route = C.routeQuestion(q, staff.map((s) => ({ id: s.id, name: s.name })));
+    if (!route.tool) return { source: 'rules', text: C.runTool(null, {}, { agg: { rows: [] }, period: C.periodRange('today', today) }).text, results: [] };
+    const res = await runFor(route.tool, route.args);
+    return { source: 'rules', text: res.text, results: [res], period: res.period };
+  }
+
+  async function alertAction(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'ai_anomalies' });
+    const id = str(data.id, 200);
+    const state = data.state === 'reviewed' ? 'reviewed' : data.state === 'dismissed' ? 'dismissed' : data.state === 'open' ? 'open' : null;
+    if (!id || !state) fail('invalid-argument', 'id/state');
+    const reason = str(data.reason, 200);
+    if (state === 'dismissed' && reason.length < 3) fail('invalid-argument', 'Add a reason for dismissing');
+    await db.doc(`staff360/${ctx.shopId}/insights/${id.replace(/\//g, '_')}`).set({ state, reason, by: ctx.uid, at: now() }, { merge: true });
+    await audit(ctx, { type: 'insight_' + state, insightId: id, reason });
+    return { ok: true };
+  }
+
+  /* Salary: compute drafts for a month; owner can override inputs; approve. */
+  async function salaryList(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'ai_salary' });
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const ym = /^\d{4}-\d{2}$/.test(data.ym || '') ? data.ym : today.slice(0, 7);
+    const from = ym + '-01';
+    const last = ym + '-' + String(C.daysInMonth(ym)).padStart(2, '0');
+    const to = last > today ? today : last;
+    if (from > to) fail('invalid-argument', 'Month is in the future');
+    const { staff, marks, punches } = await loadRange(ctx.shopId, from, to);
+    const agg = C.aggregate(staff, marks, punches, C.dateRange(from, to), { today });
+    const sh = await shifts(ctx.shopId);
+    const drafts = {};
+    (await db.collection(`staff360/${ctx.shopId}/salary`).where('ym', '==', ym).get()).docs.forEach((d) => { drafts[d.data().staffId] = d.data(); });
+    const advSnap = await db.collection(`shops/${ctx.shopId}/expenses`).where('subcat', '==', 'staff_advance').get();
+    const adv = {};
+    advSnap.docs.forEach((d) => { const x = d.data(); if (!x._deleted && String(x.dateISO || '').slice(0, 7) === ym) adv[x.staffId] = (adv[x.staffId] || 0) + (Number(x.amt) || 0); });
+    const cfgSnap = await Promise.all(staff.map((s) => db.doc(`shops/${ctx.shopId}/agents/attcfg_${s.id}`).get()));
+    const rows = agg.rows.map((r, i) => {
+      const s = staff[i];
+      const wage = cfgSnap[i].exists ? Number(cfgSnap[i].data().wage) || 0 : Number(s.dailyWage) || 0;
+      const d = drafts[s.id] || {};
+      const o = d.overrides || {};
+      const input = {
+        ym, basis: o.basis || (Number(s.salary) > 0 ? 'monthly' : 'daily'),
+        monthlySalary: o.monthlySalary != null ? o.monthlySalary : Number(s.salary) || 0,
+        dailyWage: o.dailyWage != null ? o.dailyWage : wage,
+        divisor: o.divisor, leavePaid: o.leavePaid != null ? o.leavePaid : true,
+        counts: { P: r.P, H: r.H, W: r.W, L: r.L },
+        overtimeHours: o.overtimeHours != null ? o.overtimeHours : C.overtimeHours(r.days, shiftFor(sh, s.id)),
+        overtimeRate: o.overtimeRate != null ? o.overtimeRate : 0,
+        advance: adv[s.id] || 0,
+      };
+      return { staffId: s.id, name: s.name || 'Staff', status: d.status || 'draft', approvedAt: d.approvedAt || null,
+        overrides: o, result: C.salaryEstimate(input), unmarked: r.unmarked, incomplete: r.incomplete };
+    });
+    return { ym, partialMonth: last > today, rows, totalGross: rows.reduce((t, r) => t + r.result.gross, 0) };
+  }
+
+  async function salarySave(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'ai_salary' });
+    const ym = str(data.ym, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym)) fail('invalid-argument', 'ym');
+    const sid = str(data.staffId, 128);
+    if (!(await staffList(ctx.shopId)).some((s) => s.id === sid)) fail('not-found', 'staff');
+    const ref = db.doc(`staff360/${ctx.shopId}/salary/${ym}_${sid}`);
+    const prev = (await ref.get()).data() || {};
+    if (data.approve) {
+      if (ctx.role !== 'owner') fail('permission-denied', 'Only the owner can approve salary estimates');
+      const list = await salaryList({ shopId: ctx.shopId, ym }, auth);
+      const row = list.rows.find((r) => r.staffId === sid);
+      await ref.set({ ym, staffId: sid, status: 'approved', approvedBy: ctx.uid, approvedAt: now(), result: row.result, overrides: prev.overrides || {} }, { merge: true });
+      await audit(ctx, { type: 'salary_approved', staffId: sid, staffName: row.name, date: ym, to: `₹${row.result.gross}` });
+      return { ok: true };
+    }
+    const o = data.overrides || {};
+    const clean = {};
+    if (o.basis === 'monthly' || o.basis === 'daily') clean.basis = o.basis;
+    for (const k of ['monthlySalary', 'dailyWage', 'overtimeHours', 'overtimeRate', 'divisor']) {
+      if (o[k] != null && o[k] !== '') { const n = Number(o[k]); if (!Number.isFinite(n) || n < 0 || n > 1e7) fail('invalid-argument', k); clean[k] = n; }
+    }
+    if (o.leavePaid != null) clean.leavePaid = !!o.leavePaid;
+    await ref.set({ ym, staffId: sid, status: 'draft', overrides: clean, updatedAt: now(), updatedBy: ctx.uid, approvedAt: null, approvedBy: null }, { merge: true });
+    await audit(ctx, { type: 'salary_inputs_edited', staffId: sid, date: ym, from: JSON.stringify(prev.overrides || {}), to: JSON.stringify(clean) });
+    const list = await salaryList({ shopId: ctx.shopId, ym }, auth);
+    const row = list.rows.find((r) => r.staffId === sid);
+    await ref.set({ result: row.result }, { merge: true });
+    return { ok: true, row };
+  }
+
+  /* ───────────── King PRO: WhatsApp reports ───────────── */
+
+  async function whatsapp(data, auth) {
+    const op = data.op || 'get';
+    const ctx = await caller(data, auth, { roles: ['owner'], feature: 'whatsapp_reports' });
+    const ref = db.doc(`staff360/${ctx.shopId}/whatsapp/settings`);
+    const cur = (await ref.get()).data() || {};
+    if (op === 'get') {
+      const logs = await db.collection(`staff360/${ctx.shopId}/whatsappLog`).orderBy('at', 'desc').limit(20).get();
+      return { settings: cur, providerConfigured: !!wa.configured(), log: logs.docs.map((d) => d.data()) };
+    }
+    if (op === 'preview') {
+      const st = await settings(ctx.shopId);
+      const today = C.zoned(now(), st.timezone).date;
+      const { staff, marks, punches } = await loadRange(ctx.shopId, today, today);
+      const agg = C.aggregate(staff, marks, punches, [today], { today });
+      return { text: digestText(ctx.shop.name || 'Your shop', today, agg) };
+    }
+    if (op === 'disable') {
+      await ref.set({ enabled: false, updatedAt: now(), updatedBy: ctx.uid }, { merge: true });
+      await db.doc(`staff360WaSchedule/${ctx.shopId}`).set({ enabled: false }, { merge: true });
+      await audit(ctx, { type: 'whatsapp_disabled' });
+      return { ok: true };
+    }
+    if (op === 'save') {
+      const recipient = str(data.recipient, 20).replace(/[^\d+]/g, '');
+      if (!/^\+\d{10,15}$/.test(recipient)) fail('invalid-argument', 'Recipient must be a full number like +919876543210');
+      const cadence = data.cadence === 'weekly' ? 'weekly' : 'daily';
+      if (C.hmToMin(data.sendTime) == null) fail('invalid-argument', 'sendTime');
+      if (data.consent !== true) fail('failed-precondition', 'Tick the consent box to receive reports');
+      const st = await settings(ctx.shopId);
+      const doc = { recipient, cadence, sendTime: data.sendTime, weekday: Number.isInteger(data.weekday) ? data.weekday % 7 : 1,
+        optIn: true, consentAt: now(), consentBy: ctx.uid, enabled: true, timezone: st.timezone, updatedAt: now() };
+      await ref.set(doc, { merge: true });
+      await db.doc(`staff360WaSchedule/${ctx.shopId}`).set({ shopId: ctx.shopId, enabled: true, cadence, sendTime: doc.sendTime, weekday: doc.weekday, timezone: st.timezone, lastSentKey: cur.lastSentKey || null }, { merge: true });
+      await audit(ctx, { type: 'whatsapp_optin', to: `${cadence} ${doc.sendTime}` });
+      return { ok: true, providerConfigured: !!wa.configured(), note: wa.configured() ? '' : 'Saved. Nothing will be sent until the WhatsApp provider is configured.' };
+    }
+    fail('invalid-argument', 'op');
+  }
+
+  function digestText(shopName, date, agg) {
+    const t = agg.total;
+    const late = agg.rows.filter((r) => r.late > 0).map((r) => r.name);
+    const abs = agg.rows.filter((r) => r.A > 0).map((r) => r.name);
+    return [`Staff360 · ${shopName} · ${date}`,
+      `Present ${t.P} · Half-day ${t.H} · Absent ${t.A} · Leave ${t.L} · Not marked ${t.unmarked}`,
+      abs.length ? `Absent: ${abs.join(', ')}` : '', late.length ? `Late: ${late.join(', ')}` : '',
+      `Hours logged: ${Math.floor(t.workedMin / 60)}h ${t.workedMin % 60}m`].filter(Boolean).join('\n');
+  }
+
+  /* Scheduled: send due digests. Never sends unless provider configured,
+   * opted in, enabled and the shop is on King PRO right now. */
+  async function runWhatsAppDigests() {
+    if (!wa.configured()) return { sent: 0, reason: 'provider_not_configured' };
+    const t = now();
+    const q = await db.collection('staff360WaSchedule').where('enabled', '==', true).get();
+    let sent = 0;
+    for (const d of q.docs) {
+      const s = d.data();
+      const shopId = d.id;
+      const ent = C.resolveEntitlement((await db.doc(`staff360Entitlements/${shopId}`).get()).data(), t);
+      if (!C.can(ent.planId, 'whatsapp_reports')) continue;
+      const z = C.zoned(t, s.timezone);
+      const due = C.hmToMin(s.sendTime);
+      if (due == null || z.minutes < due || z.minutes > due + 45) continue;
+      if (s.cadence === 'weekly' && z.weekday !== s.weekday) continue;
+      const key = `${z.date}`;
+      if (s.lastSentKey === key) continue;
+      const settingsDoc = (await db.doc(`staff360/${shopId}/whatsapp/settings`).get()).data() || {};
+      if (!settingsDoc.optIn || !settingsDoc.enabled) continue;
+      const shop = (await db.doc(`shops/${shopId}`).get()).data() || {};
+      const from = s.cadence === 'weekly' ? C.addDays(z.date, -6) : z.date;
+      const { staff, marks, punches } = await loadRange(shopId, from, z.date);
+      const agg = C.aggregate(staff, marks, punches, C.dateRange(from, z.date), { today: z.date });
+      const text = digestText(shop.name || 'Your shop', s.cadence === 'weekly' ? `${from} to ${z.date}` : z.date, agg);
+      let result;
+      try { result = await wa.send(settingsDoc.recipient, text); } catch (e) { result = { ok: false, error: String(e && e.message || e).slice(0, 200) }; }
+      await db.collection(`staff360/${shopId}/whatsappLog`).add({ at: t, key, ok: !!result.ok, providerId: result.id || null, error: result.error || null });
+      if (result.ok) { await d.ref.set({ lastSentKey: key }, { merge: true }); sent++; }
+    }
+    return { sent };
+  }
+
+  /* ───────────── Plans, billing, admin ───────────── */
+
+  async function createOrder(data, auth) {
+    const ctx = await caller(data, auth, { roles: ['owner'] });
+    const planId = data.planId;
+    if (!['premium', 'kingpro'].includes(planId)) fail('invalid-argument', 'planId');
+    const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
+    if (!cfg[planId].priceYearInr) return { ok: false, reason: 'price_not_configured' };
+    if (!deps.billing || !deps.billing.configured()) return { ok: false, reason: 'billing_not_configured' };
+    const order = await deps.billing.createOrder({ shopId: ctx.shopId, uid: ctx.uid, planId, amountInr: cfg[planId].priceYearInr });
+    await db.collection(`staff360/${ctx.shopId}/orders`).add({ at: now(), planId, amountInr: cfg[planId].priceYearInr, providerOrderId: order.id || null, status: 'created' });
+    return { ok: true, order };
+  }
+
+  /* Called ONLY from a verified payment webhook / admin. Never from a client. */
+  async function activatePlan(shopId, planId, opts) {
+    if (!PLANS_OK(planId)) throw new Error('bad plan');
+    const t = now();
+    const ref = db.doc(`staff360Entitlements/${shopId}`);
+    const cur = (await ref.get()).data() || {};
+    const start = cur.status === 'active' && cur.planId === planId && cur.endAt > t ? cur.endAt : t;
+    const months = (opts && opts.months) || 12;
+    const end = start + months * 30.4375 * 24 * 3600 * 1000;
+    await ref.set({ planId, status: 'active', startAt: cur.startAt && cur.planId === planId ? cur.startAt : t, endAt: Math.round(end),
+      graceUntil: Math.round(end + 7 * 24 * 3600 * 1000), provider: (opts && opts.provider) || 'manual', providerRef: (opts && opts.providerRef) || null,
+      renewal: 'manual', updatedAt: t, updatedBy: (opts && opts.by) || 'system' }, { merge: true });
+    return { ok: true, endAt: Math.round(end) };
+  }
+  const PLANS_OK = (p) => ['basic', 'premium', 'kingpro'].includes(p);
+
+  async function adminSetPlan(data, auth) {
+    if (!auth || !auth.uid) fail('unauthenticated', 'sign in');
+    const admins = String(env.STAFF360_ADMIN_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (!(auth.token && auth.token.admin === true) && !admins.includes(auth.uid)) fail('permission-denied', 'Admins only');
+    const shopId = str(data.shopId, 128);
+    if (!(await db.doc(`shops/${shopId}`).get()).exists) fail('not-found', 'shop');
+    if (data.planId === 'basic' || data.revoke) {
+      await db.doc(`staff360Entitlements/${shopId}`).set({ status: 'cancelled', updatedAt: now(), updatedBy: auth.uid }, { merge: true });
+      return { ok: true, plan: 'basic' };
+    }
+    if (!PLANS_OK(data.planId)) fail('invalid-argument', 'planId');
+    return activatePlan(shopId, data.planId, { months: Math.max(1, Math.min(36, Number(data.months) || 12)), provider: 'admin', providerRef: str(data.ref, 100), by: auth.uid });
+  }
+
+  async function adminSetPlanConfig(data, auth) {
+    if (!auth || !auth.uid) fail('unauthenticated', 'sign in');
+    const admins = String(env.STAFF360_ADMIN_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (!(auth.token && auth.token.admin === true) && !admins.includes(auth.uid)) fail('permission-denied', 'Admins only');
+    const patch = {};
+    for (const id of ['basic', 'premium', 'kingpro']) {
+      const o = (data && data[id]) || null;
+      if (!o) continue;
+      patch[id] = {};
+      if (o.priceYearInr !== undefined) patch[id].priceYearInr = o.priceYearInr === null ? null : Math.max(0, Math.round(Number(o.priceYearInr) || 0)) || null;
+      if (o.maxStaff !== undefined) patch[id].maxStaff = o.maxStaff === null ? null : Math.max(0, Math.round(Number(o.maxStaff) || 0)) || null;
+    }
+    await db.doc('staff360Config/plans').set(patch, { merge: true });
+    return { ok: true };
+  }
+
+  return {
+    getState, punch, myHistory, syncRoster, logManualEdit, listAudit, register, report,
+    listShifts, saveShift, deleteShift, saveSettings,
+    submitRequest, listRequests, decideRequest,
+    aiDashboard, aiAsk, alertAction, salaryList, salarySave,
+    whatsapp, runWhatsAppDigests, createOrder, activatePlan, adminSetPlan, adminSetPlanConfig,
+    _digestText: digestText,
+  };
+}
+
+module.exports = { createHandlers };
