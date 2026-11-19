@@ -1,4 +1,4 @@
-/* Staff360 v2 — Attendance Register: list view, calendar view, mark/correct, bulk mark. */
+/* Staff360 v2 — Attendance: day view (mark), month calendar, mark/correct sheet, bulk mark. */
 (function () {
   'use strict';
   var St = window.S360Store, U = window.S360UI, esc = U.esc, ic = U.ic;
@@ -14,49 +14,99 @@
     if (!/^\d{4}-\d{2}$/.test(F.amonth || '') || F.amonth > St.today.slice(0, 7) || F.amonth < St.today.slice(0, 4) - 1 + St.today.slice(4, 7)) F.amonth = St.today.slice(0, 7);
     if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) { F.adate = arg > St.today ? St.today : arg; F.aview = 'list'; }
     else if (arg === 'calendar') F.aview = 'calendar';
-    var h = U.pageHead('Attendance Register', 'View, mark and correct daily attendance for your team.',
-      (St.can('employee_login') && F.aview === 'list' ? '<button class="btn" data-a="att-noshow" title="Marks staff who check in on their phone but didn’t, for this date">' + ic('x') + 'Mark no-shows absent</button>' : '') +
-      '<button class="btn" data-a="att-bulk">' + ic('users') + 'Bulk mark</button><button class="btn pri" data-a="att-edit::' + F.adate + '">' + ic('plus') + 'Add / correct attendance</button>');
+    if (F.aview === 'list') return markScreen();
+    var h = U.pageHead('Attendance', 'Month view. Tap a day to open it.', '<button class="btn" data-a="att-view:list">' + ic('list') + 'Day view</button>');
     h += '<section class="card"><div class="toolbar">' +
-      (F.aview === 'list' ? '<div class="date-nav"><button class="icon-btn sm" data-a="att-day:-1" aria-label="Previous day">' + ic('left') + '</button><label class="sr" for="f-adate">Date</label><input id="f-adate" type="date" data-f="adate" value="' + F.adate + '" max="' + St.today + '"><button class="icon-btn sm" data-a="att-day:1" aria-label="Next day"' + (F.adate >= St.today ? ' disabled' : '') + '>' + ic('right') + '</button></div>'
-        : '<div class="date-nav"><button class="icon-btn sm" data-a="att-month:-1" aria-label="Previous month">' + ic('left') + '</button><b class="mlabel">' + U.monthLabel(F.amonth) + '</b><button class="icon-btn sm" data-a="att-month:1" aria-label="Next month"' + (F.amonth >= St.today.slice(0, 7) ? ' disabled' : '') + '>' + ic('right') + '</button></div>') +
-      '<label class="sr" for="f-aemp">Employee</label><select id="f-aemp" data-f="aemp">' + U.options([['', 'All employees']].concat(St.staff().map(function (s) { return [s.id, s.name]; })), F.aemp) + '</select>' +
-      '<label class="sr" for="f-adesig">Designation</label><select id="f-adesig" data-f="adesig">' + U.options([['', 'All designations']].concat(St.designations()), F.adesig) + '</select>' +
-      (F.aview === 'list' ? '<label class="sr" for="f-astatus">Status</label><select id="f-astatus" data-f="astatus">' + U.options([['', 'All status']].concat(STATUS_OPTS).concat([['notin', 'Not marked']]), F.astatus) + '</select>' : '') +
-      '<div class="seg" role="group" aria-label="View"><button class="' + (F.aview === 'list' ? 'on' : '') + '" data-a="att-view:list" aria-pressed="' + (F.aview === 'list') + '">' + ic('list') + 'List</button><button class="' + (F.aview === 'calendar' ? 'on' : '') + '" data-a="att-view:calendar" aria-pressed="' + (F.aview === 'calendar') + '">' + ic('grid') + 'Calendar</button></div></div>';
-    h += F.aview === 'list' ? list() : calendar();
-    return h + '</section>';
+      '<div class="date-nav"><button class="icon-btn sm" data-a="att-month:-1" aria-label="Previous month">' + ic('left') + '</button><b class="mlabel">' + U.monthLabel(F.amonth) + '</b><button class="icon-btn sm" data-a="att-month:1" aria-label="Next month"' + (F.amonth >= St.today.slice(0, 7) ? ' disabled' : '') + '>' + ic('right') + '</button></div>' +
+      '<label class="sr" for="f-aemp">Employee</label><select id="f-aemp" data-f="aemp">' + U.options([['', 'Whole team']].concat(St.staff().map(function (s) { return [s.id, s.name]; })), F.aemp) + '</select></div>';
+    return h + calendar() + '</section>';
+  };
+
+  /* ---------- Day view: mark a day (Nov 2026 redesign) ----------
+   * One card per person with four big buttons (P, ½, L, A); tap again to undo. Tap a
+   * name to add times or fix a day. "Mark remaining as Present" replaces Bulk mark. */
+  F.atab = F.atab || 'all'; F.aq = F.aq || '';
+  var BTN = [['present', 'P', 'Present'], ['halfday', '½', 'Half day'], ['leave', 'L', 'Leave'], ['absent', 'A', 'Absent']];
+  function pressedKey(r) { if (!r || r.status === 'notin') return ''; return r.status === 'late' ? 'present' : r.status; }
+  function markScreen() {
+    var d = F.adate, isToday = d === St.today, all = St.staff();
+    var rows = all.map(function (p) { return { p: p, r: St.record(p.id, d) }; });
+    var c = { present: 0, halfday: 0, leave: 0, absent: 0, weeklyoff: 0 }, marked = 0;
+    rows.forEach(function (x) { var k = pressedKey(x.r); if (k) { marked++; if (c[k] != null) c[k]++; } });
+    var total = rows.length, left = total - marked;
+    var q = String(F.aq || '').trim().toLowerCase();
+    var shown = rows.filter(function (x) {
+      var done = !!pressedKey(x.r);
+      if (F.atab === 'todo' && done) return false;
+      if (F.atab === 'done' && !done) return false;
+      return !q || x.p.name.toLowerCase().indexOf(q) >= 0 || String(x.p.designation || '').toLowerCase().indexOf(q) >= 0;
+    });
+    var dayName = isToday ? 'Today' : d === U.addDays(St.today, -1) ? 'Yesterday' : U.dLabel(d);
+    var h = '<div class="mk">';
+    h += '<div class="mk-top"><h1 class="mk-title">Attendance</h1><button class="btn sm" data-a="att-view:calendar">' + ic('grid') + 'Month</button></div>';
+    h += '<div class="mk-date"><button class="icon-btn" data-a="att-day:-1" aria-label="Previous day">' + ic('left') + '</button>' +
+      '<label class="mk-dl"><b>' + dayName + '</b><small>' + U.dLabel(d, true) + '</small>' +
+      '<input type="date" data-f="adate" value="' + d + '" max="' + St.today + '" aria-label="Pick a date"></label>' +
+      '<button class="icon-btn" data-a="att-day:1" aria-label="Next day"' + (d >= St.today ? ' disabled' : '') + '>' + ic('right') + '</button></div>';
+    if (!total) {
+      return h + '<section class="card"><div class="empty big">' + ic('users') + '<b>No staff yet</b><span>' + (St.editable ? 'Add your team first.' : 'Staff you add in the HisaabNow app appear here.') + '</span>' +
+        (St.editable ? '<button class="btn pri" data-a="staff-add">' + ic('plus') + 'Add employee</button>' : '') + '</div></section></div>';
+    }
+    var pct = function (n) { return (n / total * 100).toFixed(2) + '%'; };
+    h += '<section class="card mk-prog"><div class="mk-pl"><b>' + marked + ' of ' + total + ' marked</b><span>' + (left ? left + ' left' : 'All done') + '</span></div>' +
+      '<div class="mk-bar" aria-hidden="true"><i style="width:' + pct(c.present) + ';background:#078C45"></i><i style="width:' + pct(c.halfday) + ';background:#E0A100"></i><i style="width:' + pct(c.leave) + ';background:#6E4BE8"></i><i style="width:' + pct(c.absent) + ';background:#D92D20"></i><i style="width:' + pct(c.weeklyoff) + ';background:#98A2B3"></i></div>' +
+      '<div class="mk-leg"><span><i style="background:#078C45"></i>Present <b>' + c.present + '</b></span><span><i style="background:#E0A100"></i>Half day <b>' + c.halfday + '</b></span><span><i style="background:#6E4BE8"></i>Leave <b>' + c.leave + '</b></span><span><i style="background:#D92D20"></i>Absent <b>' + c.absent + '</b></span>' +
+      (c.weeklyoff ? '<span><i style="background:#98A2B3"></i>Weekly off <b>' + c.weeklyoff + '</b></span>' : '') + '</div></section>';
+    h += '<div class="mk-tabs" role="tablist">' + [['all', 'All', total], ['todo', 'To mark', left], ['done', 'Marked', marked]].map(function (t) {
+      return '<button role="tab" aria-selected="' + (F.atab === t[0]) + '" class="' + (F.atab === t[0] ? 'on' : '') + '" data-a="att-tab:' + t[0] + '">' + t[1] + ' ' + t[2] + '</button>';
+    }).join('') + '</div>';
+    if (total > 10) h += '<label class="sr" for="f-aq">Search staff</label><input id="f-aq" class="mk-q" type="search" data-f="aq" value="' + esc(F.aq) + '" placeholder="Search by name or role">';
+    h += '<div class="mk-list">' + (shown.length ? shown.map(row).join('') : '<p class="mk-empty">' + (F.atab === 'todo' ? 'Everyone is marked for ' + (isToday ? 'today' : U.dLabel(d)) + '.' : q ? 'No one matches “' + esc(F.aq) + '”.' : 'Nobody marked yet.') + '</p>') + '</div>';
+    h += '<p class="mk-help">P Present · ½ Half day · L Leave · A Absent. Tap again to undo. Tap a name to add times or fix a day.' +
+      (St.can('employee_login') ? '<br><button class="link" data-a="att-noshow">Mark phone no-shows absent</button>' : '') + '</p>';
+    if (left) h += '<div class="mk-bulk"><button class="btn pri" data-a="att-rest">' + ic('check') + 'Mark remaining ' + left + ' as Present</button></div>';
+    return h + '</div>';
+  }
+  function row(x) {
+    var p = x.p, r = x.r, k = pressedKey(r), sub, cls = '';
+    if (r && r.in) {
+      sub = 'In ' + U.hm12(r.in) + (r.out ? ' · Out ' + U.hm12(r.out) : '') + (r.status === 'late' ? ' · <span class="mk-late">Late +' + U.lateMin(r) + 'm</span>' : '');
+      if (r.gps && r.gps.outside) sub += ' · <span class="mk-late">' + (r.gps.dist >= 1000 ? (Math.round(r.gps.dist / 100) / 10) + ' km' : r.gps.dist + ' m') + ' away</span>';
+      cls = 'ok';
+    } else if (k === 'weeklyoff') sub = 'Weekly off';
+    else if (k) sub = St.LABEL[r.status] + ' · marked';
+    else { sub = esc(p.designation || 'Staff') + ' · not marked'; cls = 'todo'; }
+    if (r && r.remark) sub += ' · ' + esc(r.remark);
+    return '<div class="mk-row"><button class="mk-who" data-a="att-edit:' + p.id + ':' + F.adate + '" aria-label="Add times or fix ' + esc(p.name) + '">' + U.avatar(p, 40) +
+      '<span><b>' + esc(p.name) + '</b><small class="' + cls + '">' + sub + '</small></span></button>' +
+      '<div class="mk-btns" role="group" aria-label="Mark ' + esc(p.name) + '">' + BTN.map(function (b) {
+        var on = k === b[0];
+        return '<button class="' + b[0] + (on ? ' on' : '') + '" aria-pressed="' + on + '" aria-label="' + b[2] + ' for ' + esc(p.name) + '" data-a="att-set:' + p.id + ':' + b[0] + '">' + b[1] + '</button>';
+      }).join('') + '</div></div>';
+  }
+  U.actions['att-tab'] = function (p) { F.atab = p[0]; U.render(); };
+  U.actions['att-set'] = function (p) {
+    var who = St.person(p[0]), d = F.adate, r = St.record(p[0], d), cur = pressedKey(r), want = p[1];
+    if (!who || d > St.today) return;
+    if (cur === want) {
+      // Tap again = undo, unless they checked in from their phone (change that from the name).
+      if (r && r.in) { U.toast(who.name + ' checked in at ' + U.hm12(r.in) + '. Tap the name to change it.'); return; }
+      St.markOne(p[0], d, { status: 'notin', in: null, out: null, remark: '' }, 'Undo');
+      U.toast(who.name + ': mark removed'); return;
+    }
+    var keep = r && r.in && (want === 'present' || want === 'halfday');
+    St.markOne(p[0], d, { status: want === 'present' && r && r.status === 'late' ? 'late' : want, in: keep ? r.in : null, out: keep ? r.out : null, remark: '' }, '');
+    U.toast(who.name + ': ' + St.LABEL[want]);
+  };
+  U.actions['att-rest'] = function () {
+    var d = F.adate, ids = St.staff().filter(function (p) { return !pressedKey(St.record(p.id, d)); }).map(function (p) { return p.id; });
+    if (!ids.length) return;
+    St.markMany(ids, d, 'present', 'Marked remaining as Present', true);
+    U.toast(ids.length + ' marked Present for ' + U.dLabel(d));
   };
 
   function people() {
     return St.staff().filter(function (s) { return (!F.aemp || s.id === F.aemp) && (!F.adesig || s.designation === F.adesig); });
-  }
-
-  function list() {
-    var rows = people().map(function (s) { return { p: s, r: St.record(s.id, F.adate) }; });
-    var c = { present: 0, late: 0, halfday: 0, absent: 0, leave: 0, weeklyoff: 0, notin: 0 };
-    rows.forEach(function (x) { c[x.r ? x.r.status : 'notin']++; });
-    rows = rows.filter(function (x) { return !F.astatus || (x.r ? x.r.status : 'notin') === F.astatus; });
-    var nSel = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
-    var h = '<div class="chips">' + [['present', c.present], ['late', c.late], ['halfday', c.halfday], ['absent', c.absent], ['leave', c.leave], ['weeklyoff', c.weeklyoff], ['notin', c.notin]].map(function (k) {
-      return '<button class="chip' + (F.astatus === k[0] ? ' on' : '') + '" data-a="att-chip:' + k[0] + '"><i style="background:' + U.STATUS[k[0]][1] + '"></i>' + U.STATUS[k[0]][0] + ' <b>' + k[1] + '</b></button>';
-    }).join('') + '<span class="muted" style="margin-left:auto">' + U.dLabel(F.adate, true) + (F.adate === St.today ? ' · today' : '') + '</span></div>';
-    if (nSel) h += '<div class="bulkbar" role="region" aria-label="Bulk actions"><b>' + nSel + ' selected</b>' + STATUS_OPTS.map(function (o) { return '<button class="btn sm" data-a="att-bulkset:' + o[0] + '">' + o[1] + '</button>'; }).join('') + '<button class="btn sm ghost" data-a="att-unsel">Clear</button></div>';
-    if (!rows.length) return h + '<div class="empty big">' + ic('calc') + '<b>No staff match these filters</b><button class="btn" data-a="att-clear">Clear filters</button></div>';
-    var allSel = rows.every(function (x) { return sel[x.p.id]; });
-    h += '<div class="tbl-wrap"><table class="t"><thead><tr><th class="cb"><input type="checkbox" aria-label="Select all" data-a="att-selall"' + (allSel ? ' checked' : '') + '></th><th>Employee</th><th>Shift</th><th>Check-in</th><th>Check-out</th><th>Working hours</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>' +
-      rows.map(function (x) {
-        var sh = St.shift(x.p.shift), r = x.r;
-        return '<tr' + (sel[x.p.id] ? ' class="sel"' : '') + '><td class="cb"><input type="checkbox" aria-label="Select ' + esc(x.p.name) + '" data-a="att-sel:' + x.p.id + '"' + (sel[x.p.id] ? ' checked' : '') + '></td>' +
-          '<td><a class="who" href="#/staff/' + x.p.id + '">' + U.avatar(x.p) + '<span><b>' + esc(x.p.name) + '</b><small>' + esc(x.p.designation) + '</small></span></a></td>' +
-          '<td>' + (sh ? esc(sh.name) + ' <small class="muted">(' + U.hm12(sh.start) + '–' + U.hm12(sh.end) + ')</small>' : '—') + '</td>' +
-          '<td>' + U.hm12(r && r.in) + (r && r.status === 'late' ? ' <small class="late">+' + U.lateMin(r) + 'm</small>' : '') + (r && r.gps ? (r.gps.outside ? ' <span class="badge b-red" title="' + r.gps.dist + ' m from the shop">' + ic('pin') + 'Away ' + (r.gps.dist >= 1000 ? (Math.round(r.gps.dist / 100) / 10) + ' km' : r.gps.dist + ' m') + '</span>' : ' <span title="GPS ±' + r.gps.acc + ' m' + (r.gps.dist != null ? ' · ' + r.gps.dist + ' m from the shop' : '') + '" class="gps">' + ic('pin') + '</span>') : r && r.gps === false && r.in ? ' <span class="badge b-grey" title="Checked in without location">No GPS</span>' : '') + '</td>' +
-          '<td>' + U.hm12(r && r.out) + '</td><td>' + U.dur(U.worked(r)) + '</td>' +
-          '<td>' + U.badge(r ? r.status : null) + (r && r.remark ? '<br><small class="muted wrap">' + esc(r.remark) + '</small>' : '') + '</td>' +
-          '<td class="r"><span class="row-act">' + (!r || r.status === 'notin' ? '<button class="btn sm" data-a="att-quick:' + x.p.id + ':present">Present</button><button class="btn sm" data-a="att-quick:' + x.p.id + ':absent">Absent</button>' : '') +
-          '<button class="icon-btn sm" data-a="att-edit:' + x.p.id + ':' + F.adate + '" aria-label="Edit attendance for ' + esc(x.p.name) + '" title="Edit">' + ic('edit') + '</button></span></td></tr>';
-      }).join('') + '</tbody></table></div>';
-    return h;
   }
 
   function calendar() {
@@ -86,23 +136,28 @@
   }
 
   // ---------- mark / correct ----------
-  function editModal(sid, date) {
+  function editModal(sid, date, fixed) {
     var staffList = St.staff();
     sid = sid || (staffList[0] || {}).id;
     var p = St.person(sid), r = St.record(sid, date), sh = St.shift(p.shift);
     var cur = r && r.status !== 'notin' ? r.status : 'present';
-    var body = '<div class="grid2">' +
-      U.field('Employee', '<select id="m-emp" name="staff">' + U.options(staffList.map(function (s) { return [s.id, s.name + ' · ' + s.id]; }), sid) + '</select>', { for: 'staff' }) +
-      U.field('Date', '<input id="m-date" name="date" type="date" value="' + date + '" max="' + St.today + '">', { for: 'date' }) + '</div>' +
+    var head = fixed
+      ? '<div class="mk-sheet-who">' + U.avatar(p, 44) + '<span><b>' + esc(p.name) + '</b><small>' + esc(p.designation || 'Staff') + ' · ' + U.dLabel(date, true) + '</small></span></div>' +
+        '<input type="hidden" name="staff" value="' + esc(sid) + '"><input type="hidden" name="date" value="' + date + '">' +
+        (r && r.in ? '<p class="ok-note" style="margin:0 0 12px">' + ic('pin') + 'Checked in at ' + U.hm12(r.in) + (r.out ? ', out at ' + U.hm12(r.out) : '') + (r.gps ? (r.gps.outside ? ' · ' + r.gps.dist + ' m from the shop' : ' · location captured') : '') + (sh ? '. Shift starts ' + U.hm12(sh.start) + ' (' + sh.graceMin + ' min grace).' : '.') + '</p>' : '')
+      : '<div class="grid2">' +
+        U.field('Employee', '<select id="m-emp" name="staff">' + U.options(staffList.map(function (s) { return [s.id, s.name + ' · ' + s.id]; }), sid) + '</select>', { for: 'staff' }) +
+        U.field('Date', '<input id="m-date" name="date" type="date" value="' + date + '" max="' + St.today + '">', { for: 'date' }) + '</div>';
+    var body = head +
       '<div class="fld"><span class="lbl-like">Status</span><div class="radio-chips" role="radiogroup" aria-label="Status">' + STATUS_OPTS.map(function (o) {
         return '<label class="rc"><input type="radio" name="status" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span><i style="background:' + U.STATUS[o[0]][1] + '"></i>' + o[1] + '</span></label>';
       }).join('') + '</div></div>' +
-      '<div class="grid2 times">' + U.field('Check-in (optional)', '<input id="m-in" name="in" type="time" value="' + ((r && r.in) || (sh ? sh.start : '')) + '">', { for: 'in', hint: sh ? 'Shift starts ' + U.hm12(sh.start) + ' · ' + sh.graceMin + ' min grace' : '' }) +
+      '<div class="grid2 times">' + U.field('Check-in (optional)', '<input id="m-in" name="in" type="time" value="' + ((r && r.in) || '') + '">', { for: 'in', hint: sh ? 'Shift starts ' + U.hm12(sh.start) + ' · ' + sh.graceMin + ' min grace' : '' }) +
       U.field('Check-out (optional)', '<input id="m-out" name="out" type="time" value="' + ((r && r.out) || '') + '">', { for: 'out', hint: sh ? 'Shift ends ' + U.hm12(sh.end) : '' }) + '</div>' +
       U.field(r && r.status !== 'notin' ? 'Reason for change' : 'Remark', '<textarea id="m-remark" name="remark" rows="2" maxlength="200" placeholder="' + (r && r.status !== 'notin' ? 'Required — e.g. forgot to check out' : 'Optional') + '">' + '</textarea>', { for: 'remark', req: !!(r && r.status !== 'notin') }) +
       (r && r.status !== 'notin' ? '<p class="note">' + ic('shield') + '<span>Currently: <b>' + St.LABEL[r.status] + (r.in ? ' ' + U.hm12(r.in) + (r.out ? '–' + U.hm12(r.out) : '') : '') + '</b>. The old value and your reason are saved in the activity log.</span></p>' : '');
     var form = U.modal({
-      title: 'Mark attendance', body: body, submit: 'Save attendance', wide: true,
+      title: fixed ? 'Attendance' : 'Mark attendance', body: body, submit: 'Save', wide: !fixed,
       onChange: function (e, f) {
         if (e.target.name === 'staff' || e.target.name === 'date') { var s = U.val(f, 'staff'), d = U.val(f, 'date') || date; if (d > St.today) d = St.today; editModal(s, d); return; }
         toggleTimes(f);
@@ -156,7 +211,7 @@
   U.actions['att-edit'] = function (p) {
     var d = p[1] || F.adate;
     if (d > St.today) { U.toast('You can’t mark a future date'); return; }
-    editModal(p[0] || F.aemp || '', d);
+    editModal(p[0] || F.aemp || '', d, !!p[0]);
   };
   U.actions['att-quick'] = function (p) {
     var who = St.person(p[0]), sh = St.shift(who.shift);

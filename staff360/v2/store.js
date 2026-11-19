@@ -167,12 +167,12 @@
       log(by ? 'Self check-in/out' : 'Marked attendance', sid, date + ': ' + before + ' → ' + after + (reason ? ' · Reason: ' + reason : ''), by);
     },
     markOne: function (sid, date, v, reason) { api.mark(sid, date, v, reason); emit(); return quiet(push('mark', [{ staffId: sid, date: date, status: v.status, in: v.in || '', out: v.out || '' }], reason || v.remark || '')); },
-    markMany: function (sids, date, status, reason) {
+    markMany: function (sids, date, status, reason, noTimes) {
       var entries = [];
       sids.forEach(function (sid) {
         var sh = api.shift(person(sid).shift), r = rec(sid, date);
         var keep = r && (r.status === 'present' || r.status === 'late') && (status === 'present' || status === 'late');
-        var tin = keep ? r.in : (status === 'present' || status === 'halfday') && sh ? sh.start : null;
+        var tin = keep ? r.in : !noTimes && (status === 'present' || status === 'halfday') && sh ? sh.start : null;
         api.mark(sid, date, { status: status, in: tin, out: keep ? r.out : null, remark: r ? r.remark : '' }, reason || 'Bulk mark');
         entries.push({ staffId: sid, date: date, status: status, in: tin || '' });
       });

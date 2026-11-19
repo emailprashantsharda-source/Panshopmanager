@@ -521,3 +521,41 @@ fieldset.locked-set{border:0;margin:0;padding:0;min-width:0;opacity:.6}
 .plan-lim{display:flex;gap:6px;align-items:center;font-weight:600;color:var(--ink,#182B55);margin:4px 0 8px;font-size:13px}.plan-lim svg{width:16px;height:16px}
 .plan-act small{display:block;margin-top:6px;font-size:12px}
 .plan-c ul{align-content:start}
+/* ---- Attendance day view (Nov 2026 redesign) ---- */
+.mk{max-width:720px;margin:0 auto;padding-bottom:8px}
+.mk-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.mk-title{font-size:22px;font-weight:800;color:var(--heading);margin:0}
+.mk-date{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 10px}
+.mk-date .icon-btn{width:44px;height:44px}
+.mk-dl{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 14px;border-radius:12px;cursor:pointer}
+.mk-dl b{font-size:17px;font-weight:800;color:var(--heading)}.mk-dl small{font-size:13px;color:var(--muted)}
+.mk-dl input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0}
+.mk-dl:focus-within{outline:2px solid var(--primary);outline-offset:2px}
+.mk-prog{padding:14px 16px}
+.mk-pl{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.mk-pl b{font-size:15px;color:var(--heading)}.mk-pl span{font-size:13px;color:var(--muted)}
+.mk-bar{height:8px;border-radius:99px;background:#EEF2F6;margin-top:10px;overflow:hidden;display:flex}.mk-bar i{display:block;height:100%}
+.mk-leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:13px;color:#344054}
+.mk-leg span{display:inline-flex;align-items:center;gap:6px}.mk-leg i{width:8px;height:8px;border-radius:99px;display:inline-block}
+.mk-tabs{display:flex;gap:6px;margin:14px 0 10px;background:#EAEFF4;padding:4px;border-radius:12px}
+.mk-tabs button{flex:1;height:40px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-weight:700;font-size:13.5px;cursor:pointer}
+.mk-tabs button.on{background:#fff;color:var(--heading);box-shadow:0 1px 3px rgba(16,24,40,.12)}
+.mk-q{width:100%;height:44px;border:1px solid var(--border);border-radius:12px;padding:0 14px;margin-bottom:10px;font-size:15px;background:#fff}
+.mk-list{display:flex;flex-direction:column;gap:8px}
+.mk-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:8px 8px 8px 10px}
+.mk-who{display:flex;align-items:center;gap:10px;flex:1;min-width:0;border:0;background:none;text-align:left;padding:4px 2px;cursor:pointer;color:var(--heading);border-radius:10px}
+.mk-who span{display:flex;flex-direction:column;min-width:0}
+.mk-who b{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-who small{font-size:12.5px;line-height:1.35;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mk-who small.todo{color:#B54708}.mk-who small.ok{color:#06733A}.mk-who .mk-late{color:#B42318;font-weight:600;white-space:nowrap}
+.mk-btns{display:flex;gap:6px;flex:none}
+.mk-btns button{width:42px;height:44px;border-radius:10px;border:1.5px solid #D5DCE5;background:#fff;color:#5B6B82;font-weight:800;font-size:15px;cursor:pointer}
+.mk-btns button.on.present{background:#078C45;border-color:#078C45;color:#fff}
+.mk-btns button.on.halfday{background:#E0A100;border-color:#E0A100;color:#3D2C00}
+.mk-btns button.on.leave{background:#6E4BE8;border-color:#6E4BE8;color:#fff}
+.mk-btns button.on.absent{background:#D92D20;border-color:#D92D20;color:#fff}
+.mk-empty{text-align:center;color:var(--muted);padding:26px 0}
+.mk-help{text-align:center;color:var(--muted);font-size:12.5px;margin:12px 0 0;line-height:1.7}
+.mk-bulk{position:sticky;bottom:0;padding:14px 0 16px;margin-top:6px;background:linear-gradient(rgba(246,248,250,0),var(--background) 35%);z-index:5}
+.mk-bulk .btn{width:100%;height:52px;border-radius:14px;font-size:16px;box-shadow:0 6px 16px rgba(7,140,69,.25)}
+.mk-sheet-who{display:flex;align-items:center;gap:12px;margin-bottom:12px}.mk-sheet-who span{display:flex;flex-direction:column}.mk-sheet-who b{font-size:17px;color:var(--heading)}.mk-sheet-who small{color:var(--muted);font-size:13px}
+@media (max-width:380px){.mk-btns button{width:38px}.mk-btns{gap:4px}}
