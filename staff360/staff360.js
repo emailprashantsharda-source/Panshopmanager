@@ -298,11 +298,11 @@
   function rosterInfo() { var r = S.data.roster; return r && r.v ? r.v : null; }
   function teamSA() {
     var res = want('roster', function () { return call('staff360StaffRoster', {}); });
-    var h = '<div class="s360-h2">Staff ' + (res && res.v && res.v.editable ? '<button class="s360-btn sm" data-a="addstaff">+ Add staff</button>' : '') + '</div>';
+    var h = '<div class="s360-h2">Staff <button class="s360-btn sm" data-a="addstaff">+ Add staff</button></div>';
     if (!res) return h + loading();
-    if (res.e) return h + errBox(res.e, 'roster');
+    if (res.e) { S.sub.pendingAdd = false; return h + errBox(res.e, 'roster'); }
     var v = res.v, q = (S.sub.q || '').toLowerCase(), f = S.sub.f || 'active', t = todayLocal();
-    if (S.sub.pendingAdd && v.editable) { S.sub.pendingAdd = false; setTimeout(function () { staffSheet(null); }, 0); }
+    if (S.sub.pendingAdd) { S.sub.pendingAdd = false; setTimeout(function () { if (v.editable) staffSheet(null); else shopAddInfo(); }, 0); }
     var L = v.staff.filter(function (s) {
       if (f === 'active' && !s.active) return false; if (f === 'inactive' && s.active) return false;
       return !q || s.name.toLowerCase().indexOf(q) >= 0 || String(s.phone || '').indexOf(q) >= 0;
@@ -321,6 +321,20 @@
     h += '</div><div class="s360-note">' + (v.editable ? '' : 'This is a HisaabNow shop: add or rename staff in the HisaabNow app. Here you can give staff a Staff360 login. ') +
       'Staff with a login sign in at <b>hisaabnow.com/staff360/login</b> with their mobile number and OTP' + (has('self_checkin') ? ' to check in and out.' : '. Self check-in needs Premium.') + ' They only ever see their own attendance.</div>';
     return h;
+  }
+
+  /* HisaabNow shops keep their staff list in the HisaabNow app (it syncs here
+     when the owner opens Staff360 in the app). Say so instead of failing. */
+  function shopAddInfo() {
+    var shop = (window.MShop && MShop.getActive && MShop.getActive().name) || 'This business';
+    sheet('<h3>Add staff in the HisaabNow app</h3>' +
+      '<p class="s360-note" style="font-size:14.5px;color:#182230">' + esc(shop) + ' is a HisaabNow shop, so its staff list lives in the HisaabNow app.</p>' +
+      '<ol style="margin:6px 0 14px 18px;color:#182230;font-size:14.5px;line-height:1.6"><li>Open the HisaabNow app → <b>Staff</b> → <b>+</b> and add the person.</li>' +
+      '<li>Open <b>Staff360</b> inside the app once — the list syncs here.</li>' +
+      '<li>Back here, tap <b>Edit</b> on them and tick <b>Allow Staff360 login</b>.</li></ol>' +
+      '<div class="s360-acts"><a class="s360-btn" href="https://app.hisaabnow.com/?go=staff360" target="_blank" rel="noopener">Open HisaabNow app</a>' +
+      '<button type="button" class="s360-btn sec" data-a="newbiz">Set up a separate Staff360 business</button>' +
+      '<button type="button" class="s360-btn sec" data-a="sheetclose">Close</button></div>');
   }
 
   function staffSheet(id) {
@@ -716,8 +730,18 @@
     if (a === 'retry') { S.stErr = null; loadState(true).then(render); return render(); }
     if (a === 'reload') { delete S.data[b.getAttribute('data-k')]; return render(); }
     if (a === 'menu') { if (window.STAFF360_SHELL) STAFF360_SHELL.menu(); return; }
+    if (a === 'newbiz') { sheetClose(); if (window.STAFF360_SHELL && STAFF360_SHELL.newBusiness) STAFF360_SHELL.newBusiness(); return; }
     if (a === 'mark') { if (SA) return go('mark'); close(); if (window.HNAttend) HNAttend.open(); return; }
-    if (a === 'addstaff') { if (SA) { if (S.view !== 'team') go('team'); if (rosterInfo()) return staffSheet(null); S.sub.pendingAdd = true; return; } close(); try { App.nav('add-staff'); } catch (x) {} return; }
+    if (a === 'addstaff') {
+      if (SA) {
+        var ri = rosterInfo();
+        if (ri && !ri.editable) return shopAddInfo();
+        if (S.view !== 'team') go('team');
+        if (ri) return staffSheet(null);
+        var rr = S.data.roster;
+        if (rr && rr.e) { toast(rr.e.message || 'Could not load staff'); return; }
+        S.sub.pendingAdd = true; return;
+      } close(); try { App.nav('add-staff'); } catch (x) {} return; }
     if (a === 'editstaff' && SA) return staffSheet(id);
     if (a === 'mk') return markOne(b.getAttribute('data-sid'), b.getAttribute('data-d'), b.getAttribute('data-m'));
     if (a === 'mkall') return markAllPresent(b.getAttribute('data-d'));
@@ -1000,6 +1024,7 @@
     var a = b.getAttribute('data-e');
     if (a === 'close') return closeEmployee();
     if (a === 'menu') { if (window.STAFF360_SHELL) STAFF360_SHELL.menu(); return; }
+    if (a === 'newbiz') { sheetClose(); if (window.STAFF360_SHELL && STAFF360_SHELL.newBusiness) STAFF360_SHELL.newBusiness(); return; }
     if (a === 'punch') return doPunch(b.getAttribute('data-act'), false);
     if (a === 'nogps') return doPunch(b.getAttribute('data-act'), true);
     if (a === 'tab') { E.tab = b.getAttribute('data-t'); E.msg = ''; eRender(); }
