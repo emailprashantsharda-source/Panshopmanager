@@ -32,12 +32,12 @@ with sync_playwright() as p:
     expect(fr.locator('.back-hn')).to_be_visible(); assert fr.locator('.demo-plans').count() == 0
     pg.screenshot(path=f'{OUT}/01-inapp-dashboard.png')
     fr.locator('a.nav-i[href="#/attendance"]').click()
-    fr.locator('tbody tr', has_text='Vikas Singh').locator('[data-a^="att-quick"]', has_text='Absent').click()
+    fr.locator('.mk-row', has_text='Vikas Singh').locator('button.absent').click()
     pg.wait_for_timeout(1200)
     fr.locator('a.nav-i[href="#/staff"]').click(); fr.locator('a.nav-i[href="#/attendance"]').click()
-    expect(fr.locator('tbody tr', has_text='Vikas Singh')).to_contain_text('Absent', timeout=8000); ok('Marking from inside the app saves to the shared register')
+    expect(fr.locator('.mk-row', has_text='Vikas Singh').locator('button.absent')).to_have_attribute('aria-pressed', 'true', timeout=8000); ok('Marking from inside the app saves to the shared register')
     fr.locator('.back-hn').click(); expect(pg.locator('#s360v2-frame')).to_have_count(0); ok('“HisaabNow” button closes Staff360 and returns to the app')
-    pg.evaluate("Staff360.open('register')"); expect(pg.frame_locator('#s360v2-frame iframe').locator('#s360v2 h1')).to_contain_text('Attendance Register', timeout=12000); ok('Opening a section goes straight to it')
+    pg.evaluate("Staff360.open('register')"); expect(pg.frame_locator('#s360v2-frame iframe').locator('#s360v2 h1')).to_contain_text('Attendance', timeout=12000); ok('Opening a section goes straight to it')
     ctx.close()
 
     # Employee (HisaabNow staff login) gets the phone check-in screen inside the app
