@@ -84,7 +84,15 @@
     var sid = shopId();
     if (!sid) return Promise.reject(mkErr('no-shop', 'Open a shop first.'));
     var payload = Object.assign({ shopId: sid }, data || {});
-    return window.kfCallable(window.kfFunctions, name)(payload).then(function (r) { return r && r.data; }, function (e) {
+    // One always-warm function for every Staff360 action; old per-action ones until it's deployed.
+    var viaApi = S.apiOk !== false && /^staff360/.test(name);
+    var req = viaApi
+      ? window.kfCallable(window.kfFunctions, 'staff360Api')(Object.assign({ __op: name }, payload)).then(function (r) { S.apiOk = true; return r; }, function (e) {
+          if (S.apiOk == null && /not-found|internal|unimplemented/.test(String(e && e.code || ''))) { S.apiOk = false; return window.kfCallable(window.kfFunctions, name)(payload); }
+          throw e;
+        })
+      : window.kfCallable(window.kfFunctions, name)(payload);
+    return req.then(function (r) { return r && r.data; }, function (e) {
       var code = String(e && e.code || '').replace('functions/', '');
       var msg = String(e && e.message || 'Something went wrong');
       if ((code === 'not-found' && /^(not[-_ ]?found)$/i.test(msg)) || (code === 'internal' && /^internal$/i.test(msg))) {

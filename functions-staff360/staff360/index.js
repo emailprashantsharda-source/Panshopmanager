@@ -42,7 +42,35 @@ function handlers() {
 const call = (name) => onCall(OPTS, (req) => handlers()[name](req.data || {}, req.auth || null));
 const callAI = (name) => onCall(Object.assign({ secrets: [OPENAI_API_KEY] }, OPTS), (req) => handlers()[name](req.data || {}, req.auth || null));
 
+/* (Nov 2026) Speed: every Staff360 screen now calls ONE function, staff360Api, with
+ * { __op: '<old function name>', ...data }. One function stays warm for all buttons
+ * (35 separate functions were each cold on their first click: several seconds each).
+ * It keeps one instance always ready (STAFF360_MIN_INSTANCES, default 1; set 0 in
+ * functions/.env to turn that off) and has a full CPU so cold starts are short.
+ * The old per-button functions stay for older copies of the app. */
+const API_OPS = {
+  staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster',
+  staff360MyTenants: 'myTenants', staff360CreateOrg: 'createOrg', staff360StaffRoster: 'staffRoster', staff360StaffSave: 'staffSave',
+  staff360StaffRemove: 'staffRemove', staff360Mark: 'mark', staff360Records: 'records', staff360AutoAbsent: 'autoAbsent',
+  staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit', staff360Register: 'register', staff360Report: 'report',
+  staff360ListShifts: 'listShifts', staff360SaveShift: 'saveShift', staff360DeleteShift: 'deleteShift', staff360SaveSettings: 'saveSettings',
+  staff360SubmitRequest: 'submitRequest', staff360ListRequests: 'listRequests', staff360DecideRequest: 'decideRequest',
+  staff360AIDashboard: 'aiDashboard', staff360AIAsk: 'aiAsk', staff360AlertAction: 'alertAction', staff360SalaryList: 'salaryList',
+  staff360SalarySave: 'salarySave', staff360WhatsApp: 'whatsapp', staff360CreateOrder: 'createOrder',
+  staff360AdminSetPlan: 'adminSetPlan', staff360AdminSetPlanConfig: 'adminSetPlanConfig',
+};
+const MIN_INSTANCES = Number.isInteger(+process.env.STAFF360_MIN_INSTANCES) && process.env.STAFF360_MIN_INSTANCES !== '' ? +process.env.STAFF360_MIN_INSTANCES : 1;
+const API_OPTS = Object.assign({ secrets: [OPENAI_API_KEY], memory: '512MiB', cpu: 1, concurrency: 40, minInstances: MIN_INSTANCES, timeoutSeconds: 60 }, OPTS);
+async function api(req) {
+  const data = Object.assign({}, req.data || {});
+  const op = String(data.__op || '');
+  delete data.__op;
+  if (!Object.prototype.hasOwnProperty.call(API_OPS, op)) throw new HttpsError('invalid-argument', 'Unknown Staff360 action');
+  return handlers()[API_OPS[op]](data, req.auth || null);
+}
+
 module.exports = {
+  staff360Api: onCall(API_OPTS, api),
   staff360GetState: callAI('getState'),
   staff360Punch: call('punch'),
   staff360MyHistory: call('myHistory'),

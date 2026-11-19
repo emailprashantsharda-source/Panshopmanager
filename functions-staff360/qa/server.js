@@ -1,4 +1,4 @@
-const DELAY = {}; // /__delay?fn=staff360SyncRoster&ms=7000 simulates a cold server
+const DELAY = {}, NOAPI = { on: false }, STATS = {}; // /__delay?fn=staff360SyncRoster&ms=7000 simulates a cold server
 /* QA server: serves the repo + a harness page, and runs the REAL Staff360
  * handlers against the in-memory Firestore so the UI is tested end-to-end.
  *   node functions-staff360/qa/server.js  →  http://127.0.0.1:8360/qa
@@ -54,7 +54,10 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/__reset') {
-    for (const k of Object.keys(DELAY)) delete DELAY[k]; reset(); res.end('ok'); return; }
+    for (const k of Object.keys(DELAY)) delete DELAY[k];
+    NOAPI.on = false; reset(); res.end('ok'); return; }
+  if (url.pathname === '/__noapi') { NOAPI.on = url.searchParams.get('on') === '1'; res.end('ok'); return; }
+  if (url.pathname === '/__stats') { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(STATS)); for (const k of Object.keys(STATS)) delete STATS[k]; return; }
   if (url.pathname === '/__delay') { DELAY[url.searchParams.get('fn')] = +url.searchParams.get('ms') || 0; res.end('ok'); return; }
   if (url.pathname === '/__plan') {
     const p = url.searchParams.get('p');
@@ -98,7 +101,13 @@ http.createServer(async (req, res) => {
     let body = '';
     req.on('data', (c) => { body += c; });
     req.on('end', async () => {
-      const fn = url.pathname.slice(8);
+      let fn = url.pathname.slice(8);
+      // staff360Api: one function, { __op, ...data } (QA can pretend it isn't deployed: /__noapi)
+      if (fn === 'staff360Api') {
+        STATS.api = (STATS.api || 0) + 1;
+        if (NOAPI.on) { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ error: { code: 'not-found', message: 'NOT_FOUND' } })); return; }
+        const d = JSON.parse(body || '{}'); fn = d.__op; delete d.__op; body = JSON.stringify(d);
+      } else if (fn.startsWith('staff360')) STATS.direct = (STATS.direct || 0) + 1;
       const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster', staff360MyTenants: 'myTenants', staff360CreateOrg: 'createOrg', staff360StaffRoster: 'staffRoster', staff360StaffSave: 'staffSave', staff360StaffRemove: 'staffRemove', staff360Mark: 'mark', staff360Records: 'records', staff360AutoAbsent: 'autoAbsent', staff360AdminSetPlan: 'adminSetPlan', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
         staff360Register: 'register', staff360Report: 'report', staff360ListShifts: 'listShifts', staff360SaveShift: 'saveShift', staff360DeleteShift: 'deleteShift',
         staff360SaveSettings: 'saveSettings', staff360SubmitRequest: 'submitRequest', staff360ListRequests: 'listRequests', staff360DecideRequest: 'decideRequest',

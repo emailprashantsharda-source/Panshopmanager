@@ -51,7 +51,17 @@ try { initializeAppCheck(app, { provider: new ReCaptchaV3Provider('6LfZQcYsAAAAA
 const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence).catch(() => {});
 const fns = getFunctions(app);
-const call = (name, data) => httpsCallable(fns, name)(data || {}).then((r) => r.data);
+// All Staff360 actions go through one always-warm function (staff360Api). Until it's
+// deployed (first call fails with not-found/internal), fall back to the old per-action ones.
+let apiOk = null;
+const direct = (name, data) => httpsCallable(fns, name)(data || {}).then((r) => r.data);
+const call = (name, data) => {
+  if (!/^staff360/.test(name) || apiOk === false) return direct(name, data);
+  return httpsCallable(fns, 'staff360Api', { timeout: 60000 })(Object.assign({ __op: name }, data || {})).then((r) => { apiOk = true; return r.data; }, (e) => {
+    if (apiOk === null && /not-found|internal|unimplemented/.test(String(e && e.code || ''))) { apiOk = false; return direct(name, data); }
+    throw e;
+  });
+};
 
 const q = new URLSearchParams(location.search);
 const embedded = window.parent !== window;
