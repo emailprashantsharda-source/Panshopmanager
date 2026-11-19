@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Staff360 · HisaabNow</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#078C45">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="s360v2.css?v=r2a">
+<style>
+#boot{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,system-ui,sans-serif}
+#boot .bx{background:#fff;border:1px solid #E7ECF2;border-radius:16px;padding:24px;max-width:380px;text-align:center;color:#344054}
+#boot h2{color:#182B55;font-size:18px;margin:10px 0 6px}
+#boot[hidden],#s360v2[hidden],#s360emp[hidden]{display:none!important}
+</style>
+<script>window.S360_DEFER = true;</script>
+</head>
+<body>
+<!-- Staff360 inside the HisaabNow app (app.hisaabnow.com). Uses the app's own sign-in. -->
+<div id="boot"><div class="bx"><div class="spinner" aria-hidden="true"></div><p>Opening Staff360…</p></div></div>
+<div id="s360v2" class="app" hidden></div>
+<div id="s360emp" hidden></div>
+<script src="store.js?v=r2a"></script>
+<script src="ui.js?v=r2a"></script>
+<script src="views-staff.js?v=r2a"></script>
+<script src="views-attendance.js?v=r2a"></script>
+<script src="views-ops.js?v=r2a"></script>
+<script src="views-ai.js?v=r2a"></script>
+<script src="views-admin.js?v=r2a"></script>
+<script src="app.js?v=r2a"></script>
+<script src="employee.js?v=r2a"></script>
+<script src="live.js?v=r2a"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
+import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
+
+// Same project and settings as the HisaabNow app, so the app's sign-in is reused.
+const IS_STAGING = location.hostname === 'staging.hisaabnow.com' || location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.endsWith('.github.io');
+const CFG = IS_STAGING
+  ? { apiKey: 'AIzaSyDaesTAA4_HbiGKV05X1RzqAsIHClEqads', authDomain: 'hisaabnow-staging.firebaseapp.com', projectId: 'hisaabnow-staging', storageBucket: 'hisaabnow-staging.firebasestorage.app', messagingSenderId: '631955431012', appId: '1:631955431012:web:1632f67099847661d54971' }
+  : { apiKey: 'AIzaSyB8v9gYxCg4qBfLl2J08D9TeUVygKVAqC8', authDomain: 'panshopmanager.firebaseapp.com', projectId: 'panshopmanager', storageBucket: 'panshopmanager.firebasestorage.app', messagingSenderId: '448042777087', appId: '1:448042777087:web:9b4c4a0bd4dbc425bccfca' };
+if (IS_STAGING || localStorage.getItem('FIREBASE_APPCHECK_DEBUG_TOKEN')) self.FIREBASE_APPCHECK_DEBUG_TOKEN = '7b3f2c9a-1d4e-4a8b-9c2f-6e5d0a1b2c3d';
+const app = initializeApp(CFG);
+try { initializeAppCheck(app, { provider: new ReCaptchaV3Provider('6LfZQcYsAAAAAL9TGObuIHv-SllzTi_aHkmNdlnH'), isTokenAutoRefreshEnabled: true }); } catch (e) { console.warn('[Staff360] App Check', e); }
+const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+const fns = getFunctions(app);
+const call = (name, data) => httpsCallable(fns, name)(data || {}).then((r) => r.data);
+
+const q = new URLSearchParams(location.search);
+const embedded = window.parent !== window;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function back() { if (embedded) window.parent.postMessage({ s360: 'close' }, location.origin); else location.href = '/'; }
+window.S360_BACK = back;
+function msg(title, text) {
+  $('boot').innerHTML = `<div class="bx"><h2>${esc(title)}</h2><p>${esc(text)}</p><p style="margin-top:14px"><button class="btn pri" id="bk">Back to HisaabNow</button></p></div>`;
+  $('boot').hidden = false; $('bk').onclick = back;
+}
+let started = false;
+onAuthStateChanged(auth, (user) => {
+  if (started) return;
+  if (!user) { msg('Please log in to HisaabNow', 'Open the HisaabNow app and log in, then open Staff360 again.'); return; }
+  const shopId = q.get('t');
+  if (!shopId) { msg('No shop selected', 'Open Staff360 from your shop in the HisaabNow app.'); return; }
+  started = true;
+  const tenant = { id: shopId, name: q.get('n') || '', kind: 'shop', role: 'owner' };
+  window.S360Live.boot({
+    call, tenant, tenants: [tenant], user: { phoneNumber: user.phoneNumber, displayName: '' },
+    signOut: back, switchTenant: () => {}, newBusiness: null,
+  }).then((mode) => {
+    $('boot').hidden = true;
+    if (mode === 'employee') {
+      $('s360emp').hidden = false;
+      if (!/^#\/(home|attendance|leave|profile)/.test(location.hash)) location.replace('#/home');
+      window.S360Emp.start();
+    } else { $('s360v2').hidden = false; window.S360UI.startOwner(); }
+  }).catch((e) => { started = false; msg('Couldn’t open Staff360', e.userMessage || e.message || 'Please try again.'); });
+});
+</script>
+</body>
+</html>

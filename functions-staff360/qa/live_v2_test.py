@@ -56,7 +56,12 @@ with sync_playwright() as p:
     expect(pg.locator('main h1')).to_contain_text('Shifts', timeout=8000)
     pg.click('[data-a=shift-new]'); pg.fill('#m-sn', 'Day'); pg.fill('#m-ss', '09:00'); pg.fill('#m-se', '17:00'); pg.fill('#m-sg', '5'); pg.click('#s360-modal button[type=submit]')
     pg.wait_for_timeout(900); expect(pg.locator('.shift-c', has_text='Day')).to_be_visible(timeout=8000)
-    pg.locator('.sched tbody tr', has_text='Neha').locator('.slot').first.click(); pg.select_option('#m-as', label=re.compile('Day').pattern and 'Day (9:00 AM–5:00 PM)'); pg.select_option('#m-ao', '0'); pg.click('#s360-modal button[type=submit]')
+    pg.reload(); expect(pg.locator('.shift-c', has_text='Day')).to_be_visible(timeout=8000)
+    for _ in range(3):
+        pg.locator('.sched tbody tr', has_text='Neha').locator('.slot').first.click()
+        if pg.locator('#m-as').count(): break
+        pg.wait_for_timeout(500)
+    pg.select_option('#m-as', label='Day (9:00 AM–5:00 PM)'); pg.select_option('#m-ao', '0'); pg.click('#s360-modal button[type=submit]')
     pg.wait_for_timeout(1200); pg.reload(); expect(pg.locator('.shift-c', has_text='Day')).to_contain_text('1 staff', timeout=8000); ok('Premium: create shift + assign staff and weekly off (server)')
     pg.goto(BASE + '/staff360/app/#/leave'); pg.click('[data-a=leave-new]'); pg.fill('#m-lr', 'Family function'); pg.click('#s360-modal button[type=submit]')
     pg.wait_for_timeout(900); expect(pg.locator('tbody')).to_contain_text('Family function', timeout=8000)
@@ -68,21 +73,44 @@ with sync_playwright() as p:
     pg.click('#s360-modal button[type=submit]'); expect(pg.locator('.toast')).to_contain_text('Saved changes', timeout=8000); pg.wait_for_timeout(800)
     pg.goto(BASE + '/staff360/app/#/staff'); pg.reload(); pg.locator('tbody tr', has_text='Neha').locator('a.who').click()
     expect(pg.locator('.dl', has_text='Employee login')).to_contain_text('Enabled', timeout=8000); ok('Premium: owner turns on Neha’s Staff360 login')
+    pg.goto(BASE + '/staff360/app/#/settings')
+    pg.fill('#s-glat', '28.62'); pg.fill('#s-glng', '77.37'); pg.fill('#s-grad', '200'); pg.select_option('#s-gmode', 'block')
+    pg.click('form[data-set=fence] button[type=submit]'); pg.wait_for_timeout(1000)
+    pg.locator('form[data-set=rules] label.switch:has(input[name=autoHalfDay])').click(); pg.click('form[data-set=rules] button[type=submit]'); pg.wait_for_timeout(1000)
+    pg.reload(); expect(pg.locator('#s-gmode')).to_have_value('block', timeout=8000); expect(pg.locator('input[name=autoHalfDay]')).to_be_checked(); ok('Shop location + auto half-day saved')
     ctx.close()
 
-    ectx, ep = page_for(b, 390, 844, geo={'latitude': 28.62, 'longitude': 77.37, 'accuracy': 25})
+    ectx, ep = page_for(b, 390, 844, geo={'latitude': 28.70, 'longitude': 77.37, 'accuracy': 25})
     login(ep, '9800000002')
     expect(ep.locator('#s360emp .emp-hello')).to_contain_text('Neha', timeout=10000)
+    expect(ep.locator('.emp-punch')).to_contain_text('within 200 m')
+    ep.click('[data-e="punch:in"]'); expect(ep.locator('.sheet')).to_contain_text('Location captured', timeout=8000); ep.click('.sheet [data-e^="confirm"]')
+    expect(ep.locator('.toast')).to_contain_text('km from the shop', timeout=8000); expect(ep.locator('.emp-punch')).to_contain_text('Check in'); ok('Shop-distance check: blocked 8.9 km away')
+    ectx.set_geolocation({'latitude': 28.6201, 'longitude': 77.3701, 'accuracy': 25})
     ep.click('[data-e="punch:in"]'); expect(ep.locator('.sheet')).to_contain_text('Location captured', timeout=8000)
     assert ep.locator('.sim').count() == 0
     ep.click('.sheet [data-e^="confirm"]'); expect(ep.locator('.emp-punch')).to_contain_text('Checked in', timeout=8000)
     expect(ep.locator('.gps-ok')).to_contain_text('±25 m'); ok('Employee: real GPS reading at check-in, saved by the server')
     ep.screenshot(path=f'{OUT}/02-employee-checked-in.png')
+    ep.goto(BASE + '/staff360/app/#/attendance'); ep.click('[data-e="fix:' + ep.evaluate('S360Store.today') + '"] >> nth=0')
+    ep.fill('#m-fi', '09:00'); ep.fill('#m-fr', 'Reached at 9, forgot to tap'); ep.click('#s360-modal button[type=submit]')
+    ep.wait_for_timeout(1200); ep.reload(); expect(ep.locator('.card', has_text='My correction requests')).to_contain_text('Pending', timeout=8000); ok('Employee asks for a correction')
     ep.goto(BASE + '/staff360/app/#/leave'); ep.click('[data-e=leave-new]'); ep.fill('#m-lr', 'Doctor visit'); ep.click('#s360-modal button[type=submit]')
     ep.wait_for_timeout(1000); expect(ep.locator('.list')).to_contain_text('Pending', timeout=8000); ok('Employee leave request')
     ep.goto(BASE + '/staff360/app/#/profile'); assert ep.locator('#emp-prof').count() == 0; assert overflow(ep) <= 0
     ep.click('[data-e=logout]'); ep.wait_for_url('**/staff360/login/**', timeout=8000); ok('Employee profile read-only; log out')
     ectx.close()
+
+    # Owner: approve the correction, mark yesterday's no-shows absent
+    ctx, pg = page_for(b); login(pg, '9800000001')
+    expect(pg.locator('#s360v2 .page-h h1')).to_be_visible(timeout=10000)
+    pg.goto(BASE + '/staff360/app/#/leave/corrections'); row = pg.locator('tbody tr', has_text='Neha')
+    expect(row).to_contain_text('In 9:00 AM', timeout=8000); row.locator('button.ok').click(); pg.wait_for_timeout(1200); pg.reload()
+    expect(pg.locator('tbody tr', has_text='Neha')).to_contain_text('Approved', timeout=8000)
+    pg.goto(BASE + '/staff360/app/#/attendance'); expect(pg.locator('tbody tr', has_text='Neha').locator('td').nth(3)).to_contain_text('9:00 AM', timeout=8000); ok('Owner approves correction; register updated')
+    pg.click('[data-a="att-day:-1"]'); pg.click('[data-a=att-noshow]'); expect(pg.locator('#s360-modal')).to_contain_text('Neha'); pg.click('#s360-modal button[type=submit]')
+    expect(pg.locator('.toast')).to_contain_text('1 marked absent', timeout=8000); expect(pg.locator('tbody tr', has_text='Neha')).to_contain_text('Absent', timeout=8000); ok('Mark no-shows absent (server)')
+    ctx.close()
 
     # 3) HisaabNow shop owner on King PRO: shared data, add-staff info, AI, salary
     ctl('/__plan?p=kingpro')
@@ -105,6 +133,11 @@ with sync_playwright() as p:
     expect(pg.locator('.sal-out')).to_be_visible(timeout=8000); pg.fill('#sl-overtimeRate', '100'); pg.click('#sl-form button[type=submit]'); expect(pg.locator('.toast')).to_contain_text('updated', timeout=8000)
     pg.click('[data-a=sl-approve]'); pg.click('#s360-modal button[type=submit]'); expect(pg.locator('.ok-note')).to_contain_text('No payment', timeout=8000); ok('Salary estimate recalculated + approved on the server')
     pg.screenshot(path=f'{OUT}/04-shop-ai.png', full_page=True)
+    pg.goto(BASE + '/staff360/app/#/settings'); expect(pg.locator('form[data-set=wa]')).to_be_visible(timeout=8000)
+    pg.fill('#s-war', '9876500000'); pg.click('form[data-set=wa] button[type=submit]'); expect(pg.locator('[data-err=consent]')).to_contain_text('Tick')
+    pg.check('form[data-set=wa] input[name=consent]'); pg.click('form[data-set=wa] button[type=submit]')
+    expect(pg.locator('.toast')).to_contain_text('Nothing will be sent', timeout=8000); expect(pg.locator('form[data-set=wa] .ok-note')).to_contain_text('every day', timeout=8000)
+    pg.click('[data-a=wa-preview]'); expect(pg.locator('.wa-prev')).to_contain_text('Glow Salon', timeout=8000); ok('WhatsApp opt-in saved with consent; preview')
     for r in ['dashboard', 'staff', 'attendance', 'shifts', 'leave', 'reports', 'ai', 'settings', 'plans', 'help']:
         pg.goto(BASE + '/staff360/app/#/' + r); pg.wait_for_timeout(300)
         assert 'Something went wrong' not in pg.inner_text('#s360-main'), r

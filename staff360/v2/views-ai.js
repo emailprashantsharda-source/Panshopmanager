@@ -115,6 +115,9 @@
     var anomalies = [];
     lates.forEach(function (x) { anomalies.push(['b-amber', 'Repeated late arrivals', esc(x.p.name) + ' was late ' + x.dates.length + ' times (' + dates(x.dates) + ')', x.p.id]); });
     Object.keys(wkAbs).forEach(function (k) { if (wkAbs[k].length >= 2) { var p = St.person(k.split(':')[0]); anomalies.push(['b-red', 'Absent on the same weekday', esc(p.name) + ' was absent on ' + U.DOW_LONG[+k.split(':')[1]] + 's: ' + dates(wkAbs[k]), p.id]); } });
+    St.range(U.monthStart(St.today), St.today).filter(function (r) { return r.gps && r.gps.outside; }).forEach(function (r) {
+      var p = St.person(r.staff); if (p) anomalies.push(['b-red', 'Checked in away from the shop', esc(p.name) + ' on ' + U.dLabel(r.date) + ' — ' + r.gps.dist + ' m away', p.id]);
+    });
     noOut.forEach(function (r) { var p = St.person(r.staff); anomalies.push(['b-blue', 'Missing check-out', esc(p.name) + ' checked in on ' + U.dLabel(r.date) + ' but has no check-out', p.id]); });
 
     h += '<div class="row ai-grid"><section class="card ai-q"><div class="card-h"><h2>Ask anything about your team</h2></div>' +
@@ -247,7 +250,7 @@
     o.leavePaid = U.val(f, 'leavePaid');
     var b = f.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Recalculating…';
     St.backend().salarySave(F.sl.sid, F.sl.ym, o).then(function (r) {
-      var d = F.sl.data[F.sl.ym]; d.rows = d.rows.map(function (x) { return x.staffId === r.row.staffId ? r.row : x; }); U.render(); U.toast('Estimate updated');
+      U.clean(f); var d = F.sl.data[F.sl.ym]; d.rows = d.rows.map(function (x) { return x.staffId === r.row.staffId ? r.row : x; }); U.render(); U.toast('Estimate updated');
     }, function (err) { b.disabled = false; b.textContent = 'Recalculate with these inputs'; U.toast(err.userMessage || 'Couldn’t recalculate'); });
   });
   U.actions['sl-retry'] = function () { F.sl.err = ''; U.render(); };

@@ -512,3 +512,9 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 .emp-body .toast{bottom:92px}
 fieldset.locked-set{border:0;margin:0;padding:0;min-width:0;opacity:.6}
 .lock-note a{color:var(--purple);text-decoration:underline}
+.tabs a{padding:10px 14px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px;display:inline-flex;align-items:center;gap:6px}
+.tabs a.on{color:var(--primary-dark);border-color:var(--primary)}
+.consent{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:4px 0 2px}.consent input{margin-top:3px;accent-color:var(--primary)}
+.wa-prev{white-space:pre-wrap;background:#E7F7EE;border-radius:10px;padding:12px;font:13px/1.5 Inter,sans-serif;margin-top:12px}
+.fld .phone-in input{border:0!important}
+.back-hn{font-weight:600;color:var(--primary-dark)}

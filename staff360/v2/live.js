@@ -69,7 +69,7 @@
         var st = mapStatus(d, p, shById[p.shift]);
         seen[d.date] = 1;
         out.push({ date: d.date, staff: p.id, status: st, in: d.inHm || null, out: d.outHm || null, remark: '',
-          lateMin: d.lateMin, workedMin: d.workedMin, gps: d.gps ? { acc: d.gps.accuracy, low: d.gps.low } : d.gps === false ? false : undefined });
+          lateMin: d.lateMin, workedMin: d.workedMin, gps: d.gps ? { acc: d.gps.accuracy, low: d.gps.low, dist: d.gps.distanceM, outside: !!d.gps.outside } : d.gps === false ? false : undefined });
       });
       // Their regular weekly off counts as a weekly off unless something else was recorded.
       if (p.weeklyOff != null) for (var d = from; d <= to; d = addDays(d, 1)) if (!seen[d] && dow(d) === p.weeklyOff) out.push({ date: d, staff: p.id, status: 'weeklyoff', in: null, out: null, remark: '', virtual: true });
@@ -84,9 +84,18 @@
         status: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }[r.status] || 'Pending', applied: r.createdAt ? isoOf(new Date(r.createdAt)) : '', note: r.decisionNote || '' };
     });
   }
+  var FROM_CODE = { P: 'present', H: 'halfday', A: 'absent', L: 'leave', W: 'weeklyoff' };
+  var CAP = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+  function mapCorrections(items, ids) {
+    return items.filter(function (r) { return r.type === 'correction' && (!ids || ids[r.staffId]); }).map(function (r) {
+      var c = r.correction || {};
+      return { id: r.id, staff: r.staffId, date: r.date, want: { status: c.status ? FROM_CODE[c.status] : '', in: c.checkIn || '', out: c.checkOut || '' },
+        reason: r.reason || '', status: CAP[r.status] || 'Pending', note: r.decisionNote || '', applied: r.createdAt ? isoOf(new Date(r.createdAt)) : '' };
+    });
+  }
   var AUDIT = { manual_mark: 'Marked attendance', punch_in: 'Checked in', punch_out: 'Checked out', staff_created: 'Added employee', staff_updated: 'Edited employee',
     staff_removed: 'Removed employee', shift_created: 'Created shift', shift_updated: 'Edited shift', shift_deleted: 'Deleted shift', settings_updated: 'Updated settings',
-    request_created: 'Leave requested', request_approved: 'Approved leave', request_rejected: 'Rejected leave', salary_approved: 'Approved salary estimate', salary_inputs_edited: 'Edited salary inputs' };
+    request_created: 'Request sent', auto_mark: 'Marked automatically', request_approved: 'Approved leave', request_rejected: 'Rejected leave', salary_approved: 'Approved salary estimate', salary_inputs_edited: 'Edited salary inputs' };
   var MARK = { P: 'Present', H: 'Half day', A: 'Absent', L: 'On leave', W: 'Weekly off', '': 'Not marked' };
   function mapAudit(items) {
     return items.map(function (a) {
@@ -107,18 +116,24 @@
     ]).then(function (r) {
       var shifts = r[2].shifts.map(mapShift), staff = mapStaff(r[0].staff, shifts), rec = r[1];
       var leaves = mapLeaves(r[3].items, staff), st = STATE.settings || {};
-      var pend = leaves.filter(function (l) { return l.status === 'Pending'; }).length;
+      var ids = {}; staff.forEach(function (p) { ids[p.id] = 1; });
+      var corr = mapCorrections(r[3].items, ids);
+      var pend = leaves.filter(function (l) { return l.status === 'Pending'; }).length, pc = corr.filter(function (c) { return c.status === 'Pending'; }).length;
       var u = O.user || {};
       return {
         day: rec.today, nowMin: new Date().getHours() * 60 + new Date().getMinutes(),
         plan: STATE.plan, role: STATE.role, kind: STATE.tenant.kind, editable: r[0].editable, extra: { maxStaff: r[0].maxStaff, ai: STATE.ai, detailed: rec.detailed },
         staff: staff, shifts: shifts, attendance: mapRecords(rec.rows, staff, shifts, rec.from, rec.to), leaves: leaves, audit: mapAudit(r[4].items), approvals: [],
         businesses: (O.tenants || [O.tenant]).map(function (t) { return { id: t.id, name: t.name, city: t.kind === 'shop' ? 'HisaabNow shop' : 'Staff360 business', role: t.role }; }),
-        notifications: pend ? [{ id: 'np', text: pend + ' leave request' + (pend > 1 ? 's are' : ' is') + ' waiting for approval', at: 'now', go: '#/leave' }] : [],
+        corrections: corr,
+        notifications: (pend ? [{ id: 'np', text: pend + ' leave request' + (pend > 1 ? 's are' : ' is') + ' waiting for approval', at: 'now', go: '#/leave' }] : [])
+          .concat(pc ? [{ id: 'nc', text: pc + ' attendance correction' + (pc > 1 ? 's' : '') + ' to review', at: 'now', go: '#/leave/corrections' }] : []),
         settings: {
           business: { name: STATE.tenant.name || O.tenant.name || 'My business', city: STATE.tenant.kind === 'shop' ? 'HisaabNow shop' : '', phone: '', owner: u.displayName || '' },
           rules: { graceMin: st.defaultGraceMin != null ? st.defaultGraceMin : 10, hoursPerDay: st.hoursPerDay || 8, halfDayBelowHours: st.halfDayBelowHours || 5,
-            gpsRequired: true, allowNoGps: st.gpsPolicy === 'allow_without', autoLate: st.autoLate !== false },
+            gpsRequired: true, allowNoGps: st.gpsPolicy === 'allow_without', autoLate: st.autoLate !== false, autoHalfDay: !!st.autoHalfDay, autoAbsent: !!st.autoAbsent },
+          fence: st.geofence || { lat: null, lng: null, radiusM: 200, mode: 'off' },
+          whatsapp: { loaded: false },
           defaultWeeklyOff: 0, perms: st.perms || {}, notify: st.notify || {},
         },
       };
@@ -178,10 +193,18 @@
     addLeave: function (l) { return call('staff360SubmitRequest', { type: 'leave', staffId: STATE.role === 'employee' ? undefined : l.staff, fromDate: l.from, toDate: l.to, reason: l.reason, leaveType: l.type }); },
     saveSettings: function (part, v) {
       if (part === 'business') return call('staff360SaveSettings', { businessName: v.name });
-      if (part === 'rules') return call('staff360SaveSettings', { defaultGraceMin: v.graceMin, hoursPerDay: v.hoursPerDay, halfDayBelowHours: v.halfDayBelowHours, autoLate: !!v.autoLate, gpsPolicy: v.allowNoGps ? 'allow_without' : 'require' });
+      if (part === 'rules') return call('staff360SaveSettings', { defaultGraceMin: v.graceMin, hoursPerDay: v.hoursPerDay, halfDayBelowHours: v.halfDayBelowHours, autoLate: !!v.autoLate, autoHalfDay: !!v.autoHalfDay, autoAbsent: !!v.autoAbsent, gpsPolicy: v.allowNoGps ? 'allow_without' : 'require' });
+      if (part === 'fence') return call('staff360SaveSettings', { geofence: { lat: v.lat, lng: v.lng, radiusM: v.radiusM, mode: v.mode } });
       if (part === 'perms' || part === 'notify') { var b = {}; b[part] = v; return call('staff360SaveSettings', b); }
       return Promise.resolve(null);
     },
+    addCorrection: function (c) {
+      var w = c.want || {};
+      return call('staff360SubmitRequest', { type: 'correction', date: c.date, reason: c.reason, status: w.status ? CODE[w.status] : undefined, checkIn: w.in || undefined, checkOut: w.out || undefined });
+    },
+    decideCorrection: function (id, status, note) { return call('staff360DecideRequest', { id: id, decision: status.toLowerCase(), note: note || '' }); },
+    autoAbsent: function (date) { return call('staff360AutoAbsent', { date: date }); },
+    whatsapp: function (body) { return call('staff360WhatsApp', body); },
     approveSalary: function (sid, ym) { return call('staff360SalarySave', { staffId: sid, ym: ym, approve: true }); },
     // used directly by screens
     aiAsk: function (q) { return call('staff360AIAsk', { question: q }); },
@@ -208,7 +231,7 @@
       var att = mapRecords([{ staffId: me.staffId, days: days.filter(function (d) { return d.status || d.inHm; }) }], [person], sh ? [sh] : [], h.from || me.today, h.to || me.today)
         .filter(function (r) { return r.date !== me.today; });
       if (tp && tp.checkInAt) att.push({ date: me.today, staff: me.staffId, status: tp.lateMinutes > 0 ? 'late' : 'present', in: tp.inHm, out: tp.outHm || null,
-        lateMin: tp.lateMinutes, workedMin: tp.workedMinutes, gps: tp.checkInGps ? { acc: tp.checkInGps.accuracy, low: tp.checkInGps.lowAccuracy } : false });
+        lateMin: tp.lateMinutes, workedMin: tp.workedMinutes, gps: tp.checkInGps ? { acc: tp.checkInGps.accuracy, low: tp.checkInGps.lowAccuracy, outside: !!tp.checkInGps.outside, dist: tp.checkInGps.distanceM } : false });
       else { var td = days.filter(function (d) { return d.date === me.today; })[0]; if (td) att = att.concat(mapRecords([{ staffId: me.staffId, days: [td] }], [person], sh ? [sh] : [], me.today, me.today)); }
       return {
         day: me.today, plan: STATE.plan, role: 'employee', kind: STATE.tenant.kind, staff: [person], shifts: sh ? [sh] : [], attendance: att,
@@ -216,7 +239,8 @@
           var n = 1; for (var d = r.fromDate; d < r.toDate; d = addDays(d, 1)) n++;
           return { id: r.id, staff: me.staffId, type: r.leaveType || 'Other', from: r.fromDate, to: r.toDate || r.fromDate, days: n, reason: r.reason, status: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }[r.status] || 'Pending', applied: '' };
         }),
-        extra: { me: me, openYesterday: me.openYesterday },
+        corrections: mapCorrections(h.requests || [], null),
+        extra: { me: me, openYesterday: me.openYesterday, fence: me.fence || null },
         settings: { business: { name: STATE.tenant.name || O.tenant.name, city: '', phone: '', owner: '' }, rules: { gpsRequired: true, allowNoGps: me.gpsPolicy === 'allow_without', minAccuracyM: me.minAccuracyM, autoLate: true },
           defaultWeeklyOff: 0, perms: { requestLeave: true, seeShift: true }, notify: {} },
       };

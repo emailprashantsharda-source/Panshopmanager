@@ -66,7 +66,7 @@ http.createServer(async (req, res) => {
     req.on('data', (c) => { body += c; });
     req.on('end', async () => {
       const fn = url.pathname.slice(8);
-      const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster', staff360MyTenants: 'myTenants', staff360CreateOrg: 'createOrg', staff360StaffRoster: 'staffRoster', staff360StaffSave: 'staffSave', staff360StaffRemove: 'staffRemove', staff360Mark: 'mark', staff360Records: 'records', staff360AdminSetPlan: 'adminSetPlan', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
+      const map = { staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster', staff360MyTenants: 'myTenants', staff360CreateOrg: 'createOrg', staff360StaffRoster: 'staffRoster', staff360StaffSave: 'staffSave', staff360StaffRemove: 'staffRemove', staff360Mark: 'mark', staff360Records: 'records', staff360AutoAbsent: 'autoAbsent', staff360AdminSetPlan: 'adminSetPlan', staff360LogManualEdit: 'logManualEdit', staff360ListAudit: 'listAudit',
         staff360Register: 'register', staff360Report: 'report', staff360ListShifts: 'listShifts', staff360SaveShift: 'saveShift', staff360DeleteShift: 'deleteShift',
         staff360SaveSettings: 'saveSettings', staff360SubmitRequest: 'submitRequest', staff360ListRequests: 'listRequests', staff360DecideRequest: 'decideRequest',
         staff360AIDashboard: 'aiDashboard', staff360AIAsk: 'aiAsk', staff360AlertAction: 'alertAction', staff360SalaryList: 'salaryList', staff360SalarySave: 'salarySave',

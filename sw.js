@@ -24,7 +24,7 @@
  * never installs anything new, no matter how often it's polled).
  */
 
-const SW_VERSION  = 'v34_auto_20261118_1707';
+const SW_VERSION  = 'v34_auto_20261119_1215';
 const CACHE       = 'hisaabnow-' + SW_VERSION;
 const NAV_TIMEOUT = 1200; /* ms before falling back to cached HTML (the download keeps going and refreshes the cache for next time) */
 
@@ -52,6 +52,24 @@ function hnCarryOver() {
   }).catch(function () {});
 }
 
+/* (Nov 2026) Self-heal: if the stored copy of the app page is not the HisaabNow app (an older
+   worker could store another page from this domain), throw it away and fetch the real one. */
+function hnIsAppShell(res) {
+  return res.clone().text().then(function (t) { return t.indexOf('window.HISAABNOW_BUILD') !== -1; }, function () { return false; });
+}
+function hnHealShell() {
+  return caches.keys().then(function (keys) {
+    return Promise.all(keys.filter(function (k) { return k.indexOf('hisaabnow-') === 0; }).map(function (k) {
+      return caches.open(k).then(function (c) {
+        return c.match('./index.html').then(function (m) {
+          if (!m) return;
+          return hnIsAppShell(m).then(function (ok) { if (!ok) return c.delete('./index.html'); });
+        });
+      });
+    }));
+  }).catch(function () {});
+}
+
 function hnPrefetchShell() {
   return new Promise(function (resolve) {
     var t = setTimeout(resolve, 90000); /* never hold the update back forever */
@@ -62,12 +80,12 @@ function hnPrefetchShell() {
 }
 
 self.addEventListener('install', function (event) {
-  event.waitUntil(hnCarryOver().then(hnPrefetchShell).then(function () { return self.skipWaiting(); }));
+  event.waitUntil(hnHealShell().then(hnCarryOver).then(hnPrefetchShell).then(function () { return self.skipWaiting(); }));
 });
 
 self.addEventListener('activate', function (event) {
   event.waitUntil(
-    hnCarryOver().then(function () { return caches.keys(); }).then(function (keys) {
+    hnHealShell().then(hnCarryOver).then(function () { return caches.keys(); }).then(function (keys) {
       return Promise.all(keys.filter(function (k) { return k !== CACHE; })
                             .map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
@@ -77,6 +95,11 @@ self.addEventListener('activate', function (event) {
 self.addEventListener('message', function (event) {
   if (event.data === 'SKIP_WAITING' || (event.data && event.data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
+  }
+  /* (Nov 2026) The app asks this before opening Staff360's own page in a frame: only this
+     worker (and newer) leave other pages on this domain alone. */
+  if (event.data && event.data.type === 'S360_V2_OK' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ ok: true, v: SW_VERSION });
   }
 });
 
@@ -166,6 +189,10 @@ self.addEventListener('fetch', function (event) {
   if (url.origin !== self.location.origin) return;                 /* Firebase, PayU, CDNs pass through */
   if (url.pathname.indexOf('firebase-messaging-sw') !== -1) return; /* FCM worker manages itself */
 
+  /* (Nov 2026) Only the app shell (/ and /index.html) is handled as the app. Other pages on this
+     domain (Staff360 at /staff360/…, RentalNow at /Rent/…) are separate pages: let the network
+     serve them. Before this, opening one of them could store that page as the app's index.html. */
+  var isAppShell = url.pathname === '/' || url.pathname === '/index.html';
   var accept = req.headers.get('accept') || '';
   var isNavigation =
     req.mode === 'navigate' ||
@@ -175,6 +202,7 @@ self.addEventListener('fetch', function (event) {
     url.pathname.endsWith('/index.html');
 
   /* HTML document -> NETWORK-FIRST with timeout, cache only as offline fallback. */
+  if (isNavigation && !isAppShell) return;
   if (isNavigation) {
     /* (Oct 2026) STALE-WHILE-REVALIDATE. The page is ~6 MB; waiting on the network for it on every
        refresh is what kept the tab spinner going. If we already hold a copy, show it immediately and
