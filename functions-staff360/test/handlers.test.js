@@ -464,3 +464,44 @@ test('HisaabNow shop on the website: same data, stylist without app login gets a
   await h.syncRoster({ shopId: 'A', staff: [{ id: 'amit', name: 'Amit Kumar', phone: '9111111111' }, { id: 'riya', name: 'Riya Sharma', phone: '9444444444' }] }, OWNER_A);
   assert.equal(db._store.get('staff360/A/roster/riya').canLogin, true);
 });
+
+test('v2 UI: records range, staff details, shift break/colour, leave type and on-behalf leave, settings', async () => {
+  const { h, setNow } = setup();
+  await rejects(h.records({ shopId: 'A' }, OWNER_B), 'permission-denied');
+  await rejects(h.records({ shopId: 'A' }, EMP_A), 'permission-denied');
+  await h.mark({ shopId: 'A', entries: [{ staffId: 'riya', date: '2026-11-16', status: 'P', in: '10:05' }] }, OWNER_A);
+  let r = await h.records({ shopId: 'A', from: '2026-11-10', to: '2026-11-30' }, OWNER_A);
+  assert.equal(r.to, '2026-11-17'); assert.equal(r.detailed, false);
+  const riya = r.rows.find((x) => x.staffId === 'riya');
+  assert.deepEqual(riya.days, [{ date: '2026-11-16', status: 'P', inHm: '10:05', outHm: '' }]);
+  await rejects(h.records({ shopId: 'A', from: '2026-01-01', to: '2026-11-17' }, OWNER_A), 'invalid-argument');
+
+  await grant(h, 'A', 'premium');
+  await h.saveShift({ shopId: 'A', name: 'Morning', start: '09:00', end: '18:00', graceMin: 10, breakMin: 45, color: 'blue', staffIds: ['amit'] }, OWNER_A);
+  const sh = (await h.listShifts({ shopId: 'A' }, OWNER_A)).shifts[0];
+  assert.equal(sh.breakMin, 45); assert.equal(sh.color, 'blue');
+  await h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, EMP_A); // 09:15: past the 10 min grace, late counted from 09:00
+  r = await h.records({ shopId: 'A', from: '2026-11-17', to: '2026-11-17' }, OWNER_A);
+  const amit = r.rows.find((x) => x.staffId === 'amit').days[0];
+  assert.equal(amit.lateMin, 15); assert.equal(amit.gps.accuracy, 20); assert.equal(r.detailed, true);
+
+  // HisaabNow shop: Staff360-only details can be set, empCode unique
+  await h.staffSave({ shopId: 'A', id: 'riya', weeklyOff: 1, empType: 'Part-time', empCode: 'st-01', joinedDate: '2025-02-01' }, OWNER_A);
+  await rejects(h.staffSave({ shopId: 'A', id: 'meena', empCode: 'ST-01' }, OWNER_A), 'already-exists');
+  const ro = (await h.staffRoster({ shopId: 'A' }, OWNER_A)).staff.find((x) => x.id === 'riya');
+  assert.equal(ro.weeklyOff, 1); assert.equal(ro.empType, 'Part-time'); assert.equal(ro.empCode, 'ST-01'); assert.equal(ro.joinedDate, '2025-02-01');
+
+  // Leave type; owner files on behalf of a staff member; employee cannot file for someone else
+  await h.submitRequest({ shopId: 'A', type: 'leave', fromDate: '2026-11-20', toDate: '2026-11-21', reason: 'Wedding', leaveType: 'Casual', staffId: 'riya' }, OWNER_A);
+  await h.submitRequest({ shopId: 'A', type: 'leave', fromDate: '2026-11-22', reason: 'Fever', leaveType: 'Sick', staffId: 'riya' }, EMP_A);
+  const items = (await h.listRequests({ shopId: 'A' }, OWNER_A)).items;
+  assert.ok(items.some((i) => i.staffId === 'riya' && i.leaveType === 'Casual'));
+  assert.ok(items.some((i) => i.staffId === 'amit' && i.leaveType === 'Sick'), 'employee request is always for themselves');
+
+  // Settings extras; shops cannot rename here
+  const s = await h.saveSettings({ shopId: 'A', hoursPerDay: 9, defaultGraceMin: 15, autoLate: false, perms: { managerSalary: true }, gpsPolicy: 'allow_without' }, OWNER_A);
+  assert.equal(s.settings.hoursPerDay, 9); assert.equal(s.settings.perms.managerSalary, true); assert.equal(s.settings.autoLate, false);
+  await rejects(h.saveSettings({ shopId: 'A', businessName: 'New' }, OWNER_A), 'failed-precondition');
+  await rejects(h.saveSettings({ shopId: 'A', hoursPerDay: 40 }, OWNER_A), 'invalid-argument');
+  setNow(T0);
+});
