@@ -45,8 +45,8 @@ const callAI = (name) => onCall(Object.assign({ secrets: [OPENAI_API_KEY] }, OPT
 /* (Nov 2026) Speed: every Staff360 screen now calls ONE function, staff360Api, with
  * { __op: '<old function name>', ...data }. One function stays warm for all buttons
  * (35 separate functions were each cold on their first click: several seconds each).
- * It keeps one instance always ready (STAFF360_MIN_INSTANCES, default 1; set 0 in
- * functions/.env to turn that off) and has a full CPU so cold starts are short.
+ * No instance is kept always ready by default (that costs ~$4.50/month; set
+ * STAFF360_MIN_INSTANCES=1 in functions/.env to turn it on). Full CPU keeps cold starts short.
  * The old per-button functions stay for older copies of the app. */
 const API_OPS = {
   staff360GetState: 'getState', staff360Punch: 'punch', staff360MyHistory: 'myHistory', staff360SyncRoster: 'syncRoster',
@@ -59,7 +59,7 @@ const API_OPS = {
   staff360SalarySave: 'salarySave', staff360WhatsApp: 'whatsapp', staff360CreateOrder: 'createOrder',
   staff360AdminSetPlan: 'adminSetPlan', staff360AdminSetPlanConfig: 'adminSetPlanConfig',
 };
-const MIN_INSTANCES = Number.isInteger(+process.env.STAFF360_MIN_INSTANCES) && process.env.STAFF360_MIN_INSTANCES !== '' ? +process.env.STAFF360_MIN_INSTANCES : 1;
+const MIN_INSTANCES = Number.isInteger(+process.env.STAFF360_MIN_INSTANCES) && process.env.STAFF360_MIN_INSTANCES !== '' ? +process.env.STAFF360_MIN_INSTANCES : 0;
 const API_OPTS = Object.assign({ secrets: [OPENAI_API_KEY], memory: '512MiB', cpu: 1, concurrency: 40, minInstances: MIN_INSTANCES, timeoutSeconds: 60 }, OPTS);
 async function api(req) {
   const data = Object.assign({}, req.data || {});

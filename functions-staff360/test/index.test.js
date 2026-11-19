@@ -19,7 +19,7 @@ const fns = require('../staff360/index.js');
 
 test('staff360Api: one warm function, routes by __op, keeps data.op for handlers', async () => {
   const api = fns.staff360Api;
-  assert.equal(api.opts.minInstances, 1); assert.equal(api.opts.cpu, 1); assert.equal(api.opts.enforceAppCheck, true);
+  assert.equal(api.opts.minInstances, 0, 'no always-on cost by default'); assert.equal(api.opts.cpu, 1); assert.equal(api.opts.enforceAppCheck, true);
   assert.deepEqual(api.opts.secrets.map((s) => s.name), ['OPENAI_API_KEY']);
   await assert.rejects(api({ data: { __op: 'constructor' }, auth: null }), (e) => e.code === 'invalid-argument');
   await assert.rejects(api({ data: { __op: 'staff360GetState', shopId: 'A' }, auth: null }), (e) => e.code === 'unauthenticated');
