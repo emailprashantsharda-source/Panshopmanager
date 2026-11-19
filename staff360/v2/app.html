@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="s360v2.css?v=r3a">
+<link rel="stylesheet" href="s360v2.css?v=r4a">
 <style>
 #boot{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,system-ui,sans-serif}
 #boot .bx{background:#fff;border:1px solid #E7ECF2;border-radius:16px;padding:24px;max-width:380px;text-align:center;color:#344054}
@@ -24,16 +24,16 @@
 <div id="boot"><div class="bx"><div class="spinner" aria-hidden="true"></div><p>Opening Staff360…</p></div></div>
 <div id="s360v2" class="app" hidden></div>
 <div id="s360emp" hidden></div>
-<script src="store.js?v=r3a"></script>
-<script src="ui.js?v=r3a"></script>
-<script src="views-staff.js?v=r3a"></script>
-<script src="views-attendance.js?v=r3a"></script>
-<script src="views-ops.js?v=r3a"></script>
-<script src="views-ai.js?v=r3a"></script>
-<script src="views-admin.js?v=r3a"></script>
-<script src="app.js?v=r3a"></script>
-<script src="employee.js?v=r3a"></script>
-<script src="live.js?v=r3a"></script>
+<script src="store.js?v=r4a"></script>
+<script src="ui.js?v=r4a"></script>
+<script src="views-staff.js?v=r4a"></script>
+<script src="views-attendance.js?v=r4a"></script>
+<script src="views-ops.js?v=r4a"></script>
+<script src="views-ai.js?v=r4a"></script>
+<script src="views-admin.js?v=r4a"></script>
+<script src="app.js?v=r4a"></script>
+<script src="employee.js?v=r4a"></script>
+<script src="live.js?v=r4a"></script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
@@ -59,6 +59,10 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function back() { if (embedded) window.parent.postMessage({ s360: 'close' }, location.origin); else location.href = '/'; }
 window.S360_BACK = back;
+// The app finished sending its staff list after these screens opened: reload the data.
+window.addEventListener('message', (e) => {
+  if (e.origin === location.origin && e.data && e.data.s360 === 'reload' && window.S360Store && window.S360Store.backend()) window.S360Store.backend().reload();
+});
 function msg(title, text) {
   $('boot').innerHTML = `<div class="bx"><h2>${esc(title)}</h2><p>${esc(text)}</p><p style="margin-top:14px"><button class="btn pri" id="bk">Back to HisaabNow</button></p></div>`;
   $('boot').hidden = false; $('bk').onclick = back;

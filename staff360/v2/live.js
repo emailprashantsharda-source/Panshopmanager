@@ -124,7 +124,7 @@
         day: rec.today, nowMin: new Date().getHours() * 60 + new Date().getMinutes(),
         plan: STATE.plan, role: STATE.role, kind: STATE.tenant.kind, editable: r[0].editable, extra: { maxStaff: r[0].maxStaff, ai: STATE.ai, detailed: rec.detailed, plans: STATE.plans, ent: STATE.entitlement },
         staff: staff, shifts: shifts, attendance: mapRecords(rec.rows, staff, shifts, rec.from, rec.to), leaves: leaves, audit: mapAudit(r[4].items), approvals: [],
-        businesses: (O.tenants || [O.tenant]).map(function (t) { return { id: t.id, name: t.name, city: t.kind === 'shop' ? 'HisaabNow shop' : 'Staff360 business', role: t.role }; }),
+        businesses: (O.tenants || [O.tenant]).map(function (t) { return { id: t.id, name: t.name, city: t.kind === 'shop' ? 'HisaabNow shop' : 'Staff360 business', role: t.id === O.tenant.id ? STATE.role : t.role }; }),
         corrections: corr,
         notifications: (pend ? [{ id: 'np', text: pend + ' leave request' + (pend > 1 ? 's are' : ' is') + ' waiting for approval', at: 'now', go: '#/leave' }] : [])
           .concat(pc ? [{ id: 'nc', text: pc + ' attendance correction' + (pc > 1 ? 's' : '') + ' to review', at: 'now', go: '#/leave/corrections' }] : []),

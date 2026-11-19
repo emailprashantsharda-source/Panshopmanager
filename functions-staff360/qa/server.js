@@ -1,3 +1,4 @@
+const DELAY = {}; // /__delay?fn=staff360SyncRoster&ms=7000 simulates a cold server
 /* QA server: serves the repo + a harness page, and runs the REAL Staff360
  * handlers against the in-memory Firestore so the UI is tested end-to-end.
  *   node functions-staff360/qa/server.js  →  http://127.0.0.1:8360/qa
@@ -52,7 +53,9 @@ reset();
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/__reset') { reset(); res.end('ok'); return; }
+  if (url.pathname === '/__reset') {
+    for (const k of Object.keys(DELAY)) delete DELAY[k]; reset(); res.end('ok'); return; }
+  if (url.pathname === '/__delay') { DELAY[url.searchParams.get('fn')] = +url.searchParams.get('ms') || 0; res.end('ok'); return; }
   if (url.pathname === '/__plan') {
     const p = url.searchParams.get('p');
     const shop = url.searchParams.get('shop') || 'A';
@@ -102,6 +105,7 @@ http.createServer(async (req, res) => {
         staff360AIDashboard: 'aiDashboard', staff360AIAsk: 'aiAsk', staff360AlertAction: 'alertAction', staff360SalaryList: 'salaryList', staff360SalarySave: 'salarySave',
         staff360WhatsApp: 'whatsapp', staff360CreateOrder: 'createOrder' };
       res.setHeader('content-type', 'application/json');
+      if (DELAY[fn]) await new Promise((r) => setTimeout(r, DELAY[fn]));
       if (!map[fn]) { res.end(JSON.stringify({ error: { code: 'not-found', message: 'NOT_FOUND' } })); return; }
       try {
         const out = await h[map[fn]](JSON.parse(body || '{}'), USERS[req.headers['x-user'] || 'owner']);

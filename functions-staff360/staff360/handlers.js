@@ -174,7 +174,7 @@ function createHandlers(deps) {
     const list = Array.isArray(data.staff) ? data.staff.slice(0, 500) : null;
     if (!list) fail('invalid-argument', 'staff list required');
     const coll = db.collection(`staff360/${ctx.shopId}/roster`);
-    const seen = new Set();
+    const seen = new Set(), writes = [];
     for (const x of list) {
       const id = str(x && x.id, 128);
       if (!id || id.includes('/') || seen.has(id)) continue;
@@ -188,11 +188,15 @@ function createHandlers(deps) {
       // Keep a phone added in Staff360 when the app's staff record has none.
       const phone = /^\+\d{10,15}$/.test(ph) ? ph : (/^\d{10}$/.test(ph) ? '+91' + ph : null);
       if (phone) doc.phoneE164 = phone;
-      await coll.doc(id).set(doc, { merge: true });
+      writes.push(coll.doc(id).set(doc, { merge: true }));
     }
-    const existing = await coll.get();
-    for (const d of existing.docs) if (!seen.has(d.id) && !d.data().removed) await coll.doc(d.id).set({ removed: true, updatedAt: now() }, { merge: true });
-    return { ok: true, count: seen.size };
+    /* Remove only staff the app says were deleted. Staff merely missing from this
+     * device's list stay: a phone that hasn't finished downloading the shop's data,
+     * or an older copy of the app, must never wipe the team. */
+    const gone = Array.isArray(data.removed) ? data.removed.slice(0, 500).map((r) => str(r, 128)).filter((r) => r && !r.includes('/') && !seen.has(r)) : [];
+    for (const id of new Set(gone)) writes.push(coll.doc(id).set({ removed: true, updatedAt: now() }, { merge: true }));
+    await Promise.all(writes);
+    return { ok: true, count: seen.size, removed: gone.length };
   }
 
   async function shifts(shopId) {
@@ -318,7 +322,8 @@ function createHandlers(deps) {
     const logRef = db.collection(`staff360/${ctx.shopId}/punchLog`);
     const log = (outcome, date) => logRef.add({ staffId: me.id, staffName: me.name || '', action, attendanceDate: date || z.date, at: t, hm: z.hm, outcome });
 
-    if (!gps && st.gpsPolicy === 'require') {
+    // "Don't allow check-ins away from the shop" can't be dodged by switching location off.
+    if (!gps && (st.gpsPolicy === 'require' || (action === 'in' && st.geofence.mode === 'block' && st.geofence.lat != null))) {
       await log('rejected_no_gps');
       fail('failed-precondition', `gps_required:${gpsErr}`);
     }
@@ -1215,7 +1220,15 @@ function createHandlers(deps) {
     const leave = reqs.docs.map((d) => d.data()).filter((r) => r.type === 'leave' && r.fromDate <= date && (r.toDate || r.fromDate) >= date);
     const wd = C.weekdayOf(date), done = [];
     for (const s of staff) {
-      const checksIn = s.canLogin === true || String(s.id).startsWith('+');
+      // Staff360 login: expected to check in. A HisaabNow app login (cashier etc.) counts only
+      // if they have actually used Staff360 check-in in the last 14 days; otherwise people who
+      // only bill in the app would be marked absent every night.
+      let checksIn = s.canLogin === true;
+      if (!checksIn && String(s.id).startsWith('+')) {
+        const days = Array.from({ length: 14 }, (_, i) => C.addDays(date, -1 - i));
+        const ps = await Promise.all(days.map((d) => db.doc(`staff360/${shopId}/punches/${s.id}_${d}`).get()));
+        checksIn = ps.some((x) => x.exists && x.data() && x.data().checkInAt);
+      }
       if (!checksIn) continue;
       const shift = shiftFor(sh, s.id);
       const off = Number.isInteger(s.weeklyOff) ? s.weeklyOff === wd : !!(shift && Array.isArray(shift.weeklyOff) && shift.weeklyOff.includes(wd));
