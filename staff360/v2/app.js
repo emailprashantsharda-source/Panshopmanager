@@ -93,7 +93,8 @@
     var cnt = { in: 0, late: 0, absent: 0, leave: 0, weeklyoff: 0, notin: 0 };
     rows.forEach(function (x) {
       var r = x.rec; if (!r) { cnt.notin++; return; }
-      if (U.isIn(r)) { cnt.in++; if (r.status === 'late') cnt.late++; } else if (cnt[r.status] != null) cnt[r.status]++;
+      // Present by status: an owner can mark Present without a check-in time.
+      if (r.status === 'present' || r.status === 'late' || r.status === 'halfday') { cnt.in++; if (r.status === 'late') cnt.late++; } else if (cnt[r.status] != null) cnt[r.status]++;
     });
     var scheduled = active - cnt.weeklyoff - cnt.leave, pct = scheduled ? cnt.in / scheduled : 0;
     var monthRecs = St.range(U.monthStart(today), today).filter(function (r) { var p = St.person(r.staff); return p && p.status === 'Active'; });
