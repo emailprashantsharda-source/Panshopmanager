@@ -219,13 +219,23 @@
     try { body = view ? view(ui.arg) : U.views.notfound(); }
     catch (err) { if (window.console) console.warn(err); body = '<div class="card placeholder"><h1>Something went wrong</h1><p>This screen could not load. Try again, or go back to the dashboard.</p><a class="btn" href="#/dashboard">Back to dashboard</a></div>'; }
     root.innerHTML = '<aside class="side" id="s360-side">' + sideHTML() + '</aside><div class="scrim" data-a="drawer"></div>' +
-      '<div class="main"><header class="top">' + topHTML() + '</header><main class="content" id="s360-main" tabindex="-1">' + body + '</main></div>';
+      '<div class="main"><header class="top">' + topHTML() + '</header><main class="content" id="s360-main" tabindex="-1">' + backHTML() + body + '</main></div>';
     Object.keys(dirty).forEach(function (k) {
       var d = fieldFor(k); if (!d || d.getAttribute('data-f')) return;
       if (d.type === 'checkbox' || d.type === 'radio') d.checked = dirty[k]; else d.value = dirty[k];
     });
     if (fid) { var el = document.getElementById(fid); if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch (e) { /* not a text input */ } } }
     if (U.afterRender) U.afterRender();
+  }
+  /* Back button above every section except the dashboard. Goes to the parent screen
+   * (a staff profile → Staff, corrections → Leave, a section → Dashboard). On wide
+   * screens, where the sidebar is always visible, it shows only on sub-screens. */
+  var NAMES = { staff: 'Staff', attendance: 'Attendance', leave: 'Leave', shifts: 'Shifts', reports: 'Reports', settings: 'Settings' };
+  function backHTML() {
+    if (ui.route === 'dashboard') return '';
+    var sub = ui.arg && !/^\d{4}-\d{2}-\d{2}$/.test(ui.arg) && ui.arg !== 'calendar';
+    var to = sub && NAMES[ui.route] ? '#/' + ui.route : '#/dashboard', label = sub && NAMES[ui.route] ? NAMES[ui.route] : 'Dashboard';
+    return '<a class="back-row' + (sub ? ' sub' : '') + '" href="' + to + '">' + U.ic('left') + 'Back to ' + label + '</a>';
   }
   U.render = function () { if (root) render(); };
   U.clean = function (form) { [].forEach.call(form.querySelectorAll('input,select,textarea'), function (el) { var k = keyFor(el); if (k) delete dirty[k]; }); };
