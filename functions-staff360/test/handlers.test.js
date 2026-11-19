@@ -391,7 +391,10 @@ test('roster sync: local-only staff appear; removed staff kept but hidden; login
     { id: 'local_77', name: 'Sunil (no login)', role: 'Helper', salary: 9000 },
   ] }, OWNER_A);
   assert.equal(db._store.get('staff360/A/roster/amit').phoneE164, '+919111111111');
-  assert.equal(db._store.get('staff360/A/roster/meena').removed, true, 'missing from list = removed, not deleted');
+  assert.notEqual(db._store.get('staff360/A/roster/meena').removed, true, 'missing from one device\'s list is NOT a removal');
+  await h.syncRoster({ shopId: 'A', staff: [], removed: ['meena'] }, OWNER_A);
+  assert.equal(db._store.get('staff360/A/roster/meena').removed, true, 'deleted in the app = removed (kept, hidden)');
+  assert.equal(db._store.get('staff360/A/roster/amit').removed, false, 'an empty list removes nobody else');
   const reg = await h.register({ shopId: 'A', date: '2026-11-17' }, OWNER_A);
   const names = reg.rows.map((r) => r.name).sort();
   assert.deepEqual(names, ['Amit Kumar', 'Meena Joshi', 'Riya Sharma', 'Sunil (no login)'],
@@ -538,6 +541,8 @@ test('round 2: shop-distance check, auto half-day, auto absent', async () => {
   // Shop ~1.1 km north of where Amit stands; 200 m radius, block.
   await h.saveSettings({ shopId: 'A', geofence: { mode: 'block', lat: 28.5455, lng: 77.391, radiusM: 200 }, autoHalfDay: true, halfDayBelowHours: 5 }, OWNER_A);
   await rejects(h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, EMP_A), 'failed-precondition', /outside_radius:11\d\d/);
+  await h.saveSettings({ shopId: 'A', gpsPolicy: 'allow_without' }, OWNER_A);
+  await rejects(h.punch({ shopId: 'A', action: 'in', gpsError: 'denied' }, EMP_A), 'failed-precondition', /gps_required/);
   // Flag mode: allowed, but recorded as outside with the distance.
   await h.saveSettings({ shopId: 'A', geofence: { mode: 'flag', lat: 28.5455, lng: 77.391, radiusM: 200 } }, OWNER_A);
   const r = await h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, EMP_A);
@@ -594,4 +599,17 @@ test('AI adapter: OpenAI request uses max_completion_tokens and the configured m
   assert.equal(sent.body.model, 'gpt-5.6-terra'); assert.equal(sent.body.max_completion_tokens, 2000); assert.equal(sent.body.max_tokens, undefined);
   assert.equal(sent.auth, 'Bearer sk-test');
   assert.equal(createAI({ STAFF360_AI_PROVIDER: 'openai', STAFF360_AI_MODEL: 'm' }, f).configured(), false, 'no key = rules');
+});
+
+test('auto absent: HisaabNow app logins who never use Staff360 check-in are not marked', async () => {
+  const { h, db } = setup();
+  await grant(h, 'A', 'premium');
+  db._seed('shops/A/staff/+919666666666', { name: 'Kiran (billing only)', role: 'cashier', active: true });
+  db._seed('shops/A/staff/+919777777777', { name: 'Ravi (checks in)', role: 'cashier', active: true });
+  db._seed('staff360/A/punches/+919777777777_2026-11-10', { staffId: '+919777777777', checkInAt: 1, inHm: '09:00' });
+  await h.autoAbsent({ shopId: 'A', date: '2026-11-17' }, OWNER_A);
+  const rows = (await h.records({ shopId: 'A', from: '2026-11-17', to: '2026-11-17' }, OWNER_A)).rows;
+  const st = (id) => ((rows.find((x) => x.staffId === id) || { days: [] }).days[0] || {}).status;
+  assert.equal(st('+919666666666'), undefined);
+  assert.equal(st('+919777777777'), 'A');
 });

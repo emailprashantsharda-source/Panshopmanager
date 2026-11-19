@@ -1,7 +1,7 @@
 """Staff360 v2 inside the HisaabNow app (app.hisaabnow.com): the app's Staff360 button opens
 the new screens in a frame, using the app's own sign-in, against the REAL handlers.
   node functions-staff360/qa/server.js &   python3 functions-staff360/qa/inapp_v2_test.py"""
-import os, urllib.request
+import os, json, urllib.request
 from playwright.sync_api import sync_playwright, expect
 BASE = os.environ.get('QA_BASE', 'http://127.0.0.1:8360')
 FB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mock-firebase')
@@ -49,6 +49,32 @@ with sync_playwright() as p:
     fr.locator('.sheet [data-e^="confirm"]').click(); expect(fr.locator('.emp-punch')).to_contain_text('Checked in', timeout=8000); ok('Employee checks in from inside the app')
     pg.screenshot(path=f'{OUT}/02-inapp-employee.png')
     fr.locator('.emp-top [data-e=logout]').click(); expect(pg.locator('#s360v2-frame')).to_have_count(0); ok('Employee back button returns to the app')
+    ctx.close()
+
+    # Staff added in the app show up, even when the server is slow to answer (cold start)
+    ctl('/__reset'); ctl('/__plan?p=premium'); ctx, pg = page_for(b, 'owner')
+    pg.wait_for_timeout(2500)  # app boot push done
+    pg.evaluate("Store.add('staff', {id:'new_1', name:'Naya Staff', role:'Helper', phoneE164:'+919888888888', salary:9000})")
+    urllib.request.urlopen(BASE + '/__delay?fn=staff360SyncRoster&ms=7000').read()
+    pg.evaluate("Staff360.open('team')")
+    fr = pg.frame_locator('#s360v2-frame iframe')
+    expect(fr.locator('#s360v2')).to_contain_text('Naya Staff', timeout=20000); ok('Staff added in the app appear in Staff360 (slow server)')
+    fr.locator('.back-hn').click()
+    ctl('/__delay?fn=staff360SyncRoster&ms=0')
+    # Background: added while Staff360 is closed → on the server within seconds (website sees it too)
+    pg.evaluate("Store.add('staff', {id:'new_2', name:'Doosra Staff', role:'Helper'})")
+    pg.wait_for_timeout(5000)
+    names = [x['name'] for x in json.loads(urllib.request.urlopen(urllib.request.Request(BASE + '/__call/staff360StaffRoster', data=b'{"shopId":"A"}', headers={'content-type': 'application/json', 'x-user': 'owner'})).read())['data']['staff']]
+    assert 'Doosra Staff' in names, names; ok('Added staff reach the server without opening Staff360')
+    # A phone with only part of the team (still downloading) removes nobody; a deleted one is removed
+    pg.evaluate("window.__keep = Store.list('staff'); Store.list = (function(o){ return function(c){ return c==='staff' ? [window.__keep[0]] : o.call(Store,c); }; })(Store.list)")
+    pg.wait_for_timeout(5000)
+    names = [x['name'] for x in json.loads(urllib.request.urlopen(urllib.request.Request(BASE + '/__call/staff360StaffRoster', data=b'{"shopId":"A"}', headers={'content-type': 'application/json', 'x-user': 'owner'})).read())['data']['staff']]
+    assert 'Doosra Staff' in names and 'Vikas Singh' in names, names; ok('Partial staff list on a device removes nobody')
+    pg.evaluate("Store.list = function(c){ return c==='staff' ? window.__keep.map(function(x){ return x.id==='vikas' ? Object.assign({}, x, {_deleted:true}) : x; }) : []; }")
+    pg.wait_for_timeout(5000)
+    names = [x['name'] for x in json.loads(urllib.request.urlopen(urllib.request.Request(BASE + '/__call/staff360StaffRoster', data=b'{"shopId":"A"}', headers={'content-type': 'application/json', 'x-user': 'owner'})).read())['data']['staff']]
+    assert 'Vikas Singh' not in names, names; ok('Staff deleted in the app leave Staff360')
     ctx.close()
 
     # Old screen still available as a fallback

@@ -157,9 +157,21 @@
       wrap.appendChild(fr);
     };
     // Make sure the server has this shop's latest staff list before the new screens load it.
+    // A cold server can take several seconds: wait up to 12 s, and if the update lands after
+    // the screens opened, tell them to reload so new staff still appear.
     if (isManager()) {
-      var done = false, t = setTimeout(function () { if (!done) { done = true; go(); } }, 5000);
-      loadState(false).then(function () { return pushRoster(true); }).catch(function () {}).then(function () { if (!done) { done = true; clearTimeout(t); go(); } });
+      var done = false, msgEl = wrap.firstChild;
+      var t = setTimeout(function () { if (!done) { done = true; go(); } }, 12000);
+      setTimeout(function () { if (!done && msgEl) msgEl.textContent = 'Updating your staff list…'; }, 1500);
+      loadState(false).then(function () { return pushRoster(true); }).then(function (changed) {
+        if (!done) { done = true; clearTimeout(t); go(); return; }
+        var fr = document.querySelector('#s360v2-frame iframe');
+        if (changed && fr && fr.contentWindow) fr.contentWindow.postMessage({ s360: 'reload' }, location.origin);
+      }, function (e) {
+        console.warn('[Staff360] staff list update failed', e);
+        toast('Couldn’t update the staff list. New staff may be missing — check your internet and reopen Staff360.');
+        if (!done) { done = true; clearTimeout(t); go(); }
+      });
     } else go();
   }
   window.addEventListener('message', function (e) {
@@ -208,7 +220,7 @@
     }
     track('staff360_opened', { plan: plan() });
     render();
-    loadState(false).then(function () { pushRoster(false); render(); });
+    loadState(false).then(function () { pushRoster(false).catch(function () {}); render(); });
   }
   function close() {
     var el = $('s360'); if (el) el.remove();
@@ -1152,22 +1164,33 @@
      the server would only see staff who have a login. Owners/managers send
      the list (name, role, phone, salary — no other personal data) whenever it
      changes, so reports, AI and salary drafts include everyone. */
-  var rosterBusy = false;
+  /* (Nov 2026) Fixes: a push already running is waited for instead of skipped; staff
+   * deleted in the app are sent as `removed` (the server no longer treats "missing from
+   * this phone's list" as deleted); failures are reported to the caller (openV2). */
+  var rosterBusy = null;
+  function deletedLocal() {
+    try { return (Store.list('staff') || []).filter(function (s) { return s && s.id && (s._deleted || s.deletedAt); }).map(function (s) { return s.id; }); } catch (e) { return []; }
+  }
   function pushRoster(force) {
-    if (SA || rosterBusy || !isManager() || !S.st || S.serverMissing) return Promise.resolve();
+    if (rosterBusy) return rosterBusy;
+    if (SA || !isManager() || !S.st || S.serverMissing) return Promise.resolve(false);
+    if (!force && S.rosterFailAt && Date.now() - S.rosterFailAt < 60e3) return Promise.resolve(false);
     var list = staffLocal().map(function (x) {
       return { id: x.id, name: x.name || '', role: x.role || '', phone: x.phoneE164 || x.phone || '', salary: Number(x.salary) || 0, active: x.active !== false };
     });
+    var removed = deletedLocal();
     var key = 's360_roster_' + shopId();
-    var sig = JSON.stringify(list);
+    var sig = JSON.stringify([list, removed]);
     var prev = null; try { prev = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
-    if (!force && prev && prev.sig === sig && Date.now() - prev.at < 12 * 3600e3) return Promise.resolve();
-    if (force && prev && prev.sig === sig && Date.now() - prev.at < 10 * 60e3) return Promise.resolve();
-    rosterBusy = true;
-    return call('staff360SyncRoster', { staff: list }).then(function () {
+    if (!force && prev && prev.sig === sig && Date.now() - prev.at < 12 * 3600e3) return Promise.resolve(false);
+    if (force && prev && prev.sig === sig && Date.now() - prev.at < 10 * 60e3) return Promise.resolve(false);
+    rosterBusy = call('staff360SyncRoster', { staff: list, removed: removed }).then(function () {
       try { localStorage.setItem(key, JSON.stringify({ sig: sig, at: Date.now() })); } catch (e) {}
       if (prev && prev.sig !== sig) S.data = {};
-    }, function () {}).then(function () { rosterBusy = false; });
+      rosterBusy = null; S.rosterFailAt = 0;
+      return true;
+    }, function (e) { rosterBusy = null; S.rosterFailAt = Date.now(); throw e; });
+    return rosterBusy;
   }
 
   /* ═══════════════ entry points ═══════════════ */
@@ -1258,10 +1281,12 @@
     if (!sid) return;
     if (eligible() && (sid !== lastShop || r !== lastRole || (Date.now() - S.stAt > 10 * 60e3 && !S.busy._st))) {
       lastShop = sid; lastRole = r; S.busy._st = true; S.data = {};
-      loadState(true).then(function () { S.busy._st = false; syncEntries(); pushRoster(false); consumeIntent(); if (auditQueue().length) flushAudit(); });
+      loadState(true).then(function () { S.busy._st = false; syncEntries(); pushRoster(false).catch(function () {}); consumeIntent(); if (auditQueue().length) flushAudit(); });
     }
     syncEntries();
     if (!S.busy._st) consumeIntent();
+    // Staff added or edited in the app reach Staff360 within seconds (also on the website).
+    if (!S.busy._st && S.st && S.stShop === sid && eligible()) pushRoster(false).catch(function () {});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tick); else tick();
   setInterval(tick, 2000);
