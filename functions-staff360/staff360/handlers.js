@@ -102,8 +102,16 @@ function createHandlers(deps) {
       minAccuracyM: Number.isFinite(s.minAccuracyM) ? Math.min(5000, Math.max(10, s.minAccuracyM)) : 150,
       mirrorToRegister: s.mirrorToRegister !== false,
       lateThreshold: Number.isInteger(s.lateThreshold) ? Math.max(2, Math.min(15, s.lateThreshold)) : 3,
+      defaultGraceMin: Number.isFinite(s.defaultGraceMin) ? s.defaultGraceMin : 10,
+      hoursPerDay: Number.isFinite(s.hoursPerDay) ? s.hoursPerDay : 8,
+      halfDayBelowHours: Number.isFinite(s.halfDayBelowHours) ? s.halfDayBelowHours : 5,
+      autoLate: s.autoLate !== false,
+      perms: Object.assign({ requestLeave: true, seeShift: true, managerEdit: true, managerSalary: false }, s.perms || {}),
+      notify: Object.assign({ dailySummary: false, lateAlert: false, leaveAlert: true }, s.notify || {}),
     };
   }
+  const EMP_TYPES = ['Full-time', 'Part-time', 'Contract', 'Temporary'];
+  const LEAVE_TYPES = ['Casual', 'Sick', 'Unpaid', 'Other'];
 
   /* Staff = the owner's roster (sent by the app via syncRoster, because the
    * app's staff list is NOT pushed to Firestore — HisaabSync NO_PUSH) plus
@@ -249,6 +257,7 @@ function createHandlers(deps) {
         const yest = (await db.doc(`staff360/${ctx.shopId}/punches/${me.id}_${C.addDays(z.date, -1)}`).get()).data() || null;
         out.me = {
           staffId: me.id, name: me.name || 'Staff', role: me.role || '', today: z.date, timezone: st.timezone,
+          weeklyOff: Number.isInteger(me.weeklyOff) ? me.weeklyOff : null, joinedDate: me.joinedDate || null,
           gpsPolicy: st.gpsPolicy, minAccuracyM: st.minAccuracyM,
           shift: sh ? { name: sh.name, start: sh.start, end: sh.end, graceMin: sh.graceMin || 0, weeklyOff: sh.weeklyOff || [] } : null,
           todayPunch: publicPunch(today), openYesterday: yest && yest.checkInAt && !yest.checkOutAt ? publicPunch(yest) : null,
@@ -466,7 +475,9 @@ function createHandlers(deps) {
     const ref = id ? coll.doc(id) : coll.doc();
     const prev = id ? (await ref.get()).data() || null : null;
     if (id && !prev) fail('not-found', 'shift');
-    const doc = { name, start: data.start, end: data.end, graceMin, weeklyOff, staffIds, overnight: C.hmToMin(data.end) <= C.hmToMin(data.start), updatedAt: now(), updatedBy: ctx.uid };
+    const breakMin = Math.max(0, Math.min(240, Math.round(Number(data.breakMin) || 0)));
+    const color = ['blue', 'purple', 'green', 'orange'].includes(data.color) ? data.color : 'green';
+    const doc = { name, start: data.start, end: data.end, graceMin, breakMin, color, weeklyOff, staffIds, overnight: C.hmToMin(data.end) <= C.hmToMin(data.start), updatedAt: now(), updatedBy: ctx.uid };
     if (!prev) Object.assign(doc, { createdAt: now(), createdBy: ctx.uid });
     await ref.set(doc, { merge: true });
     // One shift per person: remove these staff from other shifts.
@@ -492,13 +503,29 @@ function createHandlers(deps) {
   }
 
   async function saveSettings(data, auth) {
-    const ctx = await caller(data, auth, { roles: ['owner'], feature: 'settings' });
+    // Renaming the business is allowed on every plan; everything else needs Premium.
+    const onlyName = Object.keys(data || {}).every((k) => k === 'shopId' || k === 'businessName');
+    const ctx = await caller(data, auth, onlyName ? { roles: ['owner'] } : { roles: ['owner'], feature: 'settings' });
     const patch = {};
     if (data.timezone != null) { if (!C.validTz(data.timezone)) fail('invalid-argument', 'Unknown timezone'); patch.timezone = data.timezone; }
     if (data.gpsPolicy != null) patch.gpsPolicy = data.gpsPolicy === 'allow_without' ? 'allow_without' : 'require';
     if (data.minAccuracyM != null) patch.minAccuracyM = Math.min(5000, Math.max(10, Math.round(Number(data.minAccuracyM) || 150)));
     if (data.lateThreshold != null) patch.lateThreshold = Math.max(2, Math.min(15, Math.round(Number(data.lateThreshold) || 3)));
     if (data.mirrorToRegister != null) patch.mirrorToRegister = !!data.mirrorToRegister;
+    const num = (v, lo, hi) => { const n = Number(v); if (!Number.isFinite(n) || n < lo || n > hi) fail('invalid-argument', 'Value out of range'); return n; };
+    if (data.defaultGraceMin != null) patch.defaultGraceMin = Math.round(num(data.defaultGraceMin, 0, 180));
+    if (data.hoursPerDay != null) patch.hoursPerDay = num(data.hoursPerDay, 1, 16);
+    if (data.halfDayBelowHours != null) patch.halfDayBelowHours = num(data.halfDayBelowHours, 1, 12);
+    if (data.autoLate != null) patch.autoLate = !!data.autoLate;
+    const flags = (o, keys) => { const out = {}; keys.forEach((k) => { if (o && o[k] != null) out[k] = !!o[k]; }); return out; };
+    if (data.perms) patch.perms = flags(data.perms, ['requestLeave', 'seeShift', 'managerEdit', 'managerSalary']);
+    if (data.notify) patch.notify = flags(data.notify, ['dailySummary', 'lateAlert', 'leaveAlert']);
+    if (data.businessName != null) {
+      if (ctx.kind !== 'org') fail('failed-precondition', 'Rename your shop in the HisaabNow app.');
+      const nm = str(data.businessName, 60);
+      if (nm.length < 2) fail('invalid-argument', 'Enter the business name');
+      await db.doc(tenantDocPath(ctx.shopId)).set({ name: nm, updatedAt: now() }, { merge: true });
+    }
     patch.updatedAt = now(); patch.updatedBy = ctx.uid;
     await db.doc(`staff360/${ctx.shopId}`).set(patch, { merge: true });
     await audit(ctx, { type: 'settings_updated', to: JSON.stringify(Object.assign({}, patch, { updatedAt: undefined, updatedBy: undefined })) });
@@ -509,7 +536,11 @@ function createHandlers(deps) {
 
   async function submitRequest(data, auth) {
     const ctx = await caller(data, auth, { feature: 'leave_requests' });
-    const me = await selfStaff(ctx);
+    let me;
+    if (data.staffId && MANAGERS.includes(ctx.role)) {
+      me = (await staffList(ctx.shopId)).find((x) => x.id === str(data.staffId, 128));
+      if (!me) fail('not-found', 'staff');
+    } else me = await selfStaff(ctx);
     const type = data.type === 'correction' ? 'correction' : data.type === 'leave' ? 'leave' : null;
     if (!type) fail('invalid-argument', 'type must be leave or correction');
     const reason = str(data.reason, 300);
@@ -521,7 +552,8 @@ function createHandlers(deps) {
       const from = str(data.fromDate, 10), to = str(data.toDate || data.fromDate, 10);
       checkRange(from, to);
       if (C.dateRange(from, to).length > 31) fail('invalid-argument', 'Leave is limited to 31 days per request');
-      Object.assign(doc, { fromDate: from, toDate: to });
+      Object.assign(doc, { fromDate: from, toDate: to, leaveType: LEAVE_TYPES.includes(data.leaveType) ? data.leaveType : 'Other' });
+      if (me.id !== (ctx.membership && ctx.membership.id)) doc.onBehalfOf = ctx.role;
     } else {
       const date = str(data.date, 10);
       if (!C.isDate(date) || date > today) fail('invalid-argument', 'Correction date must be today or earlier');
@@ -1027,7 +1059,9 @@ function createHandlers(deps) {
       kind: ctx.kind, editable: ctx.kind === 'org', maxStaff: cfg[ctx.plan].maxStaff,
       staff: list.concat(inactive).map((x) => ({ id: x.id, name: x.name || 'Staff', role: x.role || '', phone: x.phoneE164 || null,
         salary: Number(x.salary) || 0, dailyWage: Number(x.dailyWage) || 0, active: x.active !== false, canLogin: x.canLogin === true,
-        hisaabnowLogin: !!(ctx.kind === 'shop' && String(x.id).startsWith('+')) })),
+        hisaabnowLogin: !!(ctx.kind === 'shop' && String(x.id).startsWith('+')),
+        joinedDate: x.joinedDate || null, empType: x.empType || null, empCode: x.empCode || null,
+        weeklyOff: Number.isInteger(x.weeklyOff) ? x.weeklyOff : null })),
     };
   }
 
@@ -1046,6 +1080,19 @@ function createHandlers(deps) {
     const canLogin = data.canLogin === true;
     if (canLogin && !phone) fail('invalid-argument', 'A mobile number is needed for login');
     const patch = { phoneE164: phone, canLogin, updatedAt: now(), updatedBy: ctx.uid };
+    // Staff360-only details (not part of the HisaabNow staff record), allowed for shops too.
+    if (data.weeklyOff !== undefined) patch.weeklyOff = Number.isInteger(data.weeklyOff) && data.weeklyOff >= 0 && data.weeklyOff <= 6 ? data.weeklyOff : null;
+    if (data.empType !== undefined) patch.empType = EMP_TYPES.includes(data.empType) ? data.empType : null;
+    if (data.empCode !== undefined) {
+      const code = str(data.empCode, 12).toUpperCase();
+      if (code && !/^[A-Z0-9-]{2,12}$/.test(code)) fail('invalid-argument', 'Employee ID can use letters, numbers and -');
+      if (code) {
+        const dupe = await coll.where('empCode', '==', code).limit(3).get();
+        if (dupe.docs.some((d) => d.id !== id && !d.data().removed)) fail('already-exists', 'This employee ID is already used');
+      }
+      patch.empCode = code || null;
+    }
+    if (data.joinedDate !== undefined && ctx.kind === 'shop') patch.joinedDate = C.isDate(data.joinedDate) ? data.joinedDate : null;
     if (ctx.kind === 'org') {
       const name = str(data.name, 80);
       if (name.length < 2) fail('invalid-argument', 'Enter the staff name');
@@ -1090,6 +1137,33 @@ function createHandlers(deps) {
     return { ok: true };
   }
 
+  /* Per-day records for the Staff360 screens (dashboard, register, calendar,
+   * reports). Basic: marks only. Premium+: punch evidence (late, hours, GPS). */
+  async function records(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'daily_register' });
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const to = C.isDate(data.to) && data.to < today ? data.to : today;
+    const from = C.isDate(data.from) ? data.from : C.addDays(to, -30);
+    checkRange(from, to);
+    const detailed = C.can(ctx.plan, 'history_detailed');
+    const { staff, marks, punches } = await loadRange(ctx.shopId, from, to);
+    const dates = C.dateRange(from, to);
+    const rows = staff.map((s) => ({
+      staffId: s.id,
+      days: dates.map((d) => {
+        const p = (punches[s.id] || {})[d];
+        const rec = C.dayRecord((marks[s.id] || {})[d], p);
+        if (!rec.status && !rec.inHm) return null;
+        const out = { date: d, status: rec.status, inHm: rec.inHm, outHm: rec.outHm };
+        if (detailed && p) Object.assign(out, { lateMin: rec.lateMin, workedMin: rec.workedMin, incomplete: rec.incomplete,
+          gps: p.checkInGps ? { accuracy: p.checkInGps.accuracy, low: !!p.checkInGps.lowAccuracy } : (p.checkInGpsStatus ? false : null) });
+        return out;
+      }).filter(Boolean),
+    }));
+    return { from, to, today, timezone: st.timezone, detailed, rows };
+  }
+
   /* Manual attendance marking done on the server: the previous value is read
    * here, so the audit trail cannot be faked by the device. */
   async function mark(data, auth) {
@@ -1130,7 +1204,7 @@ function createHandlers(deps) {
 
   return {
     getState, punch, myHistory, syncRoster, logManualEdit,
-    myTenants, createOrg, staffRoster, staffSave, staffRemove, mark, listAudit, register, report,
+    myTenants, createOrg, staffRoster, staffSave, staffRemove, mark, records, listAudit, register, report,
     listShifts, saveShift, deleteShift, saveSettings,
     submitRequest, listRequests, decideRequest,
     aiDashboard, aiAsk, alertAction, salaryList, salarySave,

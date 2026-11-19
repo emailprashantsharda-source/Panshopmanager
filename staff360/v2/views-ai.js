@@ -102,7 +102,7 @@
   U.views.ai = function () {
     if (!St.can('ai')) return U.locked('ai', 'AI Staff Manager', 'Ask questions about your team in simple English, get alerts for repeated late arrivals and unusual patterns, and draft salary estimates you approve.');
     var h = '<div class="page-h"><div><h1>' + ic('crown', 'crown') + 'AI Staff Manager <span class="badge b-purple">King PRO</span></h1><p>Your assistant for attendance, workforce insights and salary estimates.</p></div>' +
-      '<div class="ph-act"><span class="sample">' + ic('alert') + 'Simulated — answers are computed from your attendance records; no AI service is connected in this preview</span></div></div>';
+      '<div class="ph-act"><span class="sample">' + ic('alert') + (St.live ? (St.extra.ai && St.extra.ai.configured ? 'Answers are based on your attendance records' : 'Answers are worked out from your attendance records (AI writing is not switched on yet)') : 'Simulated — answers are computed from your attendance records; no AI service is connected in this preview') + '</span></div></div>';
 
     // insights
     var recs = monthRecs(), c = U.count(recs);
@@ -133,7 +133,7 @@
       '<h3 class="sub-h">' + ic('alert') + 'Patterns to review (' + anomalies.length + ')</h3>' + (anomalies.length ? '<ul class="list anomalies">' + anomalies.slice(0, 5).map(function (a) { return '<li><span class="grow"><span class="badge ' + a[0] + '">' + a[1] + '</span><small style="display:block;margin-top:3px">' + a[2] + '</small></span><a class="btn sm" href="#/staff/' + a[3] + '">View</a></li>'; }).join('') + '</ul>' : '<p class="muted">Nothing unusual this month.</p>') +
       '<p class="muted small">Patterns are flags to check, not conclusions. Always look at the dates first.</p></section></div>';
 
-    h += salaryCard();
+    h += St.live ? salaryLive() : salaryCard();
     return h;
   };
 
@@ -170,7 +170,13 @@
   function ask(q) {
     q = String(q || '').trim(); if (!q) return;
     F.chat.push({ who: 'me', html: esc(q), at: now() }); F.typing = true; U.render(); scroll();
-    setTimeout(function () { F.typing = false; F.chat.push({ who: 'ai', html: answer(q), at: now() }); U.render(); scroll(); var i = document.getElementById('ai-in'); if (i) i.focus(); }, 550);
+    var done = function (html) { F.typing = false; F.chat.push({ who: 'ai', html: html, at: now() }); U.render(); scroll(); var i = document.getElementById('ai-in'); if (i) i.focus(); };
+    if (!St.live) { setTimeout(function () { done(answer(q)); }, 550); return; }
+    St.backend().aiAsk(q).then(function (r) {
+      var items = [].concat.apply([], (r.results || []).map(function (x) { return x.items || []; })).slice(0, 12);
+      var period = r.period && r.period.label ? '<small class="muted" style="display:block">' + esc(r.period.label) + (r.period.from ? ' · ' + esc(r.period.from) + ' to ' + esc(r.period.to) : '') + '</small>' : '';
+      done(esc(r.text || 'No answer.').replace(/\n/g, '<br>') + (items.length ? '<ul>' + items.map(function (i) { return '<li><b>' + esc(i.name || '') + '</b>' + (i.value ? ' — ' + esc(i.value) : '') + '</li>'; }).join('') + '</ul>' : '') + period);
+    }, function (e) { done('<span class="muted">' + esc(e.userMessage || 'Couldn’t get an answer. Try again.') + '</span>'); });
   }
   function scroll() { var m = document.getElementById('ai-msgs'); if (m) m.scrollTop = m.scrollHeight; }
   U.actions['ai-ask'] = function (p) { ask(QUESTIONS[+p[0]]); };
@@ -192,4 +198,63 @@
     });
   };
   U.salaryEstimate = estimateFor;
+
+  // ---------- live salary estimates (server-computed, owner approves) ----------
+  F.sl = F.sl || { ym: null, data: {}, sid: null, busy: false, err: '' };
+  function loadSalary(ym) {
+    if (F.sl.busy) return; F.sl.busy = true; F.sl.err = '';
+    St.backend().salaryList(ym).then(function (d) { F.sl.data[ym] = d; F.sl.busy = false; U.render(); }, function (e) { F.sl.busy = false; F.sl.err = e.userMessage || 'Couldn’t load salary estimates'; U.render(); });
+  }
+  function salaryLive() {
+    if (!F.sl.ym) F.sl.ym = St.today.slice(0, 7);
+    var d = F.sl.data[F.sl.ym], head = '<section class="card sal"><div class="card-h"><h2>' + ic('rupee') + 'Salary Estimator</h2><span class="badge b-amber">Estimated — requires owner approval</span></div>';
+    var months = [St.today.slice(0, 7), lastMonth()].map(function (m, i) { return [m, U.monthLabel(m) + (i ? '' : ' (to date)')]; });
+    var monthSel = U.field('Month', '<select id="sl-ym" data-sl="ym">' + U.options(months, F.sl.ym) + '</select>', { for: 'sl-ym' });
+    if (F.sl.err) return head + '<div class="empty">' + esc(F.sl.err) + '<br><button class="btn sm" data-a="sl-retry">Try again</button></div></section>';
+    if (!d) { loadSalary(F.sl.ym); return head + '<div class="empty"><div class="spinner" aria-hidden="true"></div>Working out estimates…</div></section>'; }
+    if (!d.rows.length) return head + '<div class="empty">No staff yet.</div></section>';
+    if (!F.sl.sid || !d.rows.some(function (r) { return r.staffId === F.sl.sid; })) F.sl.sid = d.rows[0].staffId;
+    var row = d.rows.filter(function (r) { return r.staffId === F.sl.sid; })[0], R = row.result, o = row.overrides || {};
+    function num(name, label, val, step, hint) { return U.field(label, '<input id="sl-' + name + '" name="' + name + '" type="number" min="0" step="' + (step || 1) + '" value="' + (val == null ? '' : val) + '">', { for: 'sl-' + name, hint: hint }); }
+    var owner = St.role === 'owner';
+    return head + '<div class="sal-grid"><form class="sal-in" id="sl-form" novalidate><div class="grid2">' +
+      U.field('Employee', '<select id="sl-sid" data-sl="sid">' + U.options(d.rows.map(function (r) { return [r.staffId, r.name + (r.status === 'approved' ? ' ✓' : '')]; }), F.sl.sid) + '</select>', { for: 'sl-sid' }) + monthSel +
+      num('monthlySalary', 'Monthly salary (₹)', o.monthlySalary != null ? o.monthlySalary : (R.basis === 'monthly' ? Math.round(R.perDay * R.divisor) : ''), 100) +
+      num('divisor', 'Divide salary by (days)', o.divisor != null ? o.divisor : R.divisor, 1, 'Days in the month by default; some use 30 or 26') +
+      num('overtimeHours', 'Overtime (hours)', R.overtimeHours, 0.5, 'From check-in/out beyond the shift') +
+      num('overtimeRate', 'Overtime rate (₹ per hour)', R.overtimeRate, 1, 'Labour codes: 2× the normal hourly rate') +
+      '</div><label class="switch" style="margin:4px 0 12px"><input type="checkbox" name="leavePaid"' + (R.leavePaid ? ' checked' : '') + '><span></span>Approved leave is paid</label>' +
+      '<div><button class="btn sm" type="submit">' + ic('refresh') + 'Recalculate with these inputs</button></div>' +
+      (row.unmarked ? '<p class="warn" style="margin-top:10px">' + ic('alert') + '<span>' + row.unmarked + ' day(s) are not marked this month. Mark them for an accurate estimate.</span></p>' : '') + '</form>' +
+      '<div class="sal-out"><small>Estimated payable salary · ' + esc(row.name) + (d.partialMonth ? ' · month to date' : '') + '</small><b class="big">' + U.inr(R.net) + '</b>' +
+      '<dl class="calc"><dt>Per-day rate</dt><dd>' + U.inr2(R.perDay) + '</dd><dt>Payable days</dt><dd>' + R.payableDays + '</dd><dt>Base pay</dt><dd>' + U.inr(R.base) + '</dd><dt>Overtime</dt><dd>+' + U.inr(R.overtime) + '</dd>' +
+      (R.advance ? '<dt>Advances (from HisaabNow)</dt><dd>−' + U.inr(R.advance) + '</dd>' : '') + '<dt class="tot">Estimate</dt><dd class="tot">' + U.inr(R.net) + '</dd></dl>' +
+      '<details class="formula"><summary>How this was worked out</summary><ul>' + R.formula.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></details>' +
+      (R.missing && R.missing.length ? '<div class="warn">' + ic('alert') + '<span>Missing: ' + esc(R.missing.join(', ')) + '.</span></div>' : '') +
+      '<div class="warn">' + ic('alert') + '<span><b>Estimated — owner approval required.</b> Staff360 never pays salaries.</span></div>' +
+      (row.status === 'approved' ? '<p class="ok-note">' + ic('check') + 'Approved' + (row.approvedAt ? ' on ' + U.dLabel(new Date(row.approvedAt).toISOString().slice(0, 10)) : '') + '. No payment was made.</p>' :
+        owner ? '<button class="btn pri" data-a="sl-approve" style="width:100%">' + ic('check') + 'Approve this estimate</button>' : '<p class="muted small">Only the owner can approve estimates.</p>') +
+      '</div></div></section>';
+  }
+  document.addEventListener('change', function (e) {
+    var k = e.target.getAttribute && e.target.getAttribute('data-sl'); if (!k) return;
+    F.sl[k] = e.target.value; U.render();
+  });
+  document.addEventListener('submit', function (e) {
+    if (e.target.id !== 'sl-form') return; e.preventDefault();
+    var f = e.target, o = {};
+    ['monthlySalary', 'divisor', 'overtimeHours', 'overtimeRate'].forEach(function (k) { var v = U.val(f, k); if (v !== '') o[k] = +v; });
+    o.leavePaid = U.val(f, 'leavePaid');
+    var b = f.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Recalculating…';
+    St.backend().salarySave(F.sl.sid, F.sl.ym, o).then(function (r) {
+      var d = F.sl.data[F.sl.ym]; d.rows = d.rows.map(function (x) { return x.staffId === r.row.staffId ? r.row : x; }); U.render(); U.toast('Estimate updated');
+    }, function (err) { b.disabled = false; b.textContent = 'Recalculate with these inputs'; U.toast(err.userMessage || 'Couldn’t recalculate'); });
+  });
+  U.actions['sl-retry'] = function () { F.sl.err = ''; U.render(); };
+  U.actions['sl-approve'] = function () {
+    var d = F.sl.data[F.sl.ym], row = d.rows.filter(function (r) { return r.staffId === F.sl.sid; })[0];
+    U.confirm('Approve ' + U.inr(row.result.net) + ' for ' + esc(row.name) + '?', 'This records your approval of the estimate for ' + U.monthLabel(F.sl.ym) + '. <b>No money is paid</b> — you pay salaries yourself as usual.', 'Approve estimate', function () {
+      St.approveSalary(row.staffId, F.sl.ym, row.result.net, {}).then(function () { delete F.sl.data[F.sl.ym]; U.render(); U.toast('Estimate approved for ' + row.name + '. No payment was made.'); });
+    });
+  };
 })();

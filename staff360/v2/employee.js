@@ -4,13 +4,13 @@
   var St = window.S360Store, U = window.S360UI, esc = U.esc, ic = U.ic;
   var KEY = 's360v2.emp', DEMO_OTP = '123456';
   var E = { route: 'login', mobile: '', gpsSim: 'ok', sheet: null, resendAt: 0, calMonth: St.today.slice(0, 7) };
-  function me() { var id; try { id = localStorage.getItem(KEY); } catch (e) { id = null; } var p = id && St.person(id); return p && p.status === 'Active' ? p : null; }
+  function me() { if (St.live) return St.staff({ all: true })[0] || null; var id; try { id = localStorage.getItem(KEY); } catch (e) { id = null; } var p = id && St.person(id); return p && p.status === 'Active' ? p : null; }
   function setMe(id) { try { if (id) localStorage.setItem(KEY, id); else localStorage.removeItem(KEY); } catch (e) { /* ignore */ } }
   var root;
 
   function shell(body, tabs) {
     var p = me();
-    return '<div class="emp">' + (tabs ? '<header class="emp-top"><div class="logo sm">' + U.LOGO + '<span>HisaabNow<small>Staff360</small></span></div><span class="sample">Sample data</span></header>' : '') +
+    return '<div class="emp">' + (tabs ? '<header class="emp-top"><div class="logo sm">' + U.LOGO + '<span>HisaabNow<small>Staff360</small></span></div>' + (St.live ? '<span class="muted small">' + esc(St.business.name) + '</span>' : '<span class="sample">Sample data</span>') + '</header>' : '') +
       '<main class="emp-main" id="emp-main">' + body + '</main>' +
       (tabs ? '<nav class="emp-tabs" aria-label="Employee">' + [['home', 'Home', 'home'], ['attendance', 'Attendance', 'cal'], ['leave', 'Leave', 'leave'], ['profile', 'Profile', 'user']].filter(function (t) { return t[0] !== 'leave' || (St.settings().perms.requestLeave && St.can('leave')); }).map(function (t) {
         return '<a href="#/' + t[0] + '" class="' + (E.route === t[0] ? 'on' : '') + '"' + (E.route === t[0] ? ' aria-current="page"' : '') + '>' + ic(t[2]) + '<span>' + t[1] + '</span></a>';
@@ -42,11 +42,14 @@
 
   // ---------- home ----------
   function home() {
-    var p = me(), sh = St.shift(p.shift), r = St.record(p.id, St.today), off = p.weeklyOff === U.parse(St.today).getDay();
+    if (St.live && !St.can('employee_portal')) return '<section class="card emp-punch"><span class="big-ic mid">' + ic('lock') + '</span><h2 style="margin:10px 0 4px;color:var(--heading)">Check-in isn’t switched on yet</h2><p class="muted">Your employer’s Staff360 plan doesn’t include staff check-in. They can upgrade to Premium.</p></section><button class="btn block" data-e="logout">' + ic('logout') + 'Log out</button>';
+    var p = me(), sh = St.shift(p.shift), r = St.record(p.id, St.today), off = p.weeklyOff != null && p.weeklyOff === U.parse(St.today).getDay();
     var hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
     var h = '<section class="emp-hello"><small>' + greet + ',</small><h1>' + esc(p.name) + '</h1><p>' + esc(St.business.name) + ' · ' + U.dLabel(St.today, true) + '</p></section>';
-    h += '<section class="card emp-shift"><div><small>Today’s shift</small><b>' + (sh ? esc(sh.name) + ' · ' + U.hm12(sh.start) + ' – ' + U.hm12(sh.end) : 'No shift assigned') + '</b>' + (sh ? '<small>' + sh.graceMin + ' min grace · weekly off ' + U.DOW_LONG[p.weeklyOff] + '</small>' : '') + '</div>' + U.badge(r ? r.status : (off ? 'weeklyoff' : null)) + '</section>';
-    var state = !r || r.status === 'notin' || r.status === 'absent' ? 'out' : U.isIn(r) && !r.out ? 'in' : U.isIn(r) ? 'done' : r.status;
+    h += '<section class="card emp-shift"><div><small>Today’s shift</small><b>' + (sh ? esc(sh.name) + ' · ' + U.hm12(sh.start) + ' – ' + U.hm12(sh.end) : 'No shift assigned') + '</b>' + (sh ? '<small>' + sh.graceMin + ' min grace · weekly off: ' + U.offLabel(p) + '</small>' : '') + '</div>' + U.badge(r ? r.status : (off ? 'weeklyoff' : null)) + '</section>';
+    var state = !r || r.status === 'notin' || r.status === 'absent' || ((r.status === 'present' || r.status === 'late' || r.status === 'halfday') && !r.in) ? 'out' : U.isIn(r) && !r.out ? 'in' : U.isIn(r) ? 'done' : r.status;
+    var oy = St.live && St.extra.openYesterday;
+    if (oy && state === 'out') h += '<section class="card"><p><b>You’re still checked in from yesterday</b> (in at ' + U.hm12(oy.inHm) + '). Check out to close that day.</p><button class="punch out" data-e="punch:out">' + ic('logout') + 'Check out from yesterday</button></section>';
     if (off && state === 'out') state = 'weeklyoff';
     h += '<section class="card emp-punch">';
     if (state === 'out') {
@@ -54,7 +57,7 @@
     } else if (state === 'in') {
       var mins = Math.max(0, (new Date().getHours() * 60 + new Date().getMinutes()) - U.toMin(r.in));
       h += '<div class="punch-info"><div><small>Checked in</small><b>' + U.hm12(r.in) + '</b>' + (r.status === 'late' ? '<span class="badge b-amber">Late ' + U.lateMin(r) + ' min</span>' : '<span class="badge b-green">On time</span>') + '</div><div><small>Time at work</small><b id="e-elapsed">' + U.dur(mins) + '</b></div></div>' +
-        (r.gps ? '<p class="gps-ok">' + ic('pin') + 'Location captured · ±' + r.gps.acc + ' m</p>' : r.gps === false ? '<p class="gps-note">' + ic('pin') + 'Checked in without location (marked “No GPS”)</p>' : '') +
+        (r.gps ? '<p class="gps-ok">' + ic('pin') + 'Location captured · ±' + r.gps.acc + ' m' + (r.gps.low ? ' (low accuracy)' : '') + '</p>' : r.gps === false ? '<p class="gps-note">' + ic('pin') + 'Checked in without location (marked “No GPS”)</p>' : '') +
         '<button class="punch out" data-e="punch:out">' + ic('logout') + 'Check out</button>';
     } else if (state === 'done') {
       h += '<div class="punch-info"><div><small>In</small><b>' + U.hm12(r.in) + '</b></div><div><small>Out</small><b>' + U.hm12(r.out) + '</b></div><div><small>Worked</small><b>' + U.dur(U.worked(r)) + '</b></div></div><p class="gps-ok">' + ic('check') + 'You’re done for today. See you tomorrow!</p>';
@@ -105,9 +108,11 @@
   // ---------- my profile ----------
   function profile() {
     var p = me(), sh = St.shift(p.shift);
-    return '<div class="emp-h"><h1>My profile</h1></div><section class="card emp-prof">' + U.avatar(p, 56) + '<div><b>' + esc(p.name) + '</b><small>' + esc(p.designation) + ' · ' + p.id + '</small></div></section>' +
-      '<section class="card"><dl class="dl"><dt>Mobile</dt><dd>+91 ' + U.mobile(p.mobile) + '</dd><dt>Business</dt><dd>' + esc(St.business.name) + '</dd><dt>Joined</dt><dd>' + U.dLabel(p.joined, true) + '</dd><dt>Shift</dt><dd>' + (sh ? esc(sh.name) + ' · ' + U.hm12(sh.start) + '–' + U.hm12(sh.end) : '—') + '</dd><dt>Weekly off</dt><dd>' + U.DOW_LONG[p.weeklyOff] + '</dd></dl>' +
-      '<p class="muted small">To change these, ask your employer.</p></section>' +
+    var head = '<div class="emp-h"><h1>My profile</h1></div><section class="card emp-prof">' + U.avatar(p, 56) + '<div><b>' + esc(p.name) + '</b><small>' + esc(p.designation) + (St.live ? '' : ' · ' + U.code(p)) + '</small></div></section>' +
+      '<section class="card"><dl class="dl"><dt>Mobile</dt><dd>+91 ' + U.mobile(p.mobile) + '</dd><dt>Business</dt><dd>' + esc(St.business.name) + '</dd>' + (p.joined ? '<dt>Joined</dt><dd>' + U.joinLabel(p, true) + '</dd>' : '') + '<dt>Shift</dt><dd>' + (sh ? esc(sh.name) + ' · ' + U.hm12(sh.start) + '–' + U.hm12(sh.end) : '—') + '</dd><dt>Weekly off</dt><dd>' + U.offLabel(p) + '</dd></dl>' +
+      '<p class="muted small">To change these, ask your employer.</p></section>';
+    if (St.live) return head + '<p class="privacy">' + ic('shield') + 'You can see only your own attendance and leave.</p><button class="btn block danger-o" data-e="logout">' + ic('logout') + 'Log out</button>';
+    return head +
       '<form class="card" id="emp-prof" novalidate><div class="card-h"><h2>Details you can edit</h2></div>' +
       U.field('Email (optional)', '<input id="e-email" name="email" type="email" value="' + esc(p.email || '') + '" maxlength="80">', { for: 'email' }) +
       U.field('Emergency contact (name and number)', '<input id="e-emer" name="emergency" value="' + esc(p.emergency || '') + '" maxlength="60" placeholder="e.g. Ramesh (brother) 98xxxxxxxx">', { for: 'emergency' }) +
@@ -118,14 +123,15 @@
   // ---------- GPS simulation sheet ----------
   function gpsSheet(stage) {
     var allowNo = St.settings().rules.allowNoGps, need = St.settings().rules.gpsRequired && St.can('gps');
-    var sim = '<div class="sim"><small>Demo: simulate location result</small><div class="seg">' + [['ok', 'Success'], ['weak', 'Weak signal'], ['off', 'Location off']].map(function (o) { return '<button data-e="sim:' + o[0] + '" class="' + (E.gpsSim === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
+    var sim = St.live ? '' : '<div class="sim"><small>Demo: simulate location result</small><div class="seg">' + [['ok', 'Success'], ['weak', 'Weak signal'], ['off', 'Location off']].map(function (o) { return '<button data-e="sim:' + o[0] + '" class="' + (E.gpsSim === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     var body;
-    if (stage === 'locating') body = '<div class="spinner" aria-hidden="true"></div><h2>Getting your location…</h2><p class="muted">Simulated — this preview doesn’t use your real location.</p>';
+    if (stage === 'locating') body = '<div class="spinner" aria-hidden="true"></div><h2>Getting your location…</h2><p class="muted">' + (St.live ? 'Only this one reading is saved with your check-' + E.kind + '.' : 'Simulated — this preview doesn’t use your real location.') + '</p>';
+    else if (stage === 'sending') body = '<div class="spinner" aria-hidden="true"></div><h2>Saving your check-' + E.kind + '…</h2>';
     else if (stage === 'ok' || stage === 'weak') {
-      var acc = stage === 'ok' ? 15 : 85;
+      var acc = St.live && E.gps ? Math.round(E.gps.accuracy) : stage === 'ok' ? 15 : 85;
       body = '<span class="big-ic ' + (stage === 'ok' ? 'good' : 'mid') + '">' + ic('pin') + '</span><h2>Location captured</h2><p class="muted">Accuracy ±' + acc + ' m' + (stage === 'weak' ? ' — weak signal, still recorded' : '') + '</p><button class="btn pri block" data-e="confirm:' + acc + '">Confirm check-' + E.kind + '</button>';
     } else {
-      body = '<span class="big-ic bad">' + ic('pin') + '</span><h2>Location is off</h2>' + (allowNo || !need ? '<p class="muted">You can still check ' + E.kind + '. Your employer will see it marked “No GPS”.</p><button class="btn pri block" data-e="confirm:0">Check ' + E.kind + ' without location</button>' : '<p class="muted">Your employer requires location. Turn on location and try again.</p><button class="btn block" data-e="retry">Try again</button>');
+      body = '<span class="big-ic bad">' + ic('pin') + '</span><h2>' + (St.live && E.gpsErr === 'denied' ? 'Location permission is blocked' : St.live && E.gpsErr === 'timeout' ? 'Couldn’t get your location' : 'Location is off') + '</h2>' + (St.live && E.gpsErr === 'denied' ? '<p class="muted small">Allow location for this site in your browser settings, then try again.</p>' : '') + (allowNo || !need ? '<p class="muted">You can still check ' + E.kind + '. Your employer will see it marked “No GPS”.</p><button class="btn pri block" data-e="confirm:0">Check ' + E.kind + ' without location</button>' : '<p class="muted">Your employer requires location. Turn on location and try again.</p><button class="btn block" data-e="retry">Try again</button>');
     }
     return '<div class="sheet-bg" data-e="sheet-close"><div class="sheet" role="dialog" aria-modal="true" aria-label="Location check">' + body + sim + '<button class="link" data-e="sheet-close">Cancel</button></div></div>';
   }
@@ -140,8 +146,34 @@
   }
   function route() { E.route = location.hash.replace(/^#\/?/, '') || 'home'; E.sheet = null; render(); window.scrollTo(0, 0); if (E.focusOtp) { E.focusOtp = false; var o = document.getElementById('e-otp'); if (o) o.focus(); } }
 
+  function livePunch(kind) {
+    var rules = St.settings().rules;
+    E.gps = null; E.gpsErr = null; E.sheet = gpsSheet('locating'); render();
+    if (!navigator.geolocation) { E.gpsErr = 'unsupported'; E.sheet = gpsSheet('off'); render(); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      if (!E.sheet) return;
+      E.gps = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, capturedAt: pos.timestamp || Date.now() };
+      E.sheet = gpsSheet(rules.minAccuracyM && E.gps.accuracy > rules.minAccuracyM ? 'weak' : 'ok'); render();
+      var b = document.querySelector('.sheet .btn'); if (b) b.focus();
+    }, function (err) {
+      if (!E.sheet) return;
+      E.gpsErr = err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'unavailable'; E.sheet = gpsSheet('off'); render();
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+  function liveSend(withGps) {
+    E.sheet = gpsSheet('sending'); render();
+    St.backend().punch(E.kind, withGps ? E.gps : null, withGps ? null : (E.gpsErr || 'unavailable')).then(function (r) {
+      E.sheet = null; render(); St.backend().reload(); U.toast((E.kind === 'in' ? 'Checked in at ' : 'Checked out at ') + U.hm12(E.kind === 'in' ? r.punch.inHm : r.punch.outHm));
+    }, function (e) {
+      var msg = String(e.message || ''), map = { already_checked_in: 'You’re already checked in today.', already_completed: 'You’ve already checked out today.', no_open_checkin: 'There’s no check-in to close.' };
+      var k = Object.keys(map).filter(function (x) { return msg.indexOf(x) >= 0; })[0];
+      E.sheet = null; render(); U.toast(k ? map[k] : /gps_required/.test(msg) ? 'Your employer needs your location to check you in.' : (e.userMessage || 'Couldn’t save. Try again.'));
+      St.backend().reload();
+    });
+  }
   function startPunch(kind) {
     E.kind = kind;
+    if (St.live) { livePunch(kind); return; }
     if (!(St.settings().rules.gpsRequired && St.can('gps'))) { finishPunch(null); return; }
     E.sheet = gpsSheet('locating'); render();
     setTimeout(function () { if (!E.sheet) return; E.sheet = gpsSheet(E.gpsSim); render(); var b = document.querySelector('.sheet .btn'); if (b) b.focus(); }, 900);
@@ -161,11 +193,12 @@
     if (a[0] === 'resend') { E.resendAt = Date.now() + 30000; render(); U.toast('Demo: OTP “resent” (no SMS). Use ' + DEMO_OTP); }
     if (a[0] === 'punch') startPunch(a[1]);
     if (a[0] === 'sim') { E.gpsSim = a[1]; E.sheet = gpsSheet(a[1]); render(); }
-    if (a[0] === 'confirm') finishPunch(+a[1]);
+    if (a[0] === 'confirm') { if (St.live) liveSend(+a[1] > 0); else finishPunch(+a[1]); }
     if (a[0] === 'retry') startPunch(E.kind);
     if (a[0] === 'sheet-close') { E.sheet = null; render(); }
     if (a[0] === 'cal') { var d = U.parse(E.calMonth + '-01'); d.setMonth(d.getMonth() + (+a[1])); var ym = U.iso(d).slice(0, 7); if (ym <= St.today.slice(0, 7)) { E.calMonth = ym; render(); } }
     if (a[0] === 'leave-new') U.leaveForm({ staff: me().id, by: me().name + ' (employee)', title: 'Request leave' });
+    if (a[0] === 'logout' && St.live) { St.backend().signOut(); return; }
     if (a[0] === 'logout') { setMe(null); E.mobile = ''; location.hash = '#/login'; render(); U.toast('Logged out'); }
   });
   document.addEventListener('submit', function (e) {
@@ -197,5 +230,6 @@
   }, 1000);
 
   function start() { root = document.getElementById('s360emp'); St.subscribe(render); window.addEventListener('hashchange', route); route(); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  window.S360Emp = { start: start };
+  if (!window.S360_DEFER) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start(); }
 })();

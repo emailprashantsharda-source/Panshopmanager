@@ -510,3 +510,5 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 
 #s360-main:focus{outline:none}
 .emp-body .toast{bottom:92px}
+fieldset.locked-set{border:0;margin:0;padding:0;min-width:0;opacity:.6}
+.lock-note a{color:var(--purple);text-decoration:underline}

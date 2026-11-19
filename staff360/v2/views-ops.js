@@ -71,7 +71,7 @@
     U.modal({
       title: 'Shift for ' + esc(e.name), submit: 'Save',
       body: U.field('Shift', '<select name="shift" id="m-as">' + U.options(St.shifts().map(function (s) { return [s.id, s.name + ' (' + U.hm12(s.start) + '–' + U.hm12(s.end) + ')']; }), e.shift) + '</select>', { for: 'shift' }) +
-        U.field('Weekly off', '<select name="off" id="m-ao">' + U.options(U.DOW_LONG.map(function (d, i) { return [i, d]; }), e.weeklyOff) + '</select>', { for: 'off' }),
+        U.field('Weekly off', '<select name="off" id="m-ao">' + U.options([['', 'No weekly off']].concat(U.DOW_LONG.map(function (d, i) { return [i, d]; })), e.weeklyOff == null ? '' : e.weeklyOff) + '</select>', { for: 'off' }),
       onSubmit: function (f) { St.assign(e.id, U.val(f, 'shift'), U.val(f, 'off')); U.closeModal(); U.toast('Updated ' + e.name + '’s schedule'); },
     });
   };
@@ -118,7 +118,8 @@
       onClick: function (ev) {
         var b = ev.target.closest('[data-m]'); if (!b) return;
         var m = b.getAttribute('data-m');
-        if (m === 'approve' || m === 'reject') { U.closeModal(); St.decideLeave(l.id, m === 'approve' ? 'Approved' : 'Rejected'); U.toast((m === 'approve' ? 'Approved' : 'Rejected') + ' leave for ' + e.name); }
+        if (m === 'approve') { U.closeModal(); St.decideLeave(l.id, 'Approved'); U.toast('Approved leave for ' + e.name); }
+        if (m === 'reject') { U.closeModal(); U.rejectLeave(l); }
       },
     });
   };
@@ -167,7 +168,7 @@
     var D = reportData(), c = U.count(D.recs), adv = St.can('reports_advanced');
     var hrs = U.avg(D.recs.filter(function (r) { return r.date < St.today; }).map(U.worked));
     var h = U.pageHead('Reports & Analytics', D.rg[2] + ' · ' + D.ppl.length + ' employee' + (D.ppl.length === 1 ? '' : 's'),
-      '<span class="sample">' + ic('alert') + 'Sample data</span><button class="btn" data-a="rep-csv:summary">' + ic('download') + 'Summary CSV</button><button class="btn pri" data-a="rep-csv:daily">' + ic('download') + 'Daily CSV</button>');
+      (St.live ? '' : '<span class="sample">' + ic('alert') + 'Sample data</span>') + '<button class="btn" data-a="rep-csv:summary">' + ic('download') + 'Summary CSV</button><button class="btn pri" data-a="rep-csv:daily">' + ic('download') + 'Daily CSV</button>');
     h += '<section class="card" style="margin-bottom:16px"><div class="toolbar" style="margin:0">' +
       '<label class="sr" for="f-rrange">Date range</label><select id="f-rrange" data-f="rrange">' + U.options([['month', 'This month'], ['last', 'Last month'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['custom', 'Custom range']], F.rrange) + '</select>' +
       (F.rrange === 'custom' ? '<label class="sr" for="f-rfrom">From</label><input id="f-rfrom" type="date" data-f="rfrom" value="' + (F.rfrom || U.monthStart(St.today)) + '" max="' + St.today + '"><label class="sr" for="f-rto">To</label><input id="f-rto" type="date" data-f="rto" value="' + (F.rto || St.today) + '" max="' + St.today + '">' : '') +

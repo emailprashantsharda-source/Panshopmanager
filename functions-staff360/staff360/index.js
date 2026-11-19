@@ -44,6 +44,7 @@ module.exports = {
   staff360StaffSave: call('staffSave'),
   staff360StaffRemove: call('staffRemove'),
   staff360Mark: call('mark'),
+  staff360Records: call('records'),
   staff360LogManualEdit: call('logManualEdit'),
   staff360ListAudit: call('listAudit'),
   staff360Register: call('register'),

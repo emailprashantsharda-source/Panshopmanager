@@ -23,26 +23,34 @@
     }).join('');
     var up = St.plan !== 'kingpro' ? '<div class="upsell"><b>' + ic('crown') + 'King PRO</b><p>AI staff insights, late-arrival alerts and salary estimates. ₹4,999/year.</p><a class="btn pri sm" href="#/plans" style="width:100%">Upgrade plan</a></div>' : '';
     return '<div class="logo">' + U.LOGO + '<span>HisaabNow<small>Staff360</small></span></div>' +
-      '<nav aria-label="Staff360">' + items + '</nav><div class="grow"></div>' + up +
+      '<nav aria-label="Staff360">' + items + '</nav><div class="grow"></div>' + up + (St.live ? '' :
       '<div class="demo-plans"><small>Demo plan (preview only)</small><div>' + ['basic', 'premium', 'kingpro'].map(function (p) {
         return '<button class="' + (St.plan === p ? 'on' : '') + '" data-a="plan:' + p + '" aria-pressed="' + (St.plan === p) + '">' + St.PLAN_LABEL[p] + '</button>';
-      }).join('') + '</div></div>';
+      }).join('') + '</div></div>');
   }
 
   function topHTML() {
     var b = St.business, n = St.notifications().length;
     return '<button class="icon-btn burger" data-a="drawer" aria-label="Open menu">' + ic('menu') + '</button>' +
       '<button class="icon-btn collapse-btn" data-a="collapse" aria-label="' + (ui.collapsed ? 'Expand' : 'Collapse') + ' sidebar">' + ic('side') + '</button>' +
-      '<div class="anchor shop-a"><button class="pill-btn" data-a="pop:shop" aria-haspopup="true" aria-expanded="' + (ui.pop === 'shop') + '">' + ic('store') + '<span class="t">' + esc(b.name) + '<span class="hide-sm">, ' + esc(b.city) + '</span></span>' + ic('chev') + '</button>' + (ui.pop === 'shop' ? shopPop() : '') + '</div>' +
+      '<div class="anchor shop-a"><button class="pill-btn" data-a="pop:shop" aria-haspopup="true" aria-expanded="' + (ui.pop === 'shop') + '">' + ic('store') + '<span class="t">' + esc(b.name) + (b.city && !St.live ? '<span class="hide-sm">, ' + esc(b.city) + '</span>' : '') + '</span>' + ic('chev') + '</button>' + (ui.pop === 'shop' ? shopPop() : '') + '</div>' +
       '<span class="pill-btn hide-md" style="font-weight:500">' + ic('cal') + U.dLabel(St.today, true) + '</span>' +
       '<div class="search' + (ui.pop === 'search' ? ' open' : '') + ' anchor"><label class="sr" for="s360-q">Search staff</label>' + ic('search') +
       '<input id="s360-q" type="search" placeholder="Search staff by name, ID or mobile" autocomplete="off" value="' + esc(ui.q) + '"><kbd>/</kbd>' +
       '<button class="icon-btn s-btn" data-a="pop:search" aria-label="Search">' + ic('search') + '</button>' + (ui.pop === 'search' && ui.q ? searchPop() : '') + '</div>' +
-      '<div class="anchor hide-sm"><button class="plan-chip" data-a="pop:plan" aria-haspopup="true" title="Demo only: preview each plan">Demo plan: ' + St.PLAN_LABEL[St.plan] + ic('chev') + '</button>' + (ui.pop === 'plan' ? planPop() : '') + '</div>' +
+      (St.live ? '<a class="plan-chip live hide-sm" href="#/plans" title="Your plan">' + (St.plan === 'kingpro' ? ic('crown') : '') + St.PLAN_LABEL[St.plan] + '</a>' :
+      '<div class="anchor hide-sm"><button class="plan-chip" data-a="pop:plan" aria-haspopup="true" title="Demo only: preview each plan">Demo plan: ' + St.PLAN_LABEL[St.plan] + ic('chev') + '</button>' + (ui.pop === 'plan' ? planPop() : '') + '</div>') +
       '<div class="anchor"><button class="icon-btn" data-a="pop:bell" aria-label="Notifications, ' + n + ' new">' + ic('bell') + (n ? '<span class="dot"></span>' : '') + '</button>' + (ui.pop === 'bell' ? bellPop() : '') + '</div>' +
-      '<div class="anchor"><button class="pill-btn" style="border:0;padding:0 4px" data-a="pop:me" aria-label="Account menu"><span class="avatar" style="background:var(--primary);color:#fff">' + U.initials(b.owner) + '</span><span class="hide-sm">' + esc(b.ownerFirst) + '</span>' + ic('chev', 'hide-sm') + '</button>' + (ui.pop === 'me' ? mePop() : '') + '</div>';
+      '<div class="anchor"><button class="pill-btn" style="border:0;padding:0 4px" data-a="pop:me" aria-label="Account menu"><span class="avatar" style="background:var(--primary);color:#fff">' + (b.owner ? U.initials(b.owner) : ic('user')) + '</span><span class="hide-sm">' + esc(b.ownerFirst || (St.role === 'manager' ? 'Manager' : 'Owner')) + '</span>' + ic('chev', 'hide-sm') + '</button>' + (ui.pop === 'me' ? mePop() : '') + '</div>';
   }
   function shopPop() {
+    if (St.live) {
+      var cur = (St.businesses.filter(function (x) { return x.name === St.business.name; })[0] || {}).id;
+      return '<div class="pop" role="menu" style="left:0"><div class="hd">Your businesses</div>' + St.businesses.map(function (x) {
+        var on = x.id === cur;
+        return '<button class="it' + (on ? ' on' : '') + '" data-a="tenant:' + esc(x.id) + '" role="menuitem">' + ic('store') + '<span>' + esc(x.name) + '<small>' + esc(x.city) + (on ? ' · current' : '') + '</small></span></button>';
+      }).join('') + '<button class="it" data-a="newbiz" role="menuitem">' + ic('plus') + '<span>Set up another business</span></button></div>';
+    }
     return '<div class="pop" role="menu" style="left:0"><div class="hd">Your businesses</div>' + St.businesses.map(function (x, i) {
       return '<button class="it' + (i === 0 ? ' on' : '') + '" data-a="shop:' + i + '" role="menuitem">' + ic('store') + '<span>' + esc(i === 0 ? St.business.name : x.name) + '<small>' + esc(i === 0 ? St.business.city : x.city) + (i === 0 ? ' · current' : '') + '</small></span></button>';
     }).join('') + '</div>';
@@ -53,11 +61,19 @@
     }).join('') + '</div>';
   }
   function bellPop() {
-    return '<div class="pop" role="menu" style="right:0;width:300px"><div class="hd">Notifications</div>' + St.notifications().slice(0, 6).map(function (n) {
+    var list = St.notifications().slice(0, 6);
+    return '<div class="pop" role="menu" style="right:0;width:300px"><div class="hd">Notifications</div>' + (list.length ? list.map(function (n) {
       return '<a class="it" href="' + n.go + '" role="menuitem">' + ic('bell') + '<span>' + esc(n.text) + '<small>' + esc(n.at) + '</small></span></a>';
-    }).join('') + '<div class="hd" style="text-transform:none;font-weight:500;letter-spacing:0">Sample notifications · WhatsApp alerts are not sent in this preview</div></div>';
+    }).join('') : '<div class="empty">You’re all caught up.</div>') + (St.live ? '' : '<div class="hd" style="text-transform:none;font-weight:500;letter-spacing:0">Sample notifications · WhatsApp alerts are not sent in this preview</div>') + '</div>';
   }
   function mePop() {
+    if (St.live) {
+      var u = St.backend().user();
+      return '<div class="pop" role="menu" style="right:0"><div class="it" style="cursor:default"><span>' + esc(u.phoneNumber || St.business.owner || '') + '<small>' + (St.role === 'manager' ? 'Manager' : 'Owner') + ' · ' + esc(St.business.name) + '</small></span></div>' +
+        (St.role === 'owner' ? '<a class="it" href="#/settings" role="menuitem">' + ic('gear') + '<span>Settings</span></a>' : '') +
+        '<a class="it" href="#/help" role="menuitem">' + ic('help') + '<span>Help &amp; support</span></a>' +
+        '<button class="it" data-a="signout" role="menuitem">' + ic('logout') + '<span>Log out</span></button></div>';
+    }
     return '<div class="pop" role="menu" style="right:0"><div class="it" style="cursor:default"><span>' + esc(St.business.owner) + '<small>Owner · ' + esc(St.business.name) + '</small></span></div>' +
       '<a class="it" href="employee.html" role="menuitem">' + ic('phone') + '<span>Open employee portal<small>See what staff see</small></span></a>' +
       '<a class="it" href="#/settings" role="menuitem">' + ic('gear') + '<span>Settings</span></a>' +
@@ -88,10 +104,10 @@
     var hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
     var canCI = St.can('checkin_metrics');
 
-    var h = '<div class="page-h"><div><h1>' + greet + ', ' + esc(St.business.ownerFirst) + '!</h1><p>' +
+    var h = '<div class="page-h"><div><h1>' + greet + (St.business.ownerFirst ? ', ' + esc(St.business.ownerFirst) : '') + '!</h1><p>' +
       (pend.length && St.can('leave') ? '<a href="#/leave">' + pend.length + ' leave request' + (pend.length > 1 ? 's' : '') + ' pending</a> · ' : '') +
       (cnt.late && canCI ? cnt.late + ' late arrival' + (cnt.late > 1 ? 's' : '') + ' today · ' : '') + 'Here’s your team today.</p></div>' +
-      '<div class="ph-act"><span class="sample">' + ic('alert') + 'Sample data</span>' +
+      '<div class="ph-act">' + (St.live ? '' : '<span class="sample">' + ic('alert') + 'Sample data</span>') +
       '<div class="clock"><div><small>Current time</small><b id="s360-clock">' + U.dLabel(today) + ', ' + U.t12(new Date().getHours() * 60 + new Date().getMinutes()) + '</b></div>' + ic('clock') + '</div></div></div>';
 
     h += '<div class="qa">' + [
@@ -219,6 +235,9 @@
     if (parts[0] === 'nav') { location.hash = '#/' + parts.slice(1).join(':'); return; }
     if (parts[0] === 'plan') { ui.pop = null; St.setPlan(parts[1]); U.toast('Previewing ' + St.PLAN_LABEL[parts[1]] + ' (demo only)'); return; }
     if (parts[0] === 'shop') { ui.pop = null; render(); if (parts[1] !== '0') U.toast('Switching business connects in the live build'); return; }
+    if (parts[0] === 'tenant') { ui.pop = null; St.backend().switchTenant(parts.slice(1).join(':')); return; }
+    if (a === 'newbiz') { ui.pop = null; St.backend().newBusiness(); return; }
+    if (a === 'signout') { ui.pop = null; St.backend().signOut(); return; }
     if (parts[0] === 'soon') { ui.pop = null; render(); U.toast(parts.slice(1).join(':')); return; }
     if (U.actions[parts[0]]) { e.preventDefault(); ui.pop = null; U.actions[parts[0]](parts.slice(1), t, e); return; }
   }
@@ -244,7 +263,19 @@
   U.actions['leave-decide'] = function (p) {
     if (!St.can('leave')) { U.toast('Leave approvals are on Premium'); return; }
     var l = St.leaves().filter(function (x) { return x.id === p[0]; })[0], who = St.person(l.staff);
-    St.decideLeave(p[0], p[1]); U.toast((p[1] === 'Approved' ? 'Approved' : 'Rejected') + ' leave for ' + who.name);
+    if (p[1] === 'Rejected') { U.rejectLeave(l); return; }
+    St.decideLeave(p[0], p[1]); U.toast('Approved leave for ' + who.name);
+  };
+  U.rejectLeave = function (l) {
+    var who = St.person(l.staff);
+    U.modal({ title: 'Reject leave for ' + esc(who.name) + '?', submit: 'Reject leave',
+      body: '<p class="muted" style="margin-bottom:10px">' + esc(l.type) + ' · ' + U.dLabel(l.from) + (l.to !== l.from ? ' – ' + U.dLabel(l.to) : '') + '</p>' +
+        U.field('Reason (shared with ' + esc(who.name.split(' ')[0]) + ')', '<textarea name="note" id="m-rn" rows="2" maxlength="200" placeholder="e.g. Two people are already off that day"></textarea>', { for: 'note', req: true }),
+      foot: '<button type="button" class="btn" data-m="close">Cancel</button><button type="submit" class="btn danger">Reject leave</button>',
+      onSubmit: function (f) {
+        var n = U.val(f, 'note'); if (!U.setErr(f, 'note', n.length < 3 ? 'Add a short reason' : '')) return;
+        U.closeModal(); St.decideLeave(l.id, 'Rejected', null, n); U.toast('Rejected leave for ' + who.name);
+      } });
   };
 
   function start() {
@@ -258,5 +289,6 @@
     setInterval(function () { var c = $('#s360-clock'); if (c) c.textContent = U.dLabel(St.today) + ', ' + U.t12(new Date().getHours() * 60 + new Date().getMinutes()); }, 30000);
     route();
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  U.startOwner = start;
+  if (!window.S360_DEFER) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start(); }
 })();

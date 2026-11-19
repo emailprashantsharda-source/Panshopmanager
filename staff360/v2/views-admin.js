@@ -13,7 +13,14 @@
   U.views.settings = function () {
     var s = St.settings(), b = s.business, r = s.rules;
     var h = U.pageHead('Settings', 'Business profile, attendance rules, permissions and notifications.');
+    if (St.live && St.role !== 'owner') return h + '<div class="card placeholder"><span class="ph-ic" style="background:var(--blue-light);color:var(--blue)">' + ic('lock') + '</span><h1>Only the owner can change settings</h1><p>Ask the owner if something needs to change.</p></div>';
     h += '<div class="set-grid">';
+    if (St.live) {
+      var shop = St.kind === 'shop';
+      h += '<form class="card" data-set="business" novalidate><div class="card-h"><h2>' + ic('store') + 'Business profile</h2></div>' +
+        U.field('Business name', '<input id="s-bn" name="name" value="' + esc(b.name) + '" maxlength="60"' + (shop ? ' disabled' : '') + '>', { for: 'name', req: !shop, hint: shop ? 'This is your HisaabNow shop — rename it in the HisaabNow app.' : '' }) +
+        (shop ? '' : '<div class="form-f"><button class="btn pri" type="submit">Save profile</button></div>') + '</form>';
+    } else
     h += '<form class="card" data-set="business" novalidate><div class="card-h"><h2>' + ic('store') + 'Business profile</h2></div><div class="grid2">' +
       U.field('Business name', '<input id="s-bn" name="name" value="' + esc(b.name) + '" maxlength="60">', { for: 'name', req: true }) +
       U.field('City / area', '<input id="s-bc" name="city" value="' + esc(b.city) + '" maxlength="40">', { for: 'city' }) +
@@ -21,39 +28,45 @@
       U.field('Business phone', '<input id="s-bp" name="phone" value="' + esc(b.phone) + '" inputmode="numeric" maxlength="10">', { for: 'phone' }) +
       '</div><div class="form-f"><button class="btn pri" type="submit">Save profile</button></div></form>';
 
-    h += '<form class="card" data-set="rules" novalidate><div class="card-h"><h2>' + ic('clock') + 'Attendance rules</h2></div><div class="grid2">' +
+    var lockSet = !St.can('settings'), fs0 = lockSet ? '<fieldset disabled class="locked-set">' : '', fs1 = lockSet ? '</fieldset>' : '';
+    var saveBtn = function (label) { return lockSet ? '<div class="form-f">' + U.lockNote('settings', 'Premium — <a href="#/plans">upgrade</a> to change') + '</div>' : '<div class="form-f"><button class="btn pri" type="submit">' + label + '</button></div>'; };
+    h += '<form class="card" data-set="rules" novalidate><div class="card-h"><h2>' + ic('clock') + 'Attendance rules</h2></div>' + fs0 + '<div class="grid2">' +
       U.field('Default grace period (min)', '<input id="s-rg" name="graceMin" type="number" min="0" max="120" value="' + r.graceMin + '">', { for: 'graceMin', hint: 'Used for new shifts' }) +
       U.field('Working hours per day', '<input id="s-rh" name="hoursPerDay" type="number" min="1" max="16" step="0.5" value="' + r.hoursPerDay + '">', { for: 'hoursPerDay', hint: 'For hourly rate and overtime' }) +
       U.field('Half day if worked under (hours)', '<input id="s-rhd" name="halfDayBelowHours" type="number" min="1" max="12" step="0.5" value="' + r.halfDayBelowHours + '">', { for: 'halfDayBelowHours' }) +
-      U.field('Default weekly off', '<select id="s-rwo" name="defaultWeeklyOff">' + U.options(U.DOW_LONG.map(function (d, i) { return [i, d]; }), s.defaultWeeklyOff) + '</select>', { for: 'defaultWeeklyOff' }) + '</div>' +
+      (St.live ? '' : U.field('Default weekly off', '<select id="s-rwo" name="defaultWeeklyOff">' + U.options(U.DOW_LONG.map(function (d, i) { return [i, d]; }), s.defaultWeeklyOff) + '</select>', { for: 'defaultWeeklyOff' })) + '</div>' +
       toggle('autoLate', 'Mark Late automatically', r.autoLate, 'Check-in after shift start + grace is marked Late') +
-      toggle('gpsRequired', 'Capture location at check-in', r.gpsRequired, 'Only at the moment of check-in and check-out — never in the background', 'gps') +
+      (St.live ? '<div class="set-row"><div><b>Location at check-in</b><small>Captured only at the moment of check-in and check-out — never in the background.</small></div><span class="badge b-green">On</span></div>' :
+      toggle('gpsRequired', 'Capture location at check-in', r.gpsRequired, 'Only at the moment of check-in and check-out — never in the background', 'gps')) +
       toggle('allowNoGps', 'Allow check-in when location is off', r.allowNoGps, 'Saved as “No GPS” so you can see it', 'gps') +
-      '<div class="form-f"><button class="btn pri" type="submit">Save rules</button></div></form>';
+      fs1 + saveBtn('Save rules') + '</form>';
 
-    h += '<form class="card" data-set="perms" novalidate><div class="card-h"><h2>' + ic('shield') + 'Employee permissions</h2></div>' +
+    h += '<form class="card" data-set="perms" novalidate><div class="card-h"><h2>' + ic('shield') + 'Employee permissions</h2></div>' + fs0 +
       '<div class="set-row"><div><b>Employees see only their own attendance</b><small>Always on. They never see billing, sales, other staff, salaries or reports.</small></div><span class="badge b-green">Always</span></div>' +
       toggle('requestLeave', 'Employees can request leave', s.perms.requestLeave, '', 'leave') +
       toggle('seeShift', 'Employees can see their shift', s.perms.seeShift, '', 'shifts') +
       toggle('managerEdit', 'Managers can mark and correct attendance', s.perms.managerEdit, 'Every change is logged with a reason') +
       toggle('managerSalary', 'Managers can see salaries', s.perms.managerSalary, 'Off by default — salary is owner-only') +
-      '<div class="form-f"><button class="btn pri" type="submit">Save permissions</button></div></form>';
+      fs1 + saveBtn('Save permissions') + '</form>';
 
-    h += '<form class="card" data-set="notify" novalidate><div class="card-h"><h2>' + ic('bell') + 'Notifications</h2></div>' +
+    h += '<form class="card" data-set="notify" novalidate><div class="card-h"><h2>' + ic('bell') + 'Notifications</h2></div>' + fs0 +
       toggle('leaveAlert', 'New leave requests', s.notify.leaveAlert, 'In-app notification', 'leave') +
       toggle('lateAlert', 'Repeated late arrivals', s.notify.lateAlert, 'In-app alert when someone is late 3 times in a month', 'anomalies') +
       toggle('dailySummary', 'Daily attendance summary on WhatsApp', s.notify.dailySummary, 'Only after you opt in and WhatsApp is set up. Not sent in this preview.', 'whatsapp') +
-      '<div class="form-f"><button class="btn pri" type="submit">Save notifications</button></div></form>';
+      fs1 + saveBtn('Save notifications') + '</form>';
 
     h += '<section class="card"><div class="card-h"><h2>' + ic('star') + 'Subscription &amp; billing</h2></div><div class="set-row"><div><b>Current plan: ' + St.PLAN_LABEL[St.plan] + '</b><small>Plans are per business. King PRO is ₹4,999/year.</small></div><a class="btn" href="#/plans">Manage plan</a></div>' +
-      '<div class="set-row"><div><b>Reset demo data</b><small>Puts the sample team and attendance back the way they started.</small></div><button class="btn danger-o" data-a="demo-reset">Reset</button></div></section>';
+      (St.live ? '' : '<div class="set-row"><div><b>Reset demo data</b><small>Puts the sample team and attendance back the way they started.</small></div><button class="btn danger-o" data-a="demo-reset">Reset</button></div>') + '</section>';
     return h + '</div>';
   };
   document.addEventListener('submit', function (e) {
     var f = e.target, part = f.getAttribute && f.getAttribute('data-set'); if (!part) return;
     e.preventDefault();
     var s = St.settings(), v = JSON.parse(JSON.stringify(part === 'rules' ? s.rules : s[part]));
-    if (part === 'business') {
+    if (part === 'business' && St.live) {
+      v = Object.assign({}, s.business, { name: U.val(f, 'name') });
+      if (!U.setErr(f, 'name', v.name.length < 2 ? 'Enter the business name' : '')) return;
+    } else if (part === 'business') {
       v = { name: U.val(f, 'name'), city: U.val(f, 'city'), owner: U.val(f, 'owner'), phone: U.val(f, 'phone').replace(/\D/g, '') };
       var ok = U.setErr(f, 'name', v.name.length < 2 ? 'Enter the business name' : '');
       ok = U.setErr(f, 'owner', v.owner.length < 2 ? 'Enter the owner’s name' : '') && ok;
@@ -84,11 +97,11 @@
     h += '<div class="plan-grid">' + ['basic', 'premium', 'kingpro'].map(function (p) {
       var cur = St.plan === p, price = p === 'kingpro' ? '<b>₹4,999</b><small>/ year per business</small>' : '<b class="ask-p">Contact for pricing</b><small>Priced for your business</small>';
       return '<section class="card plan-c ' + p + (cur ? ' cur' : '') + '">' + (p === 'kingpro' ? '<span class="ribbon">Most powerful</span>' : '') +
-        '<h2>' + (p === 'kingpro' ? ic('crown') : '') + St.PLAN_LABEL[p] + (cur ? ' <span class="badge b-green">Current (demo)</span>' : '') + '</h2><div class="price">' + price + '</div>' +
+        '<h2>' + (p === 'kingpro' ? ic('crown') : '') + St.PLAN_LABEL[p] + (cur ? ' <span class="badge b-green">' + (St.live ? 'Your plan' : 'Current (demo)') + '</span>' : '') + '</h2><div class="price">' + price + '</div>' +
         '<ul>' + PLAN_FEATURES[p].map(function (f) { return '<li>' + ic('check') + f + '</li>'; }).join('') + '</ul>' +
         '<div class="plan-act">' + (cur ? '<button class="btn" disabled>Your plan</button>' : '<a class="btn pri" href="' + WA + encodeURIComponent('Hi, I want Staff360 ' + St.PLAN_LABEL[p] + ' for my business') + '" target="_blank" rel="noopener">Talk to us on WhatsApp</a>') +
-        (cur ? '' : '<button class="btn ghost" data-a="plan:' + p + '">Preview ' + St.PLAN_LABEL[p] + ' in demo</button>') + '</div></section>';
-    }).join('') + '</div><p class="muted small" style="margin-top:12px">Payments aren’t taken in this preview. Taxes as applicable.</p>';
+        (cur || St.live ? '' : '<button class="btn ghost" data-a="plan:' + p + '">Preview ' + St.PLAN_LABEL[p] + ' in demo</button>') + '</div></section>';
+    }).join('') + '</div><p class="muted small" style="margin-top:12px">' + (St.live ? 'Message us on WhatsApp to upgrade and we’ll switch your plan on. Your staff and attendance stay as they are. Taxes as applicable.' : 'Payments aren’t taken in this preview. Taxes as applicable.') + '</p>';
     return h;
   };
 

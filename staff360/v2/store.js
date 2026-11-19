@@ -6,7 +6,8 @@
  */
 (function () {
   'use strict';
-  var M = window.S360_MOCK;
+  var M = window.S360_MOCK || { today: '1970-01-01', nowMin: 0, business: { name: '', city: '', owner: '' }, businesses: [], staff: [], attendance: [], leaves: [], shifts: [], notifications: [] };
+  var backend = null; // live mode: methods that call the staff360* Cloud Functions
   var KEY = 's360v2.data.v1';
   var subs = [];
   var PLANS = ['basic', 'premium', 'kingpro'];
@@ -14,12 +15,12 @@
   // Feature → minimum plan. Mirrors functions-staff360/staff360/core.js FEATURES.
   var FEATURE = {
     dashboard: 'basic', staff: 'basic', attendance: 'basic', history: 'basic', reports: 'basic',
-    checkin_metrics: 'premium', employee_portal: 'premium', gps: 'premium', shifts: 'premium',
+    checkin_metrics: 'premium', settings: 'premium', employee_portal: 'premium', gps: 'premium', shifts: 'premium',
     leave: 'premium', reports_advanced: 'premium', employee_login: 'premium',
     ai: 'kingpro', insights: 'kingpro', salary: 'kingpro', anomalies: 'kingpro', whatsapp: 'kingpro',
   };
   var DEFAULT_SETTINGS = {
-    business: { name: M.business.name, city: M.business.city, phone: '9811000000', owner: M.business.owner },
+    business: { name: M.business.name, city: M.business.city, phone: M.business.owner ? '9811000000' : '', owner: M.business.owner },
     rules: { graceMin: 10, hoursPerDay: 8, halfDayBelowHours: 5, gpsRequired: true, allowNoGps: true, autoLate: true },
     defaultWeeklyOff: 0,
     perms: { requestLeave: true, seeShift: true, managerEdit: true, managerSalary: false },
@@ -34,6 +35,7 @@
              notifications: clone(M.notifications), settings: clone(DEFAULT_SETTINGS), audit: [], approvals: [] };
   }
   var S = (function () {
+    if (!window.S360_MOCK) return fresh();
     try {
       var d = JSON.parse(lsGet(KEY, 'null'));
       if (d && d.day === M.today && d.staff && d.attendance) return d; // demo data refreshes each day
@@ -42,7 +44,19 @@
   })();
   var plan = PLANS.indexOf(lsGet('s360v2.plan', 'kingpro')) >= 0 ? lsGet('s360v2.plan', 'kingpro') : 'kingpro';
 
-  function save() { lsSet(KEY, JSON.stringify(S)); }
+  function save() { if (!backend) lsSet(KEY, JSON.stringify(S)); }
+  // Live mode: run the server call after the optimistic local change; on any error, show it and reload the truth.
+  function push(method) {
+    var args = [].slice.call(arguments, 1);
+    if (!backend) return Promise.resolve(null);
+    if (!backend[method]) return Promise.resolve(null);
+    return backend[method].apply(null, args).then(function (r) { if (backend.after) backend.after(method, r); return r; }, function (e) {
+      if (window.S360UI && window.S360UI.toast) window.S360UI.toast((e && e.userMessage) || 'Couldn’t save: ' + ((e && e.message) || 'network error') + '. Showing the latest saved data.');
+      if (backend.reload) backend.reload();
+      throw e;
+    });
+  }
+  function quiet(p) { p.catch(function () { /* already reported */ }); return p; }
   function emit() { save(); subs.forEach(function (f) { f(); }); }
   function rank(p) { return PLANS.indexOf(p); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -58,11 +72,28 @@
   var LABEL = { present: 'Present', late: 'Late', halfday: 'Half day', absent: 'Absent', leave: 'On leave', weeklyoff: 'Weekly off', notin: 'Not marked' };
 
   var api = {
-    sample: M.sample, businesses: M.businesses, today: M.today, nowMin: M.nowMin, PLAN_LABEL: PLAN_LABEL, LABEL: LABEL,
-    get business() { var b = S.settings.business; return { name: b.name, city: b.city, owner: b.owner, ownerFirst: b.owner.split(' ')[0], phone: b.phone }; },
+    sample: !!M.sample, PLAN_LABEL: PLAN_LABEL, LABEL: LABEL,
+    get businesses() { return S.businesses || M.businesses; },
+    get today() { return S.day; },
+    get nowMin() { return S.nowMin != null ? S.nowMin : M.nowMin; },
+    get live() { return !!backend; },
+    get role() { return S.role || 'owner'; },
+    get kind() { return S.kind || 'org'; },
+    get editable() { return S.editable !== false; },
+    get extra() { return S.extra || {}; },
+    // Live mode: replace all data with a server snapshot.
+    init: function (snap, be) {
+      backend = be || backend;
+      Object.keys(snap).forEach(function (k) { S[k] = snap[k]; });
+      if (snap.plan) plan = snap.plan;
+      S.audit = S.audit || []; S.approvals = S.approvals || []; S.notifications = S.notifications || [];
+      emit();
+    },
+    backend: function () { return backend; },
+    get business() { var b = S.settings.business; return { name: b.name, city: b.city || '', owner: b.owner || '', ownerFirst: (b.owner || '').split(' ')[0], phone: b.phone || '' }; },
     subscribe: function (f) { subs.push(f); },
     get plan() { return plan; },
-    setPlan: function (p) { if (rank(p) < 0) return; plan = p; lsSet('s360v2.plan', p); emit(); },
+    setPlan: function (p) { if (rank(p) < 0 || backend) return; plan = p; lsSet('s360v2.plan', p); emit(); },
     can: function (feature) { return rank(plan) >= rank(FEATURE[feature] || 'kingpro'); },
     needs: function (feature) { return PLAN_LABEL[FEATURE[feature] || 'kingpro']; },
     reset: function () { S = fresh(); emit(); },
@@ -89,6 +120,7 @@
       return 'HN' + (n < 10 ? '00' : n < 100 ? '0' : '') + n;
     },
     saveStaff: function (data, isNew) {
+      var before = isNew ? null : JSON.parse(JSON.stringify(person(data.id)));
       if (isNew) {
         S.staff.push(data);
         log('Added employee', data.id, data.name + ' · ' + data.designation);
@@ -98,8 +130,10 @@
         log('Edited employee', data.id, changed.length ? 'Changed: ' + changed.join(', ') : 'No changes');
       }
       emit();
+      if (!backend) return Promise.resolve(data.id);
+      return push('saveStaff', data, isNew, before);
     },
-    setStaffStatus: function (id, status) { var p = person(id); p.status = status; log(status === 'Active' ? 'Reactivated employee' : 'Deactivated employee', id, p.name); emit(); },
+    setStaffStatus: function (id, status) { var p = person(id); p.status = status; log(status === 'Active' ? 'Reactivated employee' : 'Deactivated employee', id, p.name); emit(); return quiet(push('setStaffStatus', id, status)); },
 
     // ---- attendance ----
     // Owner/manager marks or corrects a day. The previous value is kept in the activity log.
@@ -111,14 +145,18 @@
       var after = LABEL[r.status] + (r.in ? ' ' + r.in + (r.out ? '–' + r.out : '') : '');
       log(by ? 'Self check-in/out' : 'Marked attendance', sid, date + ': ' + before + ' → ' + after + (reason ? ' · Reason: ' + reason : ''), by);
     },
-    markOne: function (sid, date, v, reason) { api.mark(sid, date, v, reason); emit(); },
+    markOne: function (sid, date, v, reason) { api.mark(sid, date, v, reason); emit(); return quiet(push('mark', [{ staffId: sid, date: date, status: v.status, in: v.in || '', out: v.out || '' }], reason || v.remark || '')); },
     markMany: function (sids, date, status, reason) {
+      var entries = [];
       sids.forEach(function (sid) {
         var sh = api.shift(person(sid).shift), r = rec(sid, date);
         var keep = r && (r.status === 'present' || r.status === 'late') && (status === 'present' || status === 'late');
-        api.mark(sid, date, { status: status, in: keep ? r.in : (status === 'present' || status === 'halfday') && sh ? sh.start : null, out: keep ? r.out : null, remark: r ? r.remark : '' }, reason || 'Bulk mark');
+        var tin = keep ? r.in : (status === 'present' || status === 'halfday') && sh ? sh.start : null;
+        api.mark(sid, date, { status: status, in: tin, out: keep ? r.out : null, remark: r ? r.remark : '' }, reason || 'Bulk mark');
+        entries.push({ staffId: sid, date: date, status: status, in: tin || '' });
       });
       emit();
+      return quiet(push('mark', entries, reason || 'Bulk mark'));
     },
     // Employee self check-in / check-out (employee portal). Time comes from the server in the live build.
     punch: function (sid, kind, gps) {
@@ -131,47 +169,56 @@
       }
       emit(); return t;
     },
+    // Live employee portal: the server records the time; this only refreshes the view.
+    setOwnRecord: function (r) {
+      S.attendance = S.attendance.filter(function (a) { return !(a.staff === r.staff && a.date === r.date); }).concat([r]); emit();
+    },
 
     // ---- shifts ----
     saveShift: function (sh) {
       var i = S.shifts.map(function (x) { return x.id; }).indexOf(sh.id);
+      var isNew = i < 0;
       if (i >= 0) { S.shifts[i] = sh; log('Edited shift', sh.name, sh.start + '–' + sh.end); }
       else { S.shifts.push(sh); log('Created shift', sh.name, sh.start + '–' + sh.end); }
       emit();
+      return quiet(push('saveShift', sh, isNew));
     },
     deleteShift: function (id) {
       var sh = api.shift(id);
       if (S.staff.some(function (s) { return s.shift === id && s.status === 'Active'; })) return false;
-      S.shifts = S.shifts.filter(function (x) { return x.id !== id; }); log('Deleted shift', sh.name, ''); emit(); return true;
+      S.shifts = S.shifts.filter(function (x) { return x.id !== id; }); log('Deleted shift', sh.name, ''); emit(); quiet(push('deleteShift', id)); return true;
     },
     assign: function (sid, shiftId, weeklyOff) {
-      var p = person(sid); p.shift = shiftId; p.weeklyOff = +weeklyOff;
-      log('Assigned shift', sid, (api.shift(shiftId) || {}).name + ' · weekly off ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][+weeklyOff]); emit();
+      var p = person(sid), prevShift = p.shift; p.shift = shiftId; p.weeklyOff = weeklyOff === '' || weeklyOff == null ? null : +weeklyOff;
+      log('Assigned shift', sid, (api.shift(shiftId) || {}).name + ' · weekly off ' + (p.weeklyOff == null ? 'none' : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][p.weeklyOff])); emit();
+      return quiet(push('assign', sid, shiftId, p.weeklyOff, prevShift));
     },
 
     // ---- leave ----
-    decideLeave: function (id, status, by) {
+    decideLeave: function (id, status, by, note) {
       var l = S.leaves.filter(function (x) { return x.id === id; })[0];
       l.status = status; l.decided = stamp();
       if (status === 'Approved') eachDate(l.from, l.to, function (d) {
         if (d <= M.today) { var r = rec(l.staff, d); if (!r || r.status === 'absent' || r.status === 'notin') api.mark(l.staff, d, { status: 'leave', remark: l.type + ' leave' }, 'Leave approved'); }
       });
-      log(status + ' leave', l.staff, l.type + ' · ' + l.from + (l.to !== l.from ? ' to ' + l.to : '') + ' · ' + l.days + ' day(s)', by);
+      log(status + ' leave', l.staff, l.type + ' · ' + l.from + (l.to !== l.from ? ' to ' + l.to : '') + ' · ' + l.days + ' day(s)' + (note ? ' · ' + note : ''), by);
       emit();
+      return quiet(push('decideLeave', id, status, note || ''));
     },
     addLeave: function (l, by) {
       l.id = 'L' + (Date.now() % 1e7); l.status = 'Pending'; l.applied = M.today;
       S.leaves.unshift(l); log('Leave requested', l.staff, l.type + ' · ' + l.from + ' to ' + l.to, by);
       S.notifications.unshift({ id: 'n' + l.id, text: (person(l.staff) || {}).name + ' requested ' + l.type.toLowerCase() + ' leave', at: 'just now', go: '#/leave' });
-      emit(); return l;
+      emit(); quiet(push('addLeave', l)); return l;
     },
 
     // ---- settings / salary ----
-    saveSettings: function (part, v) { S.settings[part] = v; log('Updated settings', part, ''); emit(); },
+    saveSettings: function (part, v) { S.settings[part] = v; log('Updated settings', part, ''); emit(); return quiet(push('saveSettings', part, v)); },
     updateProfile: function (sid, fields) { var p = person(sid); Object.keys(fields).forEach(function (k) { p[k] = fields[k]; }); log('Updated own profile', sid, Object.keys(fields).join(', '), p.name + ' (employee)'); emit(); },
     approveSalary: function (sid, month, amount, breakdown) {
       S.approvals.unshift({ staff: sid, month: month, amount: amount, breakdown: breakdown, at: stamp() });
       log('Approved salary estimate', sid, month + ' · ₹' + amount.toLocaleString('en-IN') + ' (no payment made)'); emit();
+      return quiet(push('approveSalary', sid, month));
     },
   };
   function toMin(t) { var p = String(t).split(':'); return +p[0] * 60 + +p[1]; }

@@ -95,8 +95,8 @@
       '<div class="fld"><span class="lbl-like">Status</span><div class="radio-chips" role="radiogroup" aria-label="Status">' + STATUS_OPTS.map(function (o) {
         return '<label class="rc"><input type="radio" name="status" value="' + o[0] + '"' + (cur === o[0] ? ' checked' : '') + '><span><i style="background:' + U.STATUS[o[0]][1] + '"></i>' + o[1] + '</span></label>';
       }).join('') + '</div></div>' +
-      '<div class="grid2 times">' + U.field('Check-in', '<input id="m-in" name="in" type="time" value="' + ((r && r.in) || (sh ? sh.start : '')) + '">', { for: 'in', hint: sh ? 'Shift starts ' + U.hm12(sh.start) + ' · ' + sh.graceMin + ' min grace' : '' }) +
-      U.field('Check-out', '<input id="m-out" name="out" type="time" value="' + ((r && r.out) || '') + '">', { for: 'out', hint: sh ? 'Shift ends ' + U.hm12(sh.end) : '' }) + '</div>' +
+      '<div class="grid2 times">' + U.field('Check-in (optional)', '<input id="m-in" name="in" type="time" value="' + ((r && r.in) || (sh ? sh.start : '')) + '">', { for: 'in', hint: sh ? 'Shift starts ' + U.hm12(sh.start) + ' · ' + sh.graceMin + ' min grace' : '' }) +
+      U.field('Check-out (optional)', '<input id="m-out" name="out" type="time" value="' + ((r && r.out) || '') + '">', { for: 'out', hint: sh ? 'Shift ends ' + U.hm12(sh.end) : '' }) + '</div>' +
       U.field(r && r.status !== 'notin' ? 'Reason for change' : 'Remark', '<textarea id="m-remark" name="remark" rows="2" maxlength="200" placeholder="' + (r && r.status !== 'notin' ? 'Required — e.g. forgot to check out' : 'Optional') + '">' + '</textarea>', { for: 'remark', req: !!(r && r.status !== 'notin') }) +
       (r && r.status !== 'notin' ? '<p class="note">' + ic('shield') + '<span>Currently: <b>' + St.LABEL[r.status] + (r.in ? ' ' + U.hm12(r.in) + (r.out ? '–' + U.hm12(r.out) : '') : '') + '</b>. The old value and your reason are saved in the activity log.</span></p>' : '');
     var form = U.modal({
@@ -110,7 +110,7 @@
         var d = U.val(f, 'date'), ok = true, needT = st === 'present' || st === 'late' || st === 'halfday';
         var existing = St.record(U.val(f, 'staff'), d), correcting = existing && existing.status !== 'notin';
         ok = U.setErr(f, 'date', !d ? 'Pick a date' : d > St.today ? 'You can’t mark a future date' : '') && ok;
-        ok = U.setErr(f, 'in', needT && !tin ? 'Enter the check-in time' : '') && ok;
+        ok = U.setErr(f, 'out', needT && tout && !tin ? 'Add the check-in time too' : '') && ok;
         ok = U.setErr(f, 'out', needT && tout && tin && tout <= tin ? 'Check-out must be after check-in' : '') && ok;
         ok = U.setErr(f, 'remark', correcting && remark.length < 3 ? 'Add a short reason for this change' : '') && ok;
         if (!ok) return;

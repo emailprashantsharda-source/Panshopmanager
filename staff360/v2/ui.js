@@ -22,6 +22,9 @@
   U.monthLabel = function (ym) { var p = ym.split('-'); return U.MON_LONG[+p[1] - 1] + ' ' + p[0]; };
   U.inr = function (x) { return '₹' + Math.round(x).toLocaleString('en-IN'); };
   U.inr2 = function (x) { return '₹' + (Math.round(x * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
+  U.code = function (p) { return p.code || (/^HN\d+$/.test(p.id) ? p.id : String(p.id).replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase()); };
+  U.joinLabel = function (p, long) { return p.joined ? U.dLabel(p.joined, long) + (long ? '' : ' ' + p.joined.slice(0, 4)) : '—'; };
+  U.offLabel = function (p) { return p.weeklyOff == null || p.weeklyOff === '' ? 'None' : U.DOW_LONG[+p.weeklyOff]; };
   U.mobile = function (m) { return m ? m.slice(0, 5) + ' ' + m.slice(5) : '—'; };
   U.initials = function (n) { return n.split(' ').filter(Boolean).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(); };
   var AV = [['#E8F0FE', '#2B5FD9'], ['#E7F7F1', '#0B7A57'], ['#F2EDFE', '#6A3FD8'], ['#FEF0E3', '#B35D0B'], ['#FDECE9', '#C03520'], ['#E6F6FB', '#0E7490']];
@@ -141,6 +144,7 @@
 
   // ---------- metrics ----------
   U.worked = function (r) {
+    if (r && r.workedMin > 0) return r.workedMin;
     if (!r || !r.in || !r.out) return null;
     var p = St.person(r.staff), sh = (p && St.shift(p.shift)) || { breakMin: 60 };
     return Math.max(U.toMin(r.out) - U.toMin(r.in) - (r.status === 'halfday' ? 0 : sh.breakMin), 0);
@@ -155,6 +159,7 @@
     return c;
   };
   U.lateMin = function (r) {
+    if (r && r.lateMin != null) return r.lateMin;
     var p = St.person(r.staff), sh = p && St.shift(p.shift);
     return sh && r.in ? U.toMin(r.in) - U.toMin(sh.start) : 0;
   };
