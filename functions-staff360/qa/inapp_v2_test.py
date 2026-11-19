@@ -81,6 +81,15 @@ with sync_playwright() as p:
     ctx, pg = page_for(b, 'owner')
     pg.evaluate("localStorage.setItem('HN_S360_UI','old'); Staff360.open('overview')")
     expect(pg.locator('#s360')).to_be_visible(timeout=8000); assert pg.locator('#s360v2-frame').count() == 0; ok('Fallback: older screen still opens when switched back')
-    ctx.close(); b.close()
+    ctx.close()
+    st = json.loads(urllib.request.urlopen(BASE + '/__stats').read())
+    assert st.get('api', 0) > 10 and st.get('direct', 0) <= 3, st; ok('Every Staff360 action went through the one warm function')
+    # Before staff360Api is deployed: falls back to the old functions
+    ctl('/__reset'); ctl('/__noapi?on=1'); ctx, pg = page_for(b, 'owner')
+    pg.evaluate("Staff360.open('overview')")
+    expect(pg.frame_locator('#s360v2-frame iframe').locator('.kpi', has_text='Total Staff').locator('b')).to_have_text('4', timeout=15000)
+    st = json.loads(urllib.request.urlopen(BASE + '/__stats').read())
+    assert st.get('direct', 0) > 3, st; ok('Works before the new function is deployed (fallback)')
+    ctl('/__noapi?on=0'); ctx.close(); b.close()
 errs = [e for e in errors if 'ERR_' not in e]
 print(len(passed), 'passed; errors:', errs)
