@@ -59,7 +59,7 @@
       fs1 + saveBtn('Save notifications') + '</form>';
 
     h += waCard();
-    h += '<section class="card"><div class="card-h"><h2>' + ic('star') + 'Subscription &amp; billing</h2></div><div class="set-row"><div><b>Current plan: ' + St.PLAN_LABEL[St.plan] + '</b><small>Plans are per business. King PRO is ₹4,999/year.</small></div><a class="btn" href="#/plans">Manage plan</a></div>' +
+    h += '<section class="card"><div class="card-h"><h2>' + ic('star') + 'Subscription &amp; billing</h2></div><div class="set-row"><div><b>Current plan: ' + St.PLAN_LABEL[St.plan] + '</b><small>' + U.planUntil() + '</small></div><a class="btn" href="#/plans">' + (St.plan === 'basic' ? 'Upgrade' : 'Renew or upgrade') + '</a></div>' +
       (St.live ? '' : '<div class="set-row"><div><b>Reset demo data</b><small>Puts the sample team and attendance back the way they started.</small></div><button class="btn danger-o" data-a="demo-reset">Reset</button></div>') + '</section>';
     return h + '</div>';
   };
@@ -187,17 +187,54 @@
     premium: ['Everything in Basic', 'Staff check-in / check-out from their phone', 'Location at check-in (no background tracking)', 'Shifts, weekly offs and late marks', 'Leave requests and approvals', 'Working hours, overtime and advanced reports'],
     kingpro: ['Everything in Premium', 'AI attendance assistant', 'Repeated late-arrival and pattern alerts', 'Workforce availability insights', 'Draft salary estimates you approve', 'WhatsApp attendance reports (opt-in)'],
   };
+  var RANK = { basic: 1, premium: 2, kingpro: 3 };
+  function fmtDay(ms) { return new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  // "Active till 19 Dec 2026" etc. for the current plan (live only).
+  U.planUntil = function () {
+    var e = St.extra.ent;
+    if (!St.live || !e) return 'Plans are per business.';
+    if (e.status === 'active' && e.endAt) return St.PLAN_LABEL[St.plan] + ' active till ' + fmtDay(e.endAt) + '.';
+    if (e.status === 'grace') return St.PLAN_LABEL[St.plan] + ' ended on ' + fmtDay(e.endAt) + '. Renew within 7 days to keep it.';
+    if (e.lapsedFrom) return 'Your ' + St.PLAN_LABEL[e.lapsedFrom] + ' plan ended. Your data is safe; renew to switch it back on.';
+    return 'Basic is free.';
+  };
+  function staffLine(p) {
+    var m = St.price(p).maxStaff, shop = St.live && St.kind === 'shop';
+    if (!m) return 'Unlimited staff';
+    if (shop && p === 'basic') return 'Your HisaabNow staff list';
+    return 'Up to ' + m + ' staff' + (shop ? ' with phone login' : '');
+  }
   U.views.plans = function () {
-    var h = U.pageHead('Subscription', 'Choose the plan that fits your team. You can change plans any time; your data stays.');
+    var e = St.extra.ent || {}, running = St.live && (e.status === 'active' || e.status === 'grace');
+    var h = U.pageHead('Subscription', St.live ? U.planUntil() : 'Choose the plan that fits your team. You can change plans any time; your data stays.');
     h += '<div class="plan-grid">' + ['basic', 'premium', 'kingpro'].map(function (p) {
-      var cur = St.plan === p, price = p === 'kingpro' ? '<b>₹4,999</b><small>/ year per business</small>' : '<b class="ask-p">Contact for pricing</b><small>Priced for your business</small>';
+      var cur = St.plan === p, x = St.price(p);
+      var price = !x.price ? '<b>Free</b><small>forever</small>' : '<b>₹' + x.price.toLocaleString('en-IN') + '</b><small>/ ' + (x.months === 12 ? 'year' : 'month') + ' per business</small>';
+      var act;
+      if (!St.live) act = cur ? '<button class="btn" disabled>Current (demo)</button>' : '<button class="btn ghost" data-a="plan:' + p + '">Preview ' + St.PLAN_LABEL[p] + ' in demo</button>';
+      else if (p === 'basic') act = cur ? '<button class="btn" disabled>Your plan</button>' : '';
+      else if (running && RANK[p] < RANK[St.plan]) act = '<button class="btn" disabled>Included in ' + St.PLAN_LABEL[St.plan] + '</button>';
+      else if (St.role !== 'owner') act = '<button class="btn" disabled>Only the owner can ' + (cur ? 'renew' : 'upgrade') + '</button>';
+      else act = '<button class="btn pri" data-a="buy:' + p + '">' + (cur ? 'Renew' : 'Upgrade') + ' — Pay ₹' + x.price.toLocaleString('en-IN') + '</button>' +
+        (!cur && running && St.plan !== 'basic' ? '<small class="muted">Unused ' + St.PLAN_LABEL[St.plan] + ' days are added as extra ' + St.PLAN_LABEL[p] + ' time.</small>' : '') +
+        (cur && e.status === 'active' ? '<small class="muted">Adds ' + (x.months === 12 ? 'a year' : 'a month') + ' after ' + fmtDay(e.endAt) + '.</small>' : '');
       return '<section class="card plan-c ' + p + (cur ? ' cur' : '') + '">' + (p === 'kingpro' ? '<span class="ribbon">Most powerful</span>' : '') +
         '<h2>' + (p === 'kingpro' ? ic('crown') : '') + St.PLAN_LABEL[p] + (cur ? ' <span class="badge b-green">' + (St.live ? 'Your plan' : 'Current (demo)') + '</span>' : '') + '</h2><div class="price">' + price + '</div>' +
+        '<p class="plan-lim">' + ic('users') + staffLine(p) + '</p>' +
         '<ul>' + PLAN_FEATURES[p].map(function (f) { return '<li>' + ic('check') + f + '</li>'; }).join('') + '</ul>' +
-        '<div class="plan-act">' + (cur ? '<button class="btn" disabled>Your plan</button>' : '<a class="btn pri" href="' + WA + encodeURIComponent('Hi, I want Staff360 ' + St.PLAN_LABEL[p] + ' for my business') + '" target="_blank" rel="noopener">Talk to us on WhatsApp</a>') +
-        (cur || St.live ? '' : '<button class="btn ghost" data-a="plan:' + p + '">Preview ' + St.PLAN_LABEL[p] + ' in demo</button>') + '</div></section>';
-    }).join('') + '</div><p class="muted small" style="margin-top:12px">' + (St.live ? 'Message us on WhatsApp to upgrade and we’ll switch your plan on. Your staff and attendance stay as they are. Taxes as applicable.' : 'Payments aren’t taken in this preview. Taxes as applicable.') + '</p>';
+        '<div class="plan-act">' + act + '</div></section>';
+    }).join('') + '</div><p class="muted small" style="margin-top:12px">' +
+      (St.live ? 'Pay by UPI, card or net banking through PayU. Plans don’t renew on their own. Your staff and attendance are kept if a plan ends. Taxes as applicable. Questions? <a href="' + WA + encodeURIComponent('Hi, I have a question about Staff360 plans') + '" target="_blank" rel="noopener">WhatsApp us</a>.'
+        : 'Payments aren’t taken in this preview.') + '</p>';
     return h;
+  };
+  U.actions.buy = function (p) {
+    var plan = p[0], x = St.price(plan), b = document.querySelector('[data-a="buy:' + plan + '"]');
+    if (b) { b.disabled = true; b.textContent = 'Opening PayU…'; }
+    St.backend().checkout(plan).catch(function (e) {
+      if (b) { b.disabled = false; b.textContent = 'Pay ₹' + x.price.toLocaleString('en-IN'); }
+      U.toast(e.userMessage || 'Couldn’t open the payment page. Please try again.');
+    });
   };
 
   // ---------- help ----------

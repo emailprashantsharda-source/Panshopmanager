@@ -518,3 +518,6 @@ fieldset.locked-set{border:0;margin:0;padding:0;min-width:0;opacity:.6}
 .wa-prev{white-space:pre-wrap;background:#E7F7EE;border-radius:10px;padding:12px;font:13px/1.5 Inter,sans-serif;margin-top:12px}
 .fld .phone-in input{border:0!important}
 .back-hn{font-weight:600;color:var(--primary-dark)}
+.plan-lim{display:flex;gap:6px;align-items:center;font-weight:600;color:var(--ink,#182B55);margin:4px 0 8px;font-size:13px}.plan-lim svg{width:16px;height:16px}
+.plan-act small{display:block;margin-top:6px;font-size:12px}
+.plan-c ul{align-content:start}

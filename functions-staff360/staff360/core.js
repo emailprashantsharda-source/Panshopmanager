@@ -9,15 +9,19 @@
 
 const PLAN_ORDER = ['basic', 'premium', 'kingpro'];
 
-/* Commercial values: ONLY King PRO's annual price is an approved number.
- * Basic / Premium prices and every staff limit stay null until an admin sets
- * them in Firestore (staff360Config/plans). null renders as "Price to be
- * configured" / "No limit configured" — never a made-up number. */
+/* Approved prices and staff limits (Nov 2026). THE ONLY Staff360 price table:
+ * PayU checkout (payu.js) charges from here, and the app and website show the
+ * same numbers. Change a price here, on hisaabnow.com/staff360 and in the app's
+ * plans page in the same commit.
+ *   priceInr  charged per period;  months  length of one paid period
+ *   maxStaff  null = no limit */
 const PLANS = {
-  basic:   { id: 'basic',   name: 'Basic',    rank: 1, priceYearInr: null, maxStaff: null },
-  premium: { id: 'premium', name: 'Premium',  rank: 2, priceYearInr: null, maxStaff: null },
-  kingpro: { id: 'kingpro', name: 'King PRO', rank: 3, priceYearInr: 4999, maxStaff: null },
+  basic:   { id: 'basic',   name: 'Basic',    rank: 1, priceInr: 0,    months: 0,  maxStaff: 2 },
+  premium: { id: 'premium', name: 'Premium',  rank: 2, priceInr: 999,  months: 1,  maxStaff: 10 },
+  kingpro: { id: 'kingpro', name: 'King PRO', rank: 3, priceInr: 4999, months: 12, maxStaff: null },
 };
+const MONTH_MS = 30.4375 * 24 * 3600 * 1000;
+const GRACE_MS = 7 * 24 * 3600 * 1000;
 
 /* feature -> minimum plan rank. One table; UI and server both read it. */
 const FEATURES = {
@@ -28,20 +32,46 @@ const FEATURES = {
   ai_salary: 3, ai_availability: 3, whatsapp_reports: 3,
 };
 
+/* Admins may change staff limits in staff360Config/plans (maxStaff: a number,
+ * or 0 for no limit). Prices are NOT overridable: they live only in PLANS. */
 function mergePlanConfig(cfg) {
   const out = {};
   for (const id of PLAN_ORDER) {
     const base = PLANS[id];
     const o = (cfg && cfg[id]) || {};
-    const price = o.priceYearInr;
     const max = o.maxStaff;
     out[id] = Object.assign({}, base, {
-      // King PRO price may be overridden by config, but falls back to 4999.
-      priceYearInr: Number.isFinite(price) && price > 0 ? price : base.priceYearInr,
-      maxStaff: Number.isInteger(max) && max > 0 ? max : base.maxStaff,
+      maxStaff: max === 0 ? null : Number.isInteger(max) && max > 0 ? max : base.maxStaff,
+      // Older screens read a yearly price.
+      priceYearInr: base.months === 12 ? base.priceInr : null,
     });
   }
   return out;
+}
+
+/* The entitlement after paying for `months` of `planId`.
+ *  - Same plan still running: the new period starts when the current one ends.
+ *  - Different plan still running: what's left of it is converted to time on
+ *    the new plan at the same rupee value, then the new period is added.
+ *  - Nothing running: starts now. */
+function extendEntitlement(cur, planId, months, nowMs) {
+  const p = PLANS[planId];
+  if (!p || !p.priceInr || !(months > 0)) throw new Error('bad plan');
+  let start = nowMs, creditMs = 0;
+  const end = cur && cur.status === 'active' ? Number(cur.endAt) || 0 : 0;
+  if (end > nowMs && PLANS[cur.planId]) {
+    if (cur.planId === planId) start = end;
+    else {
+      const q = PLANS[cur.planId];
+      const perMonth = (x) => (x.priceInr && x.months ? x.priceInr / x.months : 0);
+      if (perMonth(q) && perMonth(p)) creditMs = Math.round((end - nowMs) * perMonth(q) / perMonth(p));
+    }
+  }
+  const endAt = Math.round(start + creditMs + months * MONTH_MS);
+  return {
+    planId, status: 'active', endAt, graceUntil: endAt + GRACE_MS, creditMs,
+    startAt: cur && cur.status === 'active' && cur.planId === planId && end > nowMs && cur.startAt ? cur.startAt : nowMs,
+  };
 }
 
 /* Resolve the plan a shop is entitled to RIGHT NOW from the server-owned
@@ -484,7 +514,7 @@ function reidentify(text, map) {
 }
 
 module.exports = {
-  PLAN_ORDER, PLANS, FEATURES, mergePlanConfig, resolveEntitlement, rankOf, can, entitlementMap,
+  PLAN_ORDER, PLANS, FEATURES, mergePlanConfig, extendEntitlement, MONTH_MS, resolveEntitlement, rankOf, can, entitlementMap,
   DEFAULT_TZ, validTz, zoned, hmToMin, minToHm, addDays, weekdayOf, daysInMonth, isDate, dateRange,
   shiftInfo, lateMinutes, earlyLeaveMinutes, workedMinutes, cleanGps, GPS_ERRORS,
   dayRecord, aggregate, detectAnomalies, detectDuplicatePunches, salaryEstimate, overtimeHours,

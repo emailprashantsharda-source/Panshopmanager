@@ -725,7 +725,7 @@
   R.plans = function () {
     var cfg = (S.st && S.st.plans) || { basic: { name: 'Basic' }, premium: { name: 'Premium' }, kingpro: { name: 'King PRO', priceYearInr: 4999 } };
     var cur = plan();
-    var price = function (id) { var p = cfg[id] && cfg[id].priceYearInr; return p ? rs(p) + ' <small>/ year</small>' : '<small>Price to be configured</small>'; };
+    var price = function (id) { var c = cfg[id] || {}, p = c.priceInr != null ? c.priceInr : c.priceYearInr; return id === 'basic' ? 'Free' : p ? rs(p) + ' <small>/ ' + (c.months === 1 ? 'month' : 'year') + '</small>' : ''; };
     var lim = function (id) { var m = cfg[id] && cfg[id].maxStaff; return m ? 'Up to ' + m + ' staff' : ''; };
     var col = function (id, title, tag, list, cta) {
       var isCur = cur === id;
@@ -932,6 +932,8 @@
     track('staff360_upgrade_started', { plan: p });
     var box = $('s360-buymsg');
     if (box) box.innerHTML = '<div class="s360-card" aria-busy="true">Checking payment options…</div>';
+    // Payment happens on the new Staff360 screens (PayU).
+    if (!SA && eligible()) { openV2('plans'); return; }
     call('staff360CreateOrder', { planId: p }).then(function (r) {
       if (r && r.ok && r.order && r.order.checkoutUrl) { location.href = r.order.checkoutUrl; return; }
       var why = r && r.reason === 'price_not_configured' ? 'The price for this plan has not been set yet.' : 'Online payment for Staff360 is not switched on yet.';

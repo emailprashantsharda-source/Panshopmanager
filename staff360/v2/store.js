@@ -12,6 +12,8 @@
   var subs = [];
   var PLANS = ['basic', 'premium', 'kingpro'];
   var PLAN_LABEL = { basic: 'Basic', premium: 'Premium', kingpro: 'King PRO' };
+  // Same numbers as the server (functions staff360/core.js PLANS), which is what PayU charges.
+  var PRICES = { basic: { price: 0, months: 0, maxStaff: 2 }, premium: { price: 999, months: 1, maxStaff: 10 }, kingpro: { price: 4999, months: 12, maxStaff: null } };
   // Feature → minimum plan. Mirrors functions-staff360/staff360/core.js FEATURES.
   var FEATURE = {
     dashboard: 'basic', staff: 'basic', attendance: 'basic', history: 'basic', reports: 'basic',
@@ -89,6 +91,15 @@
     get kind() { return S.kind || 'org'; },
     get editable() { return S.editable !== false; },
     get extra() { return S.extra || {}; },
+    price: function (p) {
+      var x = PRICES[p], live = S.extra && S.extra.plans && S.extra.plans[p];
+      if (live) return { price: live.priceInr, months: live.months, maxStaff: live.maxStaff };
+      return x;
+    },
+    priceLabel: function (p) {
+      var x = this.price(p);
+      return !x.price ? 'Free' : '₹' + x.price.toLocaleString('en-IN') + (x.months === 12 ? '/year' : x.months === 1 ? '/month' : ' for ' + x.months + ' months');
+    },
     // Live mode: replace all data with a server snapshot.
     init: function (snap, be) {
       backend = be || backend;

@@ -77,8 +77,9 @@ test('Basic: owner gets basic, employee self check-in is blocked server-side', a
   assert.equal(s.plan, 'basic');
   assert.equal(s.role, 'owner');
   assert.equal(s.features.self_checkin, false);
-  assert.equal(s.plans.kingpro.priceYearInr, 4999);
-  assert.equal(s.plans.premium.priceYearInr, null);
+  assert.equal(s.plans.kingpro.priceInr, 4999);
+  assert.equal(s.plans.premium.priceInr, 999);
+  assert.equal(s.plans.basic.maxStaff, 2);
   await rejects(h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, EMP_A), 'failed-precondition', /upgrade_required:premium/);
   await rejects(h.listShifts({ shopId: 'A' }, OWNER_A), 'failed-precondition', /upgrade_required:premium/);
   await rejects(h.aiDashboard({ shopId: 'A' }, OWNER_A), 'failed-precondition', /upgrade_required:kingpro/);
@@ -112,14 +113,37 @@ test('plan cannot be self-granted; only platform admin', async () => {
   assert.equal((await h.getState({ shopId: 'B' }, OWNER_B)).plan, 'basic', 'other tenant unaffected');
 });
 
-test('billing: no fake payment success', async () => {
+test('billing: quote is server-priced, owner-only, no downgrade while a higher plan runs', async () => {
   const { h } = setup();
-  const r = await h.createOrder({ shopId: 'A', planId: 'kingpro' }, OWNER_A);
-  assert.deepEqual(r, { ok: false, reason: 'billing_not_configured' });
-  const p = await h.createOrder({ shopId: 'A', planId: 'premium' }, OWNER_A);
-  assert.deepEqual(p, { ok: false, reason: 'price_not_configured' });
-  await rejects(h.createOrder({ shopId: 'A', planId: 'kingpro' }, EMP_A), 'permission-denied');
-  assert.equal((await h.getState({ shopId: 'A' }, OWNER_A)).plan, 'basic');
+  assert.deepEqual(await h.createOrder({ shopId: 'A', planId: 'kingpro' }, OWNER_A), { ok: false, reason: 'use_payu' });
+  const q = await h.billingQuote({ shopId: 'A', planId: 'premium', amountInr: 1 }, OWNER_A);
+  assert.equal(q.amountInr, 999); assert.equal(q.months, 1); assert.equal(q.shopId, 'A');
+  assert.equal((await h.billingQuote({ shopId: 'A', planId: 'kingpro' }, OWNER_A)).amountInr, 4999);
+  await rejects(h.billingQuote({ shopId: 'A', planId: 'kingpro' }, EMP_A), 'permission-denied');
+  await rejects(h.billingQuote({ shopId: 'A', planId: 'kingpro' }, MGR_A), 'permission-denied');
+  await rejects(h.billingQuote({ shopId: 'A', planId: 'kingpro' }, OWNER_B), 'permission-denied');
+  await rejects(h.billingQuote({ shopId: 'A', planId: 'basic' }, OWNER_A), 'invalid-argument');
+  assert.equal((await h.getState({ shopId: 'A' }, OWNER_A)).plan, 'basic', 'a quote grants nothing');
+  await grant(h, 'A', 'kingpro');
+  await rejects(h.billingQuote({ shopId: 'A', planId: 'premium' }, OWNER_A), 'failed-precondition', /King PRO/);
+  assert.ok((await h.billingQuote({ shopId: 'A', planId: 'kingpro' }, OWNER_A)).endAt > Date.now() + 300 * 864e5, 'renewal stacks');
+});
+
+test('staff limits: Basic org 2 staff; HisaabNow shop counts phone logins (Premium 10)', async () => {
+  const { h, db } = setup();
+  const { id } = await h.createOrg({ name: 'Tiny Shop' }, NEW_OWNER);
+  await h.staffSave({ shopId: id, name: 'One' }, NEW_OWNER); await h.staffSave({ shopId: id, name: 'Two' }, NEW_OWNER);
+  await rejects(h.staffSave({ shopId: id, name: 'Three' }, NEW_OWNER), 'resource-exhausted', /allows 2/);
+  await grant(h, id, 'premium');
+  await h.staffSave({ shopId: id, name: 'Three' }, NEW_OWNER);
+  // Shop A: app staff are free; Staff360 logins are limited.
+  await grant(h, 'A', 'premium');
+  await h.adminSetPlanConfig({ premium: { maxStaff: 1 } }, ADMIN);
+  await h.staffSave({ shopId: 'A', id: 'riya', canLogin: true }, OWNER_A);
+  await h.syncRoster({ shopId: 'A', staff: [{ id: 'amit', name: 'Amit Kumar', phone: '9111111111' }, { id: 'riya', name: 'Riya Sharma', phone: '9444444444' }, { id: 'zoya', name: 'Zoya', phone: '9555555555' }] }, OWNER_A);
+  await rejects(h.staffSave({ shopId: 'A', id: 'zoya', canLogin: true }, OWNER_A), 'resource-exhausted', /1 staff logins/);
+  await h.staffSave({ shopId: 'A', id: 'riya', canLogin: true }, OWNER_A); // editing an existing login is fine
+  assert.ok(db._store.get('staff360/A/roster/zoya'), 'sync is never blocked');
 });
 
 test('Premium: GPS check-in, duplicate guard, check-out, mirror to register', async () => {
@@ -391,8 +415,8 @@ test('standalone: sign up, add staff, mark attendance on Basic (server-side audi
   const st = await h.getState({ shopId: id }, NEW_OWNER);
   assert.equal(st.role, 'owner'); assert.equal(st.plan, 'basic'); assert.equal(st.tenant.kind, 'org'); assert.equal(st.tenant.name, 'Sharma Clinic');
   const a = await h.staffSave({ shopId: id, name: 'Ravi Kumar', role: 'Receptionist', phone: '98000 00002', salary: 14000, canLogin: true }, NEW_OWNER);
-  const b = await h.staffSave({ shopId: id, name: 'Neha Gupta', role: 'Nurse', salary: 16000 }, NEW_OWNER);
   await rejects(h.staffSave({ shopId: id, name: 'Dup', phone: '9800000002' }, NEW_OWNER), 'already-exists');
+  const b = await h.staffSave({ shopId: id, name: 'Neha Gupta', role: 'Nurse', salary: 16000 }, NEW_OWNER);
   await rejects(h.staffSave({ shopId: id, name: 'X', canLogin: true }, NEW_OWNER), 'invalid-argument', /mobile/);
   const roster = await h.staffRoster({ shopId: id }, NEW_OWNER);
   assert.equal(roster.editable, true);
@@ -548,4 +572,26 @@ test('round 2: shop-distance check, auto half-day, auto absent', async () => {
   assert.equal((await h.runAutoAbsent()).marked, 0, 'already marked');
   assert.equal(db._store.get('staff360/A').lastAutoAbsent, '2026-11-17');
   setNow(T0);
+});
+
+test('AI: provider error falls back to the fixed-rule answer', async () => {
+  const ai = { configured: () => true, answer: async () => { throw new Error('ai_http_404'); }, summarise: async () => { throw new Error('x'); } };
+  const { h } = setup({ ai });
+  await grant(h, 'A', 'kingpro');
+  const r = await h.aiAsk({ shopId: 'A', question: 'Who was absent this month?' }, OWNER_A);
+  assert.equal(r.source, 'rules');
+  const d = await h.aiDashboard({ shopId: 'A' }, OWNER_A);
+  assert.equal(d.narrativeSource, 'template');
+});
+
+test('AI adapter: OpenAI request uses max_completion_tokens and the configured model', async () => {
+  let sent = null;
+  const f = async (url, o) => { sent = { url, body: JSON.parse(o.body), auth: o.headers.authorization }; return { ok: true, json: async () => ({ choices: [{ message: { content: 'Two absences.' } }], usage: { prompt_tokens: 5, completion_tokens: 3 } }) }; };
+  const ai = createAI({ STAFF360_AI_PROVIDER: 'openai', STAFF360_AI_MODEL: 'gpt-5.6-terra', OPENAI_API_KEY: 'sk-test' }, f);
+  assert.equal(ai.configured(), true);
+  const r = await ai.summarise('{}');
+  assert.equal(r.text, 'Two absences.');
+  assert.equal(sent.body.model, 'gpt-5.6-terra'); assert.equal(sent.body.max_completion_tokens, 2000); assert.equal(sent.body.max_tokens, undefined);
+  assert.equal(sent.auth, 'Bearer sk-test');
+  assert.equal(createAI({ STAFF360_AI_PROVIDER: 'openai', STAFF360_AI_MODEL: 'm' }, f).configured(), false, 'no key = rules');
 });

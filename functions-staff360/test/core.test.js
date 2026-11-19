@@ -6,16 +6,34 @@ const C = require('../staff360/core');
 const IST = 'Asia/Kolkata';
 const at = (iso) => Date.parse(iso);
 
-test('plans: only King PRO has a price; nothing else invented', () => {
+test('plans: approved prices and staff limits; prices cannot be overridden', () => {
   const p = C.mergePlanConfig({});
+  assert.deepEqual([p.basic.priceInr, p.premium.priceInr, p.kingpro.priceInr], [0, 999, 4999]);
+  assert.deepEqual([p.basic.months, p.premium.months, p.kingpro.months], [0, 1, 12]);
+  assert.deepEqual([p.basic.maxStaff, p.premium.maxStaff, p.kingpro.maxStaff], [2, 10, null]);
   assert.equal(p.kingpro.priceYearInr, 4999);
-  assert.equal(p.basic.priceYearInr, null);
-  assert.equal(p.premium.priceYearInr, null);
-  for (const id of C.PLAN_ORDER) assert.equal(p[id].maxStaff, null);
-  const q = C.mergePlanConfig({ premium: { priceYearInr: 2999, maxStaff: 15 }, kingpro: { priceYearInr: 'x' } });
-  assert.equal(q.premium.priceYearInr, 2999);
+  const q = C.mergePlanConfig({ premium: { priceInr: 1, priceYearInr: 1, maxStaff: 15 }, basic: { maxStaff: 0 } });
+  assert.equal(q.premium.priceInr, 999, 'price comes only from core.js');
   assert.equal(q.premium.maxStaff, 15);
-  assert.equal(q.kingpro.priceYearInr, 4999, 'bad override falls back to approved price');
+  assert.equal(q.basic.maxStaff, null, '0 = no limit');
+});
+
+test('extendEntitlement: new, renew early, upgrade with credit, lapsed', () => {
+  const t = at('2026-11-19T00:00:00Z'), M = C.MONTH_MS;
+  const a = C.extendEntitlement(null, 'premium', 1, t);
+  assert.equal(a.endAt, Math.round(t + M)); assert.equal(a.graceUntil, a.endAt + 7 * 864e5); assert.equal(a.startAt, t);
+  // Renewing early stacks on the current end date.
+  const b = C.extendEntitlement(Object.assign({ status: 'active' }, a), 'premium', 1, t + 10 * 864e5);
+  assert.equal(b.endAt, Math.round(a.endAt + M)); assert.equal(b.startAt, t);
+  // Premium -> King PRO with half a month left: ₹499.5 of value becomes ~1.2 months of King PRO.
+  const half = { planId: 'premium', status: 'active', endAt: t + M / 2 };
+  const c = C.extendEntitlement(half, 'kingpro', 12, t);
+  const credit = (M / 2) * 999 / (4999 / 12);
+  assert.ok(Math.abs(c.endAt - (t + credit + 12 * M)) < 2);
+  // Lapsed plan: starts now.
+  const d = C.extendEntitlement({ planId: 'premium', status: 'active', endAt: t - 864e5 }, 'premium', 1, t);
+  assert.equal(d.endAt, Math.round(t + M));
+  assert.throws(() => C.extendEntitlement(null, 'basic', 1, t));
 });
 
 test('entitlements: inheritance and gating', () => {
