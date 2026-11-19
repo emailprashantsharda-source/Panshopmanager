@@ -559,3 +559,9 @@ fieldset.locked-set{border:0;margin:0;padding:0;min-width:0;opacity:.6}
 .mk-bulk .btn{width:100%;height:52px;border-radius:14px;font-size:16px;box-shadow:0 6px 16px rgba(7,140,69,.25)}
 .mk-sheet-who{display:flex;align-items:center;gap:12px;margin-bottom:12px}.mk-sheet-who span{display:flex;flex-direction:column}.mk-sheet-who b{font-size:17px;color:var(--heading)}.mk-sheet-who small{color:var(--muted);font-size:13px}
 @media (max-width:380px){.mk-btns button{width:38px}.mk-btns{gap:4px}}
+/* Back to the previous screen (phones: every section; wide screens: sub-screens only) */
+.back-row{display:none;align-items:center;gap:4px;min-height:44px;margin:-8px 0 4px -6px;padding:0 10px 0 4px;border-radius:10px;color:var(--primary-dark);font-weight:700;font-size:15px;text-decoration:none;width:max-content}
+.back-row .ic,.back-row svg{width:20px;height:20px}
+.back-row:hover{background:var(--primary-light)}
+.back-row.sub{display:inline-flex}
+@media (max-width:900px){.back-row{display:inline-flex}}
