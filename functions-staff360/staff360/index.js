@@ -45,6 +45,7 @@ module.exports = {
   staff360StaffRemove: call('staffRemove'),
   staff360Mark: call('mark'),
   staff360Records: call('records'),
+  staff360AutoAbsent: call('autoAbsent'),
   staff360LogManualEdit: call('logManualEdit'),
   staff360ListAudit: call('listAudit'),
   staff360Register: call('register'),
@@ -67,4 +68,6 @@ module.exports = {
   staff360AdminSetPlanConfig: call('adminSetPlanConfig'),
   staff360WhatsAppDigest: onSchedule({ region: REGION, schedule: 'every 30 minutes', timeZone: 'Asia/Kolkata' },
     () => handlers().runWhatsAppDigests()),
+  staff360AutoAbsentDaily: onSchedule({ region: REGION, schedule: 'every 60 minutes', timeZone: 'Asia/Kolkata' },
+    () => handlers().runAutoAbsent()),
 };

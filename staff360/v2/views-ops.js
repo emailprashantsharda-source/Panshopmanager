@@ -78,8 +78,35 @@
 
   // =================== LEAVE ===================
   F.lq = F.lq || ''; F.ltype = F.ltype || ''; F.lstatus = F.lstatus || ''; F.lmonth = F.lmonth || '';
-  U.views.leave = function () {
+  function reqTabs(cur) {
+    var pc = St.corrections().filter(function (c) { return c.status === 'Pending'; }).length, pl = St.leaves().filter(function (l) { return l.status === 'Pending'; }).length;
+    return '<div class="tabs" role="tablist"><a role="tab" aria-selected="' + (cur === 'leave') + '" class="' + (cur === 'leave' ? 'on' : '') + '" href="#/leave">Leave' + (pl ? ' <span class="badge b-amber">' + pl + '</span>' : '') + '</a>' +
+      '<a role="tab" aria-selected="' + (cur === 'corr') + '" class="' + (cur === 'corr' ? 'on' : '') + '" href="#/leave/corrections">Attendance corrections' + (pc ? ' <span class="badge b-amber">' + pc + '</span>' : '') + '</a></div>';
+  }
+  function corrections() {
+    var list = St.corrections().slice().sort(function (a, b) { return (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1) || (a.date < b.date ? 1 : -1); });
+    var h = U.pageHead('Leave Management', 'Staff ask to fix a missed or wrong check-in; you approve or reject it.') + reqTabs('corr');
+    if (!list.length) return h + '<section class="card"><div class="empty big">' + ic('check') + '<b>No correction requests</b><span>When staff forget to check in or out, they can ask for a fix from their phone.</span></div></section>';
+    return h + '<section class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>Employee</th><th>Date</th><th>Recorded</th><th>Asked for</th><th>Reason</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>' +
+      list.map(function (c) {
+        var p = St.person(c.staff) || { id: c.staff, name: 'Staff', designation: '' }, r = St.record(c.staff, c.date), w = c.want || {};
+        var now = r ? St.LABEL[r.status] + (r.in ? ' · ' + U.hm12(r.in) + (r.out ? '–' + U.hm12(r.out) : '') : '') : 'Nothing recorded';
+        var want = [w.status ? St.LABEL[w.status] : '', w.in ? 'In ' + U.hm12(w.in) : '', w.out ? 'Out ' + U.hm12(w.out) : ''].filter(Boolean).join(' · ');
+        return '<tr><td><span class="who">' + U.avatar(p) + '<span><b>' + esc(p.name) + '</b><small>' + esc(p.designation) + '</small></span></span></td><td>' + U.dLabel(c.date, true) + '</td><td>' + esc(now) + '</td><td><b>' + esc(want) + '</b></td><td class="wrap">' + esc(c.reason) + (c.note ? '<br><small class="muted">You: ' + esc(c.note) + '</small>' : '') + '</td><td>' + U.leaveBadge(c.status) + '</td>' +
+          '<td class="r">' + (c.status === 'Pending' ? '<span class="act"><button class="ok" data-a="corr-decide:' + c.id + ':Approved" aria-label="Approve correction for ' + esc(p.name) + '">' + ic('check') + '</button><button class="no" data-a="corr-decide:' + c.id + ':Rejected" aria-label="Reject correction for ' + esc(p.name) + '">' + ic('x') + '</button></span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div></section>';
+  }
+  U.actions['corr-decide'] = function (p) {
+    var c = St.corrections().filter(function (x) { return x.id === p[0]; })[0], who = St.person(c.staff) || { name: 'Staff' };
+    if (p[1] === 'Approved') { St.decideCorrection(c.id, 'Approved'); U.toast('Approved — ' + U.dLabel(c.date) + ' updated for ' + who.name); return; }
+    U.modal({ title: 'Reject correction for ' + esc(who.name) + '?', submit: 'Reject',
+      body: U.field('Reason (shared with ' + esc(who.name.split(' ')[0]) + ')', '<textarea name="note" id="m-cn" rows="2" maxlength="200"></textarea>', { for: 'note', req: true }),
+      foot: '<button type="button" class="btn" data-m="close">Cancel</button><button type="submit" class="btn danger">Reject</button>',
+      onSubmit: function (f) { var n = U.val(f, 'note'); if (!U.setErr(f, 'note', n.length < 3 ? 'Add a short reason' : '')) return; U.closeModal(); St.decideCorrection(c.id, 'Rejected', n); U.toast('Rejected'); } });
+  };
+  U.views.leave = function (arg) {
     if (!St.can('leave')) return U.locked('leave', 'Leave Management', 'Staff request leave from their phone; you approve or reject it, and approved leave shows on the register automatically.');
+    if (arg === 'corrections') return corrections();
     var all = St.leaves(), c = { Pending: 0, Approved: 0, Rejected: 0 };
     all.forEach(function (l) { c[l.status]++; });
     var q = F.lq.toLowerCase();
@@ -88,7 +115,7 @@
       return (!F.ltype || l.type === F.ltype) && (!F.lstatus || l.status === F.lstatus) && (!F.lmonth || l.from.slice(0, 7) === F.lmonth || l.to.slice(0, 7) === F.lmonth) && (!q || p.name.toLowerCase().indexOf(q) >= 0);
     }).sort(function (a, b) { return (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1) || (a.from < b.from ? 1 : -1); });
     var months = {}; all.forEach(function (l) { months[l.from.slice(0, 7)] = 1; });
-    var h = U.pageHead('Leave Management', 'Review and manage employee leave requests.', '<button class="btn pri" data-a="leave-new">' + ic('plus') + 'New leave request</button>');
+    var h = U.pageHead('Leave Management', 'Review and manage employee leave requests.', '<button class="btn pri" data-a="leave-new">' + ic('plus') + 'New leave request</button>') + reqTabs('leave');
     h += '<div class="kpis">' + U.kpi('report', 'Total Requests', all.length, '', 'var(--blue-light)', 'var(--blue)') +
       U.kpi('hourglass', 'Pending Approval', c.Pending, '', 'var(--warning-light)', '#B7791F') +
       U.kpi('check', 'Approved', c.Approved, '', 'var(--success-light)', 'var(--success)') +

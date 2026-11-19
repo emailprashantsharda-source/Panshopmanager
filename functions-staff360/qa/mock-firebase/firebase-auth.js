@@ -15,3 +15,5 @@ export async function signInWithPhoneNumber(a, phone) {
     const u = current(); subs.forEach((f) => f(u)); return { user: u };
   } };
 }
+export const browserLocalPersistence = { type: 'LOCAL' };
+export async function setPersistence() {}

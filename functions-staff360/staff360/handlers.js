@@ -106,11 +106,29 @@ function createHandlers(deps) {
       hoursPerDay: Number.isFinite(s.hoursPerDay) ? s.hoursPerDay : 8,
       halfDayBelowHours: Number.isFinite(s.halfDayBelowHours) ? s.halfDayBelowHours : 5,
       autoLate: s.autoLate !== false,
+      autoHalfDay: s.autoHalfDay === true,
+      autoAbsent: s.autoAbsent === true,
+      geofence: s.geofence && Number.isFinite(s.geofence.lat) && Number.isFinite(s.geofence.lng)
+        ? { lat: s.geofence.lat, lng: s.geofence.lng, radiusM: s.geofence.radiusM || 200, mode: ['flag', 'block'].includes(s.geofence.mode) ? s.geofence.mode : 'off' }
+        : { lat: null, lng: null, radiusM: 200, mode: 'off' },
       perms: Object.assign({ requestLeave: true, seeShift: true, managerEdit: true, managerSalary: false }, s.perms || {}),
       notify: Object.assign({ dailySummary: false, lateAlert: false, leaveAlert: true }, s.notify || {}),
     };
   }
   const EMP_TYPES = ['Full-time', 'Part-time', 'Contract', 'Temporary'];
+  // Straight-line distance in metres between two GPS points.
+  function distanceM(a, b) {
+    const R = 6371000, rad = (x) => x * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+  }
+  // Outside only if even the most generous reading (distance minus GPS accuracy) is past the radius.
+  function fenceCheck(gf, gps) {
+    if (!gps || !gf || gf.mode === 'off' || gf.lat == null) return null;
+    const d = distanceM(gf, gps);
+    return { distanceM: d, outside: d - Math.min(gps.accuracy || 0, 150) > gf.radiusM };
+  }
   const LEAVE_TYPES = ['Casual', 'Sick', 'Unpaid', 'Other'];
 
   /* Staff = the owner's roster (sent by the app via syncRoster, because the
@@ -162,11 +180,15 @@ function createHandlers(deps) {
       if (!id || id.includes('/') || seen.has(id)) continue;
       seen.add(id);
       const ph = str(x.phoneE164 || x.phone, 20).replace(/[^\d+]/g, '');
-      await coll.doc(id).set({
-        name: str(x.name, 80) || 'Staff', role: str(x.role, 40), phoneE164: /^\+\d{10,15}$/.test(ph) ? ph : (/^\d{10}$/.test(ph) ? '+91' + ph : null),
+      const doc = {
+        name: str(x.name, 80) || 'Staff', role: str(x.role, 40),
         salary: Math.max(0, Math.min(1e7, Number(x.salary) || 0)), active: x.active !== false, removed: false,
         updatedAt: now(), updatedBy: ctx.uid,
-      }, { merge: true });
+      };
+      // Keep a phone added in Staff360 when the app's staff record has none.
+      const phone = /^\+\d{10,15}$/.test(ph) ? ph : (/^\d{10}$/.test(ph) ? '+91' + ph : null);
+      if (phone) doc.phoneE164 = phone;
+      await coll.doc(id).set(doc, { merge: true });
     }
     const existing = await coll.get();
     for (const d of existing.docs) if (!seen.has(d.id) && !d.data().removed) await coll.doc(d.id).set({ removed: true, updatedAt: now() }, { merge: true });
@@ -258,7 +280,7 @@ function createHandlers(deps) {
         out.me = {
           staffId: me.id, name: me.name || 'Staff', role: me.role || '', today: z.date, timezone: st.timezone,
           weeklyOff: Number.isInteger(me.weeklyOff) ? me.weeklyOff : null, joinedDate: me.joinedDate || null,
-          gpsPolicy: st.gpsPolicy, minAccuracyM: st.minAccuracyM,
+          gpsPolicy: st.gpsPolicy, minAccuracyM: st.minAccuracyM, fence: { mode: st.geofence.mode, radiusM: st.geofence.radiusM },
           shift: sh ? { name: sh.name, start: sh.start, end: sh.end, graceMin: sh.graceMin || 0, weeklyOff: sh.weeklyOff || [] } : null,
           todayPunch: publicPunch(today), openYesterday: yest && yest.checkInAt && !yest.checkOutAt ? publicPunch(yest) : null,
         };
@@ -275,7 +297,7 @@ function createHandlers(deps) {
       attendanceDate: p.attendanceDate, checkInAt: p.checkInAt || null, checkOutAt: p.checkOutAt || null,
       inHm: p.inHm || '', outHm: p.outHm || '', lateMinutes: p.lateMinutes || 0, earlyLeaveMinutes: p.earlyLeaveMinutes || 0,
       workedMinutes: p.workedMinutes || 0,
-      checkInGps: p.checkInGps ? { accuracy: p.checkInGps.accuracy, lowAccuracy: !!p.checkInGps.lowAccuracy } : null,
+      checkInGps: p.checkInGps ? { accuracy: p.checkInGps.accuracy, lowAccuracy: !!p.checkInGps.lowAccuracy, distanceM: p.checkInGps.distanceM, outside: !!p.checkInGps.outside } : null,
       checkOutGps: p.checkOutGps ? { accuracy: p.checkOutGps.accuracy, lowAccuracy: !!p.checkOutGps.lowAccuracy } : null,
       checkInGpsStatus: p.checkInGpsStatus || null, checkOutGpsStatus: p.checkOutGpsStatus || null,
       source: p.source || 'employee',
@@ -300,7 +322,12 @@ function createHandlers(deps) {
       await log('rejected_no_gps');
       fail('failed-precondition', `gps_required:${gpsErr}`);
     }
-    const gpsDoc = gps ? Object.assign({}, gps, { lowAccuracy: gps.accuracy > st.minAccuracyM }) : null;
+    const fence = fenceCheck(st.geofence, gps);
+    if (fence && fence.outside && st.geofence.mode === 'block') {
+      await log('rejected_outside');
+      fail('failed-precondition', `outside_radius:${fence.distanceM}`);
+    }
+    const gpsDoc = gps ? Object.assign({}, gps, { lowAccuracy: gps.accuracy > st.minAccuracyM }, fence || {}) : null;
     const sh = shiftFor(await shifts(ctx.shopId), me.id);
 
     if (action === 'in') {
@@ -359,6 +386,18 @@ function createHandlers(deps) {
     await log('ok', target.date);
     await audit(ctx, { type: 'punch_out', staffId: me.id, staffName: me.name || '', date: target.date, to: z.hm, gps: gps ? 'captured' : gpsErr });
     if (st.mirrorToRegister) await mirrorMark(ctx.shopId, me.id, target.date, { o: z.hm, src: 's360' }).catch(() => {});
+    // Auto half-day: short day, and nobody has marked this day by hand.
+    if (st.autoHalfDay && out.p.workedMinutes < st.halfDayBelowHours * 60) {
+      const ref2 = db.doc(markDocPath(ctx.shopId, me.id, target.date.slice(0, 7)));
+      const cur = ((await ref2.get()).data() || {}).days || {};
+      const m = cur[target.date] || {};
+      if (!m.m || (m.m === 'P' && m.src === 's360')) {
+        await mirrorMark(ctx.shopId, me.id, target.date, { m: 'H', src: 's360' }).catch(() => {});
+        const w = out.p.workedMinutes;
+        await audit(ctx, { type: 'auto_mark', staffId: me.id, staffName: me.name || '', date: target.date, from: m.m || '', to: 'H',
+          reason: `Worked ${Math.floor(w / 60)}h ${w % 60}m, under ${st.halfDayBelowHours}h` });
+      }
+    }
     return { ok: true, punch: publicPunch(out.p) };
   }
 
@@ -517,6 +556,15 @@ function createHandlers(deps) {
     if (data.hoursPerDay != null) patch.hoursPerDay = num(data.hoursPerDay, 1, 16);
     if (data.halfDayBelowHours != null) patch.halfDayBelowHours = num(data.halfDayBelowHours, 1, 12);
     if (data.autoLate != null) patch.autoLate = !!data.autoLate;
+    if (data.autoHalfDay != null) patch.autoHalfDay = !!data.autoHalfDay;
+    if (data.autoAbsent != null) patch.autoAbsent = !!data.autoAbsent;
+    if (data.geofence) {
+      const g = data.geofence, mode = ['off', 'flag', 'block'].includes(g.mode) ? g.mode : 'off';
+      const lat = Number(g.lat), lng = Number(g.lng);
+      if (mode !== 'off' && (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180)) fail('invalid-argument', 'Set the shop location first');
+      patch.geofence = { mode, radiusM: Math.round(num(g.radiusM || 200, 50, 5000)),
+        lat: Number.isFinite(lat) ? Math.round(lat * 1e6) / 1e6 : null, lng: Number.isFinite(lng) ? Math.round(lng * 1e6) / 1e6 : null };
+    }
     const flags = (o, keys) => { const out = {}; keys.forEach((k) => { if (o && o[k] != null) out[k] = !!o[k]; }); return out; };
     if (data.perms) patch.perms = flags(data.perms, ['requestLeave', 'seeShift', 'managerEdit', 'managerSalary']);
     if (data.notify) patch.notify = flags(data.notify, ['dailySummary', 'lateAlert', 'leaveAlert']);
@@ -1137,6 +1185,54 @@ function createHandlers(deps) {
     return { ok: true };
   }
 
+  /* Auto-absent: staff who check in on their phone, were expected (not a weekly
+   * off, not on approved leave) and have no mark or check-in for the day. */
+  async function autoAbsentFor(shopId, date, actor) {
+    const [staff, sh, reqs] = await Promise.all([staffList(shopId), shifts(shopId),
+      db.collection(`staff360/${shopId}/requests`).where('status', '==', 'approved').get()]);
+    const leave = reqs.docs.map((d) => d.data()).filter((r) => r.type === 'leave' && r.fromDate <= date && (r.toDate || r.fromDate) >= date);
+    const wd = C.weekdayOf(date), done = [];
+    for (const s of staff) {
+      const checksIn = s.canLogin === true || String(s.id).startsWith('+');
+      if (!checksIn) continue;
+      const shift = shiftFor(sh, s.id);
+      const off = Number.isInteger(s.weeklyOff) ? s.weeklyOff === wd : !!(shift && Array.isArray(shift.weeklyOff) && shift.weeklyOff.includes(wd));
+      if (off || leave.some((r) => r.staffId === s.id)) continue;
+      const m = (((await db.doc(markDocPath(shopId, s.id, date.slice(0, 7))).get()).data() || {}).days || {})[date] || {};
+      const p = (await db.doc(`staff360/${shopId}/punches/${s.id}_${date}`).get()).data();
+      if (m.m || m.i || (p && p.checkInAt)) continue;
+      await mirrorMark(shopId, s.id, date, { m: 'A', src: 'auto' });
+      await db.collection(`staff360/${shopId}/audit`).add({ at: now(), actorUid: actor ? actor.uid : 'system', actorRole: actor ? actor.role : 'system',
+        type: 'auto_mark', staffId: s.id, staffName: s.name || '', date, from: '', to: 'A', reason: 'No check-in or mark for the day' });
+      done.push(s.id);
+    }
+    return done;
+  }
+  async function autoAbsent(data, auth) {
+    const ctx = await caller(data, auth, { roles: MANAGERS, feature: 'self_checkin' });
+    const st = await settings(ctx.shopId);
+    const today = C.zoned(now(), st.timezone).date;
+    const date = C.isDate(data.date) ? data.date : today;
+    if (date > today || date < C.addDays(today, -31)) fail('invalid-argument', 'Pick today or a date in the last 31 days');
+    const marked = await autoAbsentFor(ctx.shopId, date, ctx);
+    return { ok: true, date, marked: marked.length };
+  }
+  /* Scheduled: end of day in each business's timezone (after 23:00). */
+  async function runAutoAbsent() {
+    const q = await db.collection('staff360').where('autoAbsent', '==', true).get();
+    let n = 0;
+    for (const d of q.docs) {
+      const shopId = d.id, s = d.data();
+      const ent = C.resolveEntitlement((await db.doc(`staff360Entitlements/${shopId}`).get()).data(), now());
+      if (!C.can(ent.planId, 'self_checkin')) continue;
+      const z = C.zoned(now(), C.validTz(s.timezone) ? s.timezone : C.DEFAULT_TZ);
+      if (z.minutes < 23 * 60 || s.lastAutoAbsent === z.date) continue;
+      n += (await autoAbsentFor(shopId, z.date, null)).length;
+      await db.doc(`staff360/${shopId}`).set({ lastAutoAbsent: z.date }, { merge: true });
+    }
+    return { marked: n };
+  }
+
   /* Per-day records for the Staff360 screens (dashboard, register, calendar,
    * reports). Basic: marks only. Premium+: punch evidence (late, hours, GPS). */
   async function records(data, auth) {
@@ -1157,7 +1253,7 @@ function createHandlers(deps) {
         if (!rec.status && !rec.inHm) return null;
         const out = { date: d, status: rec.status, inHm: rec.inHm, outHm: rec.outHm };
         if (detailed && p) Object.assign(out, { lateMin: rec.lateMin, workedMin: rec.workedMin, incomplete: rec.incomplete,
-          gps: p.checkInGps ? { accuracy: p.checkInGps.accuracy, low: !!p.checkInGps.lowAccuracy } : (p.checkInGpsStatus ? false : null) });
+          gps: p.checkInGps ? { accuracy: p.checkInGps.accuracy, low: !!p.checkInGps.lowAccuracy, distanceM: p.checkInGps.distanceM, outside: !!p.checkInGps.outside } : (p.checkInGpsStatus ? false : null) });
         return out;
       }).filter(Boolean),
     }));
@@ -1204,7 +1300,7 @@ function createHandlers(deps) {
 
   return {
     getState, punch, myHistory, syncRoster, logManualEdit,
-    myTenants, createOrg, staffRoster, staffSave, staffRemove, mark, records, listAudit, register, report,
+    myTenants, createOrg, staffRoster, staffSave, staffRemove, mark, records, autoAbsent, runAutoAbsent, listAudit, register, report,
     listShifts, saveShift, deleteShift, saveSettings,
     submitRequest, listRequests, decideRequest,
     aiDashboard, aiAsk, alertAction, salaryList, salarySave,

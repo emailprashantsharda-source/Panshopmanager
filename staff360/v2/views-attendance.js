@@ -3,17 +3,19 @@
   'use strict';
   var St = window.S360Store, U = window.S360UI, esc = U.esc, ic = U.ic;
   var F = U.state;
-  F.adate = F.adate || St.today; F.aemp = F.aemp || ''; F.adesig = F.adesig || ''; F.astatus = F.astatus || ''; F.aview = F.aview || 'list';
-  F.amonth = F.amonth || St.today.slice(0, 7);
+  F.adate = F.adate || ''; F.aemp = F.aemp || ''; F.adesig = F.adesig || ''; F.astatus = F.astatus || ''; F.aview = F.aview || 'list';
+  F.amonth = F.amonth || ''; // set on first view, once today's date is known
   var sel = {}; // selected staff ids for bulk marking
 
   var STATUS_OPTS = [['present', 'Present'], ['late', 'Late'], ['halfday', 'Half day'], ['absent', 'Absent'], ['leave', 'On leave'], ['weeklyoff', 'Weekly off']];
 
   U.views.attendance = function (arg) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(F.adate || '') || F.adate > St.today) F.adate = St.today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(F.adate || '') || F.adate > St.today || F.adate < U.addDays(St.today, -366)) F.adate = St.today;
+    if (!/^\d{4}-\d{2}$/.test(F.amonth || '') || F.amonth > St.today.slice(0, 7) || F.amonth < St.today.slice(0, 4) - 1 + St.today.slice(4, 7)) F.amonth = St.today.slice(0, 7);
     if (/^\d{4}-\d{2}-\d{2}$/.test(arg)) { F.adate = arg > St.today ? St.today : arg; F.aview = 'list'; }
     else if (arg === 'calendar') F.aview = 'calendar';
     var h = U.pageHead('Attendance Register', 'View, mark and correct daily attendance for your team.',
+      (St.can('employee_login') && F.aview === 'list' ? '<button class="btn" data-a="att-noshow" title="Marks staff who check in on their phone but didn’t, for this date">' + ic('x') + 'Mark no-shows absent</button>' : '') +
       '<button class="btn" data-a="att-bulk">' + ic('users') + 'Bulk mark</button><button class="btn pri" data-a="att-edit::' + F.adate + '">' + ic('plus') + 'Add / correct attendance</button>');
     h += '<section class="card"><div class="toolbar">' +
       (F.aview === 'list' ? '<div class="date-nav"><button class="icon-btn sm" data-a="att-day:-1" aria-label="Previous day">' + ic('left') + '</button><label class="sr" for="f-adate">Date</label><input id="f-adate" type="date" data-f="adate" value="' + F.adate + '" max="' + St.today + '"><button class="icon-btn sm" data-a="att-day:1" aria-label="Next day"' + (F.adate >= St.today ? ' disabled' : '') + '>' + ic('right') + '</button></div>'
@@ -48,7 +50,7 @@
         return '<tr' + (sel[x.p.id] ? ' class="sel"' : '') + '><td class="cb"><input type="checkbox" aria-label="Select ' + esc(x.p.name) + '" data-a="att-sel:' + x.p.id + '"' + (sel[x.p.id] ? ' checked' : '') + '></td>' +
           '<td><a class="who" href="#/staff/' + x.p.id + '">' + U.avatar(x.p) + '<span><b>' + esc(x.p.name) + '</b><small>' + esc(x.p.designation) + '</small></span></a></td>' +
           '<td>' + (sh ? esc(sh.name) + ' <small class="muted">(' + U.hm12(sh.start) + '–' + U.hm12(sh.end) + ')</small>' : '—') + '</td>' +
-          '<td>' + U.hm12(r && r.in) + (r && r.status === 'late' ? ' <small class="late">+' + U.lateMin(r) + 'm</small>' : '') + (r && r.gps ? ' <span title="GPS ±' + r.gps.acc + ' m" class="gps">' + ic('pin') + '</span>' : '') + '</td>' +
+          '<td>' + U.hm12(r && r.in) + (r && r.status === 'late' ? ' <small class="late">+' + U.lateMin(r) + 'm</small>' : '') + (r && r.gps ? (r.gps.outside ? ' <span class="badge b-red" title="' + r.gps.dist + ' m from the shop">' + ic('pin') + 'Away ' + (r.gps.dist >= 1000 ? (Math.round(r.gps.dist / 100) / 10) + ' km' : r.gps.dist + ' m') + '</span>' : ' <span title="GPS ±' + r.gps.acc + ' m' + (r.gps.dist != null ? ' · ' + r.gps.dist + ' m from the shop' : '') + '" class="gps">' + ic('pin') + '</span>') : r && r.gps === false && r.in ? ' <span class="badge b-grey" title="Checked in without location">No GPS</span>' : '') + '</td>' +
           '<td>' + U.hm12(r && r.out) + '</td><td>' + U.dur(U.worked(r)) + '</td>' +
           '<td>' + U.badge(r ? r.status : null) + (r && r.remark ? '<br><small class="muted wrap">' + esc(r.remark) + '</small>' : '') + '</td>' +
           '<td class="r"><span class="row-act">' + (!r || r.status === 'notin' ? '<button class="btn sm" data-a="att-quick:' + x.p.id + ':present">Present</button><button class="btn sm" data-a="att-quick:' + x.p.id + ':absent">Absent</button>' : '') +
@@ -162,6 +164,13 @@
     U.toast(who.name + ' marked ' + St.LABEL[p[1]]);
   };
   U.actions['att-bulk'] = bulkModal;
+  U.actions['att-noshow'] = function () {
+    var d = F.adate, list = St.noShows(d), late = d === St.today && St.nowMin < 20 * 60;
+    if (!list.length) { U.toast('Nobody to mark — everyone who checks in on their phone has a record for ' + U.dLabel(d)); return; }
+    U.confirm('Mark ' + list.length + ' no-show' + (list.length > 1 ? 's' : '') + ' absent for ' + U.dLabel(d, true) + '?',
+      esc(list.map(function (p) { return p.name; }).join(', ')) + ' have no check-in or mark. Weekly offs and approved leave are skipped.' + (late ? '<br><br><b>It’s still early today</b> — some staff may not have arrived yet.' : '') + '<br><br>You can change any of them afterwards; each change is logged.',
+      'Mark absent', function () { St.markNoShows(d).then(function (n) { U.toast(n + ' marked absent for ' + U.dLabel(d)); }, function () {}); }, true);
+  };
   U.actions['att-day'] = function (p) { var d = U.addDays(F.adate, +p[0]); if (d <= St.today) { F.adate = d; sel = {}; U.render(); } };
   U.actions['att-month'] = function (p) {
     var y = +F.amonth.slice(0, 4), m = +F.amonth.slice(5, 7) - 1 + (+p[0]); var d = new Date(y, m, 1);

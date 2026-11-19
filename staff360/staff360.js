@@ -130,9 +130,69 @@
   ];
   var FEATURE_NEED = { shifts: 'premium', leave_requests: 'premium', settings: 'premium', ai_dashboard: 'kingpro', whatsapp_reports: 'kingpro' };
 
+  /* (Nov 2026) Staff360 v2: the new full-screen design opens in a frame over the app. Same data.
+   * Switch back to the older screen with localStorage.setItem('HN_S360_UI', 'old'). */
+  function v2On() { if (SA) return false; try { return localStorage.getItem('HN_S360_UI') !== 'old'; } catch (e) { return true; } }
+  var V2_ROUTE = { overview: 'dashboard', team: 'staff', register: 'attendance', mark: 'attendance', shifts: 'shifts', requests: 'leave', reports: 'reports', ai: 'ai', whatsapp: 'settings', activity: 'staff', plans: 'plans', settings: 'settings' };
+  function closeV2() { var f = $('s360v2-frame'); if (f) f.remove(); try { document.documentElement.style.overflow = ''; } catch (e) {} }
+  function openV2(view) {
+    var a = activeShop();
+    if (!a || !a.shopId) { toast('Open a shop first'); return; }
+    closeV2();
+    var wrap = document.createElement('div');
+    wrap.id = 's360v2-frame';
+    wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-modal', 'true'); wrap.setAttribute('aria-label', 'Staff360');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#F8FAFC;display:flex;align-items:center;justify-content:center';
+    wrap.innerHTML = '<div style="font:600 15px Inter,system-ui,sans-serif;color:#344054">Opening Staff360…</div>';
+    document.body.appendChild(wrap);
+    try { document.documentElement.style.overflow = 'hidden'; } catch (e) {}
+    var route = isManager() ? (V2_ROUTE[view] || 'dashboard') : 'home';
+    var go = function () {
+      if (!$('s360v2-frame')) return;
+      var fr = document.createElement('iframe');
+      fr.title = 'Staff360';
+      fr.allow = 'geolocation';
+      fr.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;background:#F8FAFC';
+      fr.src = './staff360/v2/app.html?embed=1&t=' + encodeURIComponent(a.shopId) + '&n=' + encodeURIComponent(a.name || '') + '&v=' + encodeURIComponent(window.HISAABNOW_BUILD || '') + '#/' + route;
+      wrap.appendChild(fr);
+    };
+    // Make sure the server has this shop's latest staff list before the new screens load it.
+    if (isManager()) {
+      var done = false, t = setTimeout(function () { if (!done) { done = true; go(); } }, 5000);
+      loadState(false).then(function () { return pushRoster(true); }).catch(function () {}).then(function () { if (!done) { done = true; clearTimeout(t); go(); } });
+    } else go();
+  }
+  window.addEventListener('message', function (e) {
+    if (e.origin === location.origin && e.data && e.data.s360 === 'close') closeV2();
+  });
+
+  // The new screens open as their own page in a frame. Only do that once this phone runs the
+  // updated offline worker; an older one would treat that page as the app. Otherwise use the older screen this time.
+  function v2Safe() {
+    return new Promise(function (res) {
+      try {
+        var c = navigator.serviceWorker && navigator.serviceWorker.controller;
+        if (!c) return res(true);
+        var ch = new MessageChannel(), t = setTimeout(function () { res(false); }, 1500);
+        ch.port1.onmessage = function (e) { clearTimeout(t); res(!!(e.data && e.data.ok)); };
+        c.postMessage({ type: 'S360_V2_OK' }, [ch.port2]);
+      } catch (e) { res(false); }
+    });
+  }
   function open(view) {
     if (!eligible()) { toast('Staff360 is not available for this shop yet'); return; }
-    if (!isManager()) { openEmployee(); return; }
+    if (v2On()) {
+      v2Safe().then(function (ok) {
+        if (ok) { openV2(view); return; }
+        try { navigator.serviceWorker.getRegistration().then(function (r) { if (r) r.update(); }); } catch (e) {}
+        legacyOpen(view);
+      });
+      return;
+    }
+    legacyOpen(view);
+  }
+  function legacyOpen(view) {
+    if (!isManager()) { legacyEmployee(); return; }
     css();
     S.view = view || S.view || 'overview';
     var el = $('s360');
@@ -885,6 +945,10 @@
   var E = { gps: null, gpsErr: null, phase: 'idle', msg: '', hist: null, tab: 'home' };
 
   function openEmployee() {
+    if (v2On() && eligible()) { open('home'); return; }
+    legacyEmployee();
+  }
+  function legacyEmployee() {
     css();
     var el = $('s360e');
     if (!el) {
@@ -1088,16 +1152,17 @@
      changes, so reports, AI and salary drafts include everyone. */
   var rosterBusy = false;
   function pushRoster(force) {
-    if (SA || rosterBusy || !isManager() || !S.st || S.serverMissing) return;
+    if (SA || rosterBusy || !isManager() || !S.st || S.serverMissing) return Promise.resolve();
     var list = staffLocal().map(function (x) {
       return { id: x.id, name: x.name || '', role: x.role || '', phone: x.phoneE164 || x.phone || '', salary: Number(x.salary) || 0, active: x.active !== false };
     });
     var key = 's360_roster_' + shopId();
     var sig = JSON.stringify(list);
     var prev = null; try { prev = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
-    if (!force && prev && prev.sig === sig && Date.now() - prev.at < 12 * 3600e3) return;
+    if (!force && prev && prev.sig === sig && Date.now() - prev.at < 12 * 3600e3) return Promise.resolve();
+    if (force && prev && prev.sig === sig && Date.now() - prev.at < 10 * 60e3) return Promise.resolve();
     rosterBusy = true;
-    call('staff360SyncRoster', { staff: list }).then(function () {
+    return call('staff360SyncRoster', { staff: list }).then(function () {
       try { localStorage.setItem(key, JSON.stringify({ sig: sig, at: Date.now() })); } catch (e) {}
       if (prev && prev.sig !== sig) S.data = {};
     }, function () {}).then(function () { rosterBusy = false; });

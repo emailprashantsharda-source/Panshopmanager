@@ -112,6 +112,9 @@
     }
   });
 
+  var corrections = [
+    { id: 'C1', staff: 'HN011', date: iso(addDays(today, -1)), want: { in: '09:05' }, reason: 'Phone battery died, I reached at 9:05', status: 'Pending', applied: iso(today) },
+  ];
   var notifications = [
     { id: 'n1', text: '3 leave requests are waiting for approval', at: '10 min ago', go: '#/leave' },
     { id: 'n2', text: 'Imran Khan checked in 28 min late', at: '1 hr ago', go: '#/attendance' },
@@ -121,7 +124,7 @@
   window.S360_MOCK = {
     sample: true,
     business: business, businesses: businesses, shifts: shifts, staff: staff,
-    attendance: attendance, leaves: leaves, notifications: notifications,
+    attendance: attendance, leaves: leaves, notifications: notifications, corrections: corrections,
     today: iso(today), nowMin: nowMin,
   };
 })();

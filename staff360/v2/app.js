@@ -31,7 +31,8 @@
 
   function topHTML() {
     var b = St.business, n = St.notifications().length;
-    return '<button class="icon-btn burger" data-a="drawer" aria-label="Open menu">' + ic('menu') + '</button>' +
+    return (window.S360_BACK ? '<button class="pill-btn back-hn" data-a="back" aria-label="Back to HisaabNow">' + ic('left') + '<span class="hide-sm">HisaabNow</span></button>' : '') +
+      '<button class="icon-btn burger" data-a="drawer" aria-label="Open menu">' + ic('menu') + '</button>' +
       '<button class="icon-btn collapse-btn" data-a="collapse" aria-label="' + (ui.collapsed ? 'Expand' : 'Collapse') + ' sidebar">' + ic('side') + '</button>' +
       '<div class="anchor shop-a"><button class="pill-btn" data-a="pop:shop" aria-haspopup="true" aria-expanded="' + (ui.pop === 'shop') + '">' + ic('store') + '<span class="t">' + esc(b.name) + (b.city && !St.live ? '<span class="hide-sm">, ' + esc(b.city) + '</span>' : '') + '</span>' + ic('chev') + '</button>' + (ui.pop === 'shop' ? shopPop() : '') + '</div>' +
       '<span class="pill-btn hide-md" style="font-weight:500">' + ic('cal') + U.dLabel(St.today, true) + '</span>' +
@@ -49,7 +50,7 @@
       return '<div class="pop" role="menu" style="left:0"><div class="hd">Your businesses</div>' + St.businesses.map(function (x) {
         var on = x.id === cur;
         return '<button class="it' + (on ? ' on' : '') + '" data-a="tenant:' + esc(x.id) + '" role="menuitem">' + ic('store') + '<span>' + esc(x.name) + '<small>' + esc(x.city) + (on ? ' · current' : '') + '</small></span></button>';
-      }).join('') + '<button class="it" data-a="newbiz" role="menuitem">' + ic('plus') + '<span>Set up another business</span></button></div>';
+      }).join('') + (window.S360_BACK ? '<div class="hd" style="text-transform:none;font-weight:500;letter-spacing:0">Switch shops in the HisaabNow app</div>' : '<button class="it" data-a="newbiz" role="menuitem">' + ic('plus') + '<span>Set up another business</span></button>') + '</div>';
     }
     return '<div class="pop" role="menu" style="left:0"><div class="hd">Your businesses</div>' + St.businesses.map(function (x, i) {
       return '<button class="it' + (i === 0 ? ' on' : '') + '" data-a="shop:' + i + '" role="menuitem">' + ic('store') + '<span>' + esc(i === 0 ? St.business.name : x.name) + '<small>' + esc(i === 0 ? St.business.city : x.city) + (i === 0 ? ' · current' : '') + '</small></span></button>';
@@ -72,7 +73,7 @@
       return '<div class="pop" role="menu" style="right:0"><div class="it" style="cursor:default"><span>' + esc(u.phoneNumber || St.business.owner || '') + '<small>' + (St.role === 'manager' ? 'Manager' : 'Owner') + ' · ' + esc(St.business.name) + '</small></span></div>' +
         (St.role === 'owner' ? '<a class="it" href="#/settings" role="menuitem">' + ic('gear') + '<span>Settings</span></a>' : '') +
         '<a class="it" href="#/help" role="menuitem">' + ic('help') + '<span>Help &amp; support</span></a>' +
-        '<button class="it" data-a="signout" role="menuitem">' + ic('logout') + '<span>Log out</span></button></div>';
+        (window.S360_BACK ? '<button class="it" data-a="back" role="menuitem">' + ic('left') + '<span>Back to HisaabNow</span></button>' : '<button class="it" data-a="signout" role="menuitem">' + ic('logout') + '<span>Log out</span></button>') + '</div>';
     }
     return '<div class="pop" role="menu" style="right:0"><div class="it" style="cursor:default"><span>' + esc(St.business.owner) + '<small>Owner · ' + esc(St.business.name) + '</small></span></div>' +
       '<a class="it" href="employee.html" role="menuitem">' + ic('phone') + '<span>Open employee portal<small>See what staff see</small></span></a>' +
@@ -200,6 +201,15 @@
 
   // ---------- render ----------
   var root;
+  // What the person has typed into forms on this screen, kept across background refreshes.
+  var dirty = {};
+  function formKey(f) { return f && (f.id || f.getAttribute('data-set')); }
+  function keyFor(t) { if (t.id) return t.id; var fk = formKey(t.form); return fk && t.name ? fk + '|' + t.name : null; }
+  function fieldFor(k) {
+    if (k.indexOf('|') < 0) return document.getElementById(k);
+    var parts = k.split('|'), f = document.getElementById(parts[0]) || document.querySelector('form[data-set="' + parts[0] + '"]');
+    return f ? f.querySelector('[name="' + parts[1] + '"]') : null;
+  }
   function render() {
     root.className = 'app' + (ui.collapsed ? ' collapsed' : '') + (ui.drawer ? ' drawer' : '');
     var ae = document.activeElement, fid = ae && ae.id && root.contains(ae) ? ae.id : null, caret = null;
@@ -209,15 +219,21 @@
     catch (err) { if (window.console) console.warn(err); body = '<div class="card placeholder"><h1>Something went wrong</h1><p>This screen could not load. Try again, or go back to the dashboard.</p><a class="btn" href="#/dashboard">Back to dashboard</a></div>'; }
     root.innerHTML = '<aside class="side" id="s360-side">' + sideHTML() + '</aside><div class="scrim" data-a="drawer"></div>' +
       '<div class="main"><header class="top">' + topHTML() + '</header><main class="content" id="s360-main" tabindex="-1">' + body + '</main></div>';
+    Object.keys(dirty).forEach(function (k) {
+      var d = fieldFor(k); if (!d || d.getAttribute('data-f')) return;
+      if (d.type === 'checkbox' || d.type === 'radio') d.checked = dirty[k]; else d.value = dirty[k];
+    });
     if (fid) { var el = document.getElementById(fid); if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch (e) { /* not a text input */ } } }
     if (U.afterRender) U.afterRender();
   }
   U.render = function () { if (root) render(); };
+  U.clean = function (form) { [].forEach.call(form.querySelectorAll('input,select,textarea'), function (el) { var k = keyFor(el); if (k) delete dirty[k]; }); };
   U.views.notfound = function () { return '<div class="card placeholder"><h1>Page not found</h1><p>That screen doesn’t exist.</p><a class="btn" href="#/dashboard">Back to dashboard</a></div>'; };
 
   function route() {
     var r = (location.hash.replace(/^#\/?/, '') || 'dashboard').split('/');
-    var changed = ui.route !== r[0];
+    var changed = ui.route !== r[0] || ui.arg !== r.slice(1).join('/');
+    if (changed) dirty = {};
     U.closeModal();
     ui.route = r[0]; ui.arg = r.slice(1).join('/'); ui.pop = null; ui.drawer = false; ui.q = '';
     render();
@@ -238,6 +254,7 @@
     if (parts[0] === 'tenant') { ui.pop = null; St.backend().switchTenant(parts.slice(1).join(':')); return; }
     if (a === 'newbiz') { ui.pop = null; St.backend().newBusiness(); return; }
     if (a === 'signout') { ui.pop = null; St.backend().signOut(); return; }
+    if (a === 'back') { ui.pop = null; window.S360_BACK(); return; }
     if (parts[0] === 'soon') { ui.pop = null; render(); U.toast(parts.slice(1).join(':')); return; }
     if (U.actions[parts[0]]) { e.preventDefault(); ui.pop = null; U.actions[parts[0]](parts.slice(1), t, e); return; }
   }
@@ -245,6 +262,7 @@
   function onFilter(e) {
     var t = e.target;
     if (t.closest && t.closest('#s360-modal')) return;
+    if (!t.getAttribute('data-f') && t.closest && t.closest('#s360-main form')) { var dk = keyFor(t); if (dk) dirty[dk] = (t.type === 'checkbox' || t.type === 'radio') ? t.checked : t.value; }
     if (t.id === 's360-q') { if (e.type === 'input') { ui.q = t.value; ui.pop = 'search'; render(); } return; }
     var k = t.getAttribute && t.getAttribute('data-f');
     if (!k) return;

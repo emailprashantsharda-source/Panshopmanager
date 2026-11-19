@@ -3,14 +3,14 @@
   'use strict';
   var St = window.S360Store, U = window.S360UI, esc = U.esc, ic = U.ic;
   var KEY = 's360v2.emp', DEMO_OTP = '123456';
-  var E = { route: 'login', mobile: '', gpsSim: 'ok', sheet: null, resendAt: 0, calMonth: St.today.slice(0, 7) };
+  var E = { route: 'login', mobile: '', gpsSim: 'ok', sheet: null, resendAt: 0, calMonth: '' };
   function me() { if (St.live) return St.staff({ all: true })[0] || null; var id; try { id = localStorage.getItem(KEY); } catch (e) { id = null; } var p = id && St.person(id); return p && p.status === 'Active' ? p : null; }
   function setMe(id) { try { if (id) localStorage.setItem(KEY, id); else localStorage.removeItem(KEY); } catch (e) { /* ignore */ } }
   var root;
 
   function shell(body, tabs) {
     var p = me();
-    return '<div class="emp">' + (tabs ? '<header class="emp-top"><div class="logo sm">' + U.LOGO + '<span>HisaabNow<small>Staff360</small></span></div>' + (St.live ? '<span class="muted small">' + esc(St.business.name) + '</span>' : '<span class="sample">Sample data</span>') + '</header>' : '') +
+    return '<div class="emp">' + (tabs ? '<header class="emp-top">' + (window.S360_BACK ? '<button class="icon-btn" data-e="logout" aria-label="Back to HisaabNow">' + ic('left') + '</button>' : '') + '<div class="logo sm">' + U.LOGO + '<span>HisaabNow<small>Staff360</small></span></div>' + (St.live ? '<span class="muted small">' + esc(St.business.name) + '</span>' : '<span class="sample">Sample data</span>') + '</header>' : '') +
       '<main class="emp-main" id="emp-main">' + body + '</main>' +
       (tabs ? '<nav class="emp-tabs" aria-label="Employee">' + [['home', 'Home', 'home'], ['attendance', 'Attendance', 'cal'], ['leave', 'Leave', 'leave'], ['profile', 'Profile', 'user']].filter(function (t) { return t[0] !== 'leave' || (St.settings().perms.requestLeave && St.can('leave')); }).map(function (t) {
         return '<a href="#/' + t[0] + '" class="' + (E.route === t[0] ? 'on' : '') + '"' + (E.route === t[0] ? ' aria-current="page"' : '') + '>' + ic(t[2]) + '<span>' + t[1] + '</span></a>';
@@ -53,11 +53,13 @@
     if (off && state === 'out') state = 'weeklyoff';
     h += '<section class="card emp-punch">';
     if (state === 'out') {
-      h += '<p class="muted">You haven’t checked in today.</p><button class="punch in" data-e="punch:in">' + ic('login') + 'Check in</button><p class="gps-note">' + ic('pin') + (St.settings().rules.gpsRequired ? 'Your location is captured only when you tap — never in the background.' : 'Location isn’t needed by your employer.') + '</p>';
+      var fz = St.live && St.extra.fence;
+      h += '<p class="muted">You haven’t checked in today.</p><button class="punch in" data-e="punch:in">' + ic('login') + 'Check in</button><p class="gps-note">' + ic('pin') + (St.settings().rules.gpsRequired ? 'Your location is captured only when you tap — never in the background.' : 'Location isn’t needed by your employer.') + '</p>' +
+        (fz && fz.mode === 'block' ? '<p class="gps-note">You need to be within ' + fz.radiusM + ' m of the shop.</p>' : '');
     } else if (state === 'in') {
       var mins = Math.max(0, (new Date().getHours() * 60 + new Date().getMinutes()) - U.toMin(r.in));
       h += '<div class="punch-info"><div><small>Checked in</small><b>' + U.hm12(r.in) + '</b>' + (r.status === 'late' ? '<span class="badge b-amber">Late ' + U.lateMin(r) + ' min</span>' : '<span class="badge b-green">On time</span>') + '</div><div><small>Time at work</small><b id="e-elapsed">' + U.dur(mins) + '</b></div></div>' +
-        (r.gps ? '<p class="gps-ok">' + ic('pin') + 'Location captured · ±' + r.gps.acc + ' m' + (r.gps.low ? ' (low accuracy)' : '') + '</p>' : r.gps === false ? '<p class="gps-note">' + ic('pin') + 'Checked in without location (marked “No GPS”)</p>' : '') +
+        (r.gps ? '<p class="gps-ok">' + ic('pin') + 'Location captured · ±' + r.gps.acc + ' m' + (r.gps.low ? ' (low accuracy)' : '') + (r.gps.outside ? ' · away from the shop' : '') + '</p>' : r.gps === false ? '<p class="gps-note">' + ic('pin') + 'Checked in without location (marked “No GPS”)</p>' : '') +
         '<button class="punch out" data-e="punch:out">' + ic('logout') + 'Check out</button>';
     } else if (state === 'done') {
       h += '<div class="punch-info"><div><small>In</small><b>' + U.hm12(r.in) + '</b></div><div><small>Out</small><b>' + U.hm12(r.out) + '</b></div><div><small>Worked</small><b>' + U.dur(U.worked(r)) + '</b></div></div><p class="gps-ok">' + ic('check') + 'You’re done for today. See you tomorrow!</p>';
@@ -78,6 +80,7 @@
 
   // ---------- my attendance ----------
   function attendance() {
+    if (!E.calMonth || E.calMonth > St.today.slice(0, 7)) E.calMonth = St.today.slice(0, 7);
     var p = me(), ym = E.calMonth, y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1, first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate();
     var recs = St.range(ym + '-01', ym + '-31').filter(function (x) { return x.staff === p.id; }), c = U.count(recs);
     var h = '<div class="emp-h"><h1>My attendance</h1><div class="date-nav"><button class="icon-btn sm" data-e="cal:-1" aria-label="Previous month">' + ic('left') + '</button><b class="mlabel">' + U.monthLabel(ym) + '</b><button class="icon-btn sm" data-e="cal:1" aria-label="Next month"' + (ym >= St.today.slice(0, 7) ? ' disabled' : '') + '>' + ic('right') + '</button></div></div>';
@@ -90,8 +93,15 @@
     }
     h += '</div><div class="legend">' + ['present', 'late', 'halfday', 'absent', 'leave', 'weeklyoff'].map(function (k) { return '<span><i style="background:' + U.STATUS[k][1] + '"></i>' + U.STATUS[k][0] + '</span>'; }).join('') + '</div></section>';
     var list = recs.filter(function (x) { return x.status !== 'weeklyoff'; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    h += '<section class="card"><div class="card-h"><h2>Check-in history</h2></div>' + (list.length ? '<ul class="list">' + list.map(function (x) {
-      return '<li><span class="grow"><b>' + U.dLabel(x.date, true) + '</b><small>' + (U.isIn(x) ? 'In ' + U.hm12(x.in) + ' · Out ' + U.hm12(x.out) + (U.worked(x) ? ' · ' + U.dur(U.worked(x)) : '') : esc(x.remark || '')) + '</small></span>' + U.badge(x.status) + '</li>';
+    var canFix = St.can('leave');
+    var mine = St.corrections().filter(function (c) { return c.staff === p.id; });
+    if (mine.length) h += '<section class="card"><div class="card-h"><h2>My correction requests</h2></div><ul class="list">' + mine.map(function (c) {
+      var w = c.want || {};
+      return '<li><span class="grow"><b>' + U.dLabel(c.date, true) + '</b><small>' + esc([w.status ? St.LABEL[w.status] : '', w.in ? 'In ' + U.hm12(w.in) : '', w.out ? 'Out ' + U.hm12(w.out) : ''].filter(Boolean).join(' · ')) + (c.note ? ' · ' + esc(c.note) : '') + '</small></span>' + U.leaveBadge(c.status) + '</li>';
+    }).join('') + '</ul></section>';
+    h += '<section class="card"><div class="card-h"><h2>Check-in history</h2>' + (canFix ? '<button class="btn sm" data-e="fix:' + St.today + '">Fix a day</button>' : '') + '</div>' + (list.length ? '<ul class="list">' + list.map(function (x) {
+      return '<li><span class="grow"><b>' + U.dLabel(x.date, true) + '</b><small>' + (U.isIn(x) ? 'In ' + U.hm12(x.in) + ' · Out ' + U.hm12(x.out) + (U.worked(x) ? ' · ' + U.dur(U.worked(x)) : '') : esc(x.remark || '')) + '</small></span>' + U.badge(x.status) +
+        (canFix ? '<button class="link small" data-e="fix:' + x.date + '" aria-label="Ask to fix ' + U.dLabel(x.date, true) + '">Fix</button>' : '') + '</li>';
     }).join('') + '</ul>' : '<div class="empty">No attendance this month.</div>') + '</section>';
     return h;
   }
@@ -111,13 +121,36 @@
     var head = '<div class="emp-h"><h1>My profile</h1></div><section class="card emp-prof">' + U.avatar(p, 56) + '<div><b>' + esc(p.name) + '</b><small>' + esc(p.designation) + (St.live ? '' : ' · ' + U.code(p)) + '</small></div></section>' +
       '<section class="card"><dl class="dl"><dt>Mobile</dt><dd>+91 ' + U.mobile(p.mobile) + '</dd><dt>Business</dt><dd>' + esc(St.business.name) + '</dd>' + (p.joined ? '<dt>Joined</dt><dd>' + U.joinLabel(p, true) + '</dd>' : '') + '<dt>Shift</dt><dd>' + (sh ? esc(sh.name) + ' · ' + U.hm12(sh.start) + '–' + U.hm12(sh.end) : '—') + '</dd><dt>Weekly off</dt><dd>' + U.offLabel(p) + '</dd></dl>' +
       '<p class="muted small">To change these, ask your employer.</p></section>';
-    if (St.live) return head + '<p class="privacy">' + ic('shield') + 'You can see only your own attendance and leave.</p><button class="btn block danger-o" data-e="logout">' + ic('logout') + 'Log out</button>';
+    if (St.live) return head + '<p class="privacy">' + ic('shield') + 'You can see only your own attendance and leave.</p><button class="btn block danger-o" data-e="logout">' + ic(window.S360_BACK ? 'left' : 'logout') + (window.S360_BACK ? 'Back to HisaabNow' : 'Log out') + '</button>';
     return head +
       '<form class="card" id="emp-prof" novalidate><div class="card-h"><h2>Details you can edit</h2></div>' +
       U.field('Email (optional)', '<input id="e-email" name="email" type="email" value="' + esc(p.email || '') + '" maxlength="80">', { for: 'email' }) +
       U.field('Emergency contact (name and number)', '<input id="e-emer" name="emergency" value="' + esc(p.emergency || '') + '" maxlength="60" placeholder="e.g. Ramesh (brother) 98xxxxxxxx">', { for: 'emergency' }) +
       '<button class="btn pri block" type="submit">Save</button></form>' +
       '<button class="btn block danger-o" data-e="logout">' + ic('logout') + 'Log out</button>';
+  }
+
+  // ---------- ask for an attendance correction ----------
+  function fixForm(date) {
+    var p = me(), r = St.record(p.id, date);
+    U.modal({
+      title: 'Ask to fix a day', submit: 'Send request',
+      body: '<p class="muted small" style="margin-bottom:10px">Your employer will check and approve it. ' + (r ? 'Recorded now: <b>' + St.LABEL[r.status] + (r.in ? ' · in ' + U.hm12(r.in) : '') + (r.out ? ' · out ' + U.hm12(r.out) : '') + '</b>' : 'Nothing is recorded for this day.') + '</p>' +
+        U.field('Date', '<input name="date" id="m-fd" type="date" value="' + date + '" max="' + St.today + '" min="' + U.addDays(St.today, -31) + '">', { for: 'date', req: true }) +
+        U.field('It should be', '<select name="status" id="m-fs">' + U.options([['', 'Keep the status'], ['present', 'Present'], ['halfday', 'Half day'], ['leave', 'On leave']], '') + '</select>', { for: 'status' }) +
+        '<div class="grid2">' + U.field('Correct check-in', '<input name="in" id="m-fi" type="time" value="' + ((r && r.in) || '') + '">', { for: 'in' }) + U.field('Correct check-out', '<input name="out" id="m-fo" type="time" value="' + ((r && r.out) || '') + '">', { for: 'out' }) + '</div>' +
+        U.field('What happened?', '<textarea name="reason" id="m-fr" rows="2" maxlength="200" placeholder="e.g. Forgot to check out, left at 7 pm"></textarea>', { for: 'reason', req: true }),
+      onSubmit: function (f) {
+        var d = U.val(f, 'date'), st = U.val(f, 'status'), tin = U.val(f, 'in'), tout = U.val(f, 'out'), why = U.val(f, 'reason'), ok = true;
+        var same = r && (!st || st === r.status) && (tin || '') === (r.in || '') && (tout || '') === (r.out || '');
+        ok = U.setErr(f, 'date', !d || d > St.today ? 'Pick today or an earlier day' : '') && ok;
+        ok = U.setErr(f, 'out', tin && tout && tout <= tin ? 'Check-out must be after check-in' : !st && !tin && !tout ? 'Say what should change' : same ? 'Change at least one thing' : '') && ok;
+        ok = U.setErr(f, 'reason', why.length < 3 ? 'Add a short reason' : '') && ok;
+        if (!ok) return;
+        var want = { status: st, in: tin && (!r || tin !== r.in) ? tin : '', out: tout && (!r || tout !== r.out) ? tout : '' };
+        St.addCorrection({ staff: p.id, date: d, want: want, reason: why }, p.name + ' (employee)'); U.closeModal(); U.toast('Request sent to your employer');
+      },
+    });
   }
 
   // ---------- GPS simulation sheet ----------
@@ -167,7 +200,8 @@
     }, function (e) {
       var msg = String(e.message || ''), map = { already_checked_in: 'You’re already checked in today.', already_completed: 'You’ve already checked out today.', no_open_checkin: 'There’s no check-in to close.' };
       var k = Object.keys(map).filter(function (x) { return msg.indexOf(x) >= 0; })[0];
-      E.sheet = null; render(); U.toast(k ? map[k] : /gps_required/.test(msg) ? 'Your employer needs your location to check you in.' : (e.userMessage || 'Couldn’t save. Try again.'));
+      var far = /outside_radius:(\d+)/.exec(msg);
+      E.sheet = null; render(); U.toast(k ? map[k] : far ? 'You’re about ' + (far[1] >= 1000 ? (Math.round(far[1] / 100) / 10) + ' km' : far[1] + ' m') + ' from the shop. Check in when you’re there.' : /gps_required/.test(msg) ? 'Your employer needs your location to check you in.' : (e.userMessage || 'Couldn’t save. Try again.'));
       St.backend().reload();
     });
   }
@@ -197,6 +231,7 @@
     if (a[0] === 'retry') startPunch(E.kind);
     if (a[0] === 'sheet-close') { E.sheet = null; render(); }
     if (a[0] === 'cal') { var d = U.parse(E.calMonth + '-01'); d.setMonth(d.getMonth() + (+a[1])); var ym = U.iso(d).slice(0, 7); if (ym <= St.today.slice(0, 7)) { E.calMonth = ym; render(); } }
+    if (a[0] === 'fix') fixForm(a[1]);
     if (a[0] === 'leave-new') U.leaveForm({ staff: me().id, by: me().name + ' (employee)', title: 'Request leave' });
     if (a[0] === 'logout' && St.live) { St.backend().signOut(); return; }
     if (a[0] === 'logout') { setMe(null); E.mobile = ''; location.hash = '#/login'; render(); U.toast('Logged out'); }

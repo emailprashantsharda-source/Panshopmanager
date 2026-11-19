@@ -505,3 +505,47 @@ test('v2 UI: records range, staff details, shift break/colour, leave type and on
   await rejects(h.saveSettings({ shopId: 'A', hoursPerDay: 40 }, OWNER_A), 'invalid-argument');
   setNow(T0);
 });
+
+test('round 2: shop-distance check, auto half-day, auto absent', async () => {
+  const { h, setNow, db } = setup();
+  await grant(h, 'A', 'premium');
+  await h.saveShift({ shopId: 'A', name: 'Morning', start: '09:00', end: '18:00', graceMin: 10, staffIds: ['amit'] }, OWNER_A);
+  await rejects(h.saveSettings({ shopId: 'A', geofence: { mode: 'block' } }, OWNER_A), 'invalid-argument');
+  // Shop ~1.1 km north of where Amit stands; 200 m radius, block.
+  await h.saveSettings({ shopId: 'A', geofence: { mode: 'block', lat: 28.5455, lng: 77.391, radiusM: 200 }, autoHalfDay: true, halfDayBelowHours: 5 }, OWNER_A);
+  await rejects(h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, EMP_A), 'failed-precondition', /outside_radius:11\d\d/);
+  // Flag mode: allowed, but recorded as outside with the distance.
+  await h.saveSettings({ shopId: 'A', geofence: { mode: 'flag', lat: 28.5455, lng: 77.391, radiusM: 200 } }, OWNER_A);
+  const r = await h.punch({ shopId: 'A', action: 'in', gps: gps(T0) }, EMP_A);
+  assert.equal(r.punch.checkInGps.outside, true); assert.ok(r.punch.checkInGps.distanceM > 1000);
+  const rec = (await h.records({ shopId: 'A', from: '2026-11-17', to: '2026-11-17' }, OWNER_A)).rows.find((x) => x.staffId === 'amit').days[0];
+  assert.equal(rec.gps.outside, true);
+  // Inside the radius (accuracy is taken into account)
+  await h.saveSettings({ shopId: 'A', geofence: { mode: 'block', lat: 28.5365, lng: 77.391, radiusM: 100 } }, OWNER_A);
+  const st = await h.getState({ shopId: 'A' }, EMP_A);
+  assert.equal(st.me.fence.mode, 'block'); assert.equal(st.me.fence.lat, undefined, 'shop coordinates are not sent to staff');
+
+  // Auto half-day: check out after 3 hours → H, with an audit entry
+  setNow(T0 + 3 * 3600e3);
+  await h.punch({ shopId: 'A', action: 'out', gps: gps(T0 + 3 * 3600e3) }, EMP_A);
+  let day = (await h.records({ shopId: 'A', from: '2026-11-17', to: '2026-11-17' }, OWNER_A)).rows.find((x) => x.staffId === 'amit').days[0];
+  assert.equal(day.status, 'H');
+  assert.ok((await h.listAudit({ shopId: 'A' }, OWNER_A)).items.some((a) => a.type === 'auto_mark' && a.to === 'H'));
+
+  // Auto absent: only staff who check in on their phone and were expected
+  await h.staffSave({ shopId: 'A', id: 'riya', phone: '9444444444', canLogin: true }, OWNER_A);
+  await h.staffSave({ shopId: 'A', id: 'meena', canLogin: true, phone: '9222222222', weeklyOff: 2 }, OWNER_A); // Tuesday off
+  await rejects(h.autoAbsent({ shopId: 'A', date: '2026-11-17' }, EMP_A), 'permission-denied');
+  const out = await h.autoAbsent({ shopId: 'A', date: '2026-11-17' }, OWNER_A);
+  day = (await h.records({ shopId: 'A', from: '2026-11-17', to: '2026-11-17' }, OWNER_A)).rows;
+  assert.equal(day.find((x) => x.staffId === 'riya').days[0].status, 'A');
+  assert.equal(day.find((x) => x.staffId === 'amit').days[0].status, 'H', 'checked-in staff untouched');
+  assert.equal(day.find((x) => x.staffId === 'meena').days.length, 0, 'weekly off untouched');
+  assert.equal(out.marked, 1);
+  // Scheduled run: only after 23:00, once per day, only when switched on
+  await h.saveSettings({ shopId: 'A', autoAbsent: true }, OWNER_A);
+  setNow(Date.parse('2026-11-17T17:40:00Z')); // 23:10 IST
+  assert.equal((await h.runAutoAbsent()).marked, 0, 'already marked');
+  assert.equal(db._store.get('staff360/A').lastAutoAbsent, '2026-11-17');
+  setNow(T0);
+});

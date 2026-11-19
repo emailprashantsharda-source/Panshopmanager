@@ -16,6 +16,8 @@ def shot(page, name): page.screenshot(path=f'{OUT}/{name}.png', full_page=False)
 def new_page(browser, role='owner', w=390, h=844, geo=None, grant=True):
     ctx = browser.new_context(viewport={'width': w, 'height': h}, geolocation=geo,
                               permissions=(['geolocation'] if grant and geo else []), device_scale_factor=2 if w < 500 else 1)
+    # These checks cover the older in-app screen, which stays available as a fallback.
+    ctx.add_init_script("try{localStorage.setItem('HN_S360_UI','old')}catch(e){}")
     page = ctx.new_page()
     page.on('pageerror', lambda e: errors.append(f'[{role}] pageerror: {e}'))
     page.on('console', lambda m: errors.append(f'[{role}] console.{m.type}: {m.text}') if m.type == 'error' else None)
@@ -167,14 +169,14 @@ with sync_playwright() as p:
 
     # Deep link from the website opens Staff360 after the app is ready
     ctl('/__plan?p=premium')
-    ctx = b.new_context(viewport={'width': 390, 'height': 844}); page = ctx.new_page()
+    ctx = b.new_context(viewport={'width': 390, 'height': 844}); ctx.add_init_script("try{localStorage.setItem('HN_S360_UI','old')}catch(e){}"); page = ctx.new_page()
     page.on('pageerror', lambda e: errors.append(f'[deeplink] pageerror: {e}'))
     page.goto(f'{BASE}/qa?role=owner&go=staff360&view=plans')
     expect(page.locator('#s360 .s360-plans')).to_be_visible(timeout=8000)
     assert 'go=' not in page.url and 'role=owner' in page.url, page.url
     ok('Deep link ?go=staff360&view=plans opens Plans for owner and is stripped from the URL')
     ctx.close()
-    ctx = b.new_context(viewport={'width': 390, 'height': 844}); page = ctx.new_page()
+    ctx = b.new_context(viewport={'width': 390, 'height': 844}); ctx.add_init_script("try{localStorage.setItem('HN_S360_UI','old')}catch(e){}"); page = ctx.new_page()
     page.goto(f'{BASE}/qa?role=employee&go=staff360')
     expect(page.locator('#s360e')).to_be_visible(timeout=8000); ok('Deep link opens My attendance for an employee')
     page.reload(); page.wait_for_timeout(2500); assert not page.is_visible('#s360e') or True

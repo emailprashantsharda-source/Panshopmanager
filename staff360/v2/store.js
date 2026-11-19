@@ -21,7 +21,9 @@
   };
   var DEFAULT_SETTINGS = {
     business: { name: M.business.name, city: M.business.city, phone: M.business.owner ? '9811000000' : '', owner: M.business.owner },
-    rules: { graceMin: 10, hoursPerDay: 8, halfDayBelowHours: 5, gpsRequired: true, allowNoGps: true, autoLate: true },
+    rules: { graceMin: 10, hoursPerDay: 8, halfDayBelowHours: 5, gpsRequired: true, allowNoGps: true, autoLate: true, autoHalfDay: false, autoAbsent: false },
+    fence: { lat: null, lng: null, radiusM: 200, mode: 'off' },
+    whatsapp: { enabled: false, recipient: '', cadence: 'daily', sendTime: '20:00', weekday: 1, providerConfigured: false, log: [] },
     defaultWeeklyOff: 0,
     perms: { requestLeave: true, seeShift: true, managerEdit: true, managerSalary: false },
     notify: { dailySummary: false, lateAlert: false, leaveAlert: true },
@@ -32,7 +34,7 @@
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function fresh() {
     return { day: M.today, staff: clone(M.staff), attendance: clone(M.attendance), leaves: clone(M.leaves), shifts: clone(M.shifts),
-             notifications: clone(M.notifications), settings: clone(DEFAULT_SETTINGS), audit: [], approvals: [] };
+             notifications: clone(M.notifications), settings: clone(DEFAULT_SETTINGS), audit: [], approvals: [], corrections: clone(M.corrections || []) };
   }
   var S = (function () {
     if (!window.S360_MOCK) return fresh();
@@ -41,6 +43,12 @@
       if (d && d.day === M.today && d.staff && d.attendance) return d; // demo data refreshes each day
     } catch (e) { /* corrupt → fresh */ }
     return fresh();
+  })();
+  // Older saved demo data: fill in newer fields.
+  (function () {
+    S.corrections = S.corrections || clone(M.corrections || []);
+    ['fence', 'whatsapp'].forEach(function (k) { if (!S.settings[k]) S.settings[k] = clone(DEFAULT_SETTINGS[k]); });
+    Object.keys(DEFAULT_SETTINGS.rules).forEach(function (k) { if (S.settings.rules[k] === undefined) S.settings.rules[k] = DEFAULT_SETTINGS.rules[k]; });
   })();
   var plan = PLANS.indexOf(lsGet('s360v2.plan', 'kingpro')) >= 0 ? lsGet('s360v2.plan', 'kingpro') : 'kingpro';
 
@@ -86,7 +94,8 @@
       backend = be || backend;
       Object.keys(snap).forEach(function (k) { S[k] = snap[k]; });
       if (snap.plan) plan = snap.plan;
-      S.audit = S.audit || []; S.approvals = S.approvals || []; S.notifications = S.notifications || [];
+      S.audit = S.audit || []; S.approvals = S.approvals || []; S.notifications = S.notifications || []; S.corrections = S.corrections || [];
+      S.settings.fence = S.settings.fence || clone(DEFAULT_SETTINGS.fence); S.settings.whatsapp = S.settings.whatsapp || clone(DEFAULT_SETTINGS.whatsapp);
       emit();
     },
     backend: function () { return backend; },
@@ -113,6 +122,7 @@
     day: function (date) { return api.staff().map(function (s) { return { person: s, rec: rec(s.id, date) }; }); },
     range: function (from, to) { return S.attendance.filter(function (a) { return a.date >= from && a.date <= to; }); },
     approvals: function () { return S.approvals; },
+    corrections: function () { return S.corrections || []; },
 
     // ---- staff ----
     nextId: function () {
@@ -210,6 +220,40 @@
       S.leaves.unshift(l); log('Leave requested', l.staff, l.type + ' · ' + l.from + ' to ' + l.to, by);
       S.notifications.unshift({ id: 'n' + l.id, text: (person(l.staff) || {}).name + ' requested ' + l.type.toLowerCase() + ' leave', at: 'just now', go: '#/leave' });
       emit(); quiet(push('addLeave', l)); return l;
+    },
+
+    // ---- correction requests (employee asks, owner/manager decides) ----
+    addCorrection: function (c, by) {
+      c.id = 'C' + (Date.now() % 1e7); c.status = 'Pending'; c.applied = S.day;
+      S.corrections = (S.corrections || []); S.corrections.unshift(c);
+      log('Correction requested', c.staff, c.date + ' · ' + c.reason, by);
+      S.notifications.unshift({ id: 'n' + c.id, text: (person(c.staff) || {}).name + ' asked to correct ' + c.date, at: 'just now', go: '#/leave/corrections' });
+      emit(); return quiet(push('addCorrection', c));
+    },
+    decideCorrection: function (id, status, note) {
+      var c = (S.corrections || []).filter(function (x) { return x.id === id; })[0];
+      c.status = status; c.note = note || '';
+      if (status === 'Approved' && !backend) {
+        var r = rec(c.staff, c.date) || {}, w = c.want || {};
+        api.mark(c.staff, c.date, { status: w.status || r.status || 'present', in: w.in || r.in, out: w.out || r.out, remark: r.remark || '' }, 'Correction approved');
+      }
+      log(status + ' correction', c.staff, c.date + (note ? ' · ' + note : ''));
+      emit(); return quiet(push('decideCorrection', id, status, note || ''));
+    },
+    // Mark staff who check in on their phone, were expected, and have nothing for the day.
+    noShows: function (date) {
+      return api.staff().filter(function (p) {
+        if (!p.login) return false;
+        if (p.weeklyOff != null && new Date(date + 'T00:00:00').getDay() === +p.weeklyOff) return false;
+        if (S.leaves.some(function (l) { return l.staff === p.id && l.status === 'Approved' && date >= l.from && date <= l.to; })) return false;
+        var r = rec(p.id, date); return !r || r.status === 'notin';
+      });
+    },
+    markNoShows: function (date) {
+      if (backend) return backend.autoAbsent(date).then(function (r) { backend.reload(); return r.marked; });
+      var ids = api.noShows(date).map(function (p) { return p.id; });
+      ids.forEach(function (id) { api.mark(id, date, { status: 'absent', in: null, out: null, remark: 'No check-in' }, 'Auto: no check-in'); });
+      emit(); return Promise.resolve(ids.length);
     },
 
     // ---- settings / salary ----
