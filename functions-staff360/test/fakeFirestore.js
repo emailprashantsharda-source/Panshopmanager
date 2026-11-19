@@ -42,6 +42,7 @@ function createFake() {
         store.set(path, cur);
       },
       delete: async () => { store.delete(path); },
+      collection: (c) => query(`${path}/${c}`, [], null, null),
     };
   }
   function query(coll, filters, order, lim) {

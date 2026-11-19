@@ -56,7 +56,8 @@ function createAI(env, fetchImpl) {
     return r.json();
   }
   async function openai(messages, withTools) {
-    const body = { model, max_tokens: 400, messages: [{ role: 'system', content: SYSTEM }].concat(messages) };
+    // Current OpenAI models take max_completion_tokens (and count reasoning in it).
+    const body = { model, max_completion_tokens: 2000, messages: [{ role: 'system', content: SYSTEM }].concat(messages) };
     if (withTools) body.tools = TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: schemaFor(t) } }));
     const r = await f('https://api.openai.com/v1/chat/completions', {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }, body: JSON.stringify(body),

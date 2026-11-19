@@ -241,7 +241,7 @@
     var need = St.needs(feature);
     return '<div class="card placeholder"><span class="ph-ic" style="background:var(--purple-light);color:var(--purple)">' + U.ic('lock') + '</span>' +
       '<h1>' + title + ' is on ' + need + '</h1><p>' + text + '</p>' +
-      '<a class="btn pri" href="#/plans">' + U.ic('crown') + 'Upgrade to ' + need + (need === 'King PRO' ? ' — ₹4,999/year' : '') + '</a></div>';
+      '<a class="btn pri" href="#/plans">' + U.ic('crown') + 'Upgrade to ' + need + ' — ' + St.priceLabel(need === 'King PRO' ? 'kingpro' : 'premium') + '</a></div>';
   };
   U.lockNote = function (feature, text) { return '<span class="lock-note">' + U.ic('lock') + (text || St.needs(feature)) + '</span>'; };
 })();

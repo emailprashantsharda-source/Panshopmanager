@@ -122,7 +122,7 @@
       var u = O.user || {};
       return {
         day: rec.today, nowMin: new Date().getHours() * 60 + new Date().getMinutes(),
-        plan: STATE.plan, role: STATE.role, kind: STATE.tenant.kind, editable: r[0].editable, extra: { maxStaff: r[0].maxStaff, ai: STATE.ai, detailed: rec.detailed },
+        plan: STATE.plan, role: STATE.role, kind: STATE.tenant.kind, editable: r[0].editable, extra: { maxStaff: r[0].maxStaff, ai: STATE.ai, detailed: rec.detailed, plans: STATE.plans, ent: STATE.entitlement },
         staff: staff, shifts: shifts, attendance: mapRecords(rec.rows, staff, shifts, rec.from, rec.to), leaves: leaves, audit: mapAudit(r[4].items), approvals: [],
         businesses: (O.tenants || [O.tenant]).map(function (t) { return { id: t.id, name: t.name, city: t.kind === 'shop' ? 'HisaabNow shop' : 'Staff360 business', role: t.role }; }),
         corrections: corr,
@@ -158,7 +158,35 @@
   }
   function onShift(id) { return St.staff({ all: true }).filter(function (p) { return p.shift === id; }).map(function (p) { return p.id; }); }
 
+  // Pay with PayU (HisaabNow's payuCreateOrder). The server sets the price; we only post its form.
+  function checkout(planId) {
+    return call('payuCreateOrder', { product: 'staff360', tier: planId, from: window.S360_BACK ? 'app' : 'site' }).then(function (r) {
+      var f = document.createElement('form');
+      f.method = 'POST'; f.action = r.paymentUrl; f.target = '_top'; f.style.display = 'none';
+      Object.keys(r.params).forEach(function (k) {
+        var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = r.params[k]; f.appendChild(i);
+      });
+      document.body.appendChild(f); f.submit();
+    });
+  }
+  function payuReturned() {
+    var q = new URLSearchParams(location.search), r = q.get('payu');
+    // Came from a "Choose Premium / King PRO" button on the website: open Subscription.
+    if (q.get('plan') && STATE.role === 'owner' && (!location.hash || location.hash === '#/' || location.hash === '#/dashboard')) {
+      q.delete('plan');
+      try { history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + '#/plans'); } catch (e) {}
+    }
+    if (!r) return;
+    q.delete('payu'); q.delete('txnid');
+    try { history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash); } catch (e) {}
+    setTimeout(function () {
+      if (!window.S360UI) return;
+      window.S360UI.toast(r === 'success' ? 'Payment received. Your ' + (St.PLAN_LABEL[St.plan] || '') + ' plan is on.' : 'The payment didn’t go through, so your plan hasn’t changed. If money left your account, message us on WhatsApp.');
+    }, 700);
+  }
+
   var backend = {
+    checkout: checkout,
     reload: reload,
     after: function () { reload(); },
     saveStaff: function (p, isNew, before) {
@@ -255,7 +283,7 @@
       return call('staff360GetState').then(function (s) {
         STATE = s;
         var emp = s.role === 'employee';
-        return (emp ? loadEmployee() : loadOwner()).then(function (snap) { St.init(snap, backend); return emp ? 'employee' : 'owner'; });
+        return (emp ? loadEmployee() : loadOwner()).then(function (snap) { St.init(snap, backend); payuReturned(); return emp ? 'employee' : 'owner'; });
       });
     },
   };

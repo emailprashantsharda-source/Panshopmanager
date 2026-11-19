@@ -3,7 +3,7 @@
   "private": true,
   "description": "Staff360 Cloud Functions module. Copy staff360/ into your existing functions/ folder; this package.json only exists to run the tests here.",
   "scripts": {
-    "test": "node --test test/core.test.js test/handlers.test.js"
+    "test": "node --test test/core.test.js test/handlers.test.js test/payu.test.js"
   },
   "engines": { "node": ">=20" }
 }

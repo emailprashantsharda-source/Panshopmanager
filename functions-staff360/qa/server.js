@@ -61,6 +61,36 @@ http.createServer(async (req, res) => {
     if (p === 'premium' || p === 'kingpro') await h.saveShift({ shopId: 'A', name: 'Morning', start: '09:00', end: '18:00', graceMin: 10, weeklyOff: [0], staffIds: ['amit', 'riya'] }, USERS.owner).catch(() => {});
     res.end('ok'); return;
   }
+  /* Stand-in for PayU: the checkout form posts here; we "pay" and send the browser back
+     the way payuReturn does. The real PayU path is tested in test/payu.test.js. */
+  if (url.pathname === '/__payu') {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', async () => {
+      const f = new URLSearchParams(body), ok = f.get('qa_outcome') !== 'failed';
+      if (ok) await h.activatePlan(f.get('shopId'), f.get('planId'), { months: +f.get('months'), provider: 'payu', providerRef: f.get('txnid') });
+      const back = f.get('back'), at = back.indexOf('#');
+      res.statusCode = 303;
+      res.setHeader('location', back.slice(0, at) + (back.indexOf('?') >= 0 && back.indexOf('?') < at ? '&' : '?') + 'payu=' + (ok ? 'success' : 'failed') + '&txnid=' + f.get('txnid') + back.slice(at));
+      res.end();
+    });
+    return;
+  }
+  if (url.pathname === '/__call/payuCreateOrder') {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', async () => {
+      res.setHeader('content-type', 'application/json');
+      try {
+        const d = JSON.parse(body || '{}');
+        if (d.product !== 'staff360') throw Object.assign(new Error('only staff360 in QA'), { code: 'invalid-argument' });
+        const q = await h.billingQuote({ shopId: d.shopId, planId: d.tier }, USERS[req.headers['x-user'] || 'owner']);
+        const back = d.from === 'app' ? `/staff360/v2/app.html?t=${q.shopId}&n=${encodeURIComponent(q.shopName)}#/plans` : `/staff360/app/?t=${q.shopId}#/plans`;
+        res.end(JSON.stringify({ data: { paymentUrl: '/__payu', params: { txnid: 'QA' + Date.now(), shopId: q.shopId, planId: q.planId, months: q.months, amount: q.amountInr.toFixed(2), back } } }));
+      } catch (e) { res.end(JSON.stringify({ error: { code: e.code || 'internal', message: e.message } })); }
+    });
+    return;
+  }
   if (url.pathname.startsWith('/__call/')) {
     let body = '';
     req.on('data', (c) => { body += c; });

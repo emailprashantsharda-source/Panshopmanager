@@ -783,6 +783,7 @@ function createHandlers(deps) {
 
     if (ai.configured()) {
       await rateLimit(ctx);
+      try {
       const ps = C.pseudonymise(q, staff);
       const names = staff.map((s, i) => ({ id: s.id, token: `EMP${i + 1}` }));
       const r = await ai.answer(ps.text, names.map((n) => n.token), async (tool, args) => {
@@ -794,6 +795,10 @@ function createHandlers(deps) {
       await logUsage(ctx, 'ask', r);
       if (r && r.text) {
         return { source: 'ai', text: C.reidentify(r.text, ps.map), results: r.toolResults || [], period: r.toolResults && r.toolResults[0] ? r.toolResults[0].period : null };
+      }
+      } catch (e) {
+        // AI provider down or misconfigured: answer from the fixed rules below instead of failing.
+        console.warn('[Staff360] AI answer failed, using rules', String(e && e.message || e).slice(0, 200));
       }
     }
     const route = C.routeQuestion(q, staff.map((s) => ({ id: s.id, name: s.name })));
@@ -971,31 +976,41 @@ function createHandlers(deps) {
 
   /* ───────────── Plans, billing, admin ───────────── */
 
+  /* Older screens called this. Payment now goes through PayU (payuCreateOrder
+   * with product 'staff360', which calls billingQuote below). */
   async function createOrder(data, auth) {
-    const ctx = await caller(data, auth, { roles: ['owner'] });
-    const planId = data.planId;
-    if (!['premium', 'kingpro'].includes(planId)) fail('invalid-argument', 'planId');
-    const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
-    if (!cfg[planId].priceYearInr) return { ok: false, reason: 'price_not_configured' };
-    if (!deps.billing || !deps.billing.configured()) return { ok: false, reason: 'billing_not_configured' };
-    const order = await deps.billing.createOrder({ shopId: ctx.shopId, uid: ctx.uid, planId, amountInr: cfg[planId].priceYearInr });
-    await db.collection(`staff360/${ctx.shopId}/orders`).add({ at: now(), planId, amountInr: cfg[planId].priceYearInr, providerOrderId: order.id || null, status: 'created' });
-    return { ok: true, order };
+    await caller(data, auth, { roles: ['owner'] });
+    return { ok: false, reason: 'use_payu' };
   }
 
-  /* Called ONLY from a verified payment webhook / admin. Never from a client. */
+  /* What an owner would pay to buy or renew a plan. Called by payuCreateOrder
+   * on the server: the amount charged comes from here, never from the client. */
+  async function billingQuote(data, auth) {
+    const ctx = await caller(data, auth, { roles: ['owner'] });
+    const planId = str(data.planId, 20);
+    if (!['premium', 'kingpro'].includes(planId)) fail('invalid-argument', 'Unknown plan');
+    const p = C.PLANS[planId];
+    const cur = ctx.ent;
+    if ((cur.status === 'active' || cur.status === 'grace') && C.rankOf(cur.planId) > C.rankOf(planId)) {
+      fail('failed-precondition', `You're on ${C.PLANS[cur.planId].name}. You can switch to ${p.name} after it ends.`);
+    }
+    const doc = (await db.doc(`staff360Entitlements/${ctx.shopId}`).get()).data();
+    const next = C.extendEntitlement(doc, planId, p.months, now());
+    return { shopId: ctx.shopId, kind: ctx.kind, shopName: ctx.shop.name || '', planId, planName: p.name, amountInr: p.priceInr, months: p.months, endAt: next.endAt };
+  }
+
+  /* Admin path. Payments are applied by staff360/billing.js inside the PayU
+   * webhook's transaction, using the same C.extendEntitlement. */
   async function activatePlan(shopId, planId, opts) {
-    if (!PLANS_OK(planId)) throw new Error('bad plan');
+    if (!PLANS_OK(planId) || planId === 'basic') throw new Error('bad plan');
     const t = now();
     const ref = db.doc(`staff360Entitlements/${shopId}`);
     const cur = (await ref.get()).data() || {};
-    const start = cur.status === 'active' && cur.planId === planId && cur.endAt > t ? cur.endAt : t;
-    const months = (opts && opts.months) || 12;
-    const end = start + months * 30.4375 * 24 * 3600 * 1000;
-    await ref.set({ planId, status: 'active', startAt: cur.startAt && cur.planId === planId ? cur.startAt : t, endAt: Math.round(end),
-      graceUntil: Math.round(end + 7 * 24 * 3600 * 1000), provider: (opts && opts.provider) || 'manual', providerRef: (opts && opts.providerRef) || null,
+    const next = C.extendEntitlement(cur, planId, (opts && opts.months) || C.PLANS[planId].months, t);
+    await ref.set({ planId, status: 'active', startAt: next.startAt, endAt: next.endAt, graceUntil: next.graceUntil,
+      provider: (opts && opts.provider) || 'manual', providerRef: (opts && opts.providerRef) || null,
       renewal: 'manual', updatedAt: t, updatedBy: (opts && opts.by) || 'system' }, { merge: true });
-    return { ok: true, endAt: Math.round(end) };
+    return { ok: true, endAt: next.endAt };
   }
   const PLANS_OK = (p) => ['basic', 'premium', 'kingpro'].includes(p);
 
@@ -1022,8 +1037,8 @@ function createHandlers(deps) {
       const o = (data && data[id]) || null;
       if (!o) continue;
       patch[id] = {};
-      if (o.priceYearInr !== undefined) patch[id].priceYearInr = o.priceYearInr === null ? null : Math.max(0, Math.round(Number(o.priceYearInr) || 0)) || null;
-      if (o.maxStaff !== undefined) patch[id].maxStaff = o.maxStaff === null ? null : Math.max(0, Math.round(Number(o.maxStaff) || 0)) || null;
+      // Prices are fixed in core.js (the PayU charge reads them there). Only staff limits are adjustable; 0 = no limit.
+      if (o.maxStaff !== undefined) patch[id].maxStaff = o.maxStaff === null ? null : Math.max(0, Math.round(Number(o.maxStaff) || 0));
     }
     await db.doc('staff360Config/plans').set(patch, { merge: true });
     return { ok: true };
@@ -1157,6 +1172,13 @@ function createHandlers(deps) {
       }
     } else {
       if (!prev) fail('failed-precondition', 'Add staff in the HisaabNow app first.');
+      // HisaabNow shops: the app's staff list is free; the plan limit counts staff with a Staff360 phone login.
+      if (canLogin && prev.canLogin !== true) {
+        const cfg = C.mergePlanConfig(((await db.doc('staff360Config/plans').get()).data()) || {});
+        const max = cfg[ctx.plan].maxStaff;
+        const logins = (await staffList(ctx.shopId)).filter((x) => x.canLogin === true && x.active !== false).length;
+        if (max && logins >= max) fail('resource-exhausted', `Your plan allows ${max} staff logins. Upgrade to add more.`);
+      }
       if (/^manager$/i.test(prev.role || '') && canLogin && ctx.role !== 'owner') fail('permission-denied', 'Only the owner can give a manager login');
     }
     if (phone) {
@@ -1304,7 +1326,7 @@ function createHandlers(deps) {
     listShifts, saveShift, deleteShift, saveSettings,
     submitRequest, listRequests, decideRequest,
     aiDashboard, aiAsk, alertAction, salaryList, salarySave,
-    whatsapp, runWhatsAppDigests, createOrder, activatePlan, adminSetPlan, adminSetPlanConfig,
+    whatsapp, runWhatsAppDigests, createOrder, billingQuote, activatePlan, adminSetPlan, adminSetPlanConfig,
     _digestText: digestText,
   };
 }

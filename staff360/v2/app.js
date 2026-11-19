@@ -21,7 +21,7 @@
       return '<a class="nav-i' + (on ? ' on' : '') + '" href="#/' + n[0] + '"' + (on ? ' aria-current="page"' : '') + ' title="' + n[1] + '">' + ic(n[2]) + '<span class="lbl">' + n[1] + '</span>' +
         (n[4] ? '<span class="tag">' + n[4] + '</span>' : locked ? ic('lock', 'lk') : '') + '</a>';
     }).join('');
-    var up = St.plan !== 'kingpro' ? '<div class="upsell"><b>' + ic('crown') + 'King PRO</b><p>AI staff insights, late-arrival alerts and salary estimates. ₹4,999/year.</p><a class="btn pri sm" href="#/plans" style="width:100%">Upgrade plan</a></div>' : '';
+    var up = St.plan !== 'kingpro' ? '<div class="upsell"><b>' + ic('crown') + 'King PRO</b><p>AI staff insights, late-arrival alerts and salary estimates. ' + St.priceLabel('kingpro') + '.</p><a class="btn pri sm" href="#/plans" style="width:100%">Upgrade plan</a></div>' : '';
     return '<div class="logo">' + U.LOGO + '<span>HisaabNow<small>Staff360</small></span></div>' +
       '<nav aria-label="Staff360">' + items + '</nav><div class="grow"></div>' + up + (St.live ? '' :
       '<div class="demo-plans"><small>Demo plan (preview only)</small><div>' + ['basic', 'premium', 'kingpro'].map(function (p) {
