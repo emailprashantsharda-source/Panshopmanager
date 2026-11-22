@@ -13086,5 +13086,70 @@ return{card:card,editHead:editHead,quick:quick,acts:acts}})();</script>
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();
 })();
 </script>
+<script id="hn-salon-wa-autosend">
+/* Salon: after "Collect", open WhatsApp with the bill for the tagged customer.
+   Wraps App.completeSale; core checkout code is untouched.
+   Skips when: not a salon, auto-print is explicitly ON, or no new sale was saved
+   (e.g. UPI QR step still pending). Fallback button shown if the browser blocks the pop-up. */
+(function(){
+  "use strict";
+  if(window.__hnSalonWA)return;window.__hnSalonWA=true;
+  var sent={};
+  function A(){return window.App}
+  function isSalon(){try{return !!(window.hnIsSalon&&window.hnIsSalon())}catch(e){return false}}
+  function autoPrintOn(){try{return localStorage.getItem("hn_receipt_autoprint")==="1"}catch(e){return false}}
+  function ids(){var m={};try{(Store.list("sales")||[]).forEach(function(s){if(s&&s.id)m[s.id]=1})}catch(e){}return m}
+  function newSale(before){
+    try{
+      var ns=(Store.list("sales")||[]).filter(function(s){return s&&s.id&&!before[s.id]&&!s._deleted});
+      if(!ns.length)return null;
+      ns.sort(function(a,b){return(b.t||0)-(a.t||0)});
+      return ns[0];
+    }catch(e){return null}
+  }
+  function phoneOf(s){return String(s&&s.cph||"").replace(/\D/g,"").slice(-10)}
+  function toast(m){try{A().toast(m)}catch(e){}}
+  function url(s,ph){return "https://wa.me/91"+ph+"?text="+encodeURIComponent(A().waBuildReceipt(s))}
+  function fallback(u){
+    var old=document.getElementById("hn-wa-fb");if(old)old.remove();
+    var b=document.createElement("button");b.id="hn-wa-fb";b.type="button";
+    b.textContent="Send bill on WhatsApp";
+    b.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));z-index:99999;background:#25D366;color:#fff;border:none;border-radius:99px;padding:13px 22px;font:800 14px/1 inherit;font-family:inherit;box-shadow:0 10px 24px -6px rgba(0,0,0,.35);cursor:pointer";
+    b.onclick=function(){window.open(u,"_blank");b.remove()};
+    document.body.appendChild(b);setTimeout(function(){if(b.parentNode)b.remove()},12000);
+  }
+  function fire(s){
+    if(!s||sent[s.id])return;sent[s.id]=1;
+    var ph=phoneOf(s);
+    if(ph.length!==10){
+      var cn=String(s.cn||"").trim();
+      if(cn&&!/^walk-?in$/i.test(cn))toast("Add "+cn+"'s phone to send the bill on WhatsApp");
+      return;
+    }
+    var u;try{u=url(s,ph)}catch(e){console.warn("[SalonWA]",e);return}
+    var w=null;try{w=window.open(u,"_blank")}catch(e){}
+    if(!w)fallback(u);
+    try{if(window.hnEvent)hnEvent("wa_auto_send",{vert:"salon",blocked:w?0:1})}catch(e){}
+  }
+  function wrap(){
+    var app=A();
+    if(!app||app.__hnSalonWAHooked||typeof app.completeSale!=="function"||typeof app.waBuildReceipt!=="function")return false;
+    var orig=app.completeSale;
+    app.completeSale=function(){
+      var eligible=isSalon()&&!autoPrintOn();
+      var before=eligible?ids():null;
+      var r=orig.apply(this,arguments);
+      if(eligible){
+        var s=newSale(before);          /* sale is saved synchronously -> same click tick, no pop-up block */
+        if(s)fire(s);
+        else{var n=0;(function poll(){if(++n>8)return;var s2=newSale(before);if(s2)fire(s2);else setTimeout(poll,250)})()}
+      }
+      return r;
+    };
+    app.__hnSalonWAHooked=true;return true;
+  }
+  var tries=0;(function wait(){if(wrap())return;if(++tries<80)setTimeout(wait,250)})();
+})();
+</script>
 </body>
 </html>
